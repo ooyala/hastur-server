@@ -10,7 +10,7 @@ require "multi_json"
 
 module MBus
   def connect
-    @hastur_settings = MultiJson.decode(File.read("/etc/hastur.json"))
+    @hastur_settings = MultiJson.decode(File.read("/etc/hastur.json") rescue "")
     @domain = @hastur_settings["domain"] || "us-west-2.ooyala.com"
 
     @hostname = @hastur_settings["hostname"] || `hostname`
@@ -45,6 +45,7 @@ module MBus
       if block_given?
         @stomp_client.subscribe(topic, &block)
       else
+        raise "No general delivery without a general delivery subscription!" unless @general_delivery_block
         @stomp_client.subscribe(topic, @general_delivery_block)
       end
     end
@@ -62,6 +63,7 @@ module MBus
       if block_given?
         @stomp_client.subscribe(topic, :ack => :client, &block)
       else
+        raise "No general delivery without a general delivery subscription!" unless @general_delivery_block
         @stomp_client.subscribe(topic, &@general_delivery_block)
       end
     end
