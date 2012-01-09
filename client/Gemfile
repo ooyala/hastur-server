@@ -1,0 +1,4 @@
+source :rubygems
+
+gem "onstomp"
+gem "multi_json"
