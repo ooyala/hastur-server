@@ -9,8 +9,23 @@ require "onstomp"
 require "multi_json"
 
 module MBus
-  def connect(*args)
-    @stomp_client = OnStomp.connect(*args)
+  def connect
+    @hastur_settings = MultiJson.decode(File.read("/etc/hastur.json"))
+    @domain = @hastur_settings["domain"] || "us-west-2.ooyala.com"
+
+    @hostname = @hastur_settings["hostname"] || `hostname`
+    @protocol = @hastur_settings["protocol"] || ""
+
+    # TODO(noah): Set UUID
+
+    clients = (1..2).map { |i| "stomp#{@protocol != "" ? "-#{@protocol}" : ""}://hastur-mq#{i}.#{domain}" }
+
+    @stomp_client = OnStomp::Failover::Client.new 'failover:(#{clients.join(',')})'
+  end
+
+  def disconnect
+    @stomp_client.disconnect
+    @stomp_client = nil
   end
 
   def set_uuid(uuid)
