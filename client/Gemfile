@@ -1,4 +1,4 @@
 source :rubygems
 
-gem "onstomp"
-gem "multi_json"
+gem "uuid"
+gem "json"
