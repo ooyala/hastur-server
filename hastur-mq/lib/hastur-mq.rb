@@ -20,8 +20,10 @@ module HasturMq
     # TODO(noah): Set UUID
 
     clients = (1..2).map { |i| "stomp#{@protocol != "" ? "-#{@protocol}" : ""}://hastur-mq#{i}.#{domain}" }
+    client_default = "failover:(#{clients.join(',')})"
+    client_url = @hastur_settings["client-url"] || ENV["HASTUR_URL"] || client_default
 
-    @stomp_client = OnStomp::Failover::Client.new 'failover:(#{clients.join(',')})'
+    @stomp_client = OnStomp::Failover::Client.new client_url
   end
 
   def disconnect
