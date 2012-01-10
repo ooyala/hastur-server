@@ -40,7 +40,13 @@ register_client_req = HasturJsonBuilder.get_register_client( get_uuid() )
 
 # TODO(viet): listen on STOMP topic for scheduled plugin execution
 
+# TODO(viet): listen for statsd traffic
 
+# TODO(viet): listen for service registration traffic
+
+# TODO(viet): listen for plugin registration traffic
+
+# TODO(viet); listen for alert traffic
 
 
 
