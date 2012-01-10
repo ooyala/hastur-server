@@ -24,7 +24,9 @@ class HasturPlugin
   end
 
   #
-  # Runs the plugin script once asychronously
+  # Runs the plugin script asychronously, once
+  #
+  # TODO(viet): Kill the process after a certain period of time.
   #
   def execute
     t = Thread.new do

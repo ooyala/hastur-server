@@ -1,1 +1,3 @@
+*.swp
+.hastur_client_uuid
 Gemfile.lock
