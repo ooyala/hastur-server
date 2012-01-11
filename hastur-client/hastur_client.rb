@@ -10,7 +10,9 @@ require "lib/json_builder"
 require "lib/client_ports"
 
 # hastur listeners
+require "listeners/plugin_listener"
 require "listeners/service_listener"
+require "listeners/statsd_listener"
 
 #
 # Saves the Hastur client UUID in the current location under .hastur_client_uuid
@@ -48,7 +50,8 @@ register_client_req = HasturJsonBuilder.get_register_client( get_uuid() )
 
 # TODO(viet): listen on STOMP topic for scheduled plugin execution
 
-# TODO(viet): listen for statsd traffic
+# listen for statsd traffic
+listeners << HasturStatsDListener.new(HasturClientConfig::STATSD_PORT, :udp)
 
 # listen for service registration traffic
 listeners << HasturServiceListener.new(HasturClientConfig::SERVICE_REGISTRATION_PORT, :tcp)
