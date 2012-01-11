@@ -6,7 +6,7 @@
 require "socket"
 
 class HasturListener
-  attr_accessor :type, :port, :socket
+  attr_accessor :type, :port, :server, :current_thread
 
   #
   # Constructs the base listener and sets up the socket objects
@@ -25,16 +25,27 @@ class HasturListener
   # Listen for messages in an asynchronous way
   #
   def listen_for_messages
-    Thread.new do
+    @current_thread = Thread.new do
       if type == :tcp
-        # listen for TCP packets
-        while msg = @socket.gets
-          process_message(msg)
+        # listen for TCP clients
+        loop do
+          # for each client, listen to what they have to say and process each incoming message
+          Thread.start(@server.accept) do |socket|
+            begin
+              STDOUT.puts "Accepted connection on #{@port}"
+              while(msg = socket.gets)
+                STDOUT.puts "tcp message recieved: #{msg}"
+                process_message(msg)
+              end
+            rescue Exception => e
+              STDERR.puts "Error occurred with recieving packets on #{@port}: #{e.message}"
+            end
+          end
         end
       elsif type == :udp
         # listen for UDP packets
-        while true
-          msg, sender = @socket.recvfrom()  # default maxlength is ~64k
+        while msg = @socket.recv(65507)  # maxlength is 65507 bytes for UDP
+          STDOUT.puts "udp message recieved: #{msg}"
           process_message(msg)
         end
       end
@@ -46,15 +57,15 @@ class HasturListener
   # messages off of the listener.
   #
   def process_message(msg)
-    raise "process_message( msg ) is not implemented. Only sub-classes of HasturPlugin can process messages."
+    raise "process_message() is not implemented. Only sub-classes of HasturPlugin can process messages."
   end
 
   #
   # Sets up the sockets to listen
   #
   def setup_sockets()
-    if type == :tcp             # initialize TCP socket
-      @socket = TCPSocket.new("localhost", @port)
+    if type == :tcp             # initialize TCP server
+      @server = TCPServer.new @port
     elsif type == :udp          # initialize UDP socket
       @socket = UDPSocket.new
       @socket.bind("localhost", @port)

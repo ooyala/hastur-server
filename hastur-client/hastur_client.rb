@@ -3,8 +3,14 @@
 # by statsD and application plugins that will report numbers.
 #
 require "rubygems"
-require "lib/json_builder"
 require "uuid"
+
+# hastur libs
+require "lib/json_builder"
+require "lib/client_ports"
+
+# hastur listeners
+require "listeners/service_listener"
 
 #
 # Saves the Hastur client UUID in the current location under .hastur_client_uuid
@@ -35,6 +41,8 @@ def get_uuid
   uuid
 end
 
+listeners = []
+
 # TODO(viet): message via STOMP to register this machine with hastur
 register_client_req = HasturJsonBuilder.get_register_client( get_uuid() )
 
@@ -43,10 +51,19 @@ register_client_req = HasturJsonBuilder.get_register_client( get_uuid() )
 # TODO(viet): listen for statsd traffic
 
 # TODO(viet): listen for service registration traffic
+listeners << HasturServiceListener.new(HasturClientConfig::SERVICE_REGISTRATION_PORT, :tcp)
 
 # TODO(viet): listen for plugin registration traffic
 
 # TODO(viet); listen for alert traffic
 
+
+# block here until all of the threads die, WHICH SHOULD NEVER HAPPEN
+listeners.each do |listener|
+  listener.current_thread.join
+  STDERR.puts "Listener unexpectedly died => #{listener.name}"
+end
+
+# TODO(viet): figure out how to properly handle when the code gets past here
 
 
