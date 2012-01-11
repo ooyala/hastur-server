@@ -10,6 +10,7 @@ require "lib/json_builder"
 require "lib/client_ports"
 
 # hastur listeners
+require "listeners/alert_listener"
 require "listeners/plugin_listener"
 require "listeners/service_listener"
 require "listeners/statsd_listener"
@@ -59,8 +60,8 @@ listeners << HasturServiceListener.new(HasturClientConfig::SERVICE_REGISTRATION_
 # listen for plugin registration traffic
 listeners << HasturPluginListener.new(HasturClientConfig::PLUGIN_REGISTRATION_PORT, :tcp)
 
-# TODO(viet); listen for alert traffic
-
+# listen for alert traffic
+listeners << HasturAlertListener.new(HasturClientConfig::ALERT_PORT, :udp)
 
 # block here until all of the threads die, WHICH SHOULD NEVER HAPPEN
 listeners.each do |listener|
