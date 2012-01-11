@@ -50,10 +50,11 @@ register_client_req = HasturJsonBuilder.get_register_client( get_uuid() )
 
 # TODO(viet): listen for statsd traffic
 
-# TODO(viet): listen for service registration traffic
+# listen for service registration traffic
 listeners << HasturServiceListener.new(HasturClientConfig::SERVICE_REGISTRATION_PORT, :tcp)
 
-# TODO(viet): listen for plugin registration traffic
+# listen for plugin registration traffic
+listeners << HasturPluginListener.new(HasturClientConfig::PLUGIN_REGISTRATION_PORT, :tcp)
 
 # TODO(viet); listen for alert traffic
 
