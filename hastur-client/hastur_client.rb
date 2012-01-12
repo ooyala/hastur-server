@@ -8,6 +8,7 @@ require "uuid"
 # hastur libs
 require "lib/json_builder"
 require "lib/client_ports"
+require "lib/hastur_heartbeats.rb"
 
 # hastur listeners
 require "listeners/hastur_listener"
@@ -51,6 +52,9 @@ register_client_req = HasturJsonBuilder.get_register_client( get_uuid() )
 
 # listen for hastur traffic on a port
 listeners << HasturListener.new(HasturClientConfig::HASTUR_PORT, :udp)
+
+# periodically give a client heartbeat
+HasturHeartbeat.start( 30 )   # 30 second heartbeats
 
 # block here until all of the threads die, WHICH SHOULD NEVER HAPPEN
 listeners.each do |listener|

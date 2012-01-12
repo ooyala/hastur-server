@@ -21,5 +21,6 @@ class HasturMessageProcessor
   #
   def flush_to_hastur(msg)
     # TODO(viet): implement this once the STOMP wrapper is available
+    STDOUT.puts "Pretending to send => #{msg}"
   end
 end
