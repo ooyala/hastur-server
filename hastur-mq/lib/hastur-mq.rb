@@ -17,7 +17,7 @@ module HasturMq
     @hostname = @hastur_settings["hostname"] || `hostname`
     @protocol = @hastur_settings["protocol"] || ""
 
-    # TODO(noah): Set UUID
+    # TODO(noah): Find UUID?  Or require it be set?  Ignore until we support direct messages.
 
     clients = (1..2).map { |i| "stomp#{@protocol != "" ? "-#{@protocol}" : ""}://hastur-mq#{i}.#{domain}" }
     client_default = "failover:(#{clients.join(',')})"
@@ -38,7 +38,7 @@ module HasturMq
 
   module Topic
     def send(topic, json_hash)
-      @stomp_client.send(topic, MultiJson.encode(json_hash))
+      @stomp_client.send("/topic/" + topic, MultiJson.encode(json_hash))
     end
 
     # This subscribes asynchronously to only this
@@ -46,17 +46,17 @@ module HasturMq
     # general delivery.
     def receive_async(topic, &block)
       if block_given?
-        @stomp_client.subscribe(topic, &block)
+        @stomp_client.subscribe("/topic/" + topic, &block)
       else
         raise "No general delivery without a general delivery subscription!" unless @general_delivery_block
-        @stomp_client.subscribe(topic, @general_delivery_block)
+        @stomp_client.subscribe("/topic/" + topic, @general_delivery_block)
       end
     end
   end
 
   module Queue
     def send(queue_name, json_hash)
-      @stomp_client.send(queue_name, MultiJson.encode(json_hash))
+      @stomp_client.send("/queue/" + queue_name, MultiJson.encode(json_hash))
     end
 
     # This subscribes asynchronously to only this
@@ -64,17 +64,17 @@ module HasturMq
     # general delivery.
     def receive_async(queue_name, &block)
       if block_given?
-        @stomp_client.subscribe(topic, :ack => :client, &block)
+        @stomp_client.subscribe("/queue/" + queue_name, :ack => :client, &block)
       else
         raise "No general delivery without a general delivery subscription!" unless @general_delivery_block
-        @stomp_client.subscribe(topic, &@general_delivery_block)
+        @stomp_client.subscribe("/queue/" + queue_name, &@general_delivery_block)
       end
     end
   end
 
   module Direct
     def send_uuid(uuid, json_hash)
-      @stomp_client.send(uuid, MultiJson.encode(json_hash))
+      raise "No Direct messages supported yet!"
     end
   end
 
@@ -87,7 +87,8 @@ module HasturMq
   end
 
   def update_subscriptions
-    @stomp_client.subscribe(@uuid, &@general_delivery_block) if @uuid && @general_delivery_block
+    # Eventually this will subscribe usefully for direct messages
+    #@stomp_client.subscribe(@uuid, &@general_delivery_block) if @uuid && @general_delivery_block
   end
 
 end
