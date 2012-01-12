@@ -1,3 +1,5 @@
+#!/usr/env/ruby
+
 require "rubygems"
 require "hastur-mq"
 require "pp"
@@ -8,6 +10,10 @@ if ARGS.empty?
   STDERR.puts "  Example: read-and-print errors q:notifications q:reliable-messages"
   exit
 end
+
+# TODO(noah): pass the RabbitMQ URL in some saner way
+ENV['HASTUR_URL'] = "localhost"
+HasturMQ.connect
 
 print_message = proc do |message|
   # TODO(noah): We could be snazzy here and get an actual mutex so we
