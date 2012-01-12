@@ -27,6 +27,7 @@ end
 # if the file exists. Otherwise return a newly generated UUID.
 #
 def get_uuid
+  # TODO(viet): figure out how to better deal with the UUID
   filepath = "#{File.dirname(__FILE__)}/.hastur_client_uuid"
   uuid = nil
   if File.exists?( filepath )

@@ -8,7 +8,18 @@ class HasturMessageProcessor
     @method = method
   end
 
+  #
+  # Undefined stub to process an incoming message. Subclasses should be overriding
+  # this method.
+  #
   def process_message(msg)
     raise "This feature is unimplemented."
+  end
+
+  #
+  # Sends a message to STOMP for Hastur to pick up
+  #
+  def flush_to_hastur(msg)
+    # TODO(viet): implement this once the STOMP wrapper is available
   end
 end

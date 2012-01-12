@@ -20,6 +20,7 @@ class HasturServiceProcessor < HasturMessageProcessor
       STDOUT.puts "Received a #{@method} request => #{msg}"
       # TODO(viet): place this message on STOMP
 
+      flush_to_hastur(msg)
       return true
     end
     return false
