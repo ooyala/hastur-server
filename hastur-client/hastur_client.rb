@@ -10,10 +10,7 @@ require "lib/json_builder"
 require "lib/client_ports"
 
 # hastur listeners
-require "listeners/alert_listener"
-require "listeners/plugin_listener"
-require "listeners/service_listener"
-require "listeners/statsd_listener"
+require "listeners/hastur_listener"
 
 #
 # Saves the Hastur client UUID in the current location under .hastur_client_uuid
@@ -51,17 +48,8 @@ register_client_req = HasturJsonBuilder.get_register_client( get_uuid() )
 
 # TODO(viet): listen on STOMP topic for scheduled plugin execution
 
-# listen for statsd traffic
-listeners << HasturStatsDListener.new(HasturClientConfig::STATSD_PORT, :udp)
-
-# listen for service registration traffic
-listeners << HasturServiceListener.new(HasturClientConfig::SERVICE_REGISTRATION_PORT, :tcp)
-
-# listen for plugin registration traffic
-listeners << HasturPluginListener.new(HasturClientConfig::PLUGIN_REGISTRATION_PORT, :tcp)
-
-# listen for alert traffic
-listeners << HasturAlertListener.new(HasturClientConfig::ALERT_PORT, :udp)
+# listen for hastur traffic on a port
+listeners << HasturListener.new(HasturClientConfig::HASTUR_PORT, :udp)
 
 # block here until all of the threads die, WHICH SHOULD NEVER HAPPEN
 listeners.each do |listener|

@@ -4,9 +4,10 @@
 #
 
 require "socket"
+require "#{File.dirname(__FILE__)}/../msg_processors/service_processor"
 
 class HasturListener
-  attr_accessor :type, :port, :server, :current_thread
+  attr_accessor :type, :port, :server, :current_thread, :processors
 
   #
   # Constructs the base listener and sets up the socket objects
@@ -14,7 +15,9 @@ class HasturListener
   def initialize(port, type)
     @port = port
     @type = type
-
+    @processors = [ HasturServiceProcessor.new ]
+    # TODO(viet): automatically populate message processors by reading the msg_processors/ folder
+    
     # construct the socket objects to listen on the port
     setup_sockets()
     # asynchronously deal with messages
@@ -25,7 +28,7 @@ class HasturListener
   # Listen for messages in an asynchronous way
   #
   def listen_for_messages
-    @current_thread = Thread.new do
+    @current_thread = Thread.start do     # this makes the listener asynch
       if type == :tcp
         # listen for TCP clients
         loop do
@@ -53,11 +56,23 @@ class HasturListener
   end
 
   #
-  # A holder so that sub-classes can override. This method should be overrideden by subclasses to process 
+  # A holder so that sub-classes can override. This method should be overridden by subclasses to process 
   # messages off of the listener.
   #
   def process_message(msg)
-    raise "process_message() is not implemented. Only sub-classes of HasturPlugin can process messages."
+    begin
+      msg = JSON.parse(msg)
+      # attempt to process the msg with each available message processor
+      @processors.each do |p|
+        if p.process_message( msg )
+          break   # stop if the processing succeeded
+        end
+      end
+    rescue Exception => e
+      STDERR.puts "Unable to process message."
+      STDERR.puts e.message
+      # TODO(viet): report the error through STOMP
+    end
   end
 
   #
