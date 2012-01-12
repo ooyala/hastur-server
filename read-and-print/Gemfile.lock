@@ -1,0 +1,15 @@
+GEM
+  remote: http://rubygems.org/
+  remote: http://gems.sv2/
+  specs:
+    hastur-mq (0.0.1)
+      multi_json
+      onstomp
+    multi_json (1.0.4)
+    onstomp (1.0.5)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  hastur-mq
