@@ -1,11 +1,11 @@
-#!/usr/env/ruby
+#!/usr/bin/env ruby
 
 require "rubygems"
 require "hastur-mq"
 require "pp"
 
-if ARGS.empty?
-  STDERR.puts "read-and-print [topics] [queues]"
+if ARGV.empty?
+  STDERR.puts "#{$0} [topics] [queues]"
   STDERR.puts "By default, assume topics.  Queues are prepended with q:"
   STDERR.puts "  Example: read-and-print errors q:notifications q:reliable-messages"
   exit
@@ -13,7 +13,7 @@ end
 
 # TODO(noah): pass the RabbitMQ URL in some saner way
 ENV['HASTUR_URL'] = "localhost"
-HasturMQ.connect
+HasturMq.connect
 
 print_message = proc do |message|
   # TODO(noah): We could be snazzy here and get an actual mutex so we
@@ -22,11 +22,11 @@ print_message = proc do |message|
   pp message.inspect
 end
 
-ARGS.each do |topic|
+ARGV.each do |topic|
   if topic =~ /^q:(.*)/
-    HasturMq::Queue.subscribe(topic[2..-1], &print_message)
+    HasturMq::Queue.receive_async(topic[2..-1], &print_message)
   else
-    HasturMq::Topic.subscribe(topic, &print_message)
+    HasturMq::Topic.receive_async(topic, &print_message)
   end
 end
 
