@@ -15,13 +15,46 @@ class HasturListener
   def initialize(port, type)
     @port = port
     @type = type
-    @processors = [ HasturServiceProcessor.new ]
-    # TODO(viet): automatically populate message processors by reading the msg_processors/ folder
-    
+    # automatically populate message processors by reading the msg_processors/ folder
+    @processors = scan_for_msg_processors()
     # construct the socket objects to listen on the port
     setup_sockets()
     # asynchronously deal with messages
     listen_for_messages()
+  end
+
+  #
+  # Scans the msg_processors/ folder for all 
+  #
+  def scan_for_msg_processors
+    processors = []
+    Dir.glob("#{File.dirname(__FILE__)}/../msg_processors/*_processor.rb").each do |f|
+      require "#{f}"
+      begin
+        class_name = compute_class_name(f)
+        STDOUT.puts "Loading message processor: #{class_name}"
+        processors << eval( class_name ).new unless class_name == "HasturMessageProcessor"
+      rescue Exception => e
+        STDERR.puts e.message
+      end
+    end
+    processors
+  end
+
+  #
+  # Computes the HasturMessageProcessor subclass name from the file name
+  #
+  def compute_class_name(f)
+    begin
+      class_name = "Hastur"
+      tokens = f.split("/")[-1].split(".")[0].split("_")
+      tokens.each do |token|
+        class_name << token.capitalize
+      end
+      return class_name
+    rescue Exception => e
+      STDERR.puts "Unable to parse the file name #{f}"
+    end
   end
 
   #
