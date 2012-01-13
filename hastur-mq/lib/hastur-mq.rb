@@ -27,11 +27,14 @@ module HasturMq
 
     #clients = (1..2).map { |i| "stomp#{@protocol != "" ? "-#{@protocol}" : ""}://hastur-mq#{i}.#{@domain}" }
     #client_default = "failover:(#{clients.join(',')})"
-    client_url = @hastur_settings["client-url"] || ENV["HASTUR_URL"] || options["stomp-server-url"] || "stomp://localhost:61613"
+    client_url = @hastur_settings["client-url"] || ENV["HASTUR_URL"] || options["stomp-server-url"] || "stomp://localhost"
 
     #@stomp_client = OnStomp::Failover::Client.new client_url
     STDERR.puts "Connecting to URL #{client_url}"
     @stomp_client = OnStomp::Client.new client_url
+    @stomp_client.host = "/"
+    @stomp_client.login = "guest"
+    @stomp_client.passcode = "guest"
     @stomp_client.connect
   end
 
