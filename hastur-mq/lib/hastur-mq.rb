@@ -30,7 +30,9 @@ module HasturMq
     client_url = @hastur_settings["client-url"] || ENV["HASTUR_URL"] || options["stomp-server-url"] || "localhost"
 
     #@stomp_client = OnStomp::Failover::Client.new client_url
+    STDERR.puts "Connecting to URL #{client_url}"
     @stomp_client = OnStomp::Client.new client_url
+    @stomp_client.connect
   end
 
   def self.disconnect
