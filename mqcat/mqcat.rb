@@ -22,17 +22,19 @@ input = [input] if input.kind_of?(Hash)
 HasturMq.connect
 
 # Get queue or topic name
-is_queue? = false
+is_queue = false
 name = ARGV[0]
 if ARGV[0] =~ /^q:/
-  is_queue? = true
+  is_queue = true
   name = ARGV[0][2..-1]
 end
 
 input.each do |json_obj|
-  if is_queue?
+  if is_queue
     HasturMq::Queue.send(name, json_obj)
   else
     HasturMq::Topic.send(name, json_obj)
   end
 end
+
+STDERR.puts "Finished sending #{input.size} messages to #{name}!"
