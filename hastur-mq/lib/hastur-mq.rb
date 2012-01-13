@@ -27,7 +27,7 @@ module HasturMq
 
     #clients = (1..2).map { |i| "stomp#{@protocol != "" ? "-#{@protocol}" : ""}://hastur-mq#{i}.#{@domain}" }
     #client_default = "failover:(#{clients.join(',')})"
-    client_url = @hastur_settings["client-url"] || ENV["HASTUR_URL"] || options["stomp-server-url"] || "localhost"
+    client_url = @hastur_settings["client-url"] || ENV["HASTUR_URL"] || options["stomp-server-url"] || "stomp://localhost:61613"
 
     #@stomp_client = OnStomp::Failover::Client.new client_url
     STDERR.puts "Connecting to URL #{client_url}"
