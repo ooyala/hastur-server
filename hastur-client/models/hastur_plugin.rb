@@ -2,6 +2,7 @@
 # Encapsulates all of the properties and characteristics of a Hastur Plugin
 #
 require "rubygems"
+require "#{File.dirname(__FILE__)}/../lib/hastur_error_processor"
 
 class HasturPlugin
   attr_accessor :name, :path
@@ -19,7 +20,7 @@ class HasturPlugin
         @path = plugin_info["params"]["path"]
       end
     rescue Exception => e
-      STDERR.puts e.message
+      HasturErrorProcessor.instance.log( "Unable to initialize plugin #{plugin_json}: #{e.message}" )
     end
   end
 

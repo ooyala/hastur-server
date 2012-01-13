@@ -9,6 +9,7 @@ require "uuid"
 require "lib/json_builder"
 require "lib/client_ports"
 require "lib/hastur_heartbeats.rb"
+require "lib/hastur_error_processor"
 
 # hastur listeners
 require "listeners/hastur_listener"
@@ -59,7 +60,7 @@ HasturHeartbeat.start( 30 )   # 30 second heartbeats
 # block here until all of the threads die, WHICH SHOULD NEVER HAPPEN
 listeners.each do |listener|
   listener.current_thread.join
-  STDERR.puts "Listener unexpectedly died => #{listener.name}"
+  HasturErrorProcessor.instance.log( "Listener unexpectedly died => #{listener.name}" )
 end
 
 # TODO(viet): figure out how to properly handle when the code gets past here

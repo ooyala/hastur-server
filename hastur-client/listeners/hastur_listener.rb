@@ -5,6 +5,7 @@
 
 require "socket"
 require "#{File.dirname(__FILE__)}/../msg_processors/service_processor"
+require "#{File.dirname(__FILE__)}/../lib/hastur_error_processor"
 
 class HasturListener
   attr_accessor :type, :port, :server, :current_thread, :processors
@@ -35,7 +36,7 @@ class HasturListener
         STDOUT.puts "Loading message processor: #{class_name}"
         processors << eval( class_name ).new unless class_name == "HasturMessageProcessor"
       rescue Exception => e
-        STDERR.puts e.message
+        HasturErrorProcessor.instance.log( e.message )
       end
     end
     processors
@@ -53,7 +54,7 @@ class HasturListener
       end
       return class_name
     rescue Exception => e
-      STDERR.puts "Unable to parse the file name #{f}"
+      HasturErrorProcessor.instance.log( "Unable to parse the file name #{f}" )
     end
   end
 
@@ -74,7 +75,7 @@ class HasturListener
                 process_message(msg)
               end
             rescue Exception => e
-              STDERR.puts "Error occurred with recieving packets on #{@port}: #{e.message}"
+              HasturErrorProcessor.instance.log( "Error occurred with recieving packets on #{@port}: #{e.message}" )
             end
           end
         end
@@ -102,9 +103,7 @@ class HasturListener
         end
       end
     rescue Exception => e
-      STDERR.puts "Unable to process message."
-      STDERR.puts e.message
-      # TODO(viet): report the error through STOMP
+      HasturErrorProcessor.instance.log( "Unable to process message: #{e.message}" )
     end
   end
 
