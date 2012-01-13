@@ -9,7 +9,7 @@ require "uuid"
 require "lib/json_builder"
 require "lib/client_ports"
 require "lib/hastur_heartbeats.rb"
-require "lib/hastur_error_processor"
+require "lib/hastur_logger"
 
 # hastur listeners
 require "listeners/hastur_listener"

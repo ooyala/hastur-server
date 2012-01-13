@@ -1,7 +1,12 @@
 #
 # Sends a message to Hastur every so often
 #
-module HasturHeartbeat
+
+require "#{File.dirname(__FILE__)}/hastur_messenger"
+
+class HasturHeartbeat
+
+  HEARTBEAT_QUEUE="/queue/hastur/heartbeat"
 
   #
   # Starts a heartbeat for the Hastur client
@@ -9,9 +14,7 @@ module HasturHeartbeat
   def self.start( interval )
     t = Thread.start(interval) do |i|
       loop do
-        # TODO(viet): send a heartbeat message to Hastur
-
-        STDOUT.puts "{ 'method' => 'heartbeat', 'time' => '#{Time.now}' }"
+        HasturMessenger.instance.send( HEARTBEAT_QUEUE, "{ 'method' => 'heartbeat', 'time' => '#{Time.now}' }")
         sleep(interval)
       end
     end

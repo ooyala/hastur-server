@@ -2,7 +2,7 @@
 # Encapsulates all of the properties and characteristics of a Hastur Plugin
 #
 require "rubygems"
-require "#{File.dirname(__FILE__)}/../lib/hastur_error_processor"
+require "#{File.dirname(__FILE__)}/../lib/hastur_logger"
 
 class HasturPlugin
   attr_accessor :name, :path

@@ -7,7 +7,8 @@ require "#{File.dirname(__FILE__)}/message_processor"
 class HasturNotificationProcessor < HasturMessageProcessor
   
   NOTIFICATION="notification"
-  
+  NOTIFICATION_QUEUE="/topic/hastur/notifications"
+
   def initialize
     super( NOTIFICATION )
   end
@@ -17,10 +18,7 @@ class HasturNotificationProcessor < HasturMessageProcessor
   #
   def process_message(msg)
     if msg["method"] == @method
-      STDOUT.puts "Received a #{@method} request => #{msg}"
-      # TODO(viet): place this message on STOMP
-
-      flush_to_hastur(msg)
+      flush_to_hastur(NOTIFICATION_QUEUE, msg)
       return true
     end
     return false
