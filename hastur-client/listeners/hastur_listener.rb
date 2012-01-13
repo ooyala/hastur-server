@@ -33,10 +33,10 @@ class HasturListener
       require "#{f}"
       begin
         class_name = compute_class_name(f)
-        STDOUT.puts "Loading message processor: #{class_name}"
+        HasturLogger.instance.log( "Loading message processor: #{class_name}" )
         processors << eval( class_name ).new unless class_name == "HasturMessageProcessor"
       rescue Exception => e
-        HasturLogger.instance.log( e.message )
+        HasturLogger.instance.error( e.message )
       end
     end
     processors
@@ -69,9 +69,9 @@ class HasturListener
           # for each client, listen to what they have to say and process each incoming message
           Thread.start(@server.accept) do |socket|
             begin
-              STDOUT.puts "Accepted connection on #{@port}"
+              HasturLogger.instance.log "Accepted connection on #{@port}"
               while(msg = socket.gets)
-                STDOUT.puts "tcp message recieved: #{msg}"
+                HasturLogger.instance.log "tcp message recieved: #{msg}"
                 process_message(msg)
               end
             rescue Exception => e
@@ -82,7 +82,6 @@ class HasturListener
       elsif type == :udp
         # listen for UDP packets
         while msg = @socket.recv(65507)  # maxlength is 65507 bytes for UDP
-          STDOUT.puts "udp message recieved: #{msg}"
           process_message(msg)
         end
       end
@@ -96,14 +95,17 @@ class HasturListener
   def process_message(msg)
     begin
       msg = JSON.parse(msg)
+      is_processed = false
       # attempt to process the msg with each available message processor
       @processors.each do |p|
         if p.process_message( msg )
+          is_processed = true
           break   # stop if the processing succeeded
         end
       end
+      HasturLogger.instance.error("Unable to find a message processor that understands: #{msg}") unless is_processed
     rescue Exception => e
-      HasturLogger.instance.log( "Unable to process message: #{e.backtrace}" )
+      HasturLogger.instance.error("Unable to process message: #{e.backtrace}")
     end
   end
 
