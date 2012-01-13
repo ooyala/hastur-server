@@ -64,7 +64,7 @@ HasturHeartbeat.start( 30 )   # 30 second heartbeats
 # block here until all of the threads die, WHICH SHOULD NEVER HAPPEN
 listeners.each do |listener|
   listener.current_thread.join
-  HasturErrorProcessor.instance.log( "Listener unexpectedly died => #{listener.name}" )
+  HasturLogger.instance.error( "Listener unexpectedly died => #{listener.name}" )
 end
 
 # TODO(viet): figure out how to properly handle when the code gets past here

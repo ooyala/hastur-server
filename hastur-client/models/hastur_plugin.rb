@@ -20,7 +20,7 @@ class HasturPlugin
         @path = plugin_info["params"]["path"]
       end
     rescue Exception => e
-      HasturErrorProcessor.instance.log( "Unable to initialize plugin #{plugin_json}: #{e.message}" )
+      HasturLogger.instance.error( "Unable to initialize plugin #{plugin_json}: #{e.message}" )
     end
   end
 
