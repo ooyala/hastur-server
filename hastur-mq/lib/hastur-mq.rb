@@ -1,8 +1,8 @@
 # This is a prototype for the message bus interface for the Hastur
 # monitoring system.
 
-require "hastur-mq/version"
-require "zmq"
+require "#{File.dirname(__FILE__)}/hastur-mq/version"
+require "ffi-rzmq"
 
 module HasturMq
 
@@ -34,7 +34,7 @@ module HasturMq
     #    <topic>.<msg>
     #
     def send(topic, message)
-      @socket.send("#{topic}.#{message}")
+      @socket.send_string("#{topic}.#{message}")
     end
   end
 
@@ -51,6 +51,7 @@ module HasturMq
     #
     def initialize(endpoints, topic)
       @endpoints = endpoints
+      @topic = topic
       # set up the subscriber socket
       ctx = ZMQ::Context.new
       @socket = ctx.socket(ZMQ::SUB)
@@ -58,14 +59,15 @@ module HasturMq
         @socket.connect(endpoint)
         puts "Subscribing to #{endpoint}"
       end
-      @socket.setsockopt(ZMQ::SUBSCRIBE, topic)
+      @socket.setsockopt(ZMQ::SUBSCRIBE, @topic)
     end
 
     #
     # A blocking call that retrieves one message
     #
     def recv_once
-      @socket.recv
+      @socket.recv_string(msg = "")
+      msg
     end
 
     # 
