@@ -12,56 +12,23 @@ module HasturMq
   class Socket
     attr_accessor :socket
 
+    #
+    # Internal method used to create a socket of any acceptable type
+    #
+    def _create_socket(type)
+      ctx = ZMQ::Context.new
+      ctx.socket( type )
+    end
+
     def close()
       @socket.close unless @socket.nil?
     end
   end
 
+  # 
+  # Abstract socket that represents any type of socket that can 'receive" messages
   #
-  # Publisher socket that binds to exactly one endpoint
-  #
-  class Publisher < Socket
-    def initialize(endpoint)
-      @endpoint = endpoint
-      # set up the publisher socket
-      ctx = ZMQ::Context.new
-      @socket = ctx.socket(ZMQ::PUB)
-      @socket.bind(@endpoint)
-    end
-    
-    #
-    # Sends a message through a topic. The full message will be in the following format
-    #    <topic>.<msg>
-    #
-    def send(topic, message)
-      @socket.send_string("#{topic}.#{message}")
-    end
-  end
-
-  #
-  # Subscriber socket that can connect to multiple endpoints
-  #
-  class Subscriber < Socket
-    #
-    # Connects and subscribes to the endpoints and topic respectively.
-    #
-    # Params:
-    #   endpoints - an array of endpoints represented as strings
-    #   topic     - a topic to listen to for all connected endpoints
-    #
-    def initialize(endpoints, topic)
-      @endpoints = endpoints
-      @topic = topic
-      # set up the subscriber socket
-      ctx = ZMQ::Context.new
-      @socket = ctx.socket(ZMQ::SUB)
-      @endpoints.each do |endpoint|
-        @socket.connect(endpoint)
-        puts "Subscribing to #{endpoint}"
-      end
-      @socket.setsockopt(ZMQ::SUBSCRIBE, @topic)
-    end
-
+  class InSocket < Socket
     #
     # A blocking call that retrieves one message
     #
@@ -91,14 +58,77 @@ module HasturMq
     end
   end
 
-=begin
-
-  module Push
+  #
+  # Publisher socket that binds to exactly one endpoint
+  #
+  class Publisher < Socket
+    def initialize(endpoint)
+      @endpoint = endpoint
+      # set up the publisher socket
+      @socket = _create_socket(ZMQ::PUB)
+      @socket.bind(@endpoint)
+    end
     
+    #
+    # Sends a message through a topic. The full message will be in the following format
+    #    <topic>.<msg>
+    #
+    def send(topic, message)
+      @socket.send_string("#{topic}.#{message}")
+    end
   end
 
-  module Pull
-    
+  #
+  # Subscriber socket that can connect to multiple endpoints
+  #
+  class Subscriber < InSocket
+    #
+    # Connects and subscribes to the endpoints and topic respectively.
+    #
+    # Params:
+    #   endpoints - an array of endpoints represented as strings
+    #   topic     - a topic to listen to for all connected endpoints
+    #
+    def initialize(endpoints, topic)
+      @endpoints = endpoints
+      @topic = topic
+      # set up the subscriber socket
+      @socket = _create_socket(ZMQ::SUB)
+      @endpoints.each do |endpoint|
+        @socket.connect(endpoint)
+      end
+      @socket.setsockopt(ZMQ::SUBSCRIBE, @topic)
+    end
   end
-=end
+
+  #
+  # ZMQ::PUSH socket that sends messages to exactly one endpoint
+  #
+  class Push < Socket
+    def initialize(endpoint)
+      @endpoint = endpoint
+      # set up a push socket
+      @socket = _create_socket(ZMQ::PUSH)
+      @socket.bind(@endpoint)
+    end
+
+    def send(message)
+      @socket.send_string(message)
+    end
+  end
+
+  #
+  # ZMQ::PULL socket that connects to multiple endpoints
+  #
+  class Pull < InSocket
+    def initialize(endpoints, topic)
+      @endpoints = endpoints
+      # set up the pull socket
+      @socket = _create_socket(ZMQ::PULL)
+      @endpoints.each do |endpoint|
+        @socket.connect(endpoint)
+      end
+      @socket.setsockopt(ZMQ::SUBSCRIBE, topic)
+    end
+  end
 end
