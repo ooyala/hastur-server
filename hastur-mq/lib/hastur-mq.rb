@@ -59,14 +59,14 @@ module HasturMq
   end
 
   #
-  # Publisher socket that binds to exactly one endpoint
+  # Publisher socket that connects to exactly one endpoint
   #
   class Publisher < Socket
     def initialize(endpoint)
       @endpoint = endpoint
       # set up the publisher socket
       @socket = _create_socket(ZMQ::PUB)
-      @socket.bind(@endpoint)
+      @socket.connect(@endpoint)
     end
     
     #
@@ -109,7 +109,7 @@ module HasturMq
       @endpoint = endpoint
       # set up a push socket
       @socket = _create_socket(ZMQ::PUSH)
-      @socket.bind(@endpoint)
+      @socket.connect(@endpoint)
     end
 
     def send(message)
@@ -131,4 +131,27 @@ module HasturMq
       @socket.setsockopt(ZMQ::SUBSCRIBE, topic)
     end
   end
+
+  #
+  # ZMQ::DEALER socket that connects to a router. Contains an identity flag that the user should ensure that's static-ness (e.g. server reboots)
+  #
+  class Dealer < Socket
+    def initialize(endpoint, uuid)
+      @endpoint = endpoint
+      # set up a dealer socket
+      @socket = _create_socket(ZMQ::DEALER)
+      @socket.setsockopt(ZMQ::IDENTITY, uuid)
+      @socket.connect(@endpoint)
+    end
+
+    # ZMQ::Message should automatically use the identity from the socket in its envelop.
+    def send(message)
+      puts "Hiiiii"
+      zmq_msg = ZMQ::Message.new(message)
+      puts "Still preparing to send"
+      @socket.send( zmq_msg )
+      puts "Sent"
+    end
+  end
+
 end
