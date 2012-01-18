@@ -105,7 +105,7 @@ class HasturListener
       end
       HasturLogger.instance.error("Unable to find a message processor that understands: #{msg}") unless is_processed
     rescue Exception => e
-      HasturLogger.instance.error("Unable to process message: #{e.backtrace}")
+      HasturLogger.instance.error("Unable to process message: #{e.message} \n\n #{e.backtrace}")
     end
   end
 

@@ -9,9 +9,8 @@ p = HasturMq::Dealer.new(link, "ThisIsMyVersionOfAUuid")
 ##########################################################################
 send_thr = Thread.start do
   begin
-    loop do
-      puts "Sending..."
-      p.send("{ 'msg' : 'helllllllo' }")
+    1000.times do |i|
+      p.send("{ 'msg' : '#{i}' }")
       sleep 1
     end
   rescue Exception => e
@@ -23,7 +22,7 @@ r = ZMQ::Context.new.socket(ZMQ::ROUTER)
 r.bind( link )
 loop do
   r.recv_string(msg="")
-  puts msg
+  puts "router => #{msg}"
 end
 
 

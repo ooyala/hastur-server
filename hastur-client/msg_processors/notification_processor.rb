@@ -7,7 +7,6 @@ require "#{File.dirname(__FILE__)}/message_processor"
 class HasturNotificationProcessor < HasturMessageProcessor
   
   NOTIFICATION="notification"
-  NOTIFICATION_QUEUE="/topic/hastur/notifications"
 
   def initialize
     super( NOTIFICATION )
@@ -18,7 +17,7 @@ class HasturNotificationProcessor < HasturMessageProcessor
   #
   def process_message(msg)
     if msg["method"] == @method
-      flush_to_hastur(NOTIFICATION_QUEUE, msg)
+      flush_to_hastur(msg.to_json)
       return true
     end
     return false

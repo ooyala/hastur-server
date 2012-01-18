@@ -7,7 +7,6 @@ require "#{File.dirname(__FILE__)}/message_processor"
 class HasturServiceProcessor < HasturMessageProcessor
   
   REGISTER_SERVICE="register_service"
-  REGISTRATION_TOPIC="/topic/hastur/register"
 
   def initialize
     super( REGISTER_SERVICE )
@@ -18,7 +17,7 @@ class HasturServiceProcessor < HasturMessageProcessor
   #
   def process_message(msg)
     if msg["method"] == @method
-      flush_to_hastur(REGISTRATION_TOPIC, msg)
+      flush_to_hastur(msg.to_json)
       return true
     end
     return false

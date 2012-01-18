@@ -146,11 +146,8 @@ module HasturMq
 
     # ZMQ::Message should automatically use the identity from the socket in its envelop.
     def send(message)
-      puts "Hiiiii"
       zmq_msg = ZMQ::Message.new(message)
-      puts "Still preparing to send"
       @socket.send( zmq_msg )
-      puts "Sent"
     end
   end
 
