@@ -20,7 +20,7 @@ class HasturMessageProcessor
   end
 
   #
-  # Sends a message to STOMP for Hastur to pick up
+  # Sends a message to MQ for Hastur to pick up
   #
   def flush_to_hastur(topic_name, msg)
     HasturMessenger.instance.send(topic_name, msg)
