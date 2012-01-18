@@ -4,8 +4,8 @@ require "rubygems"
 require "multi_json"
 require "hastur-mq"
 
-if ARGV.size != 2
-  STDERR.puts "Usage: #{$0} <queue_or_topic> <filename>"
+if ARGV.size < 2 || ARGV.size > 3
+  STDERR.puts "Usage: #{$0} [stomp server URL] <queue_or_topic> <filename>"
   STDERR.puts "  The file should contain an array of JSON objects to send."
   STDERR.puts "  Queue_or_topic should be a topic name, or a queue name with 'q:' in front."
   STDERR.puts "Examples:"
