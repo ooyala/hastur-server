@@ -1,5 +1,13 @@
+#
+# A receiver that will listen to messages from sockets that this client knows of.
+# The delegation of the work will is also done here.
+#
+
 require "rubygems"
 require "ffi-rzmq"
+
+require "#{File.dirname(__FILE__)}/../lib/hastur_logger"
+require "#{File.dirname(__FILE__)}/plugin_message_handler"
 
 class HasturMessageReceiver 
   
@@ -9,11 +17,18 @@ class HasturMessageReceiver
     @socket = socket
   end
 
+  #
+  # Starts a thread that will receive messages from a socket periodically.
+  #
   def start
+    HasturLogger.instance.log("Attempting to start the client receiver.")
     if @recv_thread.nil?
       @recv_thread = Thread.start do
         begin
           poller = ZMQ::Poller.new
+          array = []
+          @socket.getsockopt(ZMQ::IDENTITY, array)
+          puts "Socket identity: #{array[0]}"
           poller.register(@socket, ZMQ::POLLIN)
           loop do
             poller.poll(1)
@@ -27,8 +42,13 @@ class HasturMessageReceiver
               end
 
               # TODO(viet): do something smart with these messages
-              messages.each do |m|
-                puts "recv => #{m}"
+              if messages.size == 2
+                if messages[0] == "execute_plugin"
+                  PluginMessageHandler.handle(messages[1])
+                elsif messages[0] == "notification_ack"
+                  #NotificationAckMessageHandler.instance.handle(messages[2])
+                  HasturLogger.instance.log("Handling of 'notification_ack' is not implemented yet.")
+                end
               end
             end
           end
