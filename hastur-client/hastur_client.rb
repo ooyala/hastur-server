@@ -11,6 +11,9 @@ require "lib/client_ports"
 require "lib/hastur_heartbeats.rb"
 require "lib/hastur_logger"
 
+# receivers
+require "receivers/hastur_message_receiver"
+
 # hastur listeners
 require "listeners/hastur_listener"
 
@@ -54,9 +57,9 @@ HasturMessenger.instance.set_uuid( uuid )
 HasturMessenger.instance.send(register_client_req)
 HasturLogger.instance.log("Attempting to start up the client with uuid #{uuid}")
 
-# TODO(viet): listen on MQ for scheduled plugin execution
-#schedule_consumer = HasturScheduleDConsumer.new("tcp://127.0.0.1:8000")
-#schedule_consumer.start
+# listen on MQ for messages from Hastur
+receiver = HasturMessageReceiver.new(HasturMessenger.instance.socket)
+receiver.start
 
 # listen for hastur traffic on a port
 listeners << HasturListener.new(HasturClientConfig::HASTUR_PORT, :udp)
