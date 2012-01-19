@@ -16,8 +16,11 @@ loop do
       s.recv( msg )
       has_more = s.more_parts?
       msgs << msg.copy_out_string
+      puts "drainer => #{msgs[-1]}"
       break unless has_more
     end
-    puts "drainer => #{msgs[-1]}"
+    puts ""
+    router.send_string(msgs[0], ZMQ::SNDMORE)
+    router.send_string(msgs[1])
   end
 end
