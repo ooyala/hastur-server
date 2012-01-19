@@ -4,7 +4,6 @@
 #
 
 require "socket"
-require "#{File.dirname(__FILE__)}/../msg_processors/service_processor"
 require "#{File.dirname(__FILE__)}/../lib/hastur_logger"
 
 class HasturListener

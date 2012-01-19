@@ -3,7 +3,7 @@
 #
 
 require "singleton"
-require "#{File.dirname(__FILE__)}/../../hastur-mq/lib/hastur-mq"
+require "ffi-rzmq"
 
 class HasturMessenger
   include Singleton
@@ -11,19 +11,21 @@ class HasturMessenger
   # TODO(viet): figure out how to dynamically retrieve this from puppet or whatever deploys this client agent
   LINK="tcp://127.0.0.1:8000"
 
-  # TODO(viet): Include the MQ stuff in here
-  attr_accessor :socket, :uuid
+  attr_accessor :socket, :uuid, :context
 
   def set_uuid(uuid)
     @uuid = uuid
   end
 
   def send(msg)
-    if @socket.nil? 
-      @socket = HasturMq::Dealer.new(LINK, @uuid)
+    if @socket.nil?
+      @context = ZMQ::Context.new if @context.nil?
+      @socket = context.socket(ZMQ::DEALER)
+      @socket.setsockopt(ZMQ::IDENTITY, @uuid)
+      @socket.connect( LINK )
     end
-    # TODO(viet): implement this once the MQ wrapper is available
     STDOUT.puts "client => Pretending to send => #{msg}"
-    @socket.send(msg)
+    zmq_msg = ZMQ::Message.new(msg)
+    @socket.send(zmq_msg)
   end
 end 

@@ -47,7 +47,7 @@ end
 listeners = []
 
 
-# TODO(viet): message via MQ to register this machine with hastur
+# message via MQ to register this machine with hastur
 uuid = get_uuid()
 register_client_req = HasturJsonBuilder.get_register_client( get_uuid() )
 HasturMessenger.instance.set_uuid( uuid )
@@ -55,6 +55,8 @@ HasturMessenger.instance.send(register_client_req)
 HasturLogger.instance.log("Attempting to start up the client with uuid #{uuid}")
 
 # TODO(viet): listen on MQ for scheduled plugin execution
+#schedule_consumer = HasturScheduleDConsumer.new("tcp://127.0.0.1:8000")
+#schedule_consumer.start
 
 # listen for hastur traffic on a port
 listeners << HasturListener.new(HasturClientConfig::HASTUR_PORT, :udp)
