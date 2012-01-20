@@ -16,11 +16,15 @@ module Hastur
     end
 
     def to_json
+      params = Hash.new
+      params['name'] = @name
+      params['subsystem'] = @subsystem
+      params['uuid'] = @uuid
+      params['id'] = @id
+
       h = Hash.new
-      h['name'] = @name
-      h['subsystem'] = @subsystem
-      h['uuid'] = @uuid
-      h['id'] = @id
+      h['params'] = params
+      h['method'] = 'notification'
       h.to_json
     end
   end
