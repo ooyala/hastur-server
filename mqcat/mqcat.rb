@@ -2,39 +2,54 @@
 
 require "rubygems"
 require "multi_json"
-require "hastur-mq"
+require "ffi-rzmq"
 
-if ARGV.size < 2 || ARGV.size > 3
-  STDERR.puts "Usage: #{$0} [stomp server URL] <queue_or_topic> <filename>"
-  STDERR.puts "  The file should contain an array of JSON objects to send."
-  STDERR.puts "  Queue_or_topic should be a topic name, or a queue name with 'q:' in front."
-  STDERR.puts "Examples:"
-  STDERR.puts "  #{$0} transient_messages ./replay_file.json"
-  STDERR.puts "  #{$0} q:notifications notifications_to_send.json"
-  exit
+SocketMap = {
+  "pull" => "PULL",
+  "push" => "PUSH",
+  "subscribe" => "SUB",
+  "sub" => "SUB",
+  "publish" => "PUB",
+  "pub" => "PUB",
+  "request" => "REQ",
+  "req" => "REQ",
+  "reply" => "REP",
+  "rep" => "REP",
+  "dealer" => "XREQ",
+  "xreq" => "XREQ",
+  "router" => "XREP",
+  "xrep" => "XREP",
+}
+SocketTypes = SocketMap.keys
+
+opts = Trollop::options do
+  version "mqcat v 0.0.1, (c) 2012 Ooyala, Inc."
+  banner <<-EOS
+Point this at your router or other data sink to send it JSON packets over ZMQ.
+
+Usage: #{$0} [options] json_filename
+where [options] are:
+EOS
+  opt :socket_type, "Socket type", :default => :push, :type => String
+  opt :target, "Target hostname", :default => "hastur-router1.us-east-1.ooyala.com", :type => String
+  opt :target_port, "Target port number", :default => 4515, :type => :int
+  opt :operation, "Operation (connect or bind)", :default => "connect", :type => String
 end
+Trollop::die :socket_type, "must be one of #{SocketTypes.join(',')}!" unless
+  SocketTypes.include?(opts[:socket_type])
+Trollop::die :target_port, "must be non-negative!" if opts[:target_port] < 0
 
-input = MultiJson.decode(File.read ARGV[1])
-raise "Illegal JSON in file #{ARGV[1]}!" unless input.kind_of?(Array) || input.kind_of?(Hash)
+ctx = ZMQ::Context.new
+s = ctx.socket const_get("ZMQ::#{SocketMap[opts[:socket_type]]}")
+rc = s.send(opts[:operation], "#{opts[:target_hostname]}:#{opts[:target_port]}")
 
+# Read JSON structures from file
+input = MultiJson.decode(File.read ARGV[0])
+raise "Illegal JSON in file #{ARGV[0]}!" unless input.kind_of?(Array) || input.kind_of?(Hash)
 input = [input] if input.kind_of?(Hash)
 
-HasturMq.connect
-
-# Get queue or topic name
-is_queue = false
-name = ARGV[0]
-if ARGV[0] =~ /^q:/
-  is_queue = true
-  name = ARGV[0][2..-1]
-end
-
 input.each do |json_obj|
-  if is_queue
-    HasturMq::Queue.send(name, json_obj)
-  else
-    HasturMq::Topic.send(name, json_obj)
-  end
+  s.send_string(MultiJson.encode(json_obj))
 end
 
 STDERR.puts "Finished sending #{input.size} messages to #{name}!"
