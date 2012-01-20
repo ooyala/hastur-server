@@ -6,18 +6,18 @@ require "rubygems"
 require "uuid"
 
 # hastur libs
-require "lib/json_builder"
-require "lib/client_ports"
-require "lib/hastur_heartbeats"
-require "lib/hastur_logger"
-require "lib/hastur_notification_queue"
-require "lib/hastur_uuid_utils"
+require_relative "lib/json_builder"
+require_relative "lib/client_ports"
+require_relative "lib/hastur_heartbeats"
+require_relative "lib/hastur_logger"
+require_relative "lib/hastur_notification_queue"
+require_relative "lib/hastur_uuid_utils"
 
 # receivers
-require "receivers/hastur_message_receiver"
+require_relative "receivers/hastur_message_receiver"
 
 # hastur listeners
-require "listeners/hastur_listener"
+require_relative "listeners/hastur_listener"
 
 class HasturClient
   attr_accessor :listeners, :uuid
