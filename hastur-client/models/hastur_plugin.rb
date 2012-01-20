@@ -37,7 +37,7 @@ class HasturPlugin
       begin
         # asynchronously run the plugin with a timeout
         status = Timeout::timeout( TIMEOUT_BEFORE_KILL ) do
-          pipe = IO.popen("#{@path}")
+          pipe = IO.popen(@path)
           pid = pipe.pid
           lines = pipe.readlines
           # TODO(viet): massage the raw output from the plugin before shipping it across the wire
