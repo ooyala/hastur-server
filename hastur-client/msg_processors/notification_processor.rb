@@ -20,7 +20,7 @@ class HasturNotificationProcessor < HasturMessageProcessor
     if msg["method"] == @method
       # queue notification in case something happens
       name = msg['params']['name']
-      subsystem = msg['params']['name']
+      subsystem = msg['params']['subsystem']
       uuid = msg['params']['uuid']
       notification = Hastur::Notification.new(name, subsystem, uuid)
       HasturNotificationQueue.instance.add( notification )
