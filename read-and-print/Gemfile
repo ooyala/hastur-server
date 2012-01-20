@@ -1,4 +1,5 @@
 source :rubygems
 source "http://gems.sv2"
 
-gem "hastur-mq"
+gem "ffi-rzmq"
+gem "trollop"
