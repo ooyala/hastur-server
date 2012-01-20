@@ -4,7 +4,7 @@
 #
 
 require "socket"
-require "#{File.dirname(__FILE__)}/../lib/hastur_logger"
+require_relative "../lib/hastur_logger"
 
 class HasturListener
   attr_accessor :type, :port, :server, :current_thread, :processors

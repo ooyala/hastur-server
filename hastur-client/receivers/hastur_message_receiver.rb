@@ -6,9 +6,9 @@
 require "rubygems"
 require "ffi-rzmq"
 
-require "#{File.dirname(__FILE__)}/../lib/hastur_logger"
-require "#{File.dirname(__FILE__)}/plugin_message_handler"
-require "#{File.dirname(__FILE__)}/notification_ack_message_handler"
+require_relative "../lib/hastur_logger"
+require_relative "plugin_message_handler"
+require_relative "notification_ack_message_handler"
 
 class HasturMessageReceiver 
   

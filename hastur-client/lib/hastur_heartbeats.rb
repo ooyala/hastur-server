@@ -2,7 +2,7 @@
 # Sends a message to Hastur every so often
 #
 
-require "#{File.dirname(__FILE__)}/hastur_messenger"
+require_relative "hastur_messenger"
 
 class HasturHeartbeat
 

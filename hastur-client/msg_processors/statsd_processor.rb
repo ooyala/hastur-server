@@ -2,7 +2,7 @@
 # The HasturStatsDProcessor will register a service with Hastur.
 #
 
-require "#{File.dirname(__FILE__)}/message_processor"
+require_relative "message_processor"
 
 class HasturStatsdProcessor < HasturMessageProcessor
   

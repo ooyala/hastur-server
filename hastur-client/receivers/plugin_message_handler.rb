@@ -6,8 +6,8 @@
 require "rubygems"
 require "json"
 require "timeout"
-require "#{File.dirname(__FILE__)}/../lib/hastur_logger"
-require "#{File.dirname(__FILE__)}/../lib/hastur_messenger"
+require_relative "../lib/hastur_logger"
+require_relative "../lib/hastur_messenger"
 
 class PluginMessageHandler
   

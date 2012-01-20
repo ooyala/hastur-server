@@ -3,8 +3,8 @@
 #
 
 require "singleton"
-require "#{File.dirname(__FILE__)}/../msg_processors/message_processor"
-require "#{File.dirname(__FILE__)}/hastur_messenger"
+require_relative "../msg_processors/message_processor"
+require_relative "hastur_messenger"
 
 class HasturLogger
   include Singleton

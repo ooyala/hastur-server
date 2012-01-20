@@ -3,8 +3,8 @@
 #
 require "rubygems"
 require "timeout"
-require "#{File.dirname(__FILE__)}/../lib/hastur_logger"
-require "#{File.dirname(___FILE_)}/../lib/hastur_messenger"
+require_relative "../lib/hastur_logger"
+require_relative "../lib/hastur_messenger"
 
 class HasturPlugin
   attr_accessor :name, :path

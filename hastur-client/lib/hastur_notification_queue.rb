@@ -3,7 +3,7 @@
 #
 
 require "singleton"
-require "#{File.dirname(__FILE__)}/hastur_logger"
+require_relative "hastur_logger"
 
 class HasturNotificationQueue
   include Singleton

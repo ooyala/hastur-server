@@ -5,9 +5,9 @@
 
 require "rubygems"
 require "json"
-require "#{File.dirname(__FILE__)}/../lib/hastur_logger"
-require "#{File.dirname(__FILE__)}/../lib/hastur_messenger"
-require "#{File.dirname(__FILE__)}/../lib/hastur_notification_queue"
+require_relative "../lib/hastur_logger"
+require_relative "../lib/hastur_messenger"
+require_relative "../lib/hastur_notification_queue"
 
 class NotificationAckMessageHandler
   def self.handle(message)

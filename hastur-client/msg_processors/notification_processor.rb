@@ -2,8 +2,8 @@
 # The HasturNotificationProcessor will send a notification/alert to Hastur.
 #
 
-require "#{File.dirname(__FILE__)}/message_processor"
-require "#{File.dirname(__FILE__)}/../models/hastur_notification"
+require_relative "message_processor"
+require_relative "../models/hastur_notification"
 
 class HasturNotificationProcessor < HasturMessageProcessor
   

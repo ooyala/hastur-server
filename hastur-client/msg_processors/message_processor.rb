@@ -3,7 +3,7 @@
 # to process all messages.
 #
 
-require "#{File.dirname(__FILE__)}/../lib/hastur_messenger"
+require_relative "../lib/hastur_messenger"
 
 class HasturMessageProcessor
   attr_accessor :method

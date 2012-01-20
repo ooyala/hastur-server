@@ -1,4 +1,4 @@
-require "#{File.dirname(__FILE__)}/machine_info"
+require_relative "machine_info"
 
 #
 # Provides a set of utility functions to build well-formed JSON requests
