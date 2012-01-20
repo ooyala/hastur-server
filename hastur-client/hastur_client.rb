@@ -10,6 +10,7 @@ require "lib/json_builder"
 require "lib/client_ports"
 require "lib/hastur_heartbeats"
 require "lib/hastur_logger"
+require "lib/hastur_notification_queue"
 require "lib/hastur_uuid_utils"
 
 # receivers
@@ -28,6 +29,8 @@ HasturMessenger.instance.set_uuid( uuid )
 # let Hastur know that the client is alive
 HasturMessenger.instance.send(register_client_req)
 HasturLogger.instance.log("Attempting to start up the client with uuid #{uuid}")
+# start to monitor any outstanding notifications
+HasturNotificationQueue.instance.run
 
 # listen on MQ for messages from Hastur
 receiver = HasturMessageReceiver.new(HasturMessenger.instance.socket)

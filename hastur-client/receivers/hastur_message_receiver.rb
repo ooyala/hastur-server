@@ -8,6 +8,7 @@ require "ffi-rzmq"
 
 require "#{File.dirname(__FILE__)}/../lib/hastur_logger"
 require "#{File.dirname(__FILE__)}/plugin_message_handler"
+require "#{File.dirname(__FILE__)}/notification_ack_message_handler"
 
 class HasturMessageReceiver 
   
@@ -46,8 +47,7 @@ class HasturMessageReceiver
                 if messages[0] == "execute_plugin"
                   PluginMessageHandler.handle(messages[1])
                 elsif messages[0] == "notification_ack"
-                  #NotificationAckMessageHandler.instance.handle(messages[2])
-                  HasturLogger.instance.log("Handling of 'notification_ack' is not implemented yet.")
+                  NotificationAckMessageHandler.handle(messages[1])
                 end
               end
             end

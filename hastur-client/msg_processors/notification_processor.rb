@@ -3,6 +3,7 @@
 #
 
 require "#{File.dirname(__FILE__)}/message_processor"
+require "#{File.dirname(__FILE__)}/../models/hastur_notification"
 
 class HasturNotificationProcessor < HasturMessageProcessor
   
@@ -17,7 +18,14 @@ class HasturNotificationProcessor < HasturMessageProcessor
   #
   def process_message(msg)
     if msg["method"] == @method
-      flush_to_hastur(msg.to_json)
+      # queue notification in case something happens
+      name = msg['params']['name']
+      subsystem = msg['params']['name']
+      uuid = msg['params']['uuid']
+      notification = Hastur::Notification.new(name, subsystem, uuid)
+      HasturNotificationQueue.instance.add( notification )
+      # tell Hastur about this horrible incident
+      flush_to_hastur( notification.to_json )
       return true
     end
     return false
