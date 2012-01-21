@@ -61,6 +61,10 @@ unless ZMQ::SocketTypeNameMap.has_value?(opts[:type].upcase)
 end
 
 # ZeroMQ setup
+version_hash = ZMQ::LibZMQ.version
+version = "#{version_hash[:major]}.#{version_hash[:minor]}p#{version_hash[:patch]}"
+STDERR.puts "Using ZeroMQ version #{version}"
+
 ctx = ZMQ::Context.new(1)
 socktype = ZMQ::SocketTypeNameMap.invert[opts[:type].upcase]
 sock = ctx.socket(socktype)
