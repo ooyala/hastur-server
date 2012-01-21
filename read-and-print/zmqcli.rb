@@ -122,6 +122,7 @@ elsif socktype == ZMQ::PUB or socktype == ZMQ::PUSH
   end
 # ZMQ::SUB / ZMQ::PULL, blocking loop
 elsif socktype == ZMQ::SUB or socktype == ZMQ::PULL
+  data = ""
   while sock.recv_string(data)
     outfile.puts data
   end
