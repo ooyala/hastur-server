@@ -40,6 +40,7 @@ EOS
   opt :spam,    "spam 1 msg",       :default => false,             :type => :boolean
   opt :infile,  "read from <filename> instead of STDIN",           :type => String
   opt :outfile, "append to <filename> instead of STDOUT",          :type => String
+  opt :subscribe, "message pattern to subscribe to", :default => "", :type => String
 end
 
 # further option handling / checking
@@ -124,6 +125,8 @@ elsif socktype == ZMQ::PUB or socktype == ZMQ::PUSH
   end
 # ZMQ::SUB / ZMQ::PULL, blocking loop
 elsif socktype == ZMQ::SUB or socktype == ZMQ::PULL
+  sock.setsockopt(ZMQ::SUBSCRIBE, opts[:subscribe]) if socktype == ZMQ::SUB
+
   data = ""
   while sock.recv_string(data)
     outfile.puts data
@@ -143,6 +146,7 @@ elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
   loop do
     poller.readables.each do |sock|
       STDERR.write '+'
+      data = ""
       sock.recv_string(data)
       outfile.puts data
     end
