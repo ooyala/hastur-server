@@ -168,6 +168,7 @@ elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
 
     sleep opts[:sleep]
     STDERR.write '.'
+    poller.poll_nonblock  # Could also use the sleep interval, maybe
   end
 end
 
