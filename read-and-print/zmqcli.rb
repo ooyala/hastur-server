@@ -41,8 +41,6 @@ EOS
 end
 
 # further option handling / checking
-opts[:type].upcase!
-
 if (opts[:bind].nil? and opts[:connect].nil?) or (opts[:bind] == opts[:connect])
   Trollop::die "Exactly one of --bind or --connect is required."
 end
@@ -55,13 +53,13 @@ if opts[:uri] =~ /\Wlocalhost\W/
   Trollop::die :uri, "Don't use 'localhost'. ZMQ 2.x will break silently around IPv6 localhost."
 end
 
-unless ZMQ::SocketTypeNameMap.has_value?(opts[:type])
+unless ZMQ::SocketTypeNameMap.has_value?(opts[:type].upcase)
   Trollop::die :type, "must be one of: #{ZMQ_TYPELIST}"
 end
 
 # ZeroMQ setup
 ctx = ZMQ::Context.new(1)
-socktype = ZMQ::SocketTypeNameMap.invert[opts[:type]]
+socktype = ZMQ::SocketTypeNameMap.invert[opts[:type].upcase]
 sock = ctx.socket(socktype)
 
 if opts[:bind]
