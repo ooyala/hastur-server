@@ -34,6 +34,8 @@ EOS
   opt :linger,  "set ZMQ_LINGER",   :default => 1,                 :type => Integer
   opt :hwm,     "set ZMQ_HWM",      :default => 1,                 :type => Integer
   opt :id,      "set ZMQ_IDENTITY", :default => UUID.new.generate, :type => String
+  opt :send,    "send() - only for router or dealer sockets",      :type => :boolean
+  opt :recv,    "recv() - only for router or dealer sockets",      :type => :boolean
   opt :sleep,   "sleep seconds",    :default => 0.1,               :type => Float
   opt :spam,    "spam 1 msg",       :default => false,             :type => :boolean
   opt :infile,  "read from <filename> instead of STDIN",           :type => String
@@ -128,9 +130,6 @@ elsif socktype == ZMQ::SUB or socktype == ZMQ::PULL
   end
 # DEALER / ROUTER?, poll-based
 elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
-  select_in, _ = IO.select([infile], nil, nil, 0.1)
-  abort "WTFBBQ: IO.select on input #{infile} failed" unless select_in
-
   poller = ZMQ::Poller.new
 
   if opts[:send]
@@ -138,7 +137,7 @@ elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
   elsif opts[:recv]
     poller.register_readable(sock)
   else
-    abort "BUG!"
+    abort "You have set neither --send or --recv for a bidirectional socket type.\nYou bastard."
   end
 
   loop do
@@ -147,10 +146,11 @@ elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
       sock.recv_string(data)
       outfile.puts data
     end
-    
+
     poller.writables.each do |sock|
-      if select_in[0]
-        if line = infile.gets
+      select_in, _ = IO.select([infile], nil, nil, 0.1)
+      if select_in && select_in[0]
+        if line = select_in[0].gets
           STDERR.write '-'
           sock.send_string(line.chomp)
           infile.seek(0, IO::SEEK_SET) if opts[:spam]
