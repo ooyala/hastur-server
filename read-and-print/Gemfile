@@ -3,3 +3,4 @@ source "http://gems.sv2"
 
 gem "ffi-rzmq"
 gem "trollop"
+gem "uuid"
