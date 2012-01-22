@@ -2,10 +2,16 @@
 
 require 'rubygems'
 require 'ffi-rzmq'
-require 'yajl-ruby'
+require 'yajl'
 require 'multi_json'
 require 'socket'
 require 'trollop'
+
+# TODO(noah):
+#   - Add a router envelope?
+#   - Check JSON UUID against envelope?
+#   - Add real router information in JSON?
+#   - More modular code
 
 MultiJson.engine = :yajl
 
