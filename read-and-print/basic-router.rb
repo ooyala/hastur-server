@@ -40,7 +40,7 @@ EOS
   opt :timeout, "poll timeout",     :default => 0.1
 end
 
-method_uris = METHODS.map(:to_s).map { |s| s + "_uri" }.map(:to_sym)
+method_uris = METHODS.map(&:to_s).map { |s| s + "_uri" }.map(&:to_sym)
 
 (method_uris + [:router_uri, :pub_uri, :error_uri]).each do |opt|
   if opts[opt] !~ /\w+:\/\/[^:]+:\d+/
@@ -59,8 +59,8 @@ STDERR.puts "Using ZeroMQ version #{version}"
 
 ctx = ZMQ::Context.new(1)
 
-def socket_for_type_and_uri(socket_type, uri)
-  socket = ctx.socket(const_get("ZMQ::#{socket_type.to_s.upcase}"))
+def socket_for_type_and_uri(ctx, socket_type, uri, opts = {})
+  socket = ctx.socket(ZMQ.const_get("#{socket_type.to_s.upcase}"))
 
   # These aren't strictly necessary, but the behavior they enable is
   # what we usually expect.  For now, have all sockets use the same
@@ -71,14 +71,16 @@ def socket_for_type_and_uri(socket_type, uri)
   socket.bind uri
 
   STDERR.puts "New #{socket_type} socket listening on '#{uri}'."
+
+  socket
 end
 
 def multi_recv(socket)
   messages = []
-  router_socket.recv_string(data = "")
+  socket.recv_string(data = "")
   messages << data
   while socket.more_parts?
-    router_socket.recv_string(data = "")
+    socket.recv_string(data = "")
     messages << data
   end
   messages
@@ -94,13 +96,13 @@ def multi_send(socket, messages)
 end
 
 sockets = {}
-router_socket = socket_for_type_and_uri(:router, opts[:router_uri])
-pub_socket = socket_for_type_and_uri(:pub, opts[:pub_uri])
-error_socket = socket_for_type_and_uri(:push, opts[:error_uri])
+router_socket = socket_for_type_and_uri(ctx, :router, opts[:router_uri], opts)
+pub_socket = socket_for_type_and_uri(ctx, :pub, opts[:pub_uri], opts)
+error_socket = socket_for_type_and_uri(ctx, :push, opts[:error_uri], opts)
 
 METHODS.each do |method|
   uri = opts["#{method}_uri".to_sym]
-  sockets[method] = socket_for_type_and_uri(:push, uri)
+  sockets[method] = socket_for_type_and_uri(ctx, :push, uri, opts)
 end
 
 # For now, use a simple blocking receive and a simple blocking send.
