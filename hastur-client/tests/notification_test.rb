@@ -34,11 +34,14 @@ class TestNotification < Test::Unit::TestCase
           if hash['method'] == 'notification'
             if hash['params']['name'] == input['params']['name'] &&
                 hash['params']['subsystem'] == input['params']['subsystem'] &&
-                hash['params']['uuid'] == input['params']['uuid'] then
+                hash['params']['uuid'] == input['params']['uuid']
               match = true
             end
           end
+        rescue JSON::ParserError => e
+          # ignore for these messages that aren't JSON
         rescue Exception => e
+          assert_fail
         end
       end
     end
