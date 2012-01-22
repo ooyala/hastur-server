@@ -22,6 +22,13 @@ class HasturNotificationQueue
     start_resend_thread
   end
 
+  def stop(clear_queue = false)
+    HasturLogger.instance.log("Stopping the notification queue.")
+    @notifications.clear if clear_queue
+    Thread.kill(@resend_thread)
+    @resend_thread = nil
+  end
+
   #
   # Remove a notification object from the Queue.
   #

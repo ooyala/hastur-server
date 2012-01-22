@@ -11,6 +11,12 @@ module Hastur
         @router.bind("tcp://127.0.0.1:8000")
       end
 
+      def unbind
+        @router.close
+        @@context.terminate
+        @@context = nil
+      end
+
       def recv_multipart
         messages = []
         loop do

@@ -7,7 +7,7 @@ require "socket"
 require_relative "../lib/hastur_logger"
 
 class HasturListener
-  attr_accessor :type, :port, :server, :current_thread, :processors
+  attr_accessor :type, :port, :server, :current_thread, :processors, :socket
 
   #
   # Constructs the base listener and sets up the socket objects
@@ -21,6 +21,15 @@ class HasturListener
     setup_sockets()
     # asynchronously deal with messages
     listen_for_messages()
+  end
+
+  #
+  # Stops this listener's thread
+  #
+  def stop
+    HasturLogger.instance.log("Attempting to stop listener.")
+    Thread.kill(@current_thread)
+    @socket.close unless @socket.nil?
   end
 
   #
@@ -116,7 +125,7 @@ class HasturListener
       @server = TCPServer.new @port
     elsif type == :udp          # initialize UDP socket
       @socket = UDPSocket.new
-      @socket.bind("localhost", @port)
+      @socket.bind("127.0.0.1", @port)
     else
       raise "Only supported protocols are tcp and udp. You tried #{type}."
     end

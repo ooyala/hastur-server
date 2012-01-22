@@ -17,6 +17,14 @@ class HasturMessageReceiver
   def initialize(socket)
     @socket = socket
   end
+  
+  #
+  # Stops the thread that receives the message from a socket periodically.
+  #
+  def stop
+    HasturLogger.instance.log("Attempting to stop the client receiver.")
+    Thread.kill(@recv_thread)
+  end
 
   #
   # Starts a thread that will receive messages from a socket periodically.

@@ -22,7 +22,8 @@ class HasturNotificationProcessor < HasturMessageProcessor
       name = msg['params']['name']
       subsystem = msg['params']['subsystem']
       uuid = msg['params']['uuid']
-      notification = Hastur::Notification.new(name, subsystem, uuid)
+      id = msg['params']['id']
+      notification = Hastur::Notification.new(name, subsystem, uuid, nil, id)
       HasturNotificationQueue.instance.add( notification )
       # tell Hastur about this horrible incident
       flush_to_hastur( notification.to_json )

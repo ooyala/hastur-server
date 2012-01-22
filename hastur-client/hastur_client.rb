@@ -20,7 +20,7 @@ require_relative "receivers/hastur_message_receiver"
 require_relative "listeners/hastur_listener"
 
 class HasturClient
-  attr_accessor :listeners, :uuid
+  attr_accessor :listeners, :uuid, :receiver
 
   def initialize
     @listeners = []
@@ -35,6 +35,46 @@ class HasturClient
     start_receiver
     start_listeners
     start_heartbeat
+  end
+
+  #
+  # Stops all of the listeners, queues, etc. Essentially ending all functionality provided for by this client
+  #
+  def stop
+    stop_notification_queue
+    stop_receiver
+    stop_listeners
+    stop_heartbeat
+  end
+
+  #
+  # Stop all notification threads and clears the queue
+  #
+  def stop_notification_queue
+    HasturNotificationQueue.instance.stop(true)
+  end
+
+  #
+  # Stop receiving messages
+  #
+  def stop_receiver
+    @receiver.stop
+  end
+ 
+  #
+  # Stop listening to the ports on the client machine
+  #
+  def stop_listeners
+    @listeners.each do |l|
+      l.stop
+    end
+  end
+
+  #
+  # Stop sending heartbeat messages
+  #
+  def stop_heartbeat
+    HasturHeartbeat.instance.stop
   end
 
   #
@@ -63,8 +103,8 @@ class HasturClient
   #
   def start_receiver
     # listen on MQ for messages from Hastur
-    receiver = HasturMessageReceiver.new(HasturMessenger.instance.socket)
-    receiver.start
+    @receiver = HasturMessageReceiver.new(HasturMessenger.instance.socket)
+    @receiver.start
   end
 
   #
@@ -81,7 +121,7 @@ class HasturClient
   #
   def start_heartbeat
     # periodically give a client heartbeat
-    HasturHeartbeat.start( 30 )   # 30 second heartbeats
+    HasturHeartbeat.instance.start( 30 )   # 30 second heartbeats
   end
 end
 

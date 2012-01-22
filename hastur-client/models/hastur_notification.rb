@@ -16,16 +16,7 @@ module Hastur
     end
 
     def to_json
-      params = Hash.new
-      params['name'] = @name
-      params['subsystem'] = @subsystem
-      params['uuid'] = @uuid
-      params['id'] = @id
-
-      h = Hash.new
-      h['params'] = params
-      h['method'] = 'notification'
-      h.to_json
+      { 'params' => { 'name' => @name, 'subsystem' => @subsystem, 'uuid' => @uuid, 'id' => @id }, 'method' => 'notification'}.to_json
     end
   end
 end
