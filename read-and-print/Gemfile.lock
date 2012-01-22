@@ -7,15 +7,19 @@ GEM
       ffi
     macaddr (1.5.0)
       systemu (>= 2.4.0)
+    multi_json (1.0.4)
     systemu (2.4.2)
     trollop (1.16.2)
     uuid (2.3.4)
       macaddr (~> 1.0)
+    yajl-ruby (1.0.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   ffi-rzmq
+  multi_json
   trollop
   uuid
+  yajl-ruby
