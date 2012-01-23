@@ -87,10 +87,11 @@ def multi_recv(socket)
 end
 
 def multi_send(socket, messages)
-  last_message = messages.pop
+  last_message = messages[-1]
 
-  messages.each do |message|
-    socket.send_string(message, ZMQ::SNDMORE)
+  (messages[0..-2]).each do |message|
+    # I know you can't resend a 0mq message...  Does ffi-rzmq shield us from that?
+    socket.send_string(message + "", ZMQ::SNDMORE)
   end
   socket.send_string(last_message)
 end
@@ -110,26 +111,36 @@ end
 # its push-socket receivers hit their high-water marks.  The pub socket
 # should never block regardless.
 loop do
+  STDERR.puts "Reading from router socket"
   messages = multi_recv(router_socket)
   STDERR.puts "Routing data: #{messages.inspect}"
 
   hash = MultiJson.decode(messages[-1]) rescue nil
-  method = hash['method'] rescue nil
 
-  hash[:router_host] = Socket.gethostname
-  data = MultiJson.encode(hash) rescue nil
+  if hash
+    method = hash['method'] rescue nil
 
-  if data
-    messages[-1] = data # New JSON encoding for resend
-    multi_send(pub_socket, messages)
+    hash[:router_host] = Socket.gethostname
+    data = nil
+    data = MultiJson.encode(hash) rescue nil
+  end
 
-    if sockets[hash['method']]
+  messages[-1] = data if hash && data # New JSON encoding for resend
+
+  STDERR.puts "Sending to PUB socket"
+  multi_send(pub_socket, messages)
+
+  if hash && data
+    if sockets[hash['method'].to_sym]
+      STDERR.puts "Pushing JSON on #{hash['method']} socket"
       multi_send(sockets[hash['method'].to_sym], messages)
     else
-      multi_send(sockets[:error], messages)
+      STDERR.puts "Pushing valid JSON on error socket due to method #{hash['method']}."
+      multi_send(error_socket, messages)
     end
   else
     # Parse error, forward old data straight to error server
-    multi_send(sockets[:error], messages)
+    STDERR.puts "Sending unparseable JSON to error socket"
+    multi_send(error_socket, messages)
   end
 end
