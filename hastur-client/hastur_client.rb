@@ -82,16 +82,16 @@ class HasturClient
   #
   def register_client(uuid = nil)
     if uuid.nil?
-      @uuid = uuid
-    else
       @uuid = Hastur::Client::UuidUtils.instance.get_uuid
+    else
+      @uuid = uuid
     end
-    register_client_req = HasturJsonBuilder.get_register_client( uuid )
+    register_client_req = HasturJsonBuilder.get_register_client( @uuid )
     # prepare the messenger with our uuid so he knows what to tag messages as
-    HasturMessenger.instance.set_uuid( uuid )
+    HasturMessenger.instance.set_uuid( @uuid )
     # let Hastur know that the client is alive
     HasturMessenger.instance.send(register_client_req)
-    HasturLogger.instance.log("Attempting to start up the client with uuid #{uuid}")
+    HasturLogger.instance.log("Attempting to start up the client with uuid #{@uuid}")
   end
 
   #
