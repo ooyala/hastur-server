@@ -1,5 +1,0 @@
-source :rubygems
-source "http://gems.sv2"
-
-gem "multi_json"
-gem "hastur-mq"
