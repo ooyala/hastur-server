@@ -20,21 +20,22 @@ METHODS = [ :register, :notify, :stats, :heartbeat ]
 opts = Trollop::options do
   banner <<-EOS
 basic-router.rb - a simple 0mq router.  Clients connect to the router URI,
-  servers connect to the server URIs.
+  sinks connect to the sink URIs.
 
   Options:
 EOS
-  opt :router_uri, "ZMQ Router URI", :default => "tcp://127.0.0.1:4321", :type => String
-  opt :pub_uri,  "ZMQ Pub URI", :default => "tcp://127.0.0.1:4322", :type => String
+  opt :router_uri, "ZMQ Router (incoming) URI", :default => "tcp://127.0.0.1:4321", :type => String
+  opt :from_sink_uri, "ZMQ REQ (incoming from sink) URI", :default => "tcp://127.0.0.1:4323", :
+  opt :pub_uri,  "ZMQ Pub URI for sinks", :default => "tcp://127.0.0.1:4322", :type => String
 
   port = 4330
   METHODS.each do |method|
-    opt "#{method}_uri".to_sym, "ZMQ #{method} server URI",
+    opt "#{method}_uri".to_sym, "ZMQ #{method} sink URI",
       :default => "tcp://127.0.0.1:#{port}", :type => String
     port += 1
   end
 
-  opt :error_uri, "ZMQ Error server URI", :default => "tcp://127.0.0.1:4350", :type => String
+  opt :error_uri, "ZMQ Error sink URI", :default => "tcp://127.0.0.1:4350", :type => String
   opt :linger,  "set ZMQ_LINGER",   :default => 1,                 :type => Integer
   opt :hwm,     "set ZMQ_HWM",      :default => 1,                 :type => Integer
   opt :timeout, "poll timeout",     :default => 0.1
@@ -75,6 +76,15 @@ def socket_for_type_and_uri(ctx, socket_type, uri, opts = {})
   socket
 end
 
+def add_router_envelope(messages)
+  hostname = Socket.gethostname
+
+  # TODO(noah): Add more to envelope
+  router_envelope = "#{hostname}"
+
+  messages << router_envelope
+end
+
 def multi_recv(socket)
   messages = []
   socket.recv_string(data = "")
@@ -113,6 +123,7 @@ end
 loop do
   STDERR.puts "Reading from router socket"
   messages = multi_recv(router_socket)
+  add_router_envelope(messages)
   STDERR.puts "Routing data: #{messages.inspect}"
 
   hash = MultiJson.decode(messages[-1]) rescue nil
@@ -124,8 +135,6 @@ loop do
     data = nil
     data = MultiJson.encode(hash) rescue nil
   end
-
-  messages[-1] = data if hash && data # New JSON encoding for resend
 
   STDERR.puts "Sending to PUB socket"
   multi_send(pub_socket, messages)
@@ -139,7 +148,7 @@ loop do
       multi_send(error_socket, messages)
     end
   else
-    # Parse error, forward old data straight to error server
+    # Parse error, forward old data straight to error sink
     STDERR.puts "Sending unparseable JSON to error socket"
     multi_send(error_socket, messages)
   end
