@@ -22,6 +22,6 @@ class HasturLogger
   # it off to the Hastur server.
   #
   def error(msg)
-    HasturMessenger.instance.send( msg)
+    HasturMessenger.instance.send(msg)
   end
 end

@@ -29,8 +29,8 @@ class HasturClient
   #
   # Prepares all of the listeners, queues, etc. necessary to bring the client up to life.
   #
-  def start
-    register_client
+  def start(uuid = nil)
+    register_client(uuid)
     start_notification_queue
     start_receiver
     start_listeners
@@ -80,8 +80,12 @@ class HasturClient
   #
   # Message via MQ to register this machine with hastur
   #
-  def register_client
-    @uuid = Hastur::Client::UuidUtils.instance.get_uuid
+  def register_client(uuid = nil)
+    if uuid.nil?
+      @uuid = uuid
+    else
+      @uuid = Hastur::Client::UuidUtils.instance.get_uuid
+    end
     register_client_req = HasturJsonBuilder.get_register_client( uuid )
     # prepare the messenger with our uuid so he knows what to tag messages as
     HasturMessenger.instance.set_uuid( uuid )

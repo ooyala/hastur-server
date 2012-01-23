@@ -35,9 +35,9 @@ class HasturNotificationQueue
   def remove(notification_id)
     notification = @notifications.delete(notification_id)
     if notification.nil?
-      HasturLogger.instance.log("Successfully removed #{notification_id} from the notification queue.")
-    else
       HasturLogger.instance.log("Notification #{notification_id} does not exist on this client's notification queue.")
+    else
+      HasturLogger.instance.log("Successfully removed #{notification_id} from the notification queue.")
     end
   end
 

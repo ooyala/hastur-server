@@ -4,10 +4,13 @@ require_relative "../hastur_client"
 require_relative "lib/mock"
 
 class TestNotification < Test::Unit::TestCase
+
+  CLIENT_UUID="thisismyfakeuuid"
+
   def setup
     # start hastur_client
     @client = HasturClient.new
-    @client.start
+    @client.start(CLIENT_UUID)
     # set up the router
     msg = nil
     @router = Hastur::Mock::Router.new
@@ -76,7 +79,9 @@ class TestNotification < Test::Unit::TestCase
     sleep 6
     assert_equal(2, notification_msg_count)
     # send notification_ack
-    @router.send_msg('thisismyfakeuuid', ['notification_ack', '{ "id": "6e1ae900-2529-012f-1460-109addba6b5d" }'])
+    @router.send_msg(CLIENT_UUID, ['notification_ack', '{ "id": "6e1ae900-2529-012f-1460-109addba6b5d" }'])
+    sleep 6
+    assert_equal(2, notification_msg_count)
   end
 
   def send_notification_message
