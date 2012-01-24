@@ -10,6 +10,7 @@ require 'yajl'
 require 'multi_json'
 require 'trollop'
 require 'uuid'
+require_relative "../tools/zmq_utils"
 
 MultiJson.engine = :yajl
 
@@ -48,19 +49,15 @@ def remote_input
 
 end
 
-def send_remote
-
-end
-
 def poll_local_sockets(fdlist)
-    # this select will wait 0.1 seconds, so there's no need for an additional sleep call
-    r = IO.select(fdlist, nil, nil, 0.1)
+  # this select will wait up to 0.1 seconds, so there's no need for an additional sleep call
+  r = IO.select(fdlist, nil, nil, 0.1)
 
-    # UDP / TCP input
-    unless r.nil?
-      line = r.readline
-      process_local_input(line)
-    end
+  # UDP / TCP input
+  unless r.nil?
+    line = r.readline
+    process_local_input(line)
+  end
 end
 
 def poll_plugin_pids(plugins)
@@ -119,4 +116,3 @@ def main
 end
 
 main()
-
