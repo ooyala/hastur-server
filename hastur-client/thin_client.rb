@@ -73,27 +73,6 @@ def process_udp_message(msg)
   multi_send(@router_socket, [envelope, MultiJson.encode(hash)])
 end
 
-def process_local_socket(sock)
-  if sock == @udp_socket
-    msg, sender = sock.recvfrom(100000)  # More than max UDP packet size
-    process_udp_message(msg)
-  end
-end
-
-def poll_local_sockets(fdlist)
-  fdlist = fdlist.compact  # Remove nils for now
-
-  # this select will wait up to 0.1 seconds, so there's no need for an additional sleep call
-  r, = IO.select(fdlist, nil, nil, 0.1)
-
-  return unless r
-
-  # Read TCP or UDP
-  r.each do
-    process_local_socket r
-  end
-end
-
 def process_msg(message)
   STDERR.puts "Cheerfully ignoring multipart to-client message: #{message.inspect}"
 
@@ -123,37 +102,57 @@ def poll_plugin_pids(plugins)
   end
 end
 
-def poll_zmq_router(router)
-  # TODO: not be stupid
-  message = multi_recv(router)
-  if message
-    yield message
+def set_up_router
+  @context = ZMQ::Context.new
+  @router_socket = @context.socket(ZMQ::DEALER)
+  ROUTERS.each do |router_uri|
+    @router_socket.connect(router_uri)
+  end
+end
+
+def set_up_poller
+  @poller = ZMQ::Poller.new
+
+  if @router_socket
+    @poller.register_readable @router_socket
+    @poller.register_writable @router_socket
+  end
+
+  [@local_udp, @local_tcp].each do |local_socket|
+    next unless local_socket
+    @poller.register local_socket, ZMQ::POLLIN, local_socket.fileno
+  end
+end
+
+def poll_zmq
+  @poller.poll_nonblock
+
+  if @poller.readables.include?(@router_socket)
+    message = multi_recv @router_socket
+
+    # for now, dumbly assume all input is plugin exec requests
+    plugin_command, plugin_args = process_msg(msg)
+    pid, info = exec_plugin(plugin_command, plugin_args)
+    plugins[pid] = info
+  end
+
+  if @poller.readables.include?(@local_udp)
+    msg, sender = sock.recvfrom(100000)  # More than max UDP packet size
+    process_udp_message(msg)
   end
 end
 
 def main
-  ctx = ZMQ::Context.new
-  router = ctx.socket(ZMQ::DEALER)
-  @router_socket = router  # For using in other methods
+  set_up_router
+  set_up_poller
 
-  ROUTERS.each do |router_uri|
-    router.connect(router_uri)
-  end
-
-  local_udp, local_tcp = local_listen(LOCAL_PORT)
+  @local_udp, @local_tcp = local_listen(LOCAL_PORT)
 
   plugins = {}
 
   loop do
     poll_plugin_pids(plugins)
-
-    poll_local_sockets([local_udp, local_tcp])
-    poll_zmq_router router do |msg|
-      # for now, dumbly assume all input is plugin exec requests
-      plugin_command, plugin_args = process_msg(msg)
-      pid, info = exec_plugin(plugin_command, plugin_args)
-      plugins[pid] = info
-    end
+    poll_zmq
   end
 end
 
