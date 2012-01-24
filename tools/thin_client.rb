@@ -96,6 +96,7 @@ end
 def set_up_router
   @context = ZMQ::Context.new
   @router_socket = @context.socket(ZMQ::DEALER)
+  @router_socket.setsockopt(ZMQ::IDENTITY, CLIENT_UUID)
   ROUTERS.each do |router_uri|
     @router_socket.connect(router_uri)
   end
@@ -118,7 +119,8 @@ def set_up_poller
 end
 
 def poll_zmq
-  @poller.poll_nonblock
+  # If this throttles too much, adjust downward as needed
+  @poller.poll(0.1)
 
   if @poller.readables.include?(@router_socket)
     message = multi_recv @router_socket
@@ -133,9 +135,6 @@ def poll_zmq
     msg, sender = sock.recvfrom(100000)  # More than max UDP packet size
     process_udp_message(msg)
   end
-
-  # If this throttles too much, adjust downward as needed
-  sleep 0.1
 
   if Time.now - @last_heartbeat > HEARTBEAT_INTERVAL
     STDERR.puts "Sending heartbeat"
