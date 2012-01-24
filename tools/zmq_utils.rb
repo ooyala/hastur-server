@@ -47,6 +47,7 @@ def hastur_send(socket, method, data_hash)
     'method' => method,
     'sequence' => @seq_num,
     'uptime' => @uptime,
+    'time' => Time.now,
   }
   @seq_num += 1
 
