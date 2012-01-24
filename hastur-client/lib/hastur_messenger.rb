@@ -6,30 +6,42 @@ require "ffi-rzmq"
 require_relative "client_config"
 
 class HasturMessenger
-
   class << self
-    # TODO(viet): figure out how to dynamically retrieve this from puppet or whatever deploys this client agent
-    LINK="tcp://127.0.0.1:#{HasturClientConfig::HASTUR_CLIENT_ZMQ_PORT}"
-
     attr_accessor :socket, :uuid, :context
 
+    # ZMQ::Context should only be done once per process.
+    # Sockets only need to be created once per URI for the lifetime of the process.
+    def initialize
+      if @context.nil?
+        @context = ZMQ::Context.new
+      end
+
+      @socket = @context.socket(ZMQ::DEALER)
+      @socket.setsockopt(ZMQ::IDENTITY, @uuid)
+
+      # eventually, this will move to using a list queried from a 2/3 node cluster of
+      # naming devices that simply returns a list of routers
+      # for now, this only ever needs to be done once per process
+      HasturClientConfig::HASTUR_CLIENT_ZMQ_ROUTERS.each do |router_uri|
+        @socket.connect router_uri
+      end
+    end
+
     def set_uuid(uuid)
-      HasturMessenger.uuid = uuid
+      @uuid = uuid
+
+      unless @socket.nil?
+        @socket.setsockopt(ZMQ::IDENTITY, @uuid)
+      end
     end
 
     def send(topic, msg)
-      if HasturMessenger.socket.nil?
-        HasturMessenger.context = ZMQ::Context.new if HasturMessenger.context.nil?
-        HasturMessenger.socket = HasturMessenger.context.socket(ZMQ::DEALER)
-        HasturMessenger.socket.setsockopt(ZMQ::IDENTITY, @uuid)
-        HasturMessenger.socket.connect( LINK )
-      end
-      # only for debugging purposes
-      STDOUT.puts "client => Pretending to send => [#{topic}] #{msg}"
+      self.initialize if @context.nil? or @socket.nil?
+
       payload_msg = ZMQ::Message.new(msg)
       topic_msg = ZMQ::Message.new(topic)
-      HasturMessenger.socket.send(topic_msg, ZMQ::SNDMORE)
-      HasturMessenger.socket.send(payload_msg)
+      @socket.send(topic_msg, ZMQ::SNDMORE)
+      @socket.send(payload_msg)
     end
   end
 end 
