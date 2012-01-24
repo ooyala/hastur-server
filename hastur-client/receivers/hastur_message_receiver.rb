@@ -49,10 +49,6 @@ class HasturMessageReceiver
                 has_more = s.more_parts?
                 break unless has_more
               end
-
-              puts "======================"
-              p messages
-
               # TODO(viet): do something smart with these messages
               if messages.size == 2
                 if messages[0] == "execute_plugin"
