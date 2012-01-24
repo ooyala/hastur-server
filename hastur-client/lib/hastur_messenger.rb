@@ -1,5 +1,5 @@
 #
-# A singleton class for all of the hastur-client to talk to the message bus
+# A class for all of the hastur-client to talk to the message bus
 #
 
 require "ffi-rzmq"

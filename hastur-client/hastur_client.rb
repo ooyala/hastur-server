@@ -44,7 +44,7 @@ class HasturClient
     HasturLogger.log("Listening on #{HasturClientConfig::HASTUR_CLIENT_UDP_PORT} for traffic")
 
     # periodically give a client heartbeat
-    HasturHeartbeat.instance.start( 30 )   # 30 second heartbeats
+    HasturHeartbeat.start( 30 )   # 30 second heartbeats
   end
 
   #
@@ -56,7 +56,7 @@ class HasturClient
     @listeners.each do |l|
       l.stop
     end
-    HasturHeartbeat.instance.stop
+    HasturHeartbeat.stop
   end
 
   #
