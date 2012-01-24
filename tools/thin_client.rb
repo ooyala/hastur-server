@@ -119,8 +119,7 @@ def set_up_poller
 end
 
 def poll_zmq
-  # If this throttles too much, adjust downward as needed
-  @poller.poll(0.1)
+  @poller.poll_nonblock
 
   if @poller.readables.include?(@router_socket)
     message = multi_recv @router_socket
@@ -135,6 +134,9 @@ def poll_zmq
     msg, sender = sock.recvfrom(100000)  # More than max UDP packet size
     process_udp_message(msg)
   end
+
+  # If this throttles too much, adjust downward as needed
+  sleep 0.1
 
   if Time.now - @last_heartbeat > HEARTBEAT_INTERVAL
     STDERR.puts "Sending heartbeat"
