@@ -10,6 +10,7 @@ require 'yajl'
 require 'multi_json'
 require 'trollop'
 require 'uuid'
+require 'socket'
 require_relative "../tools/zmq_utils"
 
 MultiJson.engine = :yajl
@@ -19,6 +20,12 @@ opts = Trollop::options do
   opt :uuid,   "System UUID",       :type => String, :required => true
   opt :port,   "Local socket port", :type => String, :required => true
 end
+
+unless opts[:uuid]
+  opts[:uuid] = UUID.new.generate
+  STDERR.puts "Generated new UUID: #{opts[:uuid].inspect}"
+end
+UUID = opts[:uuid]
 
 def exec_plugin(plugin_command, plugin_args=[])
   child_out_r, child_out_w = IO.pipe
@@ -38,25 +45,39 @@ def exec_plugin(plugin_command, plugin_args=[])
 end
 
 def local_listen(port)
-
+  @udp_socket = UDPSocket.new
+  @udp_socket.bind port
+  [@udp_socket, nil]
 end
 
-def local_input
+def process_udp_message(msg)
+  hash = MultiJson.decode(msg) rescue nil
+  unless hash
+    STDERR.puts "Received invalid JSON packet: #{msg.inspect}"
+    return
+  end
 
+  hash[:uuid] = UUID
+
+  multi_send(@router_socket, MultiJson.encode(hash))
 end
 
-def remote_input
-
+def process_local_socket(sock)
+  if sock == @udp_socket
+    msg, sender = sock.recvfrom(100000)  # More than max UDP packet size
+    process_udp_message(msg)
+  end
 end
 
 def poll_local_sockets(fdlist)
-  # this select will wait up to 0.1 seconds, so there's no need for an additional sleep call
-  r = IO.select(fdlist, nil, nil, 0.1)
+  fdlist = fdlist.compact  # Remove nils for now
 
-  # UDP / TCP input
-  unless r.nil?
-    line = r.readline
-    process_local_input(line)
+  # this select will wait up to 0.1 seconds, so there's no need for an additional sleep call
+  r, = IO.select(fdlist, nil, nil, 0.1)
+
+  # Read TCP or UDP
+  r.each do
+    process_local_socket r
   end
 end
 
@@ -94,6 +115,7 @@ end
 def main
   ctx = ZMQ::Context.new
   router = ctx.socket(ZMQ::DEALER)
+  @router_socket = router  # For using in other methods
 
   opts[:router].each do |router_uri|
     router.connect(router_uri)
@@ -106,7 +128,7 @@ def main
   loop do
     poll_local_sockets([local_udp, local_tcp])
     poll_plugin_pids(plugins)
-    poll_zmq_router router, do |msg|
+    poll_zmq_router router do |msg|
       # for now, dumbly assume all input is plugin exec requests
       plugin_command, plugin_args = process_msg(msg)
       pid, info = exec_plugin(plugin_command, plugin_args)
