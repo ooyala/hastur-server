@@ -3,6 +3,7 @@
 #
 
 require "uuid"
+require_relative "../lib/client_config"
 
 module Hastur
   class Notification
@@ -16,7 +17,7 @@ module Hastur
     end
 
     def to_json
-      { 'params' => { 'name' => @name, 'subsystem' => @subsystem, 'uuid' => @uuid, 'id' => @id }, 'method' => 'notification'}.to_json
+      { 'params' => { 'name' => @name, 'subsystem' => @subsystem, 'uuid' => @uuid, 'id' => @id }, 'method' => "'#{HasturClientConfig::NOTIFY_ROUTE}'"}.to_json
     end
   end
 end

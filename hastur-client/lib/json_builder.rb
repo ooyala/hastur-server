@@ -9,7 +9,7 @@ module HasturJsonBuilder
   REGISTER_CLIENT="register_client"
   REGISTER_SERVICE="register_service"
   REGISTER_PLUGIN="register_plugin"
-  NOTIFICATION="notification"
+  NOTIFICATION="notify"
 
   #
   # Builds a JSON request that will register this client with Hastur
