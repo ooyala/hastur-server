@@ -39,9 +39,9 @@ class HasturMessenger
       self.initialize if @context.nil? or @socket.nil?
 
       payload_msg = ZMQ::Message.new(msg)
-      topic_msg = ZMQ::Message.new(topic)
-      @socket.send(topic_msg, ZMQ::SNDMORE)
-      @socket.send(payload_msg)
+      topic_msg = ZMQ::Message.new("v1\n#{topic}\nack:none")
+      HasturMessenger.socket.send(topic_msg, ZMQ::SNDMORE)
+      HasturMessenger.socket.send(payload_msg)
     end
   end
 end 
