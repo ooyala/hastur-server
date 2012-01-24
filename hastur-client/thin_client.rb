@@ -46,12 +46,6 @@ def exec_plugin(plugin_command, plugin_args=[])
   return child_pid, child_out_w, child_err_w
 end
 
-def local_listen(port)
-  @udp_socket = UDPSocket.new
-  @udp_socket.bind "127.0.0.1", port
-  [@udp_socket, nil]
-end
-
 def process_udp_message(msg)
   hash = MultiJson.decode(msg) rescue nil
   unless hash
@@ -59,18 +53,7 @@ def process_udp_message(msg)
     return
   end
 
-  @seq_num ||= 0
-  @uptime ||= Time.now.to_i
-  hash["uptime"] = @uptime
-  hash["sequence"] = @seq_num
-  @seq_num += 1
-
-  hash["uuid"] = CLIENT_UUID
-  method = hash["method"] || "error"
-
-  envelope = ["v1\n#{method}\nack:none"]
-
-  multi_send(@router_socket, [envelope, MultiJson.encode(hash)])
+  hastur_send @router_socket, hash.merge('uuid' => CLIENT_UUID)
 end
 
 def process_msg(message)
@@ -102,6 +85,13 @@ def poll_plugin_pids(plugins)
   end
 end
 
+def set_up_local_ports
+  @udp_socket = UDPSocket.new
+  @udp_socket.bind "127.0.0.1", LOCAL_PORT
+
+  @tcp_socket = nil
+end
+
 def set_up_router
   @context = ZMQ::Context.new
   @router_socket = @context.socket(ZMQ::DEALER)
@@ -122,6 +112,8 @@ def set_up_poller
     next unless local_socket
     @poller.register local_socket, ZMQ::POLLIN, local_socket.fileno
   end
+
+  @last_heartbeat = Time.now
 end
 
 def poll_zmq
@@ -140,13 +132,20 @@ def poll_zmq
     msg, sender = sock.recvfrom(100000)  # More than max UDP packet size
     process_udp_message(msg)
   end
+
+  # If this throttles too much, adjust downward as needed
+  sleep 0.1
+
+  if Time.now - @last_heartbeat > HEARTBEAT_INTERVAL
+    hastur_send(@router_socket, "heartbeat", :name => "hastur thin client", :uuid => CLIENT_UUID)
+    @last_heartbeat = Time.now
+  end
 end
 
 def main
+  set_up_local_ports
   set_up_router
   set_up_poller
-
-  @local_udp, @local_tcp = local_listen(LOCAL_PORT)
 
   plugins = {}
 
