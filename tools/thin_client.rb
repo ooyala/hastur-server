@@ -28,6 +28,7 @@ end
 CLIENT_UUID = opts[:uuid]
 ROUTERS = opts[:router]
 LOCAL_PORT = opts[:port]
+HEARTBEAT_INTERVAL = 15  # Hardcode for now
 
 def exec_plugin(plugin_command, plugin_args=[])
   child_out_r, child_out_w = IO.pipe
@@ -137,6 +138,7 @@ def poll_zmq
   sleep 0.1
 
   if Time.now - @last_heartbeat > HEARTBEAT_INTERVAL
+    STDERR.puts "Sending heartbeat"
     hastur_send(@router_socket, "heartbeat", :name => "hastur thin client", :uuid => CLIENT_UUID)
     @last_heartbeat = Time.now
   end
