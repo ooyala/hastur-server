@@ -3,5 +3,12 @@
 # never change because it is tightly coupled with all of the services.
 #
 module HasturClientConfig
+  REGISTER_ROUTE="register"
+  NOTIFY_ROUTE="notification"
+  STATS_ROUTE="stats"
+  LOG_ROUTE="log"
+  ERROR_ROUTE="error"
+  HEARTBEAT_ROUTE="heartbeat"
   HASTUR_CLIENT_UDP_PORT=8125
+  HASTUR_CLIENT_ZMQ_PORT=4321
 end

@@ -70,7 +70,7 @@ class HasturNotificationQueue
     #
     def resend
       HasturNotificationQueue.notifications.each do |id, notification|
-        HasturMessenger.send("notification", notification.to_json)
+        HasturMessenger.send(HasturClientConfig::NOTIFY_ROUTE, notification.to_json)
       end
       HasturLogger.log("Re-sending #{HasturNotificationQueue.notifications.size} notifications") unless HasturNotificationQueue.notifications.empty?
     end

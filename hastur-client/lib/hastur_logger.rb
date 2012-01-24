@@ -2,6 +2,7 @@
 # Bubbles any hastur-client logs up to Hastur
 #
 
+require_relative "../lib/client_config"
 require_relative "../msg_processors/message_processor"
 require_relative "hastur_messenger"
 
@@ -14,7 +15,7 @@ class HasturLogger
     # it off to the Hastur server.
     #
     def log(msg)
-      HasturMessenger.send("log", msg)
+      HasturMessenger.send(HasturClientConfig::LOG_ROUTE, msg)
     end
 
     #
@@ -22,7 +23,7 @@ class HasturLogger
     # it off to the Hastur server.
     #
     def error(msg)
-      HasturMessenger.send("error", msg)
+      HasturMessenger.send(HasturClientConfig::ERROR_ROUTE, msg)
     end
 
   end

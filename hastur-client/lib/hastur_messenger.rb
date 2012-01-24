@@ -2,14 +2,14 @@
 # A singleton class for all of the hastur-client to talk to the message bus
 #
 
-require "singleton"
 require "ffi-rzmq"
+require_relative "client_config"
 
 class HasturMessenger
 
   class << self
     # TODO(viet): figure out how to dynamically retrieve this from puppet or whatever deploys this client agent
-    LINK="tcp://127.0.0.1:4321"
+    LINK="tcp://127.0.0.1:#{HasturClientConfig::HASTUR_CLIENT_ZMQ_PORT}"
 
     attr_accessor :socket, :uuid, :context
 

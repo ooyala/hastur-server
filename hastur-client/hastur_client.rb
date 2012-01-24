@@ -72,7 +72,7 @@ class HasturClient
     # prepare the messenger with our uuid so he knows what to tag messages as
     HasturMessenger.set_uuid( @uuid )
     # let Hastur know that the client is alive
-    HasturMessenger.send("register", register_client_req)
+    HasturMessenger.send(HasturClientConfig::REGISTER_ROUTE, register_client_req)
     HasturLogger.log("Attempting to start up the client with uuid #{@uuid}")
   end
 end

@@ -2,6 +2,7 @@
 # The HasturServiceProcessor will register a service with Hastur.
 #
 
+require_relative "../lib/client_config"
 require_relative "message_processor"
 
 class HasturServiceProcessor < HasturMessageProcessor
@@ -17,7 +18,7 @@ class HasturServiceProcessor < HasturMessageProcessor
   #
   def process_message(msg)
     if msg["method"] == @method
-      flush_to_hastur("register", msg.to_json)
+      flush_to_hastur(HasturClientConfig::REGISTER_ROUTE, msg.to_json)
       return true
     end
     return false
