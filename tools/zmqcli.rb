@@ -7,8 +7,7 @@ require 'multi_json'
 require 'trollop'
 require 'uuid'
 
-# TODO(noah): Add optional envelope w/ multipart send
-# TODO(noah): Show envelope in multipart receive
+require_relative "zmq_utils"
 
 ZMQ_TYPELIST = ZMQ::SocketTypeNameMap.values.join(", ")
 
@@ -34,8 +33,8 @@ Examples:
 
   Options:
 EOS
-  opt :uri,       "ZeroMQ URI",                                      :type => String,  :required => true
-  opt :type,      "ZMQ Socket Type, one of: #{ZMQ_TYPELIST}",        :type => String,  :required => true
+  opt :uri,       "ZeroMQ URI",                                      :type => String, :required => true
+  opt :type,      "ZMQ Socket Type, one of: #{ZMQ_TYPELIST}",        :type => String, :required => true
   opt :bind,      "bind()",           :default => false,             :type => :boolean
   opt :connect,   "connect()",        :default => false,             :type => :boolean
   opt :linger,    "set ZMQ_LINGER",   :default => 1,                 :type => Integer
@@ -50,7 +49,12 @@ EOS
   opt :subscribe, "subscribe pattern",:default => "",                :type => String
   opt :normalize, "normalize JSON",   :default => false,             :type => :boolean
   opt :prefix,    "prefix string",    :default => "",                :type => String
+  opt :envelope,  "envelope string",                                 :type => String, :multi => true
 end
+
+PREFIX = opts[:prefix]
+ENVELOPE = opts[:envelope]
+NORMALIZE = opts[:normalize]
 
 # further option handling / checking
 if (opts[:bind].nil? and opts[:connect].nil?) or (opts[:bind] == opts[:connect])
@@ -67,6 +71,10 @@ end
 
 unless ZMQ::SocketTypeNameMap.has_value?(opts[:type].upcase)
   Trollop::die :type, "must be one of: #{ZMQ_TYPELIST}"
+end
+
+def to_console(data)
+  STDERR.puts PREFIX + " " + data
 end
 
 # ZeroMQ setup
@@ -106,27 +114,27 @@ if not opts[:outfile].nil?
 end
 
 def send_string(sock, data)
-  if opts[:normalize]
+  if NORMALIZE
     # Decode, re-encode
     hash = MultiJson.decode(data)
     data = MultiJson.encode(hash)
   end
-  sock.send_string data
+
+  messages = ENVELOPE + [ data ]
+
+  to_console "Sending message(s): #{messages.inspect}"
+  multi_send sock, messages
 end
 
-def recv_string(sock, data)
-  sock.recv_string(data)
-end
-
-def to_console(data)
-  STDERR.puts opts[:prefix] + data
+def recv_string(sock)
+  data = multi_recv(sock)
 end
 
 # ZMQ::REP, blocking loop
 if socktype == ZMQ::REP
-  while recv_string(sock, request = '')
-    outfile.puts request
-    to_console "Got request: '#{request}'"
+  while request = recv_string(sock)
+    outfile.puts request[-1]
+    to_console "Got request: '#{request.inspect}'"
     reply = infile.gets.chomp
     to_console "Sending response: '#{reply}'"
     send_string(socket, reply)
@@ -141,9 +149,9 @@ elsif socktype == ZMQ::REQ
     request.chomp!
     send_string(socket, request)
     to_console "Sent '#{request}'\nWaiting for response."
-    recv_string(sock, reply)
-    to_console "Got response: '#{reply}'"
-    outfile.puts reply
+    reply = recv_string(sock)
+    to_console "Got response: '#{reply.inspect}'"
+    outfile.puts reply[-1]
     infile.seek(0, IO::SEEK_SET) if opts[:spam]
   end
 # ZMQ::PUB / ZMQ::PUSH, blocking loop
@@ -157,8 +165,9 @@ elsif socktype == ZMQ::PUB or socktype == ZMQ::PUSH
 # ZMQ::SUB / ZMQ::PULL, blocking loop
 elsif socktype == ZMQ::SUB or socktype == ZMQ::PULL
   data = ""
-  while recv_string(sock, data)
-    outfile.puts data
+  while data = recv_string(sock)
+    outfile.puts data[-1]
+    to_console "Received: #{data.inspect}"
   end
 # DEALER / ROUTER?, poll-based
 elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
@@ -175,9 +184,9 @@ elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
   loop do
     poller.readables.each do |sock|
       STDERR.write '+'
-      data = ""
-      recv_string(sock, data)
-      outfile.puts data
+      data = recv_string(sock)
+      outfile.puts data[-1]
+      to_console "Received: #{data.inspect}"
     end
 
     poller.writables.each do |sock|
@@ -185,7 +194,7 @@ elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
       if select_in && select_in[0]
         if line = select_in[0].gets
           STDERR.write '-'
-          send_string(socket, line.chomp)
+          send_string(sock, line.chomp)
           infile.seek(0, IO::SEEK_SET) if opts[:spam]
         end
       end
