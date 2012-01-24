@@ -136,17 +136,26 @@ def poll_zmq
 
   if Time.now - @last_heartbeat > HEARTBEAT_INTERVAL
     STDERR.puts "Sending heartbeat"
-    hastur_send(@router_socket, "heartbeat", :name => "hastur thin client", :uuid => CLIENT_UUID)
+    hastur_send(@router_socket, "heartbeat", { :name => "hastur thin client", :uuid => CLIENT_UUID } )
     @last_heartbeat = Time.now
   end
+end
+
+def register_client(uuid)
+  # register the client
+  hastur_send @router_socket, "register", {:params => { :name => CLIENT_UUID, :hostname => Socket.gethostname, :ipv4 => IPSocket::getaddress(Socket.gethostname) }, :id => CLIENT_UUID, :method => "register_client"}
+  # log to hastur that we at least attempted to register this client
+  hastur_send @router_socket, "logs", { :message => "Attempting to register client #{CLIENT_UUID}", :uuid => CLIENT_UUID }
 end
 
 def main
   set_up_local_ports
   set_up_router
   set_up_poller
+  register_client CLIENT_UUID
 
   plugins = {}
+  notifications = {}
 
   loop do
     poll_plugin_pids(plugins)
