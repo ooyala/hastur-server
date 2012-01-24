@@ -69,6 +69,14 @@ if opts[:uri] =~ /\Wlocalhost\W/
   Trollop::die :uri, "Don't use 'localhost'. ZMQ 2.x will break silently around IPv6 localhost."
 end
 
+if opts[:subscribe] != "" && opts[:type].downcase != "sub"
+  Trollop::die :subscribe, "You may only use option 'subscribe' with a socket of type sub!"
+end
+
+if (opts[:send] || opts[:recv]) && !["dealer", "router"].include?(opts[:type].downcase)
+  Trollop::die :type, "You may only use --send or --recv with a dealer or router socket!"
+end
+
 unless ZMQ::SocketTypeNameMap.has_value?(opts[:type].upcase)
   Trollop::die :type, "must be one of: #{ZMQ_TYPELIST}"
 end
@@ -200,9 +208,8 @@ elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
       end
     end
 
-    sleep opts[:sleep]
     STDERR.write '.'
-    poller.poll_nonblock  # Could also use the sleep interval, maybe
+    poller.poll opts[:sleep]
   end
 end
 
