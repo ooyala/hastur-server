@@ -17,7 +17,7 @@ MultiJson.engine = :yajl
 
 opts = Trollop::options do
   opt :router, "Router URI",        :type => String, :required => true, :multi => true
-  opt :uuid,   "System UUID",       :type => String, :required => true
+  opt :uuid,   "System UUID",       :type => String
   opt :port,   "Local socket port", :type => String, :required => true
 end
 
@@ -25,7 +25,9 @@ unless opts[:uuid]
   opts[:uuid] = UUID.new.generate
   STDERR.puts "Generated new UUID: #{opts[:uuid].inspect}"
 end
-UUID = opts[:uuid]
+CLIENT_UUID = opts[:uuid]
+ROUTERS = opts[:router]
+LOCAL_PORT = opts[:port]
 
 def exec_plugin(plugin_command, plugin_args=[])
   child_out_r, child_out_w = IO.pipe
@@ -46,7 +48,7 @@ end
 
 def local_listen(port)
   @udp_socket = UDPSocket.new
-  @udp_socket.bind port
+  @udp_socket.bind "127.0.0.1", port
   [@udp_socket, nil]
 end
 
@@ -63,7 +65,7 @@ def process_udp_message(msg)
   hash["sequence"] = @seq_num
   @seq_num += 1
 
-  hash["uuid"] = UUID
+  hash["uuid"] = CLIENT_UUID
   method = hash["method"] || "error"
 
   envelope = ["v1\n#{method}\nack:none"]
@@ -84,10 +86,18 @@ def poll_local_sockets(fdlist)
   # this select will wait up to 0.1 seconds, so there's no need for an additional sleep call
   r, = IO.select(fdlist, nil, nil, 0.1)
 
+  return unless r
+
   # Read TCP or UDP
   r.each do
     process_local_socket r
   end
+end
+
+def process_msg(message)
+  STDERR.puts "Cheerfully ignoring multipart to-client message: #{message.inspect}"
+
+  ["echo", "OK"]  # Trivial-success plugin
 end
 
 def poll_plugin_pids(plugins)
@@ -114,10 +124,10 @@ def poll_plugin_pids(plugins)
 end
 
 def poll_zmq_router(router)
-  # TODO: multipart, not be stupid
-  rc = router.recvmsg(msg = '', ZMQ::NonBlocking)
-  if rc == 0
-    yield msg
+  # TODO: not be stupid
+  message = multi_recv(router)
+  if message
+    yield message
   end
 end
 
@@ -126,17 +136,18 @@ def main
   router = ctx.socket(ZMQ::DEALER)
   @router_socket = router  # For using in other methods
 
-  opts[:router].each do |router_uri|
+  ROUTERS.each do |router_uri|
     router.connect(router_uri)
   end
 
-  local_udp, local_tcp = local_listen(opts[:port])
+  local_udp, local_tcp = local_listen(LOCAL_PORT)
 
   plugins = {}
 
   loop do
-    poll_local_sockets([local_udp, local_tcp])
     poll_plugin_pids(plugins)
+
+    poll_local_sockets([local_udp, local_tcp])
     poll_zmq_router router do |msg|
       # for now, dumbly assume all input is plugin exec requests
       plugin_command, plugin_args = process_msg(msg)
