@@ -48,13 +48,15 @@ def exec_plugin(plugin_command, plugin_args=[])
 end
 
 def process_udp_message(msg)
+  STDERR.puts "Received UDP message: #{msg.inspect}"
+
   hash = MultiJson.decode(msg) rescue nil
   unless hash
     STDERR.puts "Received invalid JSON packet: #{msg.inspect}"
     return
   end
 
-  hastur_send @router_socket, hash.merge('uuid' => CLIENT_UUID)
+  hastur_send @router_socket, hash['method'] || "error", hash.merge('uuid' => CLIENT_UUID)
 end
 
 def process_msg(message)
@@ -88,7 +90,8 @@ end
 
 def set_up_local_ports
   @udp_socket = UDPSocket.new
-  @udp_socket.bind "127.0.0.1", LOCAL_PORT
+  STDERR.puts "Binding UDP socket localhost:#{LOCAL_PORT}"
+  @udp_socket.bind nil, LOCAL_PORT
 
   @tcp_socket = nil
 end
@@ -110,11 +113,6 @@ def set_up_poller
     @poller.register_writable @router_socket
   end
 
-  [@local_udp, @local_tcp].each do |local_socket|
-    next unless local_socket
-    @poller.register local_socket, ZMQ::POLLIN, local_socket.fileno
-  end
-
   @last_heartbeat = Time.now
 end
 
@@ -130,10 +128,8 @@ def poll_zmq
     plugins[pid] = info
   end
 
-  if @poller.readables.include?(@local_udp)
-    msg, sender = sock.recvfrom(100000)  # More than max UDP packet size
-    process_udp_message(msg)
-  end
+  msg, sender = @udp_socket.recvfrom_nonblock(100000) rescue nil  # More than max UDP packet size
+  process_udp_message(msg) unless msg.nil? || msg == ""
 
   # If this throttles too much, adjust downward as needed
   sleep 0.1
