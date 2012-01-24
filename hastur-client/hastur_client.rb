@@ -31,49 +31,31 @@ class HasturClient
   #
   def start(uuid = nil)
     register_client(uuid)
-    start_notification_queue
-    start_receiver
-    start_listeners
-    start_heartbeat
+
+    # start to monitor any outstanding notifications
+    HasturNotificationQueue.run
+
+    # listen on MQ for messages from Hastur
+    @receiver = HasturMessageReceiver.new(HasturMessenger.socket)
+    @receiver.start
+
+    # listen for hastur traffic on a port
+    @listeners << HasturListener.new(HasturClientConfig::HASTUR_PORT, :udp)
+    HasturLogger.log("Listening on #{HasturClientConfig::HASTUR_PORT} for traffic")
+
+    # periodically give a client heartbeat
+    HasturHeartbeat.instance.start( 30 )   # 30 second heartbeats
   end
 
   #
   # Stops all of the listeners, queues, etc. Essentially ending all functionality provided for by this client
   #
   def stop
-    stop_notification_queue
-    stop_receiver
-    stop_listeners
-    stop_heartbeat
-  end
-
-  #
-  # Stop all notification threads and clears the queue
-  #
-  def stop_notification_queue
-    HasturNotificationQueue.instance.stop(true)
-  end
-
-  #
-  # Stop receiving messages
-  #
-  def stop_receiver
+    HasturNotificationQueue.stop(true)
     @receiver.stop
-  end
- 
-  #
-  # Stop listening to the ports on the client machine
-  #
-  def stop_listeners
     @listeners.each do |l|
       l.stop
     end
-  end
-
-  #
-  # Stop sending heartbeat messages
-  #
-  def stop_heartbeat
     HasturHeartbeat.instance.stop
   end
 
@@ -88,44 +70,10 @@ class HasturClient
     end
     register_client_req = HasturJsonBuilder.get_register_client( @uuid )
     # prepare the messenger with our uuid so he knows what to tag messages as
-    HasturMessenger.instance.set_uuid( @uuid )
+    HasturMessenger.set_uuid( @uuid )
     # let Hastur know that the client is alive
-    HasturMessenger.instance.send(register_client_req)
-    HasturLogger.instance.log("Attempting to start up the client with uuid #{@uuid}")
-  end
-
-  #
-  # Starts the HasturNotificationQueue which will manage and do retries on unacknowledged notifications
-  #
-  def start_notification_queue
-    # start to monitor any outstanding notifications
-    HasturNotificationQueue.instance.run
-  end
-
-  #
-  # Starts the HasturMessageReceiver which will listen for messages coming from Hastur
-  #
-  def start_receiver
-    # listen on MQ for messages from Hastur
-    @receiver = HasturMessageReceiver.new(HasturMessenger.instance.socket)
-    @receiver.start
-  end
-
-  #
-  # Starts listeners which listen to localhost ports through UDP
-  #
-  def start_listeners
-    # listen for hastur traffic on a port
-    @listeners << HasturListener.new(HasturClientConfig::HASTUR_PORT, :udp)
-    HasturLogger.instance.log("Listening on #{HasturClientConfig::HASTUR_PORT} for traffic")
-  end
-
-  #
-  # Starts the heartbeat for this client. Sends Hastur messages every so often to let it know client is up and running
-  #
-  def start_heartbeat
-    # periodically give a client heartbeat
-    HasturHeartbeat.instance.start( 30 )   # 30 second heartbeats
+    HasturMessenger.send(register_client_req)
+    HasturLogger.log("Attempting to start up the client with uuid #{@uuid}")
   end
 end
 

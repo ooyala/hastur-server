@@ -19,7 +19,7 @@ class PluginMessageHandler
       msg = JSON.parse(message)
       execute(msg['name'], msg['path'])
     rescue Exception => e
-      HasturLogger.instance.error("Unable to process message #{message}.\n#{e.message}\n#{e.backtrace}")
+      HasturLogger.error("Unable to process message #{message}.\n#{e.message}\n#{e.backtrace}")
     end
   end
 
@@ -36,20 +36,20 @@ class PluginMessageHandler
           pid = pipe.pid
           lines = pipe.readlines
           # TODO(viet): massage the raw output from the plugin before shipping it across the wire
-          HasturMessenger.instance.send( "TODO(viet): #{lines}" )
+          HasturMessenger.send( "TODO(viet): #{lines}" )
         end
         # block until the pid is killed or naturally terminates
         Process.waitpid(pid)
         if $?.success?
-          HasturLogger.instance.log "Successfully executed plugin #{name}"
+          HasturLogger.log "Successfully executed plugin #{name}"
         else
-          HasturLogger.instance.log "Error occurred when executing plugin #{name}"
+          HasturLogger.log "Error occurred when executing plugin #{name}"
         end
       rescue Timeout::Error => e
         Process.kill 'TERM', pid unless pid.nil?
-        HasturLogger.instance.error "Unable to execute the plugin [#{name}] within #{TIMEOUT_BEFORE_KILL} seconds"
+        HasturLogger.error "Unable to execute the plugin [#{name}] within #{TIMEOUT_BEFORE_KILL} seconds"
       rescue Exception => e
-        HasturLogger.instance.error "Unable to execute plugin #{name}"
+        HasturLogger.error "Unable to execute plugin #{name}"
       end
     end
   end

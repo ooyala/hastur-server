@@ -24,7 +24,7 @@ class HasturPlugin
         @path = plugin_info["params"]["path"]
       end
     rescue Exception => e
-      HasturLogger.instance.error( "Unable to initialize plugin #{plugin_json}: #{e.message}" )
+      HasturLogger.error( "Unable to initialize plugin #{plugin_json}: #{e.message}" )
     end
   end
 
@@ -41,7 +41,7 @@ class HasturPlugin
           pid = pipe.pid
           lines = pipe.readlines
           # TODO(viet): massage the raw output from the plugin before shipping it across the wire
-          HasturMessenger.instance.send( "TODO(viet): #{lines}" )
+          HasturMessenger.send( "TODO(viet): #{lines}" )
         end
         # block until the pid is killed or naturally terminates
         Process.waitpid(pid)

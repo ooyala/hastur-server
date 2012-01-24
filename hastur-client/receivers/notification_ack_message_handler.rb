@@ -13,10 +13,10 @@ class NotificationAckMessageHandler
   def self.handle(message)
     begin
       msg = JSON.parse(message)
-      HasturLogger.instance.log("Attempting to remove notification #{msg['id']} from queue.")
-      HasturNotificationQueue.instance.remove(msg['id'])
+      HasturLogger.log("Attempting to remove notification #{msg['id']} from queue.")
+      HasturNotificationQueue.remove(msg['id'])
     rescue Exception => e
-      HasturLogger.instance.error("Unable to process message #{message}.\n#{e.message}\n#{e.backtrace}")
+      HasturLogger.error("Unable to process message #{message}.\n#{e.message}\n#{e.backtrace}")
     end
   end
 end

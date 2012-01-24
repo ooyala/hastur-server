@@ -22,7 +22,7 @@ class HasturMessageReceiver
   # Stops the thread that receives the message from a socket periodically.
   #
   def stop
-    HasturLogger.instance.log("Attempting to stop the client receiver.")
+    HasturLogger.log("Attempting to stop the client receiver.")
     Thread.kill(@recv_thread)
   end
 
@@ -30,7 +30,7 @@ class HasturMessageReceiver
   # Starts a thread that will receive messages from a socket periodically.
   #
   def start
-    HasturLogger.instance.log("Attempting to start the client receiver.")
+    HasturLogger.log("Attempting to start the client receiver.")
     if @recv_thread.nil?
       @recv_thread = Thread.start do
         begin
@@ -50,6 +50,9 @@ class HasturMessageReceiver
                 break unless has_more
               end
 
+              puts "======================"
+              p messages
+
               # TODO(viet): do something smart with these messages
               if messages.size == 2
                 if messages[0] == "execute_plugin"
@@ -61,7 +64,7 @@ class HasturMessageReceiver
             end
           end
         rescue Exception => e
-          HasturLogger.instance.error("Error occurred when receiving MQ messages: #{e.message}\n\n#{e.backtrace}")
+          HasturLogger.error("Error occurred when receiving MQ messages: #{e.message}\n\n#{e.backtrace}")
         end
       end
     else

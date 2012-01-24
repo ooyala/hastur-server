@@ -6,26 +6,28 @@ require "singleton"
 require "ffi-rzmq"
 
 class HasturMessenger
-  include Singleton
 
-  # TODO(viet): figure out how to dynamically retrieve this from puppet or whatever deploys this client agent
-  LINK="tcp://127.0.0.1:8000"
+  class << self
+    # TODO(viet): figure out how to dynamically retrieve this from puppet or whatever deploys this client agent
+    LINK="tcp://127.0.0.1:8000"
 
-  attr_accessor :socket, :uuid, :context
+    attr_accessor :socket, :uuid, :context
 
-  def set_uuid(uuid)
-    @uuid = uuid
-  end
-
-  def send(msg)
-    if @socket.nil?
-      @context = ZMQ::Context.new if @context.nil?
-      @socket = context.socket(ZMQ::DEALER)
-      @socket.setsockopt(ZMQ::IDENTITY, @uuid)
-      @socket.connect( LINK )
+    def set_uuid(uuid)
+      HasturMessenger.uuid = uuid
     end
-    STDOUT.puts "client => Pretending to send => #{msg}"
-    zmq_msg = ZMQ::Message.new(msg)
-    @socket.send(zmq_msg)
+
+    def send(msg)
+      if HasturMessenger.socket.nil?
+        HasturMessenger.context = ZMQ::Context.new if HasturMessenger.context.nil?
+        HasturMessenger.socket = HasturMessenger.context.socket(ZMQ::DEALER)
+        HasturMessenger.socket.setsockopt(ZMQ::IDENTITY, @uuid)
+        HasturMessenger.socket.connect( LINK )
+      end
+      # only for debugging purposes
+      STDOUT.puts "client => Pretending to send => #{msg}"
+      zmq_msg = ZMQ::Message.new(msg)
+      HasturMessenger.socket.send(zmq_msg)
+    end
   end
 end 

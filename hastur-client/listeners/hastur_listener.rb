@@ -27,7 +27,7 @@ class HasturListener
   # Stops this listener's thread
   #
   def stop
-    HasturLogger.instance.log("Attempting to stop listener.")
+    HasturLogger.log("Attempting to stop listener.")
     Thread.kill(@current_thread)
     @socket.close unless @socket.nil?
   end
@@ -41,10 +41,10 @@ class HasturListener
       require "#{f}"
       begin
         class_name = compute_class_name(f)
-        HasturLogger.instance.log( "Loading message processor: #{class_name}" )
+        HasturLogger.log( "Loading message processor: #{class_name}" )
         processors << eval( class_name ).new unless class_name == "HasturMessageProcessor"
       rescue Exception => e
-        HasturLogger.instance.error( e.message )
+        HasturLogger.error( e.message )
       end
     end
     processors
@@ -62,7 +62,7 @@ class HasturListener
       end
       return class_name
     rescue Exception => e
-      HasturLogger.instance.log( "Unable to parse the file name #{f}" )
+      HasturLogger.log( "Unable to parse the file name #{f}" )
     end
   end
 
@@ -77,13 +77,13 @@ class HasturListener
           # for each client, listen to what they have to say and process each incoming message
           Thread.start(@server.accept) do |socket|
             begin
-              HasturLogger.instance.log "Accepted connection on #{@port}"
+              HasturLogger.log "Accepted connection on #{@port}"
               while(msg = socket.gets)
-                HasturLogger.instance.log "tcp message recieved: #{msg}"
+                HasturLogger.log "tcp message recieved: #{msg}"
                 process_message(msg)
               end
             rescue Exception => e
-              HasturLogger.instance.log( "Error occurred with recieving packets on #{@port}: #{e.message}" )
+              HasturLogger.log( "Error occurred with recieving packets on #{@port}: #{e.message}" )
             end
           end
         end
@@ -111,9 +111,9 @@ class HasturListener
           break   # stop if the processing succeeded
         end
       end
-      HasturLogger.instance.error("Unable to find a message processor that understands: #{msg}") unless is_processed
+      HasturLogger.error("Unable to find a message processor that understands: #{msg}") unless is_processed
     rescue Exception => e
-      HasturLogger.instance.error("Unable to process message: #{e.message} \n\n #{e.backtrace}")
+      HasturLogger.error("Unable to process message: #{e.message} \n\n #{e.backtrace}")
     end
   end
 

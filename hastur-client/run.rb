@@ -12,7 +12,7 @@ client.start
 
 client.listeners.each do |listener|
   listener.current_thread.join
-  HasturLogger.instance.error("Listener unexpectedly died => #{listener.name}")
+  HasturLogger.error("Listener unexpectedly died => #{listener.name}")
 end
 
 # TODO(viet): figure out how to properly handle when the code gets to this point

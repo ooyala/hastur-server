@@ -29,17 +29,22 @@ module Hastur
       end
       
       def send_msg(client_id, msgs)
-        @router.send_string(client_id, ZMQ::SNDMORE)
+
+        puts "=============================="
+        puts "SENDING ==> #{client_id}"
+
+        puts @router.send_string(client_id, ZMQ::SNDMORE)
 
         # send all messages except for the last one
         # 0.upto( -2 ) is okay; size of messages[] is 0
         # 0.upto( -1 ) is okay; size of messages[] is 1
         # 0.upto( 0 ) should print out the first element; size of messages[] is 2
         0.upto(msgs.size-2) do |i|
-          @router.send_string(msgs[i], ZMQ::SNDMORE)
+          puts @router.send_string(msgs[i], ZMQ::SNDMORE)
         end
 
-        @router.send_string(msgs[-1])
+        puts @router.send_string(msgs[-1])
+        puts "=============================="
       end
     end
   end
