@@ -57,9 +57,18 @@ def process_udp_message(msg)
     return
   end
 
-  hash[:uuid] = UUID
+  @seq_num ||= 0
+  @uptime ||= Time.now.to_i
+  hash["uptime"] = @uptime
+  hash["sequence"] = @seq_num
+  @seq_num += 1
 
-  multi_send(@router_socket, MultiJson.encode(hash))
+  hash["uuid"] = UUID
+  method = hash["method"] || "error"
+
+  envelope = ["v1\n#{method}\nack:none"]
+
+  multi_send(@router_socket, [envelope, MultiJson.encode(hash)])
 end
 
 def process_local_socket(sock)
