@@ -1,3 +1,5 @@
+require "multi_json"
+
 def socket_for_type_and_uri(ctx, socket_type, uri, opts = {})
   socket = ctx.socket(ZMQ.const_get("#{socket_type.to_s.upcase}"))
 
@@ -34,4 +36,22 @@ def multi_send(socket, messages)
     socket.send_string(message.dup, ZMQ::SNDMORE)
   end
   socket.send_string(last_message)
+end
+
+def hastur_send(socket, method, data_hash)
+  method ||= "error"
+
+  @seq_num ||= 0
+  @uptime ||= Time.now.to_i
+  packet_data = {
+    'method' => method,
+    'sequence' => @seq_num,
+    'uptime' => @uptime,
+  }
+  @seq_num += 1
+
+  json = MultiJson.encode(data_hash.merge(packet_data))
+
+  envelope = [ "v1\n#{method}\nack:none" ]
+  multi_send(socket, envelope + [ json ]
 end
