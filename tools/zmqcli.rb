@@ -50,11 +50,13 @@ EOS
   opt :normalize, "normalize JSON",   :default => false,             :type => :boolean
   opt :prefix,    "prefix string",    :default => "",                :type => String
   opt :envelope,  "envelope string",                                 :type => String, :multi => true
+  opt :route,     "do Hastur client routing",                        :type => boolean
 end
 
 PREFIX = opts[:prefix]
 ENVELOPE = opts[:envelope]
 NORMALIZE = opts[:normalize]
+ROUTE = opts[:route]
 
 # further option handling / checking
 if (opts[:bind].nil? and opts[:connect].nil?) or (opts[:bind] == opts[:connect])
@@ -105,7 +107,7 @@ end
 # these aren't strictly necessary, but the behavior they enable is what we usually expect
 sock.setsockopt(ZMQ::LINGER,    opts[:linger]) # flush messages before shutdown
 sock.setsockopt(ZMQ::HWM,       opts[:hwm])    # high-water mark # of buffered messages
-sock.setsockopt(ZMQ::IDENTITY,  opts[:id])     # useful for REQ and SUB, harmless elsehwere
+sock.setsockopt(ZMQ::IDENTITY,  opts[:id])     # useful for ROUTER, REQ and SUB, harmless elsewhere
 sock.setsockopt(ZMQ::SUBSCRIBE, opts[:subscribe]) if socktype == ZMQ::SUB  # Subscribe to everything
 
 # set up input/output from/to files or STDIN/STDOUT as directed by CLI
@@ -122,13 +124,21 @@ if not opts[:outfile].nil?
 end
 
 def send_string(sock, data)
-  if NORMALIZE
+  envelope = ENVELOPE
+
+  if NORMALIZE || ROUTE
     # Decode, re-encode
     hash = MultiJson.decode(data)
+    destination = hash["method"] || "error"
+
+    if ROUTE
+      envelope.unshift "v1\n#{destination}\nack:none"
+    end
+
     data = MultiJson.encode(hash)
   end
 
-  messages = ENVELOPE + [ data ]
+  messages = envelope + [ data ]
 
   to_console "Sending message(s): #{messages.inspect}"
   multi_send sock, messages
