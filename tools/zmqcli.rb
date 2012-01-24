@@ -49,6 +49,7 @@ EOS
   opt :outfile,   "append to <filename> instead of STDOUT",          :type => String
   opt :subscribe, "subscribe pattern",:default => "",                :type => String
   opt :normalize, "normalize JSON",   :default => false,             :type => :boolean
+  opt :prefix,    "prefix string",    :default => "",                :type => String
 end
 
 # further option handling / checking
@@ -71,7 +72,7 @@ end
 # ZeroMQ setup
 version_hash = ZMQ::LibZMQ.version
 version = "#{version_hash[:major]}.#{version_hash[:minor]}p#{version_hash[:patch]}"
-STDERR.puts "Using ZeroMQ version #{version}"
+to_console "Using ZeroMQ version #{version}"
 
 ctx = ZMQ::Context.new(1)
 socktype = ZMQ::SocketTypeNameMap.invert[opts[:type].upcase]
@@ -79,10 +80,10 @@ sock = ctx.socket(socktype)
 
 if opts[:bind]
   sock.bind(opts[:uri])
-  STDERR.puts "Listening on '#{opts[:uri]}'."
+  to_console "Listening on '#{opts[:uri]}'."
 else
   sock.connect(opts[:uri])
-  STDERR.puts "Connected to '#{opts[:uri]}'."
+  to_console "Connected to '#{opts[:uri]}'."
 end
 
 # these aren't strictly necessary, but the behavior they enable is what we usually expect
@@ -95,13 +96,13 @@ sock.setsockopt(ZMQ::SUBSCRIBE, opts[:subscribe]) if socktype == ZMQ::SUB  # Sub
 infile = STDIN
 if not opts[:infile].nil?
   infile = File.new(opts[:infile], 'r')
-  STDERR.puts "Data will be read from '#{opts[:infile]}' and sent."
+  to_console "Data will be read from '#{opts[:infile]}' and sent."
 end
 
 outfile = STDOUT
 if not opts[:outfile].nil?
   outfile = File.new(opts[:outfile], 'w+')
-  STDERR.puts "Received data will be appended to '#{opts[:outfile]}'."
+  to_console "Received data will be appended to '#{opts[:outfile]}'."
 end
 
 def send_string(sock, data)
@@ -117,13 +118,17 @@ def recv_string(sock, data)
   sock.recv_string(data)
 end
 
+def to_console(data)
+  STDERR.puts opts[:prefix] + data
+end
+
 # ZMQ::REP, blocking loop
 if socktype == ZMQ::REP
   while recv_string(sock, request = '')
     outfile.puts request
-    STDERR.puts "Got request: '#{request}'"
+    to_console "Got request: '#{request}'"
     reply = infile.gets.chomp
-    STDERR.puts "Sending response: '#{reply}'"
+    to_console "Sending response: '#{reply}'"
     send_string(socket, reply)
     if opts[:spam]
       infile.seek(0, IO::SEEK_SET)
@@ -132,12 +137,12 @@ if socktype == ZMQ::REP
 # ZMQ::REQ, blocking loop
 elsif socktype == ZMQ::REQ
   while request = infile.gets
-    STDERR.puts "About to send '#{request}'"
+    to_console "About to send '#{request}'"
     request.chomp!
     send_string(socket, request)
-    STDERR.puts "Sent '#{request}'\nWaiting for response."
+    to_console "Sent '#{request}'\nWaiting for response."
     recv_string(sock, reply)
-    STDERR.puts "Got response: '#{reply}'"
+    to_console "Got response: '#{reply}'"
     outfile.puts reply
     infile.seek(0, IO::SEEK_SET) if opts[:spam]
   end
@@ -145,7 +150,7 @@ elsif socktype == ZMQ::REQ
 elsif socktype == ZMQ::PUB or socktype == ZMQ::PUSH
   while data = infile.gets
     data.chomp!
-    STDERR.puts "Sending: #{data}"
+    to_console "Sending: #{data}"
     send_string(socket, data)
     infile.seek(0, IO::SEEK_SET) if opts[:spam]
   end
