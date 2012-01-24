@@ -2,10 +2,17 @@
 
 require 'rubygems'
 require 'ffi-rzmq'
+require 'yajl'
+require 'multi_json'
 require 'trollop'
 require 'uuid'
 
+# TODO(noah): Add optional envelope w/ multipart send
+# TODO(noah): Show envelope in multipart receive
+
 ZMQ_TYPELIST = ZMQ::SocketTypeNameMap.values.join(", ")
+
+MultiJson.engine = :yajl
 
 # default is: connect('tcp://localhost:5000') as ZMQ::SUB
 opts = Trollop::options do
@@ -27,20 +34,21 @@ Examples:
 
   Options:
 EOS
-  opt :uri,     "ZeroMQ URI",                                      :type => String,  :required => true
-  opt :type,    "ZMQ Socket Type, one of: #{ZMQ_TYPELIST}",        :type => String,  :required => true
-  opt :bind,    "bind()",           :default => false,             :type => :boolean
-  opt :connect, "connect()",        :default => false,             :type => :boolean
-  opt :linger,  "set ZMQ_LINGER",   :default => 1,                 :type => Integer
-  opt :hwm,     "set ZMQ_HWM",      :default => 1,                 :type => Integer
-  opt :id,      "set ZMQ_IDENTITY", :default => UUID.new.generate, :type => String
-  opt :send,    "send() - only for router or dealer sockets",      :type => :boolean
-  opt :recv,    "recv() - only for router or dealer sockets",      :type => :boolean
-  opt :sleep,   "sleep seconds",    :default => 0.1,               :type => Float
-  opt :spam,    "spam 1 msg",       :default => false,             :type => :boolean
-  opt :infile,  "read from <filename> instead of STDIN",           :type => String
-  opt :outfile, "append to <filename> instead of STDOUT",          :type => String
-  opt :subscribe, "message pattern to subscribe to", :default => "", :type => String
+  opt :uri,       "ZeroMQ URI",                                      :type => String,  :required => true
+  opt :type,      "ZMQ Socket Type, one of: #{ZMQ_TYPELIST}",        :type => String,  :required => true
+  opt :bind,      "bind()",           :default => false,             :type => :boolean
+  opt :connect,   "connect()",        :default => false,             :type => :boolean
+  opt :linger,    "set ZMQ_LINGER",   :default => 1,                 :type => Integer
+  opt :hwm,       "set ZMQ_HWM",      :default => 1,                 :type => Integer
+  opt :id,        "set ZMQ_IDENTITY", :default => UUID.new.generate, :type => String
+  opt :send,      "send() - only for router or dealer sockets",      :type => :boolean
+  opt :recv,      "recv() - only for router or dealer sockets",      :type => :boolean
+  opt :sleep,     "sleep seconds",    :default => 0.1,               :type => Float
+  opt :spam,      "spam 1 msg",       :default => false,             :type => :boolean
+  opt :infile,    "read from <filename> instead of STDIN",           :type => String
+  opt :outfile,   "append to <filename> instead of STDOUT",          :type => String
+  opt :subscribe, "subscribe pattern",:default => "",                :type => String
+  opt :normalize, "normalize JSON",   :default => false,             :type => :boolean
 end
 
 # further option handling / checking
@@ -78,9 +86,10 @@ else
 end
 
 # these aren't strictly necessary, but the behavior they enable is what we usually expect
-sock.setsockopt(ZMQ::LINGER,   opts[:linger]) # flush messages before shutdown
-sock.setsockopt(ZMQ::HWM,      opts[:hwm])    # high-water mark # of buffered messages
-sock.setsockopt(ZMQ::IDENTITY, opts[:id])     # useful for REQ and SUB, harmless elsehwere
+sock.setsockopt(ZMQ::LINGER,    opts[:linger]) # flush messages before shutdown
+sock.setsockopt(ZMQ::HWM,       opts[:hwm])    # high-water mark # of buffered messages
+sock.setsockopt(ZMQ::IDENTITY,  opts[:id])     # useful for REQ and SUB, harmless elsehwere
+sock.setsockopt(ZMQ::SUBSCRIBE, opts[:subscribe]) if socktype == ZMQ::SUB  # Subscribe to everything
 
 # set up input/output from/to files or STDIN/STDOUT as directed by CLI
 infile = STDIN
@@ -95,14 +104,27 @@ if not opts[:outfile].nil?
   STDERR.puts "Received data will be appended to '#{opts[:outfile]}'."
 end
 
+def send_string(sock, data)
+  if opts[:normalize]
+    # Decode, re-encode
+    hash = MultiJson.decode(data)
+    data = MultiJson.encode(hash)
+  end
+  sock.send_string data
+end
+
+def recv_string(sock, data)
+  sock.recv_string(data)
+end
+
 # ZMQ::REP, blocking loop
 if socktype == ZMQ::REP
-  while sock.recv_string(request = '')
+  while recv_string(sock, request = '')
     outfile.puts request
     STDERR.puts "Got request: '#{request}'"
     reply = infile.gets.chomp
     STDERR.puts "Sending response: '#{reply}'"
-    sock.send_string(reply)
+    send_string(socket, reply)
     if opts[:spam]
       infile.seek(0, IO::SEEK_SET)
     end
@@ -112,9 +134,9 @@ elsif socktype == ZMQ::REQ
   while request = infile.gets
     STDERR.puts "About to send '#{request}'"
     request.chomp!
-    sock.send_string(request)
+    send_string(socket, request)
     STDERR.puts "Sent '#{request}'\nWaiting for response."
-    sock.recv_string(reply)
+    recv_string(sock, reply)
     STDERR.puts "Got response: '#{reply}'"
     outfile.puts reply
     infile.seek(0, IO::SEEK_SET) if opts[:spam]
@@ -124,15 +146,13 @@ elsif socktype == ZMQ::PUB or socktype == ZMQ::PUSH
   while data = infile.gets
     data.chomp!
     STDERR.puts "Sending: #{data}"
-    sock.send_string(data)
+    send_string(socket, data)
     infile.seek(0, IO::SEEK_SET) if opts[:spam]
   end
 # ZMQ::SUB / ZMQ::PULL, blocking loop
 elsif socktype == ZMQ::SUB or socktype == ZMQ::PULL
-  sock.setsockopt(ZMQ::SUBSCRIBE, opts[:subscribe]) if socktype == ZMQ::SUB
-
   data = ""
-  while sock.recv_string(data)
+  while recv_string(sock, data)
     outfile.puts data
   end
 # DEALER / ROUTER?, poll-based
@@ -151,7 +171,7 @@ elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
     poller.readables.each do |sock|
       STDERR.write '+'
       data = ""
-      sock.recv_string(data)
+      recv_string(sock, data)
       outfile.puts data
     end
 
@@ -160,7 +180,7 @@ elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
       if select_in && select_in[0]
         if line = select_in[0].gets
           STDERR.write '-'
-          sock.send_string(line.chomp)
+          send_string(socket, line.chomp)
           infile.seek(0, IO::SEEK_SET) if opts[:spam]
         end
       end
