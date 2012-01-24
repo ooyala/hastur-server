@@ -57,13 +57,26 @@ STDERR.puts "Using ZeroMQ version #{version}"
 ctx = ZMQ::Context.new(1)
 
 
-def add_router_envelope(messages)
+def process_messages_for_routing(messages)
+  destination = "error"
+  if messages.size > 1
+    routing_envelope = messages[-2]
+    if routing_envelope[0] == "v"
+      # Versioned routing envelope.  Perfect!
+      version, destination, ackability = routing_envelope.split("\n")
+    else
+      destination = routing_envelope
+    end
+  end
+
   hostname = Socket.gethostname
 
   # TODO(noah): Add more to envelope
   router_envelope = "#{hostname}"
 
-  messages << router_envelope
+  messages.unshift router_envelope
+
+  destination
 end
 
 sockets = {}
@@ -92,8 +105,7 @@ loop do
   if poller.readables.include?(router_socket)
     messages = multi_recv(router_socket)
     STDERR.puts "Read from router socket: #{messages.inspect}"
-    method = messages[-2] if messages.size > 1
-    add_router_envelope(messages)
+    method = process_messages_for_routing(messages)
     STDERR.puts "Routing data to #{method.inspect}: #{messages.inspect}"
 
     STDERR.puts "Sending to PUB socket"
