@@ -53,5 +53,5 @@ def hastur_send(socket, method, data_hash)
   json = MultiJson.encode(data_hash.merge(packet_data))
 
   envelope = [ "v1\n#{method}\nack:none" ]
-  multi_send(socket, envelope + [ json ]
+  multi_send(socket, envelope + [ json ])
 end
