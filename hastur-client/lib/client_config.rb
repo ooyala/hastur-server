@@ -4,9 +4,9 @@
 #
 module HasturClientConfig
   REGISTER_ROUTE="register"
-  NOTIFY_ROUTE="notification"
+  NOTIFY_ROUTE="notify"
   STATS_ROUTE="stats"
-  LOG_ROUTE="log"
+  LOG_ROUTE="logs"
   ERROR_ROUTE="error"
   HEARTBEAT_ROUTE="heartbeat"
   HASTUR_CLIENT_UDP_PORT=8125

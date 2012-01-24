@@ -8,10 +8,8 @@ require_relative "../models/hastur_notification"
 
 class HasturNotificationProcessor < HasturMessageProcessor
   
-  NOTIFICATION="notification"
-
   def initialize
-    super( NOTIFICATION )
+    super( HasturClientConfig::NOTIFY_ROUTE )
   end
 
   #

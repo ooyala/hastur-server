@@ -42,6 +42,7 @@ class HasturMessenger
       topic_msg = ZMQ::Message.new("v1\n#{topic}\nack:none")
       HasturMessenger.socket.send(topic_msg, ZMQ::SNDMORE)
       HasturMessenger.socket.send(payload_msg)
+      puts "[#{topic}] #{msg}"
     end
   end
 end 
