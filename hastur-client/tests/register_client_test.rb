@@ -33,6 +33,8 @@ class TestRegisterClient < Test::Unit::TestCase
       assert_not_nil(hash['params']['name'])
       # ensure that uuid exists
       assert_equal(hash['params']['name'].size, 36)
+      # ensure that the topic is set correctly in the multipart message
+      assert_equal(msgs[-2], "register")
     rescue Exception => e
       assert(false, e.message)
     end

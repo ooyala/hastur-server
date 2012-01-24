@@ -29,7 +29,7 @@ class TestLogger < Test::Unit::TestCase
         begin
           loop do
             msgs = @router.recv_multipart
-            if msgs[-1].start_with?("Attempting to start up the client with uuid")
+            if msgs[-1].start_with?("Attempting to start up the client with uuid") && msgs[-2] == "log"
               log_msg_found = true
             end
           end
@@ -58,7 +58,7 @@ class TestLogger < Test::Unit::TestCase
         begin
           loop do
             msgs = @router.recv_multipart
-            if msgs[-1].start_with?("Unable to process message")
+            if msgs[-1].start_with?("Unable to process message") && msgs[-2] == "error"
               log_msg_found = true
               idx = (msgs[-1] =~ /This message should make the hastur client throw error logs because it should be a JSON message/)
               log_msg_found &&= (idx != nil && idx > 0)

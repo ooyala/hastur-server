@@ -34,7 +34,7 @@ class TestNotification < Test::Unit::TestCase
           # listen for messages
           msgs = @router.recv_multipart
           hash = JSON.parse(msgs[-1])
-          if hash['method'] == 'notification'
+          if hash['method'] == 'notification' && msgs[-2] == "notification"
             if hash['params']['name'] == input['params']['name'] &&
                 hash['params']['subsystem'] == input['params']['subsystem'] &&
                 hash['params']['uuid'] == input['params']['uuid']
@@ -64,7 +64,7 @@ class TestNotification < Test::Unit::TestCase
         begin
           msgs = @router.recv_multipart
           hash = JSON.parse(msgs[-1])
-          if hash['method'] == 'notification'
+          if hash['method'] == 'notification' && msgs[-2] == "notification"
             if hash['params']['name'] == input['params']['name'] &&
                 hash['params']['subsystem'] == input['params']['subsystem'] &&
                 hash['params']['uuid'] == input['params']['uuid'] then

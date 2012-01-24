@@ -17,7 +17,7 @@ class HasturMessenger
       HasturMessenger.uuid = uuid
     end
 
-    def send(msg)
+    def send(topic, msg)
       if HasturMessenger.socket.nil?
         HasturMessenger.context = ZMQ::Context.new if HasturMessenger.context.nil?
         HasturMessenger.socket = HasturMessenger.context.socket(ZMQ::DEALER)
@@ -25,9 +25,11 @@ class HasturMessenger
         HasturMessenger.socket.connect( LINK )
       end
       # only for debugging purposes
-      STDOUT.puts "client => Pretending to send => #{msg}"
-      zmq_msg = ZMQ::Message.new(msg)
-      HasturMessenger.socket.send(zmq_msg)
+      STDOUT.puts "client => Pretending to send => [#{topic}] #{msg}"
+      payload_msg = ZMQ::Message.new(msg)
+      topic_msg = ZMQ::Message.new(topic)
+      HasturMessenger.socket.send(topic_msg, ZMQ::SNDMORE)
+      HasturMessenger.socket.send(payload_msg)
     end
   end
 end 

@@ -24,7 +24,7 @@ class HasturHeartbeat
     @t = Thread.start(interval) do |i|
       begin
         loop do
-          HasturMessenger.send( "{ \"method\" : \"heartbeat\", \"time\" : \"#{Time.now}\" }")
+          HasturMessenger.send("heartbeat", "{ \"method\" : \"heartbeat\", \"time\" : \"#{Time.now}\" }")
           sleep(interval)
         end
       rescue Exception => e

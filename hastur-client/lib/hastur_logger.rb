@@ -14,7 +14,7 @@ class HasturLogger
     # it off to the Hastur server.
     #
     def log(msg)
-      HasturMessenger.send(msg)
+      HasturMessenger.send("log", msg)
     end
 
     #
@@ -22,7 +22,7 @@ class HasturLogger
     # it off to the Hastur server.
     #
     def error(msg)
-      HasturMessenger.send(msg)
+      HasturMessenger.send("error", msg)
     end
 
   end

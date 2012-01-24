@@ -32,7 +32,7 @@ class TestHeartbeat < Test::Unit::TestCase
           msgs = @router.recv_multipart
           hash = JSON.parse(msgs[-1])
           STDERR.puts hash
-          if hash['method'] == 'heartbeat'
+          if hash['method'] == 'heartbeat' && msgs[-2] == "heartbeat"
             heartbeat_count = heartbeat_count + 1
           end
         rescue Exception => e

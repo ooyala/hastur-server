@@ -36,7 +36,7 @@ class PluginMessageHandler
           pid = pipe.pid
           lines = pipe.readlines
           # TODO(viet): massage the raw output from the plugin before shipping it across the wire
-          HasturMessenger.send( "TODO(viet): #{lines}" )
+          HasturMessenger.send("stats", "TODO(viet): #{lines}" )
         end
         # block until the pid is killed or naturally terminates
         Process.waitpid(pid)

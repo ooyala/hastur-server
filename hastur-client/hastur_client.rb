@@ -7,7 +7,7 @@ require "uuid"
 
 # hastur libs
 require_relative "lib/json_builder"
-require_relative "lib/client_ports"
+require_relative "lib/client_config"
 require_relative "lib/hastur_heartbeats"
 require_relative "lib/hastur_logger"
 require_relative "lib/hastur_notification_queue"
@@ -40,8 +40,8 @@ class HasturClient
     @receiver.start
 
     # listen for hastur traffic on a port
-    @listeners << HasturListener.new(HasturClientConfig::HASTUR_PORT, :udp)
-    HasturLogger.log("Listening on #{HasturClientConfig::HASTUR_PORT} for traffic")
+    @listeners << HasturListener.new(HasturClientConfig::HASTUR_CLIENT_UDP_PORT, :udp)
+    HasturLogger.log("Listening on #{HasturClientConfig::HASTUR_CLIENT_UDP_PORT} for traffic")
 
     # periodically give a client heartbeat
     HasturHeartbeat.instance.start( 30 )   # 30 second heartbeats
@@ -72,7 +72,7 @@ class HasturClient
     # prepare the messenger with our uuid so he knows what to tag messages as
     HasturMessenger.set_uuid( @uuid )
     # let Hastur know that the client is alive
-    HasturMessenger.send(register_client_req)
+    HasturMessenger.send("register", register_client_req)
     HasturLogger.log("Attempting to start up the client with uuid #{@uuid}")
   end
 end
