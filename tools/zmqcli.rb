@@ -50,7 +50,7 @@ EOS
   opt :normalize, "normalize JSON",   :default => false,             :type => :boolean
   opt :prefix,    "prefix string",    :default => "",                :type => String
   opt :envelope,  "envelope string",                                 :type => String, :multi => true
-  opt :route,     "do Hastur client routing",                        :type => boolean
+  opt :route,     "do Hastur client routing",                        :type => :boolean
 end
 
 PREFIX = opts[:prefix]
@@ -124,7 +124,7 @@ if not opts[:outfile].nil?
 end
 
 def send_string(sock, data)
-  envelope = ENVELOPE
+  envelope = ENVELOPE.dup
 
   if NORMALIZE || ROUTE
     # Decode, re-encode
@@ -219,7 +219,8 @@ elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
     end
 
     STDERR.write '.'
-    poller.poll opts[:sleep]
+    poller.poll_nonblock
+    sleep opts[:sleep]
   end
 end
 
