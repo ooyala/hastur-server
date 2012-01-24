@@ -1,2 +1,5 @@
 { "method": "register", "uuid": "74be3090-28da-012f-4ee9-64ce8f3a9dc2", "uptime": 1327424297, "sequence": 0, "type": "host" }
 { "method": "register", "uuid": "74be3090-28da-012f-4ee9-64ce8f3a9dc2", "uptime": 1327424297, "sequence": 1, "type": "application" }
+{ "method": "logs", "uuid": "74be3090-28da-012f-4ee9-64ce8f3a9dc2", "uptime": 1327424297, "sequence": 2, "severity": "warning", "text": "A warning!" }
+{ "method": "stats", "uuid": "74be3090-28da-012f-4ee9-64ce8f3a9dc2", "uptime": 1327424297, "sequence": 3, "name": "foo() execution msecs", "value": 394 }
+{ "method": "heartbeat", "uuid": "74be3090-28da-012f-4ee9-64ce8f3a9dc2", "uptime": 1327424297, "sequence": 4, "name": "client heartbeat" }
