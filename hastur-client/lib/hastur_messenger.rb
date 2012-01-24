@@ -9,7 +9,7 @@ class HasturMessenger
 
   class << self
     # TODO(viet): figure out how to dynamically retrieve this from puppet or whatever deploys this client agent
-    LINK="tcp://127.0.0.1:8000"
+    LINK="tcp://127.0.0.1:4321"
 
     attr_accessor :socket, :uuid, :context
 

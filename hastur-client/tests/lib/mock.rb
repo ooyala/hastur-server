@@ -8,7 +8,7 @@ module Hastur
       def initialize
         @@context = ZMQ::Context.new if @@context.nil?
         @router = @@context.socket(ZMQ::ROUTER)
-        @router.bind("tcp://127.0.0.1:8000")
+        @router.bind("tcp://127.0.0.1:4321")
       end
 
       def unbind
