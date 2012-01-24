@@ -69,6 +69,7 @@ end
 sockets = {}
 router_socket = socket_for_type_and_uri(ctx, :router, opts[:router_uri], opts)
 pub_socket = socket_for_type_and_uri(ctx, :pub, opts[:pub_uri], opts)
+from_sink_socket = socket_for_type_and_uri(ctx, :rep, opts[:from_sink_uri], opts)
 error_socket = socket_for_type_and_uri(ctx, :push, opts[:error_uri], opts)
 
 METHODS.each do |method|
@@ -76,27 +77,42 @@ METHODS.each do |method|
   sockets[method] = socket_for_type_and_uri(ctx, :push, uri, opts)
 end
 
-# For now, use a simple blocking receive and a simple blocking send.
 # We want this router to stop when there's nothing to receive, or when any of
 # its push-socket receivers hit their high-water marks.  The pub socket
 # should never block regardless.
+
+poller = ZMQ::Poller.new
+poller.register_readable(router_socket)
+poller.register_readable(from_sink_socket)
+
 loop do
   method = "error"
 
-  messages = multi_recv(router_socket)
-  STDERR.puts "Read from router socket: #{messages.inspect}"
-  method = messages[-2] if messages.size > 1
-  add_router_envelope(messages)
-  STDERR.puts "Routing data to #{method.inspect}: #{messages.inspect}"
+  poller.poll_nonblock
+  if poller.readables.include?(router_socket)
+    messages = multi_recv(router_socket)
+    STDERR.puts "Read from router socket: #{messages.inspect}"
+    method = messages[-2] if messages.size > 1
+    add_router_envelope(messages)
+    STDERR.puts "Routing data to #{method.inspect}: #{messages.inspect}"
 
-  STDERR.puts "Sending to PUB socket"
-  multi_send(pub_socket, messages)
+    STDERR.puts "Sending to PUB socket"
+    multi_send(pub_socket, messages)
 
-  if sockets[method.to_sym]
-    STDERR.puts "Pushing packet to #{method} socket"
-    multi_send(sockets[method.to_sym], messages)
-  else
-    STDERR.puts "Pushing packet to error socket due to invalid method #{method}."
-    multi_send(error_socket, messages)
+    if sockets[method.to_sym]
+      STDERR.puts "Pushing packet to #{method} socket"
+      multi_send(sockets[method.to_sym], messages)
+    else
+      STDERR.puts "Pushing packet to error socket due to invalid method #{method}."
+      multi_send(error_socket, messages)
+    end
+  end
+
+  if poller.readables.include?(from_sink_socket)
+    messages = multi_recv(from_sink_socket)
+    STDERR.puts "Read from sink socket, sending on router socket: #{messages.inspect}"
+
+    multi_send(router_socket, messages)
+    STDERR.puts "Finished sending on router socket"
   end
 end
