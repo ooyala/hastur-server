@@ -48,7 +48,7 @@ def exec_plugin(plugin_command, plugin_args=[])
   child_out_w.close
   child_err_w.close
 
-  return child_pid, child_out_w, child_err_w
+  return child_pid, { :stdout => child_out_r, :stderr => child_err_r }
 end
 
 def process_udp_message(msg)
@@ -97,11 +97,11 @@ def poll_plugin_pids(plugins)
       plugin_stdout = info[:stdout].readlines()
       plugin_stderr = info[:stderr].readlines()
 
-      forward_plugin_output(router,
-        :pid    => cpid,
+      hastur_send(@router_socket, "stats",
+        { :pid    => cpid,
         :status => status,
         :stdout => plugin_stdout,
-        :stderr => plugin_stderr
+        :stderr => plugin_stderr }
       )
 
       plugins.delete cpid
@@ -147,7 +147,7 @@ def poll_zmq(plugins)
     case msgs[-2]
     when "schedule"
       # for now, dumbly assume all input is plugin exec requests
-      plugin_command, plugin_args = process_msg(msgs)
+      plugin_command, plugin_args = process_msg(msgs[-1])
       pid, info = exec_plugin(plugin_command, plugin_args)
       plugins[pid] = info
     when "notification_ack"
