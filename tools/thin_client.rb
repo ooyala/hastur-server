@@ -87,8 +87,13 @@ end
 #
 def process_schedule_message(message)
   STDERR.puts "Cheerfully ignoring multipart to-client message: #{message.inspect}"
-
-  ["echo", "OK"]  # Trivial-success plugin
+  hash = MultiJson.decode(message) rescue nil
+  unless hash
+    STDERR.puts "Received invalid JSON packet: #{msg.inspect}"
+    return
+  end
+  [ hash["plugin_path"], hash["plugin_args"] ]
+#  ["echo", "OK"]  # Trivial-success plugin
 end
 
 #

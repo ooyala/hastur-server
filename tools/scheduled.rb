@@ -40,7 +40,9 @@ loop do
       "uuid" => uuid,
       "method" => "schedule",
       "plugin" => "fake plugin",
-      "interval" => "#{opts[:interval]} seconds",
+      "plugin_path" => "echo",
+      "plugin_args" => "OK",
+      "interval" => "#{opts[:interval]} seconds"
     }
     json = MultiJson.encode hash
     multi_send router_socket, [ uuid, "schedule", json ]
