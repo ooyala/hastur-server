@@ -34,6 +34,13 @@ LOCAL_PORT = opts[:port]
 HEARTBEAT_INTERVAL = 15  # Hardcode for now
 NOTIFICATION_INTERVAL = 5 # Hardcode for now
 
+#
+# Executes a plugin asychronously. Using Kernel.spawn it allows the client to limt the cpu and memory usage.
+#
+# Return: 
+#   - child_pid => process ID of the plugin being excuted
+#   - hash containing the stdout and stderr output from the plugin
+#
 def exec_plugin(plugin_command, plugin_args=[])
   child_out_r, child_out_w = IO.pipe
   child_err_r, child_err_w = IO.pipe
@@ -51,6 +58,10 @@ def exec_plugin(plugin_command, plugin_args=[])
   return child_pid, { :stdout => child_out_r, :stderr => child_err_r }
 end
 
+#
+# Processes a random UDP message that was sent to the client. For now,
+# the message simply gets forwarded on to the message bus.
+#
 def process_udp_message(msg)
   STDERR.puts "Received UDP message: #{msg.inspect}"
 
@@ -60,19 +71,29 @@ def process_udp_message(msg)
     return
   end
 
+  # save un-ack'd notifications
   if hash['method'] == "notify"
     @notifications[hash['id']] = hash
   end
 
+  # forward the message to the message bus
   hastur_send @router_socket, hash['method'] || "error", hash.merge('uuid' => CLIENT_UUID)
 end
 
-def process_msg(message)
+#
+# Processes the raw 'schedule' message to retrieve two key components of a plugin.
+#   1. plugin_command
+#   2. plugin_args
+#
+def process_schedule_message(message)
   STDERR.puts "Cheerfully ignoring multipart to-client message: #{message.inspect}"
 
   ["echo", "OK"]  # Trivial-success plugin
 end
 
+#
+# Processes the raw 'notification_ack' message. Removes the notification from the un-ack'd list.
+#
 def process_notification_ack(msg)
   hash = MultiJson.decode(msg) rescue nil
   unless hash
@@ -82,10 +103,16 @@ def process_notification_ack(msg)
 
   notification = @notifications[hash['id']].delete
   unless notification
-    hastur_send(@router_socket, "error", { :message => "Unable to ack notification with id #{hash['id']} because it does not exist."})
+    hastur_send(@router_socket, "log", 
+      { :message => 
+      "Unable to ack notification with id #{hash['id']} because it does not exist."})
   end
 end
 
+#
+# Cycles through the plugins that are in question, and sends messages to Hastur
+# if the plugin is done with its execution.
+#
 def poll_plugin_pids(plugins)
   # if we really want to be paranoid about blocking, use select to check
   # the readability of the filehandles, but really they're either straight EOF
@@ -96,27 +123,31 @@ def poll_plugin_pids(plugins)
       # process is dead, we can read all of its data safely without blocking
       plugin_stdout = info[:stdout].readlines()
       plugin_stderr = info[:stderr].readlines()
-
+      # let Hastur know of the results
       hastur_send(@router_socket, "stats",
         { :pid    => cpid,
         :status => status,
         :stdout => plugin_stdout,
         :stderr => plugin_stderr }
       )
-
       plugins.delete cpid
     end
   end
 end
 
+#
+# Sets up the local UDP and TCP sockets. Services communicate with the client through these sockets.
+#
 def set_up_local_ports
   @udp_socket = UDPSocket.new
   STDERR.puts "Binding UDP socket localhost:#{LOCAL_PORT}"
   @udp_socket.bind nil, LOCAL_PORT
-
   @tcp_socket = nil
 end
 
+#
+# Sets up a socket that can communicate with multiple routers.
+#
 def set_up_router
   @context = ZMQ::Context.new
   @router_socket = @context.socket(ZMQ::DEALER)
@@ -126,28 +157,31 @@ def set_up_router
   end
 end
 
+#
+# Initialize all of the objects needed to perform polling.
+#
 def set_up_poller
   @poller = ZMQ::Poller.new
-
   if @router_socket
     @poller.register_readable @router_socket
     @poller.register_writable @router_socket
   end
-
   @last_heartbeat = Time.now
   @last_notification_check = Time.now
 end
 
+#
+# Polls the router socket to read messages that come from Hastur. Also polls the UDP
+# socket to read the messages that come from Services.
+#
 def poll_zmq(plugins)
   @poller.poll_nonblock
-
+  # read messages from Hastur
   if @poller.readables.include?(@router_socket)
     msgs = multi_recv @router_socket
-
     case msgs[-2]
     when "schedule"
-      # for now, dumbly assume all input is plugin exec requests
-      plugin_command, plugin_args = process_msg(msgs[-1])
+      plugin_command, plugin_args = process_schedule_message(msgs[-1])
       pid, info = exec_plugin(plugin_command, plugin_args)
       plugins[pid] = info
     when "notification_ack"
@@ -157,19 +191,18 @@ def poll_zmq(plugins)
       hastur_send(@router_socket, "error", {:message => "Unable to deal with this type of message => #{msgs[-2]}"})
     end
   end
-
+  # read messages from Services
   msg, sender = @udp_socket.recvfrom_nonblock(100000) rescue nil  # More than max UDP packet size
   process_udp_message(msg) unless msg.nil? || msg == ""
-
   # If this throttles too much, adjust downward as needed
   sleep 0.1
-
+  # perform heartbeat check
   if Time.now - @last_heartbeat > HEARTBEAT_INTERVAL
     STDERR.puts "Sending heartbeat"
     hastur_send(@router_socket, "heartbeat", { :name => "hastur thin client", :uuid => CLIENT_UUID } )
     @last_heartbeat = Time.now
   end
-
+  # perform notification resends if necessary
   if Time.now - @last_notification_check > NOTIFICATION_INTERVAL && !@notifications.empty?
     STDERR.puts "Checking unsent notifications"
     @notifications.each_pair do |notification_id, notification|
@@ -179,13 +212,28 @@ def poll_zmq(plugins)
   end
 end
 
+#
+# Registers a client with Hastur.
+#
 def register_client(uuid)
   # register the client
-  hastur_send @router_socket, "register", {:params => { :name => CLIENT_UUID, :hostname => Socket.gethostname, :ipv4 => IPSocket::getaddress(Socket.gethostname) }, :id => CLIENT_UUID, :method => "register_client"}
+  hastur_send @router_socket, "register", 
+    {
+      :params =>
+        { :name => CLIENT_UUID,
+          :hostname => Socket.gethostname, 
+          :ipv4 => IPSocket::getaddress(Socket.gethostname)
+        },
+      :id => CLIENT_UUID,
+      :method => "register_client"
+    }
   # log to hastur that we at least attempted to register this client
   hastur_send @router_socket, "logs", { :message => "Attempting to register client #{CLIENT_UUID}", :uuid => CLIENT_UUID }
 end
 
+#
+# Entry point of the thin client.
+#
 def main
   plugins = {}
   @notifications = {}
