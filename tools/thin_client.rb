@@ -22,8 +22,10 @@ opts = Trollop::options do
 end
 
 unless opts[:uuid]
+  # TODO: attempt to retrieve UUID from disk 
   opts[:uuid] = UUID.new.generate
   STDERR.puts "Generated new UUID: #{opts[:uuid].inspect}"
+  # TODO: save the UUID to disk
 end
 CLIENT_UUID = opts[:uuid]
 ROUTERS = opts[:router]
