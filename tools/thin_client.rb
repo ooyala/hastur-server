@@ -21,6 +21,10 @@ opts = Trollop::options do
   opt :port,   "Local socket port", :type => String, :required => true
 end
 
+if opts[:router].any? { |uri| uri !~ /\w+:\/\/[^:]+:\d+/ }
+  Trollop::die :router, "--router is required and must be in this format: protocol://hostname:port"
+end
+
 unless opts[:uuid]
   # TODO: attempt to retrieve UUID from disk 
   opts[:uuid] = UUID.new.generate
