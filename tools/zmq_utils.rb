@@ -7,7 +7,11 @@ def socket_for_type_and_uri(ctx, socket_type, uri, opts = {})
   # options.  Set socket options *before* bind or connect.
   socket.setsockopt(ZMQ::LINGER, opts[:linger]) # flush messages before shutdown
   socket.setsockopt(ZMQ::HWM, opts[:hwm]) # high water mark, the number of buffered messages
-  socket.bind uri
+  if opts[:connect]
+    socket.connect uri
+  else
+    socket.bind uri
+  end
   STDERR.puts "New #{socket_type} socket listening on '#{uri}'."
   socket
 end
