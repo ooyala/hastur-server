@@ -1,9 +1,6 @@
 #!/usr/bin/env ruby
 
-# this is just a whack at a really thin client script
-# totally untested at this point, checking in so others can make fun of me
-# if we go this route, main should become 3-4 functions and the whole lot should use the __FILE__ trick to
-# make it loadable for testing
+# TODO: more testing, more modularity
 
 require 'ffi-rzmq'
 require 'yajl'
