@@ -29,6 +29,7 @@ CLIENT_UUID = opts[:uuid]
 ROUTERS = opts[:router]
 LOCAL_PORT = opts[:port]
 HEARTBEAT_INTERVAL = 15  # Hardcode for now
+NOTIFICATION_INTERVAL = 5 # Hardcode for now
 
 def exec_plugin(plugin_command, plugin_args=[])
   child_out_r, child_out_w = IO.pipe
@@ -56,6 +57,10 @@ def process_udp_message(msg)
     return
   end
 
+  if hash['method'] == "notify"
+    @notifications[hash['id']] = hash
+  end
+
   hastur_send @router_socket, hash['method'] || "error", hash.merge('uuid' => CLIENT_UUID)
 end
 
@@ -63,6 +68,19 @@ def process_msg(message)
   STDERR.puts "Cheerfully ignoring multipart to-client message: #{message.inspect}"
 
   ["echo", "OK"]  # Trivial-success plugin
+end
+
+def process_notification_ack(msg)
+  hash = MultiJson.decode(msg) rescue nil
+  unless hash
+    STDERR.puts "Received invalid JSON packet: #{msg.inspect}"
+    return 
+  end
+
+  notification = @notifications[hash['id']].delete
+  unless notification
+    hastur_send(@router_socket, "error", { :message => "Unable to ack notification with id #{hash['id']} because it does not exist."})
+  end
 end
 
 def poll_plugin_pids(plugins)
@@ -114,18 +132,27 @@ def set_up_poller
   end
 
   @last_heartbeat = Time.now
+  @last_notification_check = Time.now
 end
 
-def poll_zmq
+def poll_zmq(plugins)
   @poller.poll_nonblock
 
   if @poller.readables.include?(@router_socket)
-    message = multi_recv @router_socket
+    msgs = multi_recv @router_socket
 
-    # for now, dumbly assume all input is plugin exec requests
-    plugin_command, plugin_args = process_msg(msg)
-    pid, info = exec_plugin(plugin_command, plugin_args)
-    plugins[pid] = info
+    case msgs[-2]
+    when "schedule"
+      # for now, dumbly assume all input is plugin exec requests
+      plugin_command, plugin_args = process_msg(msgs)
+      pid, info = exec_plugin(plugin_command, plugin_args)
+      plugins[pid] = info
+    when "notification_ack"
+      process_notification_ack msgs[-1] 
+    else
+      # log error
+      hastur_send(@router_socket, "error", {:message => "Unable to deal with this type of message => #{msgs[-2]}"})
+    end
   end
 
   msg, sender = @udp_socket.recvfrom_nonblock(100000) rescue nil  # More than max UDP packet size
@@ -139,6 +166,14 @@ def poll_zmq
     hastur_send(@router_socket, "heartbeat", { :name => "hastur thin client", :uuid => CLIENT_UUID } )
     @last_heartbeat = Time.now
   end
+
+  if Time.now - @last_notification_check > NOTIFICATION_INTERVAL && !@notifications.empty?
+    STDERR.puts "Checking unsent notifications"
+    @notifications.each_pair do |notification_id, notification|
+      hastur_send(@router_socket, "notify", notification)
+    end
+    @last_notification_check = Time.now
+  end
 end
 
 def register_client(uuid)
@@ -149,17 +184,16 @@ def register_client(uuid)
 end
 
 def main
+  plugins = {}
+  @notifications = {}
   set_up_local_ports
   set_up_router
   set_up_poller
   register_client CLIENT_UUID
 
-  plugins = {}
-  notifications = {}
-
   loop do
     poll_plugin_pids(plugins)
-    poll_zmq
+    poll_zmq(plugins)
   end
 end
 
