@@ -9,8 +9,11 @@ require 'trollop'
 require 'uuid'
 require 'socket'
 require_relative "../tools/zmq_utils"
+require_relative "uuid_utils"
 
 MultiJson.engine = :yajl
+HEARTBEAT_INTERVAL = 15     # Hardcode for now
+NOTIFICATION_INTERVAL = 5   # Hardcode for now
 
 opts = Trollop::options do
   opt :router, "Router URI",        :type => String, :required => true, :multi => true
@@ -23,16 +26,13 @@ if opts[:router].any? { |uri| uri !~ /\w+:\/\/[^:]+:\d+/ }
 end
 
 unless opts[:uuid]
-  # TODO: attempt to retrieve UUID from disk 
-  opts[:uuid] = UUID.new.generate
+  # attempt to retrieve UUID from disk; UUID gets created on the fly if it doesn't exist
+  opts[:uuid] = get_uuid_from_system
   STDERR.puts "Generated new UUID: #{opts[:uuid].inspect}"
-  # TODO: save the UUID to disk
 end
 CLIENT_UUID = opts[:uuid]
 ROUTERS = opts[:router]
 LOCAL_PORT = opts[:port]
-HEARTBEAT_INTERVAL = 15  # Hardcode for now
-NOTIFICATION_INTERVAL = 5 # Hardcode for now
 
 #
 # Executes a plugin asychronously. Using Kernel.spawn it allows the client to limt the cpu and memory usage.
