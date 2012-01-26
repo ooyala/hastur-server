@@ -28,7 +28,6 @@ end
 unless opts[:uuid]
   # attempt to retrieve UUID from disk; UUID gets created on the fly if it doesn't exist
   opts[:uuid] = get_uuid_from_system
-  STDERR.puts "Generated new UUID: #{opts[:uuid].inspect}"
 end
 CLIENT_UUID = opts[:uuid]
 ROUTERS = opts[:router]

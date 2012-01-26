@@ -18,6 +18,7 @@ def get_uuid_from_system
   else
     # generate a new UUID on the fly
     uuid = UUID.new.generate
+    STDERR.puts "Generated new UUID: #{uuid}"
     # save it if we can, either running as root or 
     if (File.exists?(UUID_FILE) and File.writeable?(UUID_FILE)) or File.writable?(File.basename(UUID_FILE))
       File.open(UUID_FILE, "w") do |file|
