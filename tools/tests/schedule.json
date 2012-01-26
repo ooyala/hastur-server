@@ -1,0 +1,7 @@
+{
+  "method":"schedule",
+  "plugin":"fake",
+  "plugin_path":"echo",
+  "plugin_args":"OK"
+}
+
