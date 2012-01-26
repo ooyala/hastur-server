@@ -82,7 +82,7 @@ end
 sockets = {}
 router_socket = socket_for_type_and_uri(ctx, :router, opts[:router_uri], opts)
 pub_socket = socket_for_type_and_uri(ctx, :pub, opts[:pub_uri], opts)
-from_sink_socket = socket_for_type_and_uri(ctx, :rep, opts[:from_sink_uri], opts)
+from_sink_socket = socket_for_type_and_uri(ctx, :pull, opts[:from_sink_uri], opts)
 error_socket = socket_for_type_and_uri(ctx, :push, opts[:error_uri], opts)
 
 METHODS.each do |method|
@@ -100,17 +100,14 @@ poller.register_readable(from_sink_socket)
 
 loop do
   method = "error"
-
   poller.poll_nonblock
   if poller.readables.include?(router_socket)
     messages = multi_recv(router_socket)
     STDERR.puts "Read from router socket: #{messages.inspect}"
     method = process_messages_for_routing(messages)
     STDERR.puts "Routing data to #{method.inspect}: #{messages.inspect}"
-
     STDERR.puts "Sending to PUB socket"
     multi_send(pub_socket, messages)
-
     if sockets[method.to_sym]
       STDERR.puts "Pushing packet to #{method} socket"
       multi_send(sockets[method.to_sym], messages)
@@ -118,12 +115,12 @@ loop do
       STDERR.puts "Pushing packet to error socket due to invalid method #{method}."
       multi_send(error_socket, messages)
     end
+    STDERR.puts "Finished pushing packet to #{method} socket"
   end
-
   if poller.readables.include?(from_sink_socket)
+    STDERR.puts "Attempting to read from sink socket"
     messages = multi_recv(from_sink_socket)
     STDERR.puts "Read from sink socket, sending on router socket: #{messages.inspect}"
-
     multi_send(router_socket, messages)
     STDERR.puts "Finished sending on router socket"
   end

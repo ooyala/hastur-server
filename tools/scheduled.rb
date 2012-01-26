@@ -32,7 +32,7 @@ if ZMQ::LibZMQ.version2? && opts[:router] =~ /\Wlocalhost\W/
 end
 
 ctx = ZMQ::Context.new(1)
-router_socket = socket_for_type_and_uri(ctx, :req, opts[:router], opts.merge({ :connect => true }) )
+router_socket = socket_for_type_and_uri(ctx, :push, opts[:router], opts.merge({ :connect => true }) )
 
 loop do
   opts[:client].each do |uuid|

@@ -12,13 +12,13 @@ require_relative "../tools/zmq_utils"
 require_relative "uuid_utils"
 
 MultiJson.engine = :yajl
-HEARTBEAT_INTERVAL = 15     # Hardcode for now
 NOTIFICATION_INTERVAL = 5   # Hardcode for now
 
 opts = Trollop::options do
-  opt :router, "Router URI",        :type => String, :required => true, :multi => true
-  opt :uuid,   "System UUID",       :type => String
-  opt :port,   "Local socket port", :type => String, :required => true
+  opt :router,    "Router URI",         :type => String,  :required => true, :multi => true
+  opt :uuid,      "System UUID",        :type => String
+  opt :port,      "Local socket port",  :type => String,  :required => true
+  opt :heartbeat, "Heartbeat interval", :type => Integer, :default => 15
 end
 
 if opts[:router].any? { |uri| uri !~ /\w+:\/\/[^:]+:\d+/ }
@@ -33,6 +33,7 @@ end
 CLIENT_UUID = opts[:uuid]
 ROUTERS = opts[:router]
 LOCAL_PORT = opts[:port]
+HEARTBEAT_INTERVAL = opts[:heartbeat]
 
 #
 # Executes a plugin asychronously. Using Kernel.spawn it allows the client to limt the cpu and memory usage.
@@ -93,7 +94,6 @@ def process_schedule_message(message)
     return
   end
   [ hash["plugin_path"], hash["plugin_args"] ]
-#  ["echo", "OK"]  # Trivial-success plugin
 end
 
 #
