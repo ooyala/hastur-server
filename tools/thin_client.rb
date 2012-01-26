@@ -94,7 +94,11 @@ def process_udp_message(msg)
 
   # save un-ack'd notifications
   if hash['method'] == "notify"
-    @notifications[hash['id']] = hash
+    if !hash['params'].nil? && hash['params']['id']
+      @notifications[hash['params']['id']] = hash
+    else
+      hastur_send @router_socket, "log", hash.merge('uuid' => CLIENT_UUID, 'message' => "Unable to parse for notification id")
+    end
   end
 
   # forward the message to the message bus
@@ -126,7 +130,8 @@ def process_notification_ack(msg)
     return 
   end
 
-  notification = @notifications[hash['id']].delete
+  STDERR.puts "ACK received for notification [#{hash['id']}]"
+  notification = @notifications.delete(hash['id'])
   unless notification
     hastur_send(@router_socket, "log", 
       { :message => 
@@ -229,7 +234,7 @@ def poll_zmq(plugins)
   end
   # perform notification resends if necessary
   if Time.now - @last_notification_check > NOTIFICATION_INTERVAL && !@notifications.empty?
-    STDERR.puts "Checking unsent notifications"
+    STDERR.puts "Checking unsent notifications #{@notifications.inspect}"
     @notifications.each_pair do |notification_id, notification|
       hastur_send(@router_socket, "notify", notification)
     end
