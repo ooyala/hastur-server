@@ -1,5 +1,21 @@
 require "multi_json"
 
+module Hastur
+  module ZMQ
+    module Utils
+      STATSD_RE = %r{
+        \A\s*               # start of string, any amount of whitespace 
+        (?<name>[-\.\w]+)   # stat name, letters, numbers, ., _, and - are allowed
+        :                   # : separator
+        (?<value>[\.\d]+)   # a number, integer or floating point
+        \|                  # | separator
+        (?<unit>\p{Graph}+) # the unit, e.g. "c" or "ms", but could have |@\d\.\d but don't parse that yet
+        \s*\Z               # any amount of whitespace, end of string
+      }xn
+    end
+  end
+end
+
 def socket_for_type_and_uri(ctx, socket_type, uri, opts = {})
   socket = ctx.socket(ZMQ.const_get("#{socket_type.to_s.upcase}"))
   # These aren't strictly necessary, but the behavior they enable is
