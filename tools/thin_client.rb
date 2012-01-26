@@ -65,6 +65,7 @@ end
 def process_udp_message(msg)
   STDERR.puts "Received UDP message: #{msg.inspect}"
 
+  # check that the message looks like json before calling the decoder
   if msg =~ /\A\s*\{.+\}\s*\z/s
     begin
       hash = MultiJson.decode(msg)
@@ -72,6 +73,7 @@ def process_udp_message(msg)
       STDERR.puts "Received invalid JSON packet: #{msg.inspect}"
       return
     end
+  # try statsd protocol
   elsif statsd = Hastur::ZMQ::Utils::STATSD_RE.match(msg)
     # TODO: this is a guess at what our stat format is going to be, make sure to update it if that changes
     hash = {
@@ -84,6 +86,7 @@ def process_udp_message(msg)
         :tags      => { :source => "statsd", :name => statsd[:name] }
       }
     }
+  # TODO: this should forward to the error topic
   else
     STDERR.puts "Received unrecognized (not JSON or statsd) packet: #{msg.inspect}"
     return
