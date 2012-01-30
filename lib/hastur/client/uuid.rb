@@ -4,6 +4,8 @@
 # and keeping the client running and relying on other forms of system management
 # to make sure /etc/uuid is correct (e.g. puppet).
 
+require "uuid"
+
 module Hastur
   module Client
     module UUID
@@ -19,15 +21,25 @@ module Hastur
           begin
             uuid = self.get_uuid_from_system()
           rescue
-            uuid = UUID.new.generate
-            begin
-              self.save_system_uuid(uuid)
-            rescue err
-              STDERR.puts err
-            end
+            uuid = self.generate_uuid
           end
+        else
+          uuid = self.generate_uuid
         end
 
+        uuid
+      end
+
+      #
+      # Generates a new UUID and saves it on disk
+      #
+      def self.generate_uuid
+        uuid = ::UUID.new.generate
+        begin
+          self.save_system_uuid(uuid)
+        rescue Exception => e
+          STDERR.puts e.message
+        end
         uuid
       end
 
@@ -49,7 +61,7 @@ module Hastur
       # happens to have write access to.
       #
       def self.save_system_uuid(uuid)
-        if File.writeable?(@@system_uuid_file) or File.writable?(File.dirname(@@system_uuid_file))
+        if File.writable?(@@system_uuid_file) or File.writable?(File.dirname(@@system_uuid_file))
           File.open(UUID_FILE, "w") do |file|
             file.puts uuid
           end
