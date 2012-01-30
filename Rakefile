@@ -9,3 +9,6 @@ namespace "test" do
     t.verbose = true
   end
 end
+
+# Put together a test target for Jenkins
+task :test => ["test:units"]
