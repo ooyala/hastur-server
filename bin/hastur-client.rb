@@ -8,8 +8,8 @@ require 'multi_json'
 require 'trollop'
 require 'uuid'
 require 'socket'
-require_relative "../tools/zmq_utils"
-require_relative "uuid_utils"
+require_relative "../lib/hastur/zmq_utils"
+require_relative "../lib/hastur/client/uuid"
 
 MultiJson.engine = :yajl
 NOTIFICATION_INTERVAL = 5   # Hardcode for now
@@ -27,7 +27,8 @@ end
 
 unless opts[:uuid]
   # attempt to retrieve UUID from disk; UUID gets created on the fly if it doesn't exist
-  opts[:uuid] = get_uuid_from_system
+  opts[:uuid] = Hastur::Client::UUID.get_uuid
+  puts opts[:uuid]
 end
 CLIENT_UUID = opts[:uuid]
 ROUTERS = opts[:router]
@@ -97,12 +98,12 @@ def process_udp_message(msg)
     if !hash['params'].nil? && hash['params']['id']
       @notifications[hash['params']['id']] = hash
     else
-      hastur_send @router_socket, "log", hash.merge('uuid' => CLIENT_UUID, 'message' => "Unable to parse for notification id")
+      Hastur::ZMQUtils.hastur_send @router_socket, "log", hash.merge('uuid' => CLIENT_UUID, 'message' => "Unable to parse for notification id")
     end
   end
 
   # forward the message to the message bus
-  hastur_send @router_socket, hash['method'] || "error", hash.merge('uuid' => CLIENT_UUID)
+  Hastur::ZMQUtils.hastur_send @router_socket, hash['method'] || "error", hash.merge('uuid' => CLIENT_UUID)
 end
 
 #
@@ -133,7 +134,7 @@ def process_notification_ack(msg)
   STDERR.puts "ACK received for notification [#{hash['id']}]"
   notification = @notifications.delete(hash['id'])
   unless notification
-    hastur_send(@router_socket, "log", 
+    Hastur::ZMQUtils.hastur_send(@router_socket, "log", 
       { :message => 
       "Unable to ack notification with id #{hash['id']} because it does not exist."})
   end
@@ -154,7 +155,7 @@ def poll_plugin_pids(plugins)
       plugin_stdout = info[:stdout].readlines()
       plugin_stderr = info[:stderr].readlines()
       # let Hastur know of the results
-      hastur_send(@router_socket, "stats",
+      Hastur::ZMQUtils.hastur_send(@router_socket, "stats",
         { :pid    => cpid,
         :status => status,
         :stdout => plugin_stdout,
@@ -218,7 +219,7 @@ def poll_zmq(plugins)
       process_notification_ack msgs[-1] 
     else
       # log error
-      hastur_send(@router_socket, "error", {:message => "Unable to deal with this type of message => #{msgs[-2]}"})
+      Hastur::ZMQUtils.hastur_send(@router_socket, "error", {:message => "Unable to deal with this type of message => #{msgs[-2]}"})
     end
   end
   # read messages from Services
@@ -229,14 +230,14 @@ def poll_zmq(plugins)
   # perform heartbeat check
   if Time.now - @last_heartbeat > HEARTBEAT_INTERVAL
     STDERR.puts "Sending heartbeat"
-    hastur_send(@router_socket, "heartbeat", { :name => "hastur thin client", :uuid => CLIENT_UUID } )
+    Hastur::ZMQUtils.hastur_send(@router_socket, "heartbeat", { :name => "hastur thin client", :uuid => CLIENT_UUID } )
     @last_heartbeat = Time.now
   end
   # perform notification resends if necessary
   if Time.now - @last_notification_check > NOTIFICATION_INTERVAL && !@notifications.empty?
     STDERR.puts "Checking unsent notifications #{@notifications.inspect}"
     @notifications.each_pair do |notification_id, notification|
-      hastur_send(@router_socket, "notify", notification)
+      Hastur::ZMQUtils.hastur_send(@router_socket, "notify", notification)
     end
     @last_notification_check = Time.now
   end
@@ -247,7 +248,7 @@ end
 #
 def register_client(uuid)
   # register the client
-  hastur_send @router_socket, "register", 
+  Hastur::ZMQUtils.hastur_send @router_socket, "register", 
     {
       :params =>
         { :name => CLIENT_UUID,
@@ -258,7 +259,7 @@ def register_client(uuid)
       :method => "register_client"
     }
   # log to hastur that we at least attempted to register this client
-  hastur_send @router_socket, "logs", { :message => "Attempting to register client #{CLIENT_UUID}", :uuid => CLIENT_UUID }
+  Hastur::ZMQUtils.hastur_send @router_socket, "logs", { :message => "Attempting to register client #{CLIENT_UUID}", :uuid => CLIENT_UUID }
 end
 
 #

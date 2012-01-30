@@ -1,3 +1,13 @@
+PATH
+  remote: .
+  specs:
+    hastur (0.0.1)
+      ffi-rzmq
+      multi_json
+      trollop
+      uuid
+      yajl-ruby
+
 GEM
   remote: http://rubygems.org/
   remote: http://gems.sv2/
@@ -7,19 +17,23 @@ GEM
       ffi
     macaddr (1.5.0)
       systemu (>= 2.4.0)
+    metaclass (0.0.1)
+    minitest (2.11.0)
+    mocha (0.10.3)
+      metaclass (~> 0.0.1)
     multi_json (1.0.4)
+    scope (0.2.3)
+      minitest
     systemu (2.4.2)
     trollop (1.16.2)
-    uuid (2.3.4)
+    uuid (2.3.5)
       macaddr (~> 1.0)
-    yajl-ruby (1.0.0)
+    yajl-ruby (1.1.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
-  ffi-rzmq
-  multi_json
-  trollop
-  uuid
-  yajl-ruby
+  hastur!
+  mocha
+  scope
