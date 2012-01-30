@@ -1,0 +1,20 @@
+{
+  "description": "Test the system client->router->sink using the production router and clients, but with stub/test sinks.",
+  "test": "client_integration_full",
+  "procs": {
+    "client1":      [ "hastur-client/thin_client.rb", "--router", "tcp://127.0.0.1:20001", "--uuid", "<uuidgen>" ],
+    "client2":      [ "hastur-client/thin_client.rb", "--router", "tcp://127.0.0.1:20001", "--uuid", "<uuidgen>" ],
+    "client3":      [ "hastur-client/thin_client.rb", "--router", "tcp://127.0.0.1:20001", "--uuid", "<uuidgen>" ],
+    "client4":      [ "hastur-client/thin_client.rb", "--router", "tcp://127.0.0.1:20001", "--uuid", "<uuidgen>" ],
+    "client5":      [ "hastur-client/thin_client.rb", "--router", "tcp://127.0.0.1:20001", "--uuid", "<uuidgen>" ],
+    "client6":      [ "hastur-client/thin_client.rb", "--router", "tcp://127.0.0.1:20001", "--uuid", "<uuidgen>" ],
+    "router":       [ "tools/basic-router.rb", "--router_uri", "tcp://127.0.0.1:20001" ],
+    "stats":        [ "tools/zmqcli.rb", "--connect", "--uri", "tcp://127.0.0.1:20002" ],
+    "heartbeat":    [ "tools/zmqcli.rb", "--connect", "--uri", "tcp://127.0.0.1:20003" ],
+    "registration": [ "tools/zmqcli.rb", "--connect", "--uri", "tcp://127.0.0.1:20004" ],
+  },
+  "on_read": {
+  }
+
+}
+
