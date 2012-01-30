@@ -10,7 +10,7 @@ module Hastur
     # Check a URI for validity before passing onto ZMQ.
     # We explicitly disallow "localhost" because ZMQ will break silently on IPv6 enabled systems.
     #
-    def check_uri(uri)
+    def self.check_uri(uri)
       result = /\A(?<protocol>\w+):\/\/(?<hostname>[^:]+):(?<port>\d+)\Z/.match(uri)
       if result.nil?
         raise "URI's must be in: protocol://hostname:port format"
@@ -30,7 +30,7 @@ module Hastur
     # Example:
     #  Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PULL, "tcp://127.0.0.1:1234")
     #
-    def bind_socket(ctx, type, uri, opts = {})
+    def self.bind_socket(ctx, type, uri, opts = {})
       socket = ctx.socket(type)
 
       opts[:linger] = 1 unless opts.has_key?(:linger)
@@ -54,7 +54,7 @@ module Hastur
     #
     # receive a multi-part message in one go as an array
     #
-    def multi_recv(socket)
+    def self.multi_recv(socket)
       messages = []
       socket.recv_string(data = "")
       messages << data
@@ -68,7 +68,7 @@ module Hastur
     #
     # Send a multi-part message using an array.
     #
-    def multi_send(socket, messages)
+    def self.multi_send(socket, messages)
       last_message = messages[-1]
       (messages[0..-2]).each do |message|
         # I know you can't resend a 0mq message...  Does ffi-rzmq shield us from that
@@ -81,7 +81,7 @@ module Hastur
     #
     # Send a Hastur-specific message with a header envelope containing version, time, and sequence.
     #
-    def hastur_send(socket, method, data_hash)
+    def self.hastur_send(socket, method, data_hash)
       method ||= "error"
       @seq_num ||= 0
       @uptime ||= Time.now.to_i
