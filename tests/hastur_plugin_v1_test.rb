@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require "rubygems"
-require_relative '../lib/hastur_plugin_v1'
+require_relative '../lib/hastur/plugin/v1'
 
 def plugin(name, args)
   plugin_path = File.join(File.dirname($0), "plugins")
