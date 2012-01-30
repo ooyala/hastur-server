@@ -6,7 +6,7 @@ require 'yajl'
 require 'multi_json'
 require 'trollop'
 
-require_relative "zmq_utils"
+require_relative "../lib/hastur/zmq_utils"
 
 MultiJson.engine = :yajl
 
@@ -32,7 +32,7 @@ if ZMQ::LibZMQ.version2? && opts[:router] =~ /\Wlocalhost\W/
 end
 
 ctx = ZMQ::Context.new(1)
-router_socket = socket_for_type_and_uri(ctx, :push, opts[:router], opts.merge({ :connect => true }) )
+router_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PUSH, opts[:router], opts.merge({ :connect => true }) )
 
 loop do
   opts[:client].each do |uuid|
@@ -45,7 +45,7 @@ loop do
       "interval" => "#{opts[:interval]} seconds"
     }
     json = MultiJson.encode hash
-    multi_send router_socket, [ uuid, "schedule", json ]
+    Hastur::ZMQUtils.multi_send router_socket, [ uuid, "schedule", json ]
   end
 
   sleep opts[:interval]
