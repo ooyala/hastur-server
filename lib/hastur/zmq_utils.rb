@@ -64,7 +64,7 @@ module Hastur
       end
       messages
     end
-    
+
     #
     # Send a multi-part message using an array.
     #
@@ -77,7 +77,7 @@ module Hastur
       end
       socket.send_string(last_message)
     end
-    
+
     #
     # Send a Hastur-specific message with a header envelope containing version, time, and sequence.
     #
@@ -85,6 +85,7 @@ module Hastur
       method ||= "error"
       @seq_num ||= 0
       @uptime ||= Time.now.to_i
+      # TODO(noah): add client UUID here
       packet_data = {
         'method' => method,
         'sequence' => @seq_num,
