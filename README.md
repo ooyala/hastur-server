@@ -33,16 +33,14 @@ Architecture
 Development
 -----------
 
-Install ZeroMQ & all the gems below. Look at the integration specs in tests/integration-*.json.
+Install ZeroMQ & bundle install from the root directory. Look at the integration specs in tests/integration-*.json.
 
 Dependencies
 ------------
 
 * Ruby 1.9.3 (1.9.2 probably works)
-* ZeroMQ 2.x (2.2.11)
-* ffi-rzmq
-* multi_json
-* yajl-ruby
+* ZeroMQ 2.x (2.2.11) or 3.1.x
+* Gems in Gemfile
 
 Deployment
 ----------
