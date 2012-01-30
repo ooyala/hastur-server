@@ -20,6 +20,7 @@ Gem::Specification.new do |s|
 
   # specify any dependencies here; for example:
   s.add_development_dependency "scope"
+  s.add_development_dependency "mocha"
   s.add_runtime_dependency "yajl-ruby"
   s.add_runtime_dependency "multi_json"
   s.add_runtime_dependency "ffi-rzmq"
