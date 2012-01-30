@@ -11,12 +11,15 @@ module Hastur
         @err_fd, @err_w = IO.pipe
       end
 
-      def run
+      def run(opts={})
+        opts[:rlimit_cpu] ||= 10
+        opts[:rlimit_as]  ||= 2**26 # 64MB of memory
+
         @pid = Kernel.spawn(@command, *@args, 
           :out => @out_w,
           :err => @err_w,
-          :rlimit_cpu => 5,   # 5 seconds of CPU time
-          :rlimit_as  => 2**5 # 32MB of memory total
+          :rlimit_cpu => opts[:rlimit_cpu],
+          :rlimit_as  => opts[:rlimit_as],
         )
 
         # must happen after the fork/exec or these pipes would be useless
