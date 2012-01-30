@@ -22,4 +22,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency "scope"
   s.add_runtime_dependency "yajl-ruby"
   s.add_runtime_dependency "multi_json"
+  s.add_runtime_dependency "ffi-rzmq"
+  s.add_runtime_dependency "trollop"
+  s.add_runtime_dependency "uuid"
 end
