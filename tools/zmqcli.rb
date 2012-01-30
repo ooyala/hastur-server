@@ -7,7 +7,7 @@ require 'multi_json'
 require 'trollop'
 require 'uuid'
 
-require_relative "zmq_utils"
+require_relative "../lib/hastur/zmq_utils"
 
 ZMQ_TYPELIST = ZMQ::SocketTypeNameMap.values.join(", ")
 
@@ -141,11 +141,11 @@ def send_string(sock, data)
   messages = envelope + [ data ]
 
   to_console "Sending message(s): #{messages.inspect}"
-  multi_send sock, messages
+  Hastur::ZMQUtils.multi_send sock, messages
 end
 
 def recv_string(sock)
-  data = multi_recv(sock)
+  data = Hastur::ZMQUtils.multi_recv(sock)
 end
 
 # ZMQ::REP, blocking loop

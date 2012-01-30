@@ -7,7 +7,7 @@ require 'multi_json'
 require 'socket'
 require 'trollop'
 
-require_relative "zmq_utils"
+require_relative "../lib/hastur/zmq_utils"
 
 MultiJson.engine = :yajl
 
@@ -80,14 +80,14 @@ def process_messages_for_routing(messages)
 end
 
 sockets = {}
-router_socket = socket_for_type_and_uri(ctx, :router, opts[:router_uri], opts)
-pub_socket = socket_for_type_and_uri(ctx, :pub, opts[:pub_uri], opts)
-from_sink_socket = socket_for_type_and_uri(ctx, :pull, opts[:from_sink_uri], opts)
-error_socket = socket_for_type_and_uri(ctx, :push, opts[:error_uri], opts)
+router_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::ROUTER, opts[:router_uri], opts)
+pub_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PUB, opts[:pub_uri], opts)
+from_sink_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PULL, opts[:from_sink_uri], opts)
+error_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PUSH, opts[:error_uri], opts)
 
 METHODS.each do |method|
   uri = opts["#{method}_uri".to_sym]
-  sockets[method] = socket_for_type_and_uri(ctx, :push, uri, opts)
+  sockets[method] = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PUSH, uri, opts)
 end
 
 # We want this router to stop when there's nothing to receive, or when any of
@@ -102,26 +102,26 @@ loop do
   method = "error"
   poller.poll_nonblock
   if poller.readables.include?(router_socket)
-    messages = multi_recv(router_socket)
+    messages = Hastur::ZMQUtils.multi_recv(router_socket)
     STDERR.puts "Read from router socket: #{messages.inspect}"
     method = process_messages_for_routing(messages)
     STDERR.puts "Routing data to #{method.inspect}: #{messages.inspect}"
     STDERR.puts "Sending to PUB socket"
-    multi_send(pub_socket, messages)
+    Hastur::ZMQUtils.multi_send(pub_socket, messages)
     if sockets[method.to_sym]
       STDERR.puts "Pushing packet to #{method} socket"
-      multi_send(sockets[method.to_sym], messages)
+      Hastur::ZMQUtils.multi_send(sockets[method.to_sym], messages)
     else
       STDERR.puts "Pushing packet to error socket due to invalid method #{method}."
-      multi_send(error_socket, messages)
+      Hastur::ZMQUtils.multi_send(error_socket, messages)
     end
     STDERR.puts "Finished pushing packet to #{method} socket"
   end
   if poller.readables.include?(from_sink_socket)
     STDERR.puts "Attempting to read from sink socket"
-    messages = multi_recv(from_sink_socket)
+    messages = Hastur::ZMQUtils.multi_recv(from_sink_socket)
     STDERR.puts "Read from sink socket, sending on router socket: #{messages.inspect}"
-    multi_send(router_socket, messages)
+    Hastur::ZMQUtils.multi_send(router_socket, messages)
     STDERR.puts "Finished sending on router socket"
   end
 end

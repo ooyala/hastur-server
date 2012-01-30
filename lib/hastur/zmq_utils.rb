@@ -47,7 +47,7 @@ module Hastur
       socket.setsockopt(ZMQ::HWM,    opts[:hwm])    if opts[:hwm]
 
       socket.bind uri
-      STDERR.puts "New #{socket_type} socket listening on '#{uri}'."
+      STDERR.puts "New socket listening on '#{uri}'."
       socket
     end
     
