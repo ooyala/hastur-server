@@ -33,14 +33,18 @@ module Hastur
     def bind_socket(ctx, type, uri, opts = {})
       socket = ctx.socket(type)
 
-      opts[:linger] ||= 1
-      opts[:hwm]    ||= 1
+      opts[:linger] = 1 unless opts.has_key?(:linger)
+      opts[:hwm]    = 1 unless opts.has_key?(:hwm)
 
-      # These aren't strictly necessary, but the behavior they enable is
-      # what we usually expect.  For now, have all sockets use the same
-      # options.  Set socket options *before* bind or connect.
-      socket.setsockopt(ZMQ::LINGER, opts[:linger]) # flush messages before shutdown
-      socket.setsockopt(ZMQ::HWM,    opts[:hwm])    # high water mark, the number of buffered messages
+      # Linger and HWM aren't strictly necessary, but the behavior
+      # they enable is what we usually expect.  For now, have all
+      # sockets use the same options.  Set socket options *before*
+      # bind or connect.
+
+      # flush messages before shutdown
+      socket.setsockopt(ZMQ::LINGER, opts[:linger]) if opts[:linger]
+      # high water mark, the number of buffered messages
+      socket.setsockopt(ZMQ::HWM,    opts[:hwm])    if opts[:hwm]
 
       socket.bind uri
       STDERR.puts "New #{socket_type} socket listening on '#{uri}'."
