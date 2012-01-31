@@ -1,6 +1,8 @@
+# TODO(viet): Should this be JSON? Does it matter?
+
 ROUTERS = ['router0']
 CLIENTS = ['client0', 'client1']
-WORKERS = ['worker0', 'worker1', 'worker2']
+WORKERS = ['worker0', 'worker1', 'worker2', 'worker3', 'worker4', 'worker5']
 
 TOPOLOGY = [
   {
@@ -21,27 +23,39 @@ TOPOLOGY = [
   },
   {
     :name => WORKERS[0],
-    :command => "./hasturd_cli.rb --router #{ROUTERS[0]} --client #{CLIENTS[0]} --client #{CLIENTS[1]} --method heartbeat"
+    :command => <<-eos
+      ./hasturd_cli.rb --router #{ROUTERS[0]} --client #{CLIENTS[0]} --client #{CLIENTS[1]} --method heartbeat
+    eos
   },
   {
     :name => WORKERS[1],
-    :command => "./hasturd_cli.rb --router #{ROUTERS[0]} --client #{CLIENTS[0]} --client #{CLIENTS[1]} --method register"
+    :command => <<-eos
+      ./hasturd_cli.rb --router #{ROUTERS[0]} --client #{CLIENTS[0]} --client #{CLIENTS[1]} --method register
+    eos
   },
   {
     :name => WORKERS[2],
-    :command => "./hasturd_cli.rb --router #{ROUTERS[0]} --client #{CLIENTS[0]} --client #{CLIENTS[1]} --method notify"
+    :command => <<-eos
+      ./hasturd_cli.rb --router #{ROUTERS[0]} --client #{CLIENTS[0]} --client #{CLIENTS[1]} --method notify
+    eos
   },
   {
     :name => WORKERS[3],
-    :command => "./hasturd_cli.rb --router #{ROUTERS[0]} --client #{CLIENTS[0]} --client #{CLIENTS[1]} --method schedule"
+    :command => <<-eos
+      ./hasturd_cli.rb --router #{ROUTERS[0]} --client #{CLIENTS[0]} --client #{CLIENTS[1]} --method schedule
+    eos
   },
   {
     :name => WORKERS[4],
-    :command => "./hasturd_cli.rb --router #{ROUTERS[0]} --client #{CLIENTS[0]} --client #{CLIENTS[1]} --method log"
+    :command => <<-eos
+      ./hasturd_cli.rb --router #{ROUTERS[0]} --client #{CLIENTS[0]} --client #{CLIENTS[1]} --method log
+    eos
   },
   {
     :name => WORKERS[5],
-    :command => "./hasturd_cli.rb --router #{ROUTERS[0]} --client #{CLIENTS[0]} --client #{CLIENTS[1]} --method error"
+    :command => <<-eos
+      ./hasturd_cli.rb --router #{ROUTERS[0]} --client #{CLIENTS[0]} --client #{CLIENTS[1]} --method error
+    eos
   }
 
 ]
