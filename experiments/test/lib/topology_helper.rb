@@ -30,7 +30,7 @@ module Hastur
       #
       def start name
         # run the command that starts up the node and store the subprocess for later manipulation
-        @processes[name] = IO.popen(@topology[name][:command])
+        @processes[name] = IO.popen(@topology[name][:command]) unless @topology[name].nil?
       end
 
       #
@@ -39,6 +39,22 @@ module Hastur
       def start_all
         @topology.each do |node|
           start node[:name]
+        end
+      end
+
+      #
+      # Immediately kills a node given its topology name
+      #
+      def stop name
+        Process.kill(TERM, @processes[name].pid) unless @processes[name].pid.nil?
+      end
+
+      #
+      # Kills all of the nodes in the topology.
+      #
+      def stop_all
+        @processes.each do |name, node|
+          stop name
         end
       end
     end
