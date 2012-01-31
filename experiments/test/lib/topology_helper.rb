@@ -40,8 +40,7 @@ module Hastur
   module Test
     module Topology
       def initialize(processlist = [])
-        @processes = Hash.new   # stores process information of the running node
-        @topology = Hash.new    # stores the metadata for all of the nodes in the topology
+        @processes = Hash.new   # stores process information for all nodes
 
         # Add processes, if supplied
         if processlist.respond_to?(:each)
@@ -53,20 +52,19 @@ module Hastur
         @fully_initialized = false
       end
 
-      # Read-only accessor
-      def processes
-        @processes.dup
+      def process_names
+        @processes.keys
       end
 
       # Read-only accessor
-      def topology
-        @topology.dup
+      def processes
+        @processes.dup # dup so nobody can modify it
       end
 
       def add_process(process)
         verify_process process
 
-        @processes[process[:name]] = process
+        @processes[process[:name]] = process.dup
 
         @fully_initialized = nil
       end
@@ -76,11 +74,7 @@ module Hastur
       end
 
       def start_all
-        unless @fully_initialized
-          allocate_resources
-          update_processes_for_resources
-          @fully_initialized = true
-        end
+        allocate_resources
 
         @topology.each do |node|
           start node[:name]
@@ -111,7 +105,7 @@ module Hastur
       # Kills all of the nodes in the topology.
       #
       def stop_all
-        @processes.each do |name, node|
+        @processes.each do |name, |
           stop name
         end
       end
@@ -130,17 +124,115 @@ module Hastur
       end
 
       def allocate_resources
+        return if @fully_initialized
 
+        stop_all
+        ZMQ.allocate_resources(@processes)
+
+        @fully_initialized = true
       end
 
-      def update_processes_for_resources
-        # Create space in topology map for cached information
-        @topology = {}
-        @processes.each do |name, process|
-          @topology[name] = process.dup
+      def free_resources
+        ZMQ.free_resources(@processes)
+        @fully_initialized = false
+      end
+
+      module ZMQ
+        def context
+          @context ||= ZMQ::Context.new
+        end
+
+        def port_open?(port_num)
+          begin
+            s = TCPServer.new port_num
+            true
+          rescue
+            false
+          end
+        end
+
+        # Running multiple test harnesses?  Start the ports at different offsets.
+        def start_ports_at(port)
+          @last_port_num = port
+        end
+
+        def allocate_port
+          @last_port_num ||= 21000
+
+          attempts = 0
+          while attempts < 10
+            @last_port_num += 1
+            return @last_port_num if port_open?(@last_port_num)
+            attempts += 1
+          end
+
+          raise "Couldn't find an open TCP port after 10 attempts!"
+        end
+
+        # For each ZMQ port type, we receive on the actual port type
+        # and resend on a corresponding port type.
+        SEND_PORT_FOR = {
+          :req => :rep,
+          :rep => :req,
+          :push => :pull,
+          :pull => :push,
+          :pub => :sub,
+          :sub => :pub,
+          :router => nil,
+          :dealer => :req,
+        }
+
+        def allocate_resources(processes)
+          processes.each do |_,process|
+            zmq = process[:resources][:zmq]
+            next unless zmq
+
+            zmq.each do |socket|
+              socket[:forwarder_thread] = Thread.new do
+                type = socket[:type]
+                uri_in = "tcp://127.0.0.1:#{allocate_port}"
+                uri_out = "tcp://127.0.0.1:#{socket[:listen]}"
+
+                # Set HWM to 1 so we don't get "instant send" on one end and everything backed
+                # up here.
+                incoming = bind_socket(context, type, uri_in, :hwm => 1)
+                outgoing = connect_socket(context, SEND_PORT_FOR[type], uri_out, :hwm => 1)
+
+                loop do
+                  message = multi_recv(incoming)
+
+                  if socket[:type] == :router
+                    # TODO(noah): this will get way bigger.  Router sockets in particular need
+                    # to open more connections, set socket identities and generally do way more
+                    # work
+
+                    @router_sockets ||= {}
+                    @router_sockets[client_id] ||= connect_socket(context, SEND_PORT_FOR[type],
+                                                                  uri_out, :hwm => 1,
+                                                                  :identity => client_id)
+
+                    # Remove the extra envelope section added by receiving on a router socket
+                    envelope = message.shift
+                  end
+
+                  multi_send(outgoing, message)
+                end
+              end
+            end
+          end
+        end
+
+        def free_resources(processes)
+          processes.each do |_,process|
+            zmq = process[:resources][:zmq]
+            next unless zmq
+
+            zmq.each do |socket|
+              Thread.kill socket[:forwarder_thread]
+            end
+          end
         end
       end
     end
   end
 end
-
