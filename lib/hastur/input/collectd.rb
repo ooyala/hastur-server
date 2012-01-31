@@ -10,6 +10,8 @@
 # http://ruby-doc.org/core-1.9.3/String.html#method-i-unpack
 # perldoc -f pack # (the perl pack docs are more thorough)
 
+require 'hastur/exception'
+
 module Hastur
   module Input
     module Collectd
@@ -42,7 +44,7 @@ module Hastur
         offset = 0
 
         begin
-          while data.length > 0
+          while offset < data.bytesize
             key, value, offset = self.decode_part(data, offset)
             stats[key] = value
           end
@@ -60,83 +62,107 @@ module Hastur
       # Decodes a collectd "part" and returns key, value.
       # First argument is the packet string, the second is the current offset into the packet (FixNum bytes).
       def self.decode_part(data, offset)
-        # len includes the header's 4 bytes
-        # nn/a is a more technically correct unpack ... trying to track down where this is unpacking
-        # bad data (invalid types/len), probably something simple I'm missing
-        type, len, value = data.unpack("@#{offset}SS/a") # uint16_t, uint16_t, binary string
+        type, len = data.unpack('@' + offset.to_s + 'nn') # uint16_t, uint16_t
+
+        # decoding errors usually manifest quickly as bad types or unusual lengths
+        if len.nil? or len > data.bytesize or type.nil? or type > TYPE_ENCR_AES256
+          err = "Out of bounds value in UDP packet at byte #{offset}. Type: #{type}, Length: #{len}"
+          throw Hastur::PacketDecodingError.new(err)
+        end
 
         case type
           when TYPE_TIME
             key = :time
-            value = data.unpack('Q') # uint64_t
+            value = self.unpack_uint64(data, offset, len)
           when TYPE_TIME_HR
             key = :time_hr
-            value = data.unpack('Q') # uint64_t
+            value = self.unpack_uint64(data, offset, len)
           when TYPE_INTERVAL
             key = :interval
-            value = data.unpack('Q') # uint64_t
+            value = self.unpack_uint64(data, offset, len)
           when TYPE_INTERVAL_HR
             key = :interval_hr
-            value = data.unpack('Q') # uint64_t
+            value = self.unpack_uint64(data, offset, len)
           when TYPE_SEVERITY
             key = :severity
-            value = data.unpack('Q') # uint64_t
+            value = self.unpack_uint64(data, offset, len)
           when TYPE_HOST
             key = :host
-            value = data.unpack("Z#{len - 4}") # ascii string
+            value = self.unpack_string(data, offset, len)
           when TYPE_PLUGIN
             key = :plugin
-            value = data.unpack("Z#{len - 4}") # ascii string
+            value = self.unpack_string(data, offset, len)
           when TYPE_PLUGIN_INSTANCE
             key = :plugin_instance
-            value = data.unpack("Z#{len - 4}") # ascii string
+            value = self.unpack_string(data, offset, len)
           when TYPE_TYPE
             key = :type
-            value = data.unpack("Z#{len - 4}") # ascii string
+            value = self.unpack_string(data, offset, len)
           when TYPE_TYPE_INSTANCE
             key = :type_instance
-            value = data.unpack("Z#{len - 4}") # ascii string
+            value = self.unpack_string(data, offset, len)
           when TYPE_MESSAGE
             key = :message
-            value = data.unpack("Z#{len - 4}") # ascii string
+            value = self.unpack_string(data, offset, len)
           when TYPE_VALUES
             key = :values
-            value = self.decode_values(value)
-            value = data.unpack("Z#{len - 4}") # ascii string
-          #when TYPE_SIGN_SHA256
-          #when TYPE_ENCR_AES256
+            value = self.decode_values(data, offset, len)
+          when TYPE_SIGN_SHA256
+            raise Hastur::UnsupportedError.new("collectd TYPE_SIGN_SHA256")
+          when TYPE_ENCR_AES256
+            raise Hastur::UnsupportedError.new("collectd TYPE_SIGN_SHA256")
         else
           raise "Invalid packet data type: #{type}, len: #{len}."
         end
 
-        return key, value, offset + len
+        return key, value, (offset + len)
+      end
+
+      def self.unpack_string(data, offset, len)
+        offset += 4
+        len    -= 4
+        bytes = data.unpack('@' + offset.to_s + 'Z' + len.to_s)
+        bytes.pack('a*')
+      end
+
+      def self.unpack_uint64(data, offset, len)
+        offset += 4
+        len    -= 4
+        data.unpack('@' + offset.to_s + 'Q')[0]
       end
 
       # Decode a values part. These are a bit different from the other parts since they
       # contain a list of values in a slightly smaller <type><value><type><value>... format.
-      def self.decode_values(data)
+      def self.decode_values(data, offset, len)
         values = []
-        nvals, data = data.unpack("na*")
+        offset += 4 # skip type|len, already decoded
+        nvals = data.unpack('@' + offset.to_s + 'n')[0]
+        offset += 2 # 16-bit unsigned, network (big-endian)
 
-        1.upto(nvals) do |n|
-          type, data = data.unpack("Ca*")
+        # Types are a packed array of uint8_t.
+        # https://github.com/octo/collectd/blob/master/src/network.c#L535
+        types = data.unpack('@' + offset.to_s + 'C' + nvals.to_s) # 8-bit unsigned (unsigned char)
+        offset += nvals
 
-          case type
+        0.upto(nvals - 1) do |n|
+          case types[n]
             when DS_TYPE_COUNTER
-              value, data = data.unpack("Q>a*") # network (big endian) unsigned integer
-              values.push value
-            when DS_TYPE_GAUGE
-              value, data = data.unpack("Ea*")  # x86 (little endian) double
-              values.push value
-            when DS_TYPE_DERIVE
-              value, data = data.unpack("q>a*") # network (big endian) signed integer
-              values.push value
+              pack = 'Q>' # network (big endian) unsigned integer
             when DS_TYPE_ABSOLUTE
-              value, data = data.unpack("Q>a*") # network (big endian) unsigned integer
-              values.push value
+              pack = 'Q>' # network (big endian) unsigned integer
+            when DS_TYPE_GAUGE
+              pack = 'E'  # x86 (little endian) double
+            when DS_TYPE_DERIVE
+              pack = 'q>' # network (big endian) signed integer
             else
-              raise "Unknown value type: #{type}"
+              raise "Unknown value type: #{types[n]}"
           end
+
+          value = data.unpack('@' + offset.to_s + pack)[0]
+          values << value
+
+          # all four types are 64 bits, just different encodings
+          offset += 8
         end
 
         return values
