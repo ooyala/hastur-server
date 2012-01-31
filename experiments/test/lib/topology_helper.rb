@@ -46,7 +46,11 @@ module Hastur
       # Immediately kills a node given its topology name
       #
       def stop name
-        Process.kill(TERM, @processes[name].pid) unless @processes[name].pid.nil?
+        pid = @processes[name].pid
+        if pid
+          Process.kill(TERM, pid)
+          Process.waitpid(pid, Process::WHOHANG)
+        end
       end
 
       #
