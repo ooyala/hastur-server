@@ -6,11 +6,13 @@ require "ffi-rzmq"
 
 module Hastur
   module ZMQUtils
+    extend self  # Allows calling as ZMQUtils.blah
+
     # 
     # Check a URI for validity before passing onto ZMQ.
     # We explicitly disallow "localhost" because ZMQ will break silently on IPv6 enabled systems.
     #
-    def self.check_uri(uri)
+    def check_uri(uri)
       result = /\A(?<protocol>\w+):\/\/(?<hostname>[^:]+):(?<port>\d+)\Z/.match(uri)
       if result.nil?
         raise "URI's must be in: protocol://hostname:port format"
@@ -22,7 +24,7 @@ module Hastur
     end
 
     #
-    # Create a socket and bind in one go, setting sane defaults for sockopts.
+    # Create a socket and bind or connect in one go, setting sane defaults for sockopts.
     # Defaults:
     # * ZMQ::LINGER => 1
     # * ZMQ::HWM    => 1
@@ -30,7 +32,7 @@ module Hastur
     # Example:
     #  Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PULL, "tcp://127.0.0.1:1234")
     #
-    def self.bind_socket(ctx, type, uri, opts = {})
+    def bind_or_connect_socket(ctx, type, uri, opts = {})
       socket = ctx.socket(type)
 
       opts[:linger] = 1 unless opts.has_key?(:linger)
@@ -45,16 +47,50 @@ module Hastur
       socket.setsockopt(ZMQ::LINGER, opts[:linger]) if opts[:linger]
       # high water mark, the number of buffered messages
       socket.setsockopt(ZMQ::HWM,    opts[:hwm])    if opts[:hwm]
+      # Identity for router, req and sub sockets
+      socket.setsockopt(ZMQ::IDENTITY, opts[:identity]) if opts[:identity]
 
-      socket.bind uri
-      STDERR.puts "New socket listening on '#{uri}'."
+      if opts[:bind]
+        socket.bind uri
+      elsif opts[:connect]
+        socket.connect uri
+      else
+        raise "Must provide either bind or connect option to bind_or_connect_socket!"
+      end
+      STDERR.puts "New socket #{opts[:bind] ? "listening" : "connecting"} on '#{uri}'."
       socket
     end
     
     #
+    # Create a socket and connect in one go, setting sane defaults for sockopts.
+    # Defaults:
+    # * ZMQ::LINGER => 1
+    # * ZMQ::HWM    => 1
+    #
+    # Example:
+    #  Hastur::ZMQUtils.connect_socket(ctx, ZMQ::PUSH, "tcp://127.0.0.1:1234")
+    #
+    def connect_socket(ctx, type, uri, opts = {})
+      bind_or_connect_socket(ctx, type, uri, opts.merge(:connect => true, :bind => false))
+    end
+
+    #
+    # Create a socket and bind in one go, setting sane defaults for sockopts.
+    # Defaults:
+    # * ZMQ::LINGER => 1
+    # * ZMQ::HWM    => 1
+    #
+    # Example:
+    #  Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PULL, "tcp://127.0.0.1:1234")
+    #
+    def bind_socket(ctx, type, uri, opts = {})
+      bind_or_connect_socket(ctx, type, uri, opts.merge(:connect => false, :bind => true))
+    end
+
+    #
     # receive a multi-part message in one go as an array
     #
-    def self.multi_recv(socket)
+    def multi_recv(socket)
       messages = []
       socket.recv_string(data = "")
       messages << data
@@ -68,7 +104,7 @@ module Hastur
     #
     # Send a multi-part message using an array.
     #
-    def self.multi_send(socket, messages)
+    def multi_send(socket, messages)
       last_message = messages[-1]
       (messages[0..-2]).each do |message|
         # I know you can't resend a 0mq message...  Does ffi-rzmq shield us from that
@@ -81,7 +117,7 @@ module Hastur
     #
     # Send a Hastur-specific message with a header envelope containing version, time, and sequence.
     #
-    def self.hastur_send(socket, method, data_hash)
+    def hastur_send(socket, method, data_hash)
       method ||= "error"
       @seq_num ||= 0
       @uptime ||= Time.now.to_i
