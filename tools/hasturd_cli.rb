@@ -13,7 +13,7 @@ require 'yajl'
 require 'multi_json'
 require 'trollop'
 
-require_relative "zmq_utils"
+require_relative "../lib/hastur/zmq_utils"
 
 MultiJson.engine = :yajl
 
@@ -41,7 +41,7 @@ if ZMQ::LibZMQ.version2? && opts[:router] =~ /\Wlocalhost\W/
 end
 
 ctx = ZMQ::Context.new(1)
-router_socket = socket_for_type_and_uri(ctx, :push, opts[:router], opts.merge({ :connect => true }) )
+router_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PUSH, opts[:router], opts.merge({ :connect => true }) )
 
 # Retrieve the JSON object from file and place it in a hash
 body = ""
@@ -55,7 +55,7 @@ loop do
     json = MultiJson.encode hash
     puts "Attempting to send message..."
     # opts[:method] is the routing key
-    multi_send router_socket, [ uuid, opts[:method], json ]
+    Hastur::ZMQUtils.multi_send router_socket, [ uuid, opts[:method], json ]
     puts "Sent message #{json.to_s}"
   end
 
