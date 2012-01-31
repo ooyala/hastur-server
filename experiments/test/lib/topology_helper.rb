@@ -7,21 +7,38 @@
 module Hastur
   module Test
     module Topology
-      attr_accessor :processes
+      attr_accessor :processes, :topology
 
       def initialize
-        @processes = Hash.new
+        @processes = Hash.new   # stores process information of the running node
+        @topology = Hash.new    # stores the metadata for all of the nodes in the topology
       end
      
       # 
-      # Executes the command for each given node in the topology
+      # For each of the nodes in the topology, store it in a hash where
+      # the key is the node name and the value is the actual node itself
       #
       def build topology
-        topology.each do |node|
-          # TODO(viet): run the command that starts up the node
+        topology.each do |n|
+          @topology[n[:name]] = n
+        end
+      end
 
-          # TODO(viet): store the subprocess for later manipulation
+      #
+      # Starts the node in the topology. Looks up the node's command
+      # given that the topology hash is keyed off of the node's name.
+      #
+      def start name
+        # run the command that starts up the node and store the subprocess for later manipulation
+        @processes[name] = IO.popen(@topology[name][:command])
+      end
 
+      #
+      # Starts all of the nodes in the topology in undeterministic order.
+      #
+      def start_all
+        @topology.each do |node|
+          start node[:name]
         end
       end
     end
