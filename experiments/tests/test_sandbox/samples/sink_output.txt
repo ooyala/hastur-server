@@ -1,9 +1,0 @@
-[
-
-  "eng-dynamic-184.v101.mtv",
-  "9d30e320-2a80-012f-c11f-109addba6b5d",
-  "v1\nnotify\nack:none",
-  "{\"params\":{\"name\":\"name\",\"subsystem\":\"backlot\",\"id\":\"thisismynotificationid\"},\"method\":\"notify\",\"uuid\":\"9d30e320-2a80-012f-c11f-109addba6b5d\",\"sequence\":2,\"uptime\":1327605578,\"time\":\"2012-01-26 11:19:46 -0800\"}"
-
-]
-
