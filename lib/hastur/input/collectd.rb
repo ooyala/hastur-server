@@ -110,9 +110,9 @@ module Hastur
           when TYPE_SIGN_SHA256
             raise Hastur::UnsupportedError.new("collectd TYPE_SIGN_SHA256")
           when TYPE_ENCR_AES256
-            raise Hastur::UnsupportedError.new("collectd TYPE_SIGN_SHA256")
+            raise Hastur::UnsupportedError.new("collectd TYPE_SIGN_AES256")
         else
-          raise "Invalid packet data type: #{type}, len: #{len}."
+          raise Hastur::PacketDecodingError.new "Invalid packet data type: #{type}, len: #{len}."
         end
 
         return key, value, (offset + len)
