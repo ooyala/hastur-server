@@ -30,11 +30,11 @@ EOS
       :default => "tcp://127.0.0.1:#{port}", :type => String
     port += 1
   end
-
+  
   opt :error_uri, "ZMQ Error sink URI", :default => "tcp://127.0.0.1:4350", :type => String
-  opt :linger,  "set ZMQ_LINGER",   :default => 1,                 :type => Integer
-  opt :hwm,     "set ZMQ_HWM",      :default => 1,                 :type => Integer
-  opt :timeout, "poll timeout",     :default => 0.1
+  opt :linger,    "set ZMQ_LINGER",     :default => 1,                      :type => Integer
+  opt :hwm,       "set ZMQ_HWM",        :default => 1,                      :type => Integer
+  opt :timeout,   "poll timeout",       :default => 0.1
 end
 
 method_uris = METHODS.map(&:to_s).map { |s| s + "_uri" }.map(&:to_sym)
@@ -56,7 +56,6 @@ STDERR.puts "Using ZeroMQ version #{version}"
 
 ctx = ZMQ::Context.new(1)
 
-
 def process_messages_for_routing(messages)
   destination = "error"
   if messages.size > 1
@@ -68,14 +67,10 @@ def process_messages_for_routing(messages)
       destination = routing_envelope
     end
   end
-
   hostname = Socket.gethostname
-
   # TODO(noah): Add more to envelope
   router_envelope = "#{hostname}"
-
   messages.unshift router_envelope
-
   destination
 end
 
@@ -99,8 +94,9 @@ poller.register_readable(router_socket)
 poller.register_readable(from_sink_socket)
 
 loop do
-  method = "error"
+  method = "error"      # by default, all messages will be routed to the "error" sink
   poller.poll_nonblock
+  # reading messages that are sent to the router from client
   if poller.readables.include?(router_socket)
     messages = Hastur::ZMQUtils.multi_recv(router_socket)
     STDERR.puts "Read from router socket: #{messages.inspect}"
@@ -117,6 +113,7 @@ loop do
     end
     STDERR.puts "Finished pushing packet to #{method} socket"
   end
+  # reading messages that are sent to the router from a sink
   if poller.readables.include?(from_sink_socket)
     STDERR.puts "Attempting to read from sink socket"
     messages = Hastur::ZMQUtils.multi_recv(from_sink_socket)
