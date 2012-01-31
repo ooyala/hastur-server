@@ -202,17 +202,14 @@ module Hastur
                   message = multi_recv(incoming)
 
                   if socket[:type] == :router
-                    # TODO(noah): this will get way bigger.  Router sockets in particular need
-                    # to open more connections, set socket identities and generally do way more
-                    # work
+                    # Remove the extra envelope section added by receiving on a router socket
+                    client_id = message.shift
 
                     @router_sockets ||= {}
                     @router_sockets[client_id] ||= connect_socket(context, SEND_PORT_FOR[type],
                                                                   uri_out, :hwm => 1,
                                                                   :identity => client_id)
-
-                    # Remove the extra envelope section added by receiving on a router socket
-                    envelope = message.shift
+                    outgoing = @router_sockets[client_id]
                   end
 
                   multi_send(outgoing, message)
