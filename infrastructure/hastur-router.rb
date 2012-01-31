@@ -20,9 +20,10 @@ basic-router.rb - a simple 0mq router.  Clients connect to the router URI,
 
   Options:
 EOS
-  opt :router_uri, "ZMQ Router (incoming) URI", :default => "tcp://127.0.0.1:4321", :type => String
-  opt :pub_uri,  "ZMQ Pub URI for sinks", :default => "tcp://127.0.0.1:4322", :type => String
-  opt :from_sink_uri, "ZMQ REQ (incoming from sink) URI", :default => "tcp://127.0.0.1:4323", :type => String
+  opt :router_uri,          "ZMQ Router (incoming) URI", :default => "tcp://127.0.0.1:4321", :type => String
+  opt :from_client_pub_uri, "ZMQ Pub URI for sinks",     :default => "tcp://127.0.0.1:4322", :type => String
+  opt :to_client_pub_uri,   "ZMQ Pub URI for sinks",     :default => "tcp://127.0.0.1:4322", :type => String
+  opt :from_sink_uri,       "ZMQ from-sink URI",         :default => "tcp://127.0.0.1:4323", :type => String
 
   port = 4330
   METHODS.each do |method|
@@ -39,7 +40,7 @@ end
 
 method_uris = METHODS.map(&:to_s).map { |s| s + "_uri" }.map(&:to_sym)
 
-(method_uris + [:router_uri, :pub_uri, :error_uri]).each do |opt|
+(method_uris + [:router_uri, :from_client_pub_uri, :to_client_pub_uri, :error_uri]).each do |opt|
   if opts[opt] !~ /\w+:\/\/[^:]+:\d+/
     Trollop::die opt, "Option --#{opt} must be of the form protocol://hostname:port rather than #{opts[opt]}"
   end
@@ -76,7 +77,8 @@ end
 
 sockets = {}
 router_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::ROUTER, opts[:router_uri], opts)
-pub_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PUB, opts[:pub_uri], opts)
+from_client_pub_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PUB, opts[:from_client_pub_uri], opts)
+to_client_pub_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PUB, opts[:to_client_pub_uri], opts)
 from_sink_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PULL, opts[:from_sink_uri], opts)
 error_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PUSH, opts[:error_uri], opts)
 
@@ -102,8 +104,8 @@ loop do
     STDERR.puts "Read from router socket: #{messages.inspect}"
     method = process_messages_for_routing(messages)
     STDERR.puts "Routing data to #{method.inspect}: #{messages.inspect}"
-    STDERR.puts "Sending to PUB socket"
-    Hastur::ZMQUtils.multi_send(pub_socket, messages)
+    STDERR.puts "Sending to from-client PUB socket"
+    Hastur::ZMQUtils.multi_send(from_client_pub_socket, messages)
     if sockets[method.to_sym]
       STDERR.puts "Pushing packet to #{method} socket"
       Hastur::ZMQUtils.multi_send(sockets[method.to_sym], messages)
@@ -117,6 +119,10 @@ loop do
   if poller.readables.include?(from_sink_socket)
     STDERR.puts "Attempting to read from sink socket"
     messages = Hastur::ZMQUtils.multi_recv(from_sink_socket)
+
+    STDERR.puts "Sending to to-client PUB socket"
+    Hastur::ZMQUtils.multi_send(to_client_pub_socket, messages)
+
     STDERR.puts "Read from sink socket, sending on router socket: #{messages.inspect}"
     Hastur::ZMQUtils.multi_send(router_socket, messages)
     STDERR.puts "Finished sending on router socket"
