@@ -1,7 +1,7 @@
-$LOAD_PATH.unshift "../"
+require "test_helper"
 
 require "test/unit"
-require "assertions"
+require "hastur/test/assertions"
 
 class AssertionTest < Test::Unit::TestCase
   include ::Hastur::Test::Assert

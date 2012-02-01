@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-require_relative "../lib/topology_helper"
+require_relative "./integration_test_helper"
 
 PROCESSES = [
              {

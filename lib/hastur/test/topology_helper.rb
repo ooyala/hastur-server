@@ -1,8 +1,5 @@
 #!/usr/bin/env ruby
 
-# Load local Hastur first
-$LOAD_PATH.unshift "../../lib"
-
 require "hastur/version"
 require "erubis"
 
