@@ -1,6 +1,0 @@
-source :rubygems
-
-gem "uuid"
-gem "json"
-gem "ffi-rzmq"
-

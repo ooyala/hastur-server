@@ -1,1 +1,0 @@
-var search_data = {"index":{"searchIndex":["gemfile"],"longSearchIndex":[""],"info":[["Gemfile","","Gemfile.html","","<p>source :rubygems\n<p>gem \"uuid\" gem \"json\" gem \"ffi-rzmq\"\n"]]}}
