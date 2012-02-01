@@ -6,11 +6,6 @@ $LOAD_PATH.unshift "../../lib"
 require "hastur/version"
 require "erubis"
 
-def expand_command(command, locals = {})
-  eruby = Erubis::ERuby.new command
-  eruby.evaluate locals.merge(:version => Hastur::VERSION)
-end
-
 # To test, you'll be creating a Topology, representing a cluster of
 # interconnected processes.  You'll also optionally declare a number
 # of resources for the test framework to verify - files it can read,
@@ -76,8 +71,8 @@ module Hastur
       def start_all
         allocate_resources
 
-        @topology.each do |node|
-          start node[:name]
+        @processes.each do |name, |
+          start name
         end
       end
 
@@ -86,20 +81,25 @@ module Hastur
       # given that the topology hash is keyed off of the node's name.
       #
       def start name
+        allocate_resources
+
         # run the command that starts up the node and store the subprocess for later manipulation
-        @processes[name] = IO.popen(@topology[name][:command]) unless @topology[name].nil?
-        p @processes[name]
+        @processes[name][:io] = IO.popen(@processes[name][:expanded_command])
+        puts @processes[name].inspect
       end
 
       #
       # Immediately kills a node given its topology name
       #
       def stop name
-        pid = @processes[name].pid
+        pid = @processes[name][:io].pid
         if pid
           Process.kill(TERM, pid)
           Process.waitpid(pid, Process::WHOHANG)
         end
+
+        # Should we read and save stdout/stderr?
+        @processes[name][:io] = nil
       end
 
       #
@@ -124,6 +124,11 @@ module Hastur
 
       private
 
+      def expand_text(command, locals = {})
+        eruby = Erubis::ERuby.new command
+        eruby.evaluate locals
+      end
+
       REQUIRED_NODE_KEYS = [ :name, :command ]
 
       def verify_process(node)
@@ -143,8 +148,21 @@ module Hastur
         return if @fully_initialized
 
         stop_all
+
+        @processes.each do |name, process|
+          process[:variables] = {
+            :name => name,
+            :process => process,
+            :version => Hastur::VERSION,
+          }
+        end
+
         Topology.plugins.values.each do |plugin|
           plugin.allocate_resources(@processes) if plugin.respond_to?(:allocate_resources)
+        end
+
+        @processes.each do |_, process|
+          process[:expanded_command] = expand_text(command, process[:variables])
         end
 
         @fully_initialized = true
@@ -193,6 +211,13 @@ module Hastur
             @packet_listeners_to ||= {}
             @packet_listeners_to[to] ||= []
             @packet_listeners_to[to] << block
+          end
+        end
+
+        def all_packets_to(to)
+          mutex.synchonize do
+            @packet_captures_to ||= {}
+            (@packet_captures_to[to] || []).dup
           end
         end
 
