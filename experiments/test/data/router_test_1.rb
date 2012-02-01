@@ -68,3 +68,13 @@ EOS
 ]
 
 TOPOLOGY = Hastur::Test::Topology.new(PROCESSES)
+TOPOLOGY.start_all
+puts "Sleeping for 10 seconds..."
+sleep 10
+
+puts "Stopping all nodes."
+TOPOLOGY.stop_all
+
+assert_equal 1, packets_to("client1").filter("method" => "heartbeat", "value" => /37$/).map {|p| p[:subpart]}.filter(:subfield => 7).count
+
+puts "Done!"
