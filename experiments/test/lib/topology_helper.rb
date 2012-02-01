@@ -121,7 +121,7 @@ module Hastur
 
       REQUIRED_NODE_KEYS = [ :name, :command ]
 
-      def verify_node(node)
+      def verify_process(node)
         unless (REQUIRED_NODE_KEYS - node.keys).empty?
           raise "This node is missing key(s) #{(REQUIRED_NODE_KEYS - node.keys).join(', ')}: #{node.inspect}"
         end
