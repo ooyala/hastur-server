@@ -6,7 +6,7 @@ $LOAD_PATH.unshift "../../lib"
 require "hastur/version"
 require "erubis"
 
-def expand_command(command, locals => {})
+def expand_command(command, locals = {})
   eruby = Erubis::ERuby.new command
   eruby.evaluate locals.merge(:version => Hastur::VERSION)
 end
@@ -38,7 +38,7 @@ end
 #
 module Hastur
   module Test
-    module Topology
+    class Topology
       def initialize(processlist = [])
         @processes = Hash.new   # stores process information for all nodes
 
@@ -59,6 +59,12 @@ module Hastur
       # Read-only accessor
       def processes
         @processes.dup # dup so nobody can modify it
+      end
+
+      # TODO(viet): Not sure what this is supposed to do, but we need to implement it or remove it and all 
+      #             references to it completely.
+      def verify_process(process)
+        
       end
 
       def add_process(process)
@@ -88,6 +94,7 @@ module Hastur
       def start name
         # run the command that starts up the node and store the subprocess for later manipulation
         @processes[name] = IO.popen(@topology[name][:command]) unless @topology[name].nil?
+        p @processes[name]
       end
 
       #

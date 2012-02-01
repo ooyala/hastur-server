@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-require "../topology_helper"
+require_relative "../lib/topology_helper"
 
 PROCESSES = [
              {
@@ -24,13 +24,13 @@ EOS
                :resources => {
                  :zmq => [
                    { :name => :router, :type => :router, :listen => 4321 },
-                   { :name => :register, :type => :push, :listen => 4330 }
-                   { :name => :notify, :type => :push, :listen => 4331 }
-                   { :name => :stat, :type => :push, :listen => 4332 }
-                   { :name => :heartbeat, :type => :push, :listen => 4333 }
-                   { :name => :logs, :type => :push, :listen => 4334 }
-                   { :name => :error, :type => :push, :listen => 4350 }
-                   { :name => :pub, :type => :pub, :listen => 4322 }
+                   { :name => :register, :type => :push, :listen => 4330 },
+                   { :name => :notify, :type => :push, :listen => 4331 },
+                   { :name => :stat, :type => :push, :listen => 4332 },
+                   { :name => :heartbeat, :type => :push, :listen => 4333 },
+                   { :name => :logs, :type => :push, :listen => 4334 },
+                   { :name => :error, :type => :push, :listen => 4350 },
+                   { :name => :pub, :type => :pub, :listen => 4322 },
                    { :name => :from_sink, :type => :pull, :listen => 4323 }
                  ],
                }
@@ -67,4 +67,4 @@ EOS
              },
 ]
 
-topology = Hastur::Test::Topology.new PROCESSES
+TOPOLOGY = Hastur::Test::Topology.new(PROCESSES)
