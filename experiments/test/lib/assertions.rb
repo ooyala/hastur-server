@@ -6,25 +6,28 @@
 module Hastur
   module Test
     module Assert
-      
+      extend self
+
       #
-      # Performs an assertion every second until the timeout reaches.
-      # The option to "keep_timeout_alive" is used whenever the tester
-      # wants to keep the equals method blocked for timeout seconds. 
-      # Otherwise the equals method will return as soon as an assertion
-      # is true.
+      # Ensures that actual hashes contain the same information as the expected values.
       #
-      def self.equal(expected, &actual, timeout=0, keep_timeout_alive=true)
-        if keep_timeout_alive
-          sleep timeout
-          return expected == actual.call
-        else
-          1.upto(timeout) do
-            sleep 1
-            return true if expected == actual.call
+      def packet_equal(expected, actual)
+        queue = [ expected ]
+        actual_queue = [ actual ]
+        while !queue.empty?
+          e = queue.pop
+          a = actual_queue.pop
+          e.each do |k,v|
+            if v.class == Hash
+              return false if a[k].nil? || a[k].class != Hash
+              queue << v
+              actual_queue << a[k]
+            else
+              return false if a[k] != v
+            end
           end
-          return false
         end
+        true
       end
     end
   end
