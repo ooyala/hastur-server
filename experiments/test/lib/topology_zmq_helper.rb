@@ -52,16 +52,18 @@ module Hastur
       end
 
       def allocate_port
-        @last_port_num ||= 21000
+        mutex.synchronize do
+          @last_port_num ||= 21000
 
-        attempts = 0
-        while attempts < 10
-          @last_port_num += 1
-          return @last_port_num if port_open?(@last_port_num)
-          attempts += 1
+          attempts = 0
+          while attempts < 10
+            @last_port_num += 1
+            return @last_port_num if port_open?(@last_port_num)
+            attempts += 1
+          end
+
+          raise "Couldn't find an open TCP port after 10 attempts!"
         end
-
-        raise "Couldn't find an open TCP port after 10 attempts!"
       end
 
       # For each ZMQ port type, we receive on the actual port type
@@ -78,40 +80,34 @@ module Hastur
       }
 
       def allocate_resources(processes)
-        processes.each do |_,process|
+        processes.each do |_, process|
+          process[:variables][:zmq] = {}
+        end
+
+        all_sockets = {}
+
+        processes.each do |_, process|
           zmq = process[:resources][:zmq]
           next unless zmq
 
           zmq.each do |socket|
+            socket[:forwarder_port] = allocate_port
             socket[:forwarder_thread] = Thread.new do
-              type = socket[:type]
-              uri_in = "tcp://127.0.0.1:#{allocate_port}"
-              uri_out = "tcp://127.0.0.1:#{socket[:listen]}"
-
-              # Set HWM to 1 so we don't get "instant send" on one end and everything backed
-              # up here.
-              incoming = bind_socket(context, type, uri_in, :hwm => 1)
-              outgoing = connect_socket(context, SEND_PORT_FOR[type], uri_out, :hwm => 1)
-
-              loop do
-                message = multi_recv(incoming)
-
-                capture_packet_to(message, uri_out)
-
-                if socket[:type] == :router
-                  # Remove the extra envelope section added by receiving on a router socket
-                  client_id = message.shift
-
-                  @router_sockets ||= {}
-                  @router_sockets[client_id] ||= connect_socket(context, SEND_PORT_FOR[type],
-                                                                uri_out, :hwm => 1,
-                                                                :identity => client_id)
-                  outgoing = @router_sockets[client_id]
-                end
-
-                multi_send(outgoing, message)
-              end
+              forward_packets(socket)
             end
+
+            # This process gets the URI of its own sockets, unmodified
+            socket_uri = "tcp://127.0.0.1:#{socket[:listen]}"
+            process[:variables][:zmq][socket[:name]] = socket_uri
+
+            all_sockets[socket[:name]] = "tcp://127.0.0.1:#{socket[:forwarder_port]}"
+          end
+        end
+
+        processes.each do |_, process|
+          all_sockets.each do |socket_name, socket_uri|
+            # Each process sees the URI of *other* processes sockets with the forwarding URI
+            process[:variables][:zmq][socket_name] ||= socket_uri
           end
         end
       end
@@ -123,9 +119,42 @@ module Hastur
 
           zmq.each do |socket|
             Thread.kill socket[:forwarder_thread]
+            socket[:forwarder_port] = nil
+            socket[:forwarder_thread] = nil
           end
         end
       end
+
+      def forward_packets(socket)
+        type = socket[:type]
+        uri_in = "tcp://127.0.0.1:#{socket[:forwarder_port]}"
+        uri_out = "tcp://127.0.0.1:#{socket[:listen]}"
+
+        # Set HWM to 1 so we don't get "instant send" on one end and everything backed
+        # up here.
+        incoming = bind_socket(context, type, uri_in, :hwm => 1)
+        outgoing = connect_socket(context, SEND_PORT_FOR[type], uri_out, :hwm => 1)
+
+        loop do
+          message = multi_recv(incoming)
+
+          capture_packet_to(message, uri_out)
+
+          if socket[:type] == :router
+            # Remove the extra envelope section added by receiving on a router socket
+            client_id = message.shift
+
+            @router_sockets ||= {}
+            @router_sockets[client_id] ||= connect_socket(context, SEND_PORT_FOR[type],
+                                                          uri_out, :hwm => 1,
+                                                          :identity => client_id)
+            outgoing = @router_sockets[client_id]
+          end
+
+          multi_send(outgoing, message)
+        end
+      end
+
     end
   end
 end
