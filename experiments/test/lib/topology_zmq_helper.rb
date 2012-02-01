@@ -1,6 +1,8 @@
 module Hastur
   module Test
     module ZMQ
+      extend self
+
       def context
         @context ||= ZMQ::Context.new
       end
@@ -15,7 +17,7 @@ module Hastur
       end
 
       def mutex
-        @mutex ||= Mutex
+        @mutex ||= Mutex.new
       end
 
       def capture_packet_to(packet, to)
@@ -98,6 +100,8 @@ module Hastur
 
             # This process gets the URI of its own sockets, unmodified
             socket_uri = "tcp://127.0.0.1:#{socket[:listen]}"
+
+            STDERR.puts "Setting variable zmq[:#{socket[:name]}] for process #{process[:name]}..."
             process[:variables][:zmq][socket[:name]] = socket_uri
 
             raise "Duplicate socket name #{socket[:name]} between processes!" if all_sockets[socket[:name]]
