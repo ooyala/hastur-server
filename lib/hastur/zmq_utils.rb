@@ -24,44 +24,6 @@ module Hastur
     end
 
     #
-    # Create a socket and bind or connect in one go, setting sane defaults for sockopts.
-    # Defaults:
-    # * ZMQ::LINGER => 1
-    # * ZMQ::HWM    => 1
-    #
-    # Example:
-    #  Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PULL, "tcp://127.0.0.1:1234")
-    #
-    def bind_or_connect_socket(ctx, type, uri, opts = {})
-      socket = ctx.socket(type)
-
-      opts[:linger] = 1 unless opts.has_key?(:linger)
-      opts[:hwm]    = 1 unless opts.has_key?(:hwm)
-
-      # Linger and HWM aren't strictly necessary, but the behavior
-      # they enable is what we usually expect.  For now, have all
-      # sockets use the same options.  Set socket options *before*
-      # bind or connect.
-
-      # flush messages before shutdown
-      socket.setsockopt(ZMQ::LINGER, opts[:linger]) if opts[:linger]
-      # high water mark, the number of buffered messages
-      socket.setsockopt(ZMQ::HWM,    opts[:hwm])    if opts[:hwm]
-      # Identity for router, req and sub sockets
-      socket.setsockopt(ZMQ::IDENTITY, opts[:identity]) if opts[:identity]
-
-      if opts[:bind]
-        socket.bind uri
-      elsif opts[:connect]
-        socket.connect uri
-      else
-        raise "Must provide either bind or connect option to bind_or_connect_socket!"
-      end
-      STDERR.puts "New socket #{opts[:bind] ? "listening" : "connecting"} on '#{uri}'."
-      socket
-    end
-    
-    #
     # Create a socket and connect in one go, setting sane defaults for sockopts.
     # Defaults:
     # * ZMQ::LINGER => 1
@@ -132,6 +94,46 @@ module Hastur
       json = MultiJson.encode(data_hash.merge(packet_data))
       envelope = [ "v1\n#{method}\nack:none" ]
       multi_send(socket, envelope + [ json ])
+    end
+
+    private
+
+    #
+    # Create a socket and bind or connect in one go, setting sane defaults for sockopts.
+    # Defaults:
+    # * ZMQ::LINGER => 1
+    # * ZMQ::HWM    => 1
+    #
+    # Example:
+    #  Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PULL, "tcp://127.0.0.1:1234")
+    #
+    def bind_or_connect_socket(ctx, type, uri, opts = {})
+      socket = ctx.socket(type)
+
+      opts[:linger] = 1 unless opts.has_key?(:linger)
+      opts[:hwm]    = 1 unless opts.has_key?(:hwm)
+
+      # Linger and HWM aren't strictly necessary, but the behavior
+      # they enable is what we usually expect.  For now, have all
+      # sockets use the same options.  Set socket options *before*
+      # bind or connect.
+
+      # flush messages before shutdown
+      socket.setsockopt(ZMQ::LINGER, opts[:linger]) if opts[:linger]
+      # high water mark, the number of buffered messages
+      socket.setsockopt(ZMQ::HWM,    opts[:hwm])    if opts[:hwm]
+      # Identity for router, req and sub sockets
+      socket.setsockopt(ZMQ::IDENTITY, opts[:identity]) if opts[:identity]
+
+      if opts[:bind]
+        socket.bind uri
+      elsif opts[:connect]
+        socket.connect uri
+      else
+        raise "Must provide either bind or connect option to bind_or_connect_socket!"
+      end
+      STDERR.puts "New socket #{opts[:bind] ? "listening" : "connecting"} on '#{uri}'."
+      socket
     end
   end
 end
