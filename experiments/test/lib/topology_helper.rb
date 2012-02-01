@@ -61,12 +61,6 @@ module Hastur
         @processes.dup # dup so nobody can modify it
       end
 
-      # TODO(viet): Not sure what this is supposed to do, but we need to implement it or remove it and all 
-      #             references to it completely.
-      def verify_process(process)
-        
-      end
-
       def add_process(process)
         verify_process process
 
@@ -117,6 +111,17 @@ module Hastur
         end
       end
 
+      def self.register_plugin(name, klass)
+        @plugins ||= {}
+        raise "Plugin for #{name} already exists in Hastur::Test::Topology!" if @plugins[name]
+        @plugins[name] = klass
+      end
+
+      def self.plugins
+        @plugins ||= {}
+        @plugins.dup
+      end
+
       private
 
       REQUIRED_NODE_KEYS = [ :name, :command ]
@@ -128,19 +133,27 @@ module Hastur
 
         node[:resources] ||= node["resources"]
         node[:resources] ||= {}
+
+        Topology.plugins.values.each do |plugin|
+          plugin.verify_process(node) if plugin.respond_to?(:verify_process)
+        end
       end
 
       def allocate_resources
         return if @fully_initialized
 
         stop_all
-        ZMQ.allocate_resources(@processes)
+        Topology.plugins.values.each do |plugin|
+          plugin.allocate_resources(@processes) if plugin.respond_to?(:allocate_resources)
+        end
 
         @fully_initialized = true
       end
 
       def free_resources
-        ZMQ.free_resources(@processes)
+        Topology.plugins.values.each do |plugin|
+          plugin.free_resources(@processes) if plugin.respond_to?(:free_resources)
+        end
         @fully_initialized = false
       end
 
@@ -155,6 +168,31 @@ module Hastur
             true
           rescue
             false
+          end
+        end
+
+        def mutex
+          @mutex ||= Mutex
+        end
+
+        def capture_packet_to(packet, to)
+          mutex.synchronize do
+            @packet_captures_to ||= {}
+            @packet_captures_to[to] ||= []
+            @packet_captures_to[to] << packet
+
+            @packet_listeners_to ||= {}
+            (@packet_listeners_to[to] || []).each do |listener_block|
+              listener_block.call(packet, :from => from, :to => to)
+            end
+          end
+        end
+
+        def listen_for_packets_to(to, &block)
+          mutex.synchonize do
+            @packet_listeners_to ||= {}
+            @packet_listeners_to[to] ||= []
+            @packet_listeners_to[to] << block
           end
         end
 
@@ -208,6 +246,8 @@ module Hastur
                 loop do
                   message = multi_recv(incoming)
 
+                  capture_packet_to(message, uri_out)
+
                   if socket[:type] == :router
                     # Remove the extra envelope section added by receiving on a router socket
                     client_id = message.shift
@@ -240,3 +280,5 @@ module Hastur
     end
   end
 end
+
+Hastur::Test::Topology.register_plugin(:zmq, Hastur::Test::Topology::ZMQ)
