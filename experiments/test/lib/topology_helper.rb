@@ -94,6 +94,8 @@ module Hastur
       # Immediately kills a node given its topology name
       #
       def stop name
+        return unless @processes[name][:io]
+
         pid = @processes[name][:io].pid
         if pid
           Process.kill(TERM, pid)
@@ -127,8 +129,16 @@ module Hastur
       private
 
       def expand_text(command, locals = {})
-        eruby = Erubis::ERuby.new command
-        eruby.evaluate locals
+        begin
+          eruby = Erubis::Eruby.new command
+          eruby.evaluate locals
+        rescue
+          STDERR.puts "Error evaluating in erubis!"
+          STDERR.puts "Text: #{command}"
+          STDERR.puts "Variables: #{locals.inspect}"
+
+          raise
+        end
       end
 
       REQUIRED_NODE_KEYS = [ :name, :command ]
@@ -164,7 +174,7 @@ module Hastur
         end
 
         @processes.each do |_, process|
-          process[:expanded_command] = expand_text(command, process[:variables])
+          process[:expanded_command] = expand_text(process[:command], process[:variables])
         end
 
         @fully_initialized = true
