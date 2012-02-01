@@ -30,30 +30,6 @@ module Hastur
         true
       end
 
-      def packet_list_equal(expected, actual)
-        # TODO(viet): Figure out something that is better than O(n^2).
-        #             But for small lists, this should be sufficient
-        return false if expected.size != actual.size
-        e_idx = 0
-        a_idx = 0
-       
-        # brute force, pair-wise comparison
-        while e_idx < expected.size
-          a_idx = 0
-          while a_idx < actual.size
-            if packet_equal expected[e_idx], actual[a_idx]
-              expected.delete_at(e_idx)
-              actual.delete_at(a_idx)
-              e_idx -= 1
-              break
-            end
-            a_idx += 1
-          end
-          e_idx += 1
-        end
-        expected.empty? && actual.empty?
-      end
-
     end
   end
 end

@@ -20,15 +20,4 @@ class AssertionTest < Test::Unit::TestCase
     assert(packet_equal(e, a))
   end
 
-  def test_packet_list_equal_1
-    e = [{:a => {:b => "foo"}}, {:a => "h"}]
-    a = [{:a => "h"}, {:a => {:b => "foo"}}]
-    assert(packet_list_equal(e, a)) 
-  end
-
-  def _test_packet_list_equal_2
-    e = [{:a => {:b => "foo"}}, {:a => "h"}]
-    a = [{:a => "h"}, {:a => {:b => "foo"}}, {:a => "h"}]
-    assert(!packet_list_equal(e, a))
-  end
 end
