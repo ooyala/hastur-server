@@ -100,13 +100,14 @@ module Hastur
             socket_uri = "tcp://127.0.0.1:#{socket[:listen]}"
             process[:variables][:zmq][socket[:name]] = socket_uri
 
+            raise "Duplicate socket name #{socket[:name]} between processes!" if all_sockets[socket[:name]]
             all_sockets[socket[:name]] = "tcp://127.0.0.1:#{socket[:forwarder_port]}"
           end
         end
 
         processes.each do |_, process|
           all_sockets.each do |socket_name, socket_uri|
-            # Each process sees the URI of *other* processes sockets with the forwarding URI
+            # Each process sees the URI of *other* processes' sockets with the forwarding URI
             process[:variables][:zmq][socket_name] ||= socket_uri
           end
         end
