@@ -86,7 +86,7 @@ module Hastur
         allocate_resources
 
         # run the command that starts up the node and store the subprocess for later manipulation
-        @processes[name][:io] = IO.popen(@processes[name][:expanded_command])
+        @processes[name][:io] = spawn(@processes[name][:expanded_command])
         puts @processes[name].inspect
       end
 
