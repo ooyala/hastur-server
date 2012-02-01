@@ -18,4 +18,8 @@ class ArrayTest < Test::Unit::TestCase
     list = [ {:a => 'a', :b => 'b'}, {:a => 'a'} ].fuzzy_filter( {:c => 'a'} )
     assert_equal(0, list.size)
   end
+  def test_fuzzy_filter_5
+    list = [ {:a => 'a', :b => 'b'}, {:a => 'a'} ].fuzzy_filter( {:a => 'a', :b => 'b'} )
+    assert_equal(1, list.size)
+  end
 end
