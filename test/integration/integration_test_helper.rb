@@ -6,3 +6,5 @@ require "bundler"
 $LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..", "..", "lib")
 
 require "hastur/test/topology_helper"
+
+HASTUR_ROOT = File.join(File.dirname(__FILE__), "..", "..")
