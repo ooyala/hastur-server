@@ -44,6 +44,7 @@ module Hastur
         end
 
         @fully_initialized = false
+        @all_stopped = true
       end
 
       def process_names
@@ -73,6 +74,8 @@ module Hastur
         @processes.each do |name, |
           start name
         end
+
+        at_exit { stop_all }
       end
 
       #
@@ -80,10 +83,15 @@ module Hastur
       # given that the topology hash is keyed off of the node's name.
       #
       def start name
+        @all_stopped = false
         allocate_resources
 
+        # TODO(noah): redirect and save stdout and stderr
+        # TODO(noah): redirect and pipe in stdin for test input
+        # TODO(noah): allow passing in spawn-type options like resource limits
+
         # run the command that starts up the node and store the subprocess for later manipulation
-        @processes[name][:io] = spawn(@processes[name][:expanded_command])
+        @processes[name][:pid] = spawn(@processes[name][:expanded_command])
         puts @processes[name].inspect
       end
 
@@ -91,15 +99,12 @@ module Hastur
       # Immediately kills a node given its topology name
       #
       def stop name
-        return unless @processes[name][:io]
+        return unless @processes[name][:pid]
 
-        pid = @processes[name][:io].pid
-        if pid
-          Process.kill(TERM, pid)
-          Process.waitpid(pid, Process::WHOHANG)
-        end
+        pid = @processes[name][:pid]
+        Process.kill(TERM, pid)
+        Process.waitpid(pid, Process::WHOHANG)
 
-        # Should we read and save stdout/stderr?
         @processes[name][:io] = nil
       end
 
@@ -107,6 +112,8 @@ module Hastur
       # Kills all of the nodes in the topology.
       #
       def stop_all
+        return if @all_stopped
+
         @processes.each do |name, |
           stop name
         end
