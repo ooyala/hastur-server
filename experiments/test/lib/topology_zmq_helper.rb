@@ -1,3 +1,5 @@
+require "socket"
+
 module Hastur
   module Test
     module ZMQ
