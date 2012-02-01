@@ -131,7 +131,7 @@ module Hastur
       def expand_text(command, locals = {})
         begin
           eruby = Erubis::Eruby.new command
-          eruby.evaluate locals
+          eruby.result locals
         rescue
           STDERR.puts "Error evaluating in erubis!"
           STDERR.puts "Text: #{command}"
