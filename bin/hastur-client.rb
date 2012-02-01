@@ -46,7 +46,7 @@ def exec_plugin(plugin_command, plugin_args=[])
   child_out_r, child_out_w = IO.pipe
   child_err_r, child_err_w = IO.pipe
 
-  child_pid = Kernel.spawn(plugin_command, plugin_args, 
+  child_pid = spawn(plugin_command, plugin_args, 
     :out => child_out_w,
     :err => child_err_w,
     :rlimit_cpu => 5,   # 5 seconds of CPU time
