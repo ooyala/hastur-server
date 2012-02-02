@@ -79,8 +79,10 @@ module Hastur
         :pull => :push,
         :pub => :sub,
         :sub => :pub,
-        :router => :req,
-        :dealer => :req,
+
+        # Looks like both dealer and router sockets are going to require a bit of weird special-casing
+        :router => :dealer,
+        :dealer => :router,
       }
 
       def allocate_resources(processes)
@@ -132,6 +134,19 @@ module Hastur
         end
       end
 
+      # This is a hack.  It's going to be difficult for us to deal
+      # with router sockets, in the sense that they look for a
+      # specific socket identity to send to and we don't necessarily
+      # know who is connected to us.  Right now, we start
+      # impersonating a given socket connected to a router after the
+      # first time it sends to us.  Which is good enough... sometimes.
+
+      # I have no doubt that there is a better ZMQ hack to make this
+      # work, but I'm pretty sure it's impossible to do correctly
+      # using the supported public API.  On the plus side, the
+      # "correct" way to do it is to send to the router first, and
+      # that works fine.
+
       def forward_packets(socket)
         type = socket[:type]
         uri_in = "tcp://127.0.0.1:#{socket[:forwarder_port]}"
@@ -155,7 +170,7 @@ module Hastur
             multi_send(incoming, message)
           end
 
-          if poller.readables.include?(incoming)
+          unless (poller.readables - outgoing).empty?
             message = multi_recv(incoming)
             capture_packet_to(message, uri_out)
 
@@ -168,6 +183,10 @@ module Hastur
                                                             uri_out, :hwm => 1,
                                                             :identity => client_id)
               outgoing = @router_sockets[client_id]
+
+              poller.register_readable(outgoing)
+            elsif socket[:type] == :dealer
+
             end
 
             multi_send(outgoing, message)
