@@ -92,8 +92,8 @@ module Hastur
         # TODO(noah): allow passing in spawn-type options like resource limits
 
         # run the command that starts up the node and store the subprocess for later manipulation
+        STDERR.puts "Running process: #{@processes[name][:expanded_command]}"
         @processes[name][:pid] = spawn(@processes[name][:expanded_command])
-        puts @processes[name].inspect
       end
 
       #
@@ -106,7 +106,14 @@ module Hastur
         Process.kill("TERM", pid)
         sleep 0.01
         ret = Process.waitpid(pid, Process::WNOHANG)
-        Process.kill(-9, pid) unless ret == pid
+        unless ret == pid
+          STDERR.puts "Sending kill -9 to #{name}, pid #{pid}!"
+          begin
+            Process.kill(-9, pid)
+          rescue
+            STDERR.puts "Exception killing #{name} process (#{pid}): #{$!.message}"
+          end
+        end
 
         @processes[name][:pid] = nil
       end
