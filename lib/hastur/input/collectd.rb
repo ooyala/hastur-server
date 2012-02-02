@@ -37,9 +37,8 @@ module Hastur
 
       # Decodes a single collectd UDP packet using offset tracking, returns a hash.
       # The first argument is a binary string (your recvfrom() buffer).
-      # The second argument is a boolean. When set to true, nil is returned instead of raising
-      # exceptions on invalid/unparsable packets.
-      def self.decode_packet(data, tolerant)
+      # Returns nil on invalid/unparsable data.
+      def self.decode_packet(data)
         stats = {}
         offset = 0
 
@@ -49,11 +48,7 @@ module Hastur
             stats[key] = value
           end
         rescue
-          if tolerant
-            return nil
-          else
-            raise
-          end
+          return nil
         end
 
         return stats

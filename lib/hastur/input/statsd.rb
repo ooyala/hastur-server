@@ -10,14 +10,11 @@ module Hastur
         (?<unit>\p{Graph}+) # the unit, e.g. "c" or "ms", but could have |@\d\.\d but don't parse that yet
         \s*\Z               # any amount of whitespace, end of string
       }xn
-    end
 
-    def self.decode_packet(data, tolerant)
-      stat = RE.match(data)
-      if stat.nil? and tolerant == false
-        raise "Packet did not match Statsd regular expression."
+      # Returns nil on invalid/unparsable data.
+      def self.decode_packet(data)
+        RE.match(data)
       end
-      stat
     end
   end
 end

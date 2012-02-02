@@ -46,7 +46,7 @@ class TestHasturInputCollectd < MiniTest::Unit::TestCase
       %w[nnZ7 nnQ nnQ nnZ7 nnZ4 nnZ2 nnZ8 nnQ nnQ nnZ6 nnQ nna*].join
     )
 
-    stat = Hastur::Input::Collectd.decode_packet(packet, false)
+    stat = Hastur::Input::Collectd.decode_packet(packet)
     refute_nil stat
     assert_equal data[2],  stat[:host],           "check host value"
     assert_equal data[5],  stat[:time],           "check time value"
@@ -67,7 +67,7 @@ class TestHasturInputCollectd < MiniTest::Unit::TestCase
       next unless File.file? path
       next unless file =~ /\d+\.bin$/
       msg = File.read(path)
-      stat = Hastur::Input::Collectd.decode_packet(msg, false)
+      stat = Hastur::Input::Collectd.decode_packet(msg)
       refute_nil stat
 
       # the packets this was written against were recorded on one box, hostname hardcoded here
@@ -83,7 +83,7 @@ class TestHasturInputCollectd < MiniTest::Unit::TestCase
       msg = open("/dev/urandom", "rb") do |io|
         io.read(1000)
       end
-      stat = Hastur::Input::Collectd.decode_packet(msg, true)
+      stat = Hastur::Input::Collectd.decode_packet(msg)
       assert_nil stat
     end
   end
