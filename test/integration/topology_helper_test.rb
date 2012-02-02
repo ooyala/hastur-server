@@ -31,6 +31,8 @@ class TopologyHelperTest < Test::Unit::TestCase
     t.start_all
     assert_equal(2, t.processes.size)
     assert_equal(2, t.process_names.size)
+    pid1 = t.processes[:client1][:pid]
+    pid2 = t.processes[:client2][:pid]
     assert_not_nil(t.processes[:client1][:pid])
     assert_equal(:client1, t.process_names[0])
     assert_not_nil(t.processes[:client2][:pid])
@@ -40,5 +42,11 @@ class TopologyHelperTest < Test::Unit::TestCase
     assert_equal(2, t.process_names.size)
     assert_nil(t.processes[:client1][:pid])
     assert_nil(t.processes[:client2][:pid])
+    assert_raise Errno::ESRCH do
+      Process.kill(9, pid1)
+    end
+    assert_raise Errno::ESRCH do
+      Process.kill(9, pid2)
+    end
   end
 end
