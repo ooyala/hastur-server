@@ -36,7 +36,7 @@ module Hastur
       end
 
       def listen_for_packets_to(to, &block)
-        mutex.synchonize do
+        mutex.synchronize do
           @packet_listeners_to ||= {}
           @packet_listeners_to[to] ||= []
           @packet_listeners_to[to] << block
@@ -44,7 +44,7 @@ module Hastur
       end
 
       def all_packets_to(to)
-        mutex.synchonize do
+        mutex.synchronize do
           @packet_captures_to ||= {}
           (@packet_captures_to[to] || []).dup
         end
