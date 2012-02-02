@@ -75,6 +75,9 @@ module Hastur
           start name
         end
 
+        # If we do many cycles, this will wind up getting called repeatedly.
+        # The @all_stopped variable will make sure that's a really fast
+        # operation.
         at_exit { stop_all }
       end
 

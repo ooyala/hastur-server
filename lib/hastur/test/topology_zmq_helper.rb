@@ -142,23 +142,36 @@ module Hastur
         incoming = bind_socket(context, type, uri_in, :hwm => 1)
         outgoing = connect_socket(context, SEND_PORT_FOR[type], uri_out, :hwm => 1)
 
+        poller = ZMQ::Poller.new
+        poller.register_readable incoming
+        poller.register_readable outgoing
+
         loop do
-          message = multi_recv(incoming)
+          poller.poll 0.1
 
-          capture_packet_to(message, uri_out)
-
-          if socket[:type] == :router
-            # Remove the extra envelope section added by receiving on a router socket
-            client_id = message.shift
-
-            @router_sockets ||= {}
-            @router_sockets[client_id] ||= connect_socket(context, SEND_PORT_FOR[type],
-                                                          uri_out, :hwm => 1,
-                                                          :identity => client_id)
-            outgoing = @router_sockets[client_id]
+          if poller.readables.include?(outgoing)
+            message = multi_recv(outgoing)
+            capture_packet_to(message, uri_in)
+            multi_send(incoming, message)
           end
 
-          multi_send(outgoing, message)
+          if poller.readables.include?(incoming)
+            message = multi_recv(incoming)
+            capture_packet_to(message, uri_out)
+
+            if socket[:type] == :router
+              # Remove the extra envelope section added by receiving on a router socket
+              client_id = message.shift
+
+              @router_sockets ||= {}
+              @router_sockets[client_id] ||= connect_socket(context, SEND_PORT_FOR[type],
+                                                            uri_out, :hwm => 1,
+                                                            :identity => client_id)
+              outgoing = @router_sockets[client_id]
+            end
+
+            multi_send(outgoing, message)
+          end
         end
       end
 
