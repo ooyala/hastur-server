@@ -11,13 +11,11 @@ class TopologyHelperTest < Test::Unit::TestCase
     t.start_all
     assert_equal(1, t.processes.size)
     assert_equal(1, t.process_names.size)
-    assert_not_nil(t.processes[:client1][:io])
     assert_not_nil(t.processes[:client1][:pid])
     assert_equal(:client1, t.process_names[0])
     t.stop :client1
     assert_equal(1, t.processes.size)
     assert_equal(1, t.process_names.size)
-    assert_nil(t.processes[:client1][:io])
     assert_nil(t.processes[:client1][:pid])
   end
 end

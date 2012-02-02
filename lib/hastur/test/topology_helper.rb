@@ -105,7 +105,7 @@ module Hastur
         Process.kill(15, pid)
         Process.waitpid(pid)
 
-        @processes[name][:io] = nil
+        @processes[name][:pid] = nil
       end
 
       #
