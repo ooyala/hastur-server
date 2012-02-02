@@ -79,7 +79,7 @@ module Hastur
         :pull => :push,
         :pub => :sub,
         :sub => :pub,
-        :router => nil,
+        :router => :req,
         :dealer => :req,
       }
 
