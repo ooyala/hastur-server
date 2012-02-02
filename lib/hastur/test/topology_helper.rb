@@ -102,9 +102,9 @@ module Hastur
         return unless @processes[name][:pid]
 
         pid = @processes[name][:pid]
-        Process.kill(TERM, pid)
+        Process.kill("TERM", pid)
         sleep 0.01
-        ret = Process.waitpid(pid, Process::WHOHANG)
+        ret = Process.waitpid(pid, Process::WNOHANG)
         Process.kill(-9, pid) unless ret == pid
 
         @processes[name][:pid] = nil
