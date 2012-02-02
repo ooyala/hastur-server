@@ -61,6 +61,7 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   def test_stat
     hmsg = Hastur::Message::Stat.new(:stat => STAT_HASH)
     refute_nil hmsg
+    assert_kind_of Hastur::Message::Base, hmsg
     refute_nil hmsg.to_s
     refute_nil hmsg.payload
 
@@ -73,7 +74,8 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   # below are dumb placeholders for the moment
 
   def test_error
-    Hastur::Message::Error
+    e = Hastur::Message::Error.new :error => "eek!"
+    assert_kind_of Hastur::Message::Base, e
   end
   def test_rawdata
     Hastur::Message::Rawdata

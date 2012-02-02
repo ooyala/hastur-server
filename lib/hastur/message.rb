@@ -14,18 +14,32 @@ module Hastur
     # application boot time, intentionally not system boot time
     BOOT_TIME = Time.new.to_f
 
+    # pre-declare the class structure to make introspection work
+    class Seq;                    end
+    class Envelope;               end
+    class Base;                   end
+    class Stat            < Base; end
+    class Error           < Base; end
+    class Rawdata         < Base; end
+    class PluginExec      < Base; end
+    class PluginResult    < Base; end
+    class RegisterClient  < Base; end
+    class RegisterPlugin  < Base; end
+    class RegisterService < Base; end
+
     # every message has a route/method embedded, make sure they're valid
     # and let apps shunt everything else to :error
-    VALID_ROUTES = [
-      :stat,             # Hastur::Message::Stat,
-      :error,            # Hastur::Message::Error,
-      :rawdata,          # Hastur::Message::Rawdata,
-      :plugin_exec,      # Hastur::Message::PluginExec,
-      :plugin_result,    # Hastur::Message::PluginResult,
-      :register_client,  # Hastur::Message::RegisterClient,
-      :register_service, # Hastur::Message::RegisterService,
-      :register_plugin,  # Hastur::Message::RegisterPlugin,
-    ]
+    # also handy for mapping a symbol/string to the right class consistently
+    ROUTES = {
+      :stat             => Stat,
+      :error            => Error,
+      :rawdata          => Rawdata,
+      :plugin_exec      => PluginExec,
+      :plugin_result    => PluginResult,
+      :register_client  => RegisterClient,
+      :register_plugin  => RegisterPlugin,
+      :register_service => RegisterService,
+    }
 
     #
     # keep a single, global counter for the :sequence field
@@ -55,7 +69,7 @@ module Hastur
       # create a new envelope, only the route is required and acks can be enabled (default off)
       #
       def initialize(route, ack=false)
-        raise ArgumentError.new("Invalid route '#{route}'") unless VALID_ROUTES.include?(route)
+        raise ArgumentError.new("Invalid route '#{route}'") unless ROUTES.has_key?(route)
 
         @route   = route
         @version = 'v1'
@@ -106,26 +120,10 @@ module Hastur
       envelope = Envelope.parse messages[-1].copy_out_string
       messages.pop.close
 
-      # TODO: flatten to a hash after looking up why I can't build said hash (compiler is whining about undefined class)
-      case envelope.route
-        when :stat
-          return Stat.new :payload => payload, :envelope => envelope
-        when :error
-          return Error.new :payload => payload, :envelope => envelope
-        when :rawdata
-          return Rawdata.new :payload => payload, :envelope => envelope
-        when :plugin_exec
-          return PluginExec.new :payload => payload, :envelope => envelope
-        when :plugin_result
-          return PluginResult.new :payload => payload, :envelope => envelope
-        when :register_client
-          return RegisterClient.new :payload => payload, :envelope => envelope
-        when :register_service
-          return RegisterService.new :payload => payload, :envelope => envelope
-        when :register_plugin
-          return RegisterPlugin.new :payload => payload, :envelope => envelope
-        else
-          raise ArgumentError.new("Invalid route '#{route}'") unless VALID_ROUTES.include?(route)
+      if klass = ROUTES[envelope.route]
+        return klass.new(:payload => payload, :envelope => envelope)
+      else
+        raise ArgumentError.new "Invalid route '#{route}'"
       end
     end
 
@@ -136,7 +134,7 @@ module Hastur
       attr_reader :route, :envelope, :payload, :parts, :timestamp, :uptime, :sequence
 
       def initialize(route, envelope, payload, data)
-        raise ArgumentError.new("Invalid route '#{route}'") unless VALID_ROUTES.include?(route)
+        raise ArgumentError.new("Invalid route '#{route}'") unless ROUTES.has_key?(route)
         @route = route
         @envelope = envelope.nil? ? Envelope.new(route) : envelope
 
@@ -191,7 +189,7 @@ module Hastur
     # stat = Hastur::Stat.new( ... )
     # s = Hastur::Message::Stat.new(stat)
     # 
-    class Stat < Base
+    class Stat
       def initialize(opts)
         super(:stat, opts[:envelope], opts[:payload], opts[:stat])
       end
@@ -204,16 +202,21 @@ module Hastur
     #   s = Hastur::Message::Error.new :error => e
     # end
     # 
-    class Error < Base
+    class Error
       def initialize(opts)
         data = nil
 
-        if opts[:error]
+        if opts.kind_of? String
+          data = {
+            :error        => opts,
+            :error_string => opts
+          }
+        elsif opts[:error]
           # might want to be more strict about the type of error, or add some
           # automatic conversions for things like exceptions
           data = {
-            :error        => error,
-            :error_string => error.to_s
+            :error        => opts[:error],
+            :error_string => opts[:error].to_s
           }
         end
 
@@ -221,7 +224,7 @@ module Hastur
       end
     end
 
-    class Rawdata < Base
+    class Rawdata
       def initialize(opts)
         data = nil
         if opts[:rawdata]
@@ -231,31 +234,31 @@ module Hastur
       end
     end
 
-    class PluginExec < Base
+    class PluginExec
       def initialize(opts)
         super(:plugin_exec, opts[:envelope], opts[:payload], opts[:plugin_exec])
       end
     end
 
-    class PluginResult < Base
+    class PluginResult
       def initialize(opts)
         super(:plugin_result, opts[:envelope], opts[:payload], opts[:plugin_result])
       end
     end
 
-    class RegisterClient < Base
+    class RegisterClient
       def initialize(opts)
         super(:register_client, opts[:envelope], opts[:payload], opts[:register_client])
       end
     end
 
-    class RegisterService < Base
+    class RegisterService
       def initialize(opts)
         super(:register_service, opts[:envelope], opts[:payload], opts[:register_service])
       end
     end
 
-    class RegisterPlugin < Base
+    class RegisterPlugin
       def initialize(opts)
         super(:register_plugin, opts[:envelope], opts[:payload], opts[:register_plugin])
       end
