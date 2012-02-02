@@ -71,9 +71,7 @@ module Hastur
       def start_all
         allocate_resources
 
-        @processes.each do |name, |
-          start name
-        end
+        @processes.each { |name, | start name }
 
         # If we do many cycles, this will wind up getting called repeatedly.
         # The @all_stopped variable will make sure that's a really fast
@@ -119,9 +117,7 @@ module Hastur
       def stop_all
         return if @all_stopped
 
-        @processes.each do |name, |
-          stop name
-        end
+        @processes.each { |name, | stop name }
       end
 
       def self.register_plugin(name, klass)
@@ -152,6 +148,10 @@ module Hastur
 
       REQUIRED_NODE_KEYS = [ :name, :command ]
 
+      def self.send_to_plugins(method, *args, &block)
+        plugins.values.each { |plugin| plugin.send(method, *args, &block) if plugin.respond_to?(method) }
+      end
+
       def verify_process(node)
         unless (REQUIRED_NODE_KEYS - node.keys).empty?
           raise "This node is missing key(s) #{(REQUIRED_NODE_KEYS - node.keys).join(', ')}: #{node.inspect}"
@@ -160,9 +160,7 @@ module Hastur
         node[:resources] ||= node["resources"]
         node[:resources] ||= {}
 
-        Topology.plugins.values.each do |plugin|
-          plugin.verify_process(node) if plugin.respond_to?(:verify_process)
-        end
+        Topology.send_to_plugins(:verify_process, node)
       end
 
       def allocate_resources
@@ -178,9 +176,7 @@ module Hastur
           }
         end
 
-        Topology.plugins.values.each do |plugin|
-          plugin.allocate_resources(@processes) if plugin.respond_to?(:allocate_resources)
-        end
+        Topology.send_to_plugins(:allocate_resources, @processes)
 
         @processes.each do |_, process|
           process[:expanded_command] = expand_text(process[:command], process[:variables])
@@ -190,9 +186,7 @@ module Hastur
       end
 
       def free_resources
-        Topology.plugins.values.each do |plugin|
-          plugin.free_resources(@processes) if plugin.respond_to?(:free_resources)
-        end
+        Topology.send_to_plugins(:free_resources, @processes)
         @fully_initialized = false
       end
     end
