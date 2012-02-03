@@ -83,3 +83,5 @@ STDERR.puts "********** Packet recipients: #{Hastur::Test::ZMQ.all_packet_receiv
 #assert_equal 1, packets_to("client1").filter("method" => "heartbeat", "value" => /37$/).map {|p| p[:subpart]}.filter(:subfield => 7).count
 
 puts "Done!"
+
+`pkill -f hastur`
