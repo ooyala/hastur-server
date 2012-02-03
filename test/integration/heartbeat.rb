@@ -9,12 +9,12 @@ class HeartbeatTest < Test::Unit::TestCase
     puts "Sleeping for 6 seconds..."
     sleep 6
     # get messages from the sink shims
-    puts "Retrieving packets from heartbeat_worker..."
-    messages = Hastur::Test::ZMQ.all_packets_to(:heartbeat_worker)
+    puts "Retrieving packets from heartbeat..."
+    messages = Hastur::Test::ZMQ.all_payloads_to(:heartbeat)
     # verify that the messages on the heartbeat shims are heartbeat messages
-    assert_equal(messages.size, messages.fuzzy_filter( {:method => "heartbeat"} ).size)
+    assert_equal(messages.size, messages.fuzzy_filter( {"method" => "heartbeat"} ).size)
     # verify that the count of messages on the heartbeat shims are accurate
-    assert_equal(1, messages.size)
+    assert_equal(2, messages.size)
   end
 
   def setup
@@ -25,11 +25,11 @@ class HeartbeatTest < Test::Unit::TestCase
                    :command => "./bin/hastur-client.rb --heartbeat 5 --router <%= zmq[:router] %> --port 8125",
                    # TODO(noah): mock UDP port to catch or forward messages?
                  },
-#                 {
-#                   :name => :client2,
-#                   :command => "./bin/hastur-client.rb --router <%= zmq[:router] %> --port 8126",
-#                   # TODO(noah): mock UDP port to catch or forward messages?
-#                 },
+                 {
+                   :name => :client2,
+                   :command => "./bin/hastur-client.rb --heartbeat 5 --router <%= zmq[:router] %> --port 8126",
+                   # TODO(noah): mock UDP port to catch or forward messages?
+                 },
                  {
                    :name => :router,
                    :command => <<EOS ,

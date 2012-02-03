@@ -1,5 +1,6 @@
 require "rubygems"
 require "bundler"
+require "multi_json"
 #Bundler.require(:default, :development)
 
 # For testing Hastur components, use the local version *first*.

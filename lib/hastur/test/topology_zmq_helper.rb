@@ -1,5 +1,6 @@
 require "socket"
 require "ffi-rzmq"
+require "multi_json"
 require "hastur/zmq_utils"
 
 module Hastur
@@ -62,6 +63,17 @@ module Hastur
             (@packet_captures_to[to] || []).dup
           end
         end
+      end
+
+      #
+      # Retrieves all of the payloads from raw messages that came to this particular socket.
+      #
+      def all_payloads_to(to)
+        messages = all_packets_to(to)
+        0.upto(messages.size - 1) do |idx|
+          messages[idx] = MultiJson.decode messages[idx][-1]
+        end
+        messages
       end
 
       # Running multiple test harnesses?  Start the ports at different offsets.
@@ -188,12 +200,17 @@ module Hastur
 
           if poller.readables.include?(outgoing)
             message = ZMQUtils.multi_recv(outgoing)
+            # TODO: Should we keep this? Not really sure how people will know of the dynamically
+            #       constructed URI to access it
             capture_packet_to(message, uri_in)
+            capture_packet_to(message, socket[:name])
             ZMQUtils.multi_send(incoming, message)
           end
 
           unless (poller.readables - [outgoing]).empty?
             message = ZMQUtils.multi_recv(incoming)
+            # TODO: Should we keep this? Not really sure how people will know of the dynamically
+            #       constructed URI to access it
             capture_packet_to(message, uri_out)
 
             if socket[:type] == :router
