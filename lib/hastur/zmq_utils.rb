@@ -129,14 +129,15 @@ module Hastur
       # Identity for router, req and sub sockets
       socket.setsockopt(ZMQ::IDENTITY, opts[:identity]) if opts[:identity]
 
+      status = 0
       if opts[:bind]
-        socket.bind uri
+        status = socket.bind uri
       elsif opts[:connect]
-        socket.connect uri
+        status = socket.connect uri
       else
         raise "Must provide either bind or connect option to bind_or_connect_socket!"
       end
-      STDERR.puts "New socket #{opts[:bind] ? "listening" : "connecting"} on '#{uri}'."
+      STDERR.puts "New socket #{status >= 0 ? "successfully " : "unable"} #{opts[:bind] ? "listening" : "connecting"} on '#{uri}'."
       socket
     end
   end

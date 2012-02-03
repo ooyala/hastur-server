@@ -100,6 +100,7 @@ module Hastur
       }
 
       def allocate_resources(processes)
+        puts "Allocating ZMQ resources for #{processes.keys} ... "
         processes.each do |_, process|
           process[:variables][:zmq] = {}
         end
@@ -109,7 +110,6 @@ module Hastur
         processes.each do |_, process|
           zmq = process[:resources][:zmq]
           next unless zmq
-
           zmq.each do |socket|
             socket[:forwarder_port] = allocate_port
             socket[:forwarder_thread] = Thread.new do
@@ -119,7 +119,6 @@ module Hastur
                 STDERR.puts "\n   ---> Exception killed forwarding thread: #{$!.message}\n#{$!.backtrace.join("\n")}"
               end
             end
-
             # This process gets the URI of its own sockets, unmodified
             socket_uri = "tcp://127.0.0.1:#{socket[:listen]}"
 
@@ -128,6 +127,11 @@ module Hastur
 
             raise "Duplicate socket name #{socket[:name]} between processes!" if all_sockets[socket[:name]]
             all_sockets[socket[:name]] = "tcp://127.0.0.1:#{socket[:forwarder_port]}"
+            # This is important so that all of the forwarders fire up in order. Otherwise messages could get dropped/stuck 
+            # in between nodes. This will lead to a gridlock situation because HWM is only at 1.
+            #
+            # TODO(viet): Perhaps this should be a configurable.
+            sleep 0.1
           end
         end
 
