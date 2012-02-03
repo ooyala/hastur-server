@@ -111,9 +111,8 @@ module Hastur
           zmq.each do |socket|
             socket[:forwarder_port] = allocate_port
             socket[:forwarder_thread] = Thread.new do
-              STDERR.puts "*** Spawning forwarding thread for socket #{socket[:name]} at port #{socket[listen]} forwarded to port #{socket[:forwarder_port]} ***"
-
               begin
+                STDERR.puts "*** Spawning forwarding thread for socket #{socket[:name]} at port #{socket[:listen]} forwarded to port #{socket[:forwarder_port]} ***"
                 forward_packets(socket)
               rescue
                 STDERR.puts "   ---> Exception killed forwarding thread: #{$!.message}\n#{$!.backtrace.join("\n")}"
