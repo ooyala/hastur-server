@@ -43,10 +43,22 @@ module Hastur
         end
       end
 
+      def all_packet_receivers
+        mutex.synchronize do
+          @packet_captures_to ||= {}
+          @packet_captures_to.keys
+        end
+      end
+
       def all_packets_to(to)
         mutex.synchronize do
           @packet_captures_to ||= {}
-          (@packet_captures_to[to] || []).dup
+
+          if to == :all
+            @packet_captures_to.values.inject([], &:+)
+          else
+            (@packet_captures_to[to] || []).dup
+          end
         end
       end
 
@@ -99,7 +111,13 @@ module Hastur
           zmq.each do |socket|
             socket[:forwarder_port] = allocate_port
             socket[:forwarder_thread] = Thread.new do
-              forward_packets(socket)
+              STDERR.puts "*** Spawning forwarding thread for socket #{socket[:name]} at port #{socket[listen]} forwarded to port #{socket[:forwarder_port]} ***"
+
+              begin
+                forward_packets(socket)
+              rescue
+                STDERR.puts "   ---> Exception killed forwarding thread: #{$!.message}\n#{$!.backtrace.join("\n")}"
+              end
             end
 
             # This process gets the URI of its own sockets, unmodified
