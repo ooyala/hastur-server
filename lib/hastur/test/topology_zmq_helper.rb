@@ -1,4 +1,6 @@
 require "socket"
+require "ffi-rzmq"
+require "hastur/zmq_utils"
 
 module Hastur
   module Test
@@ -6,7 +8,7 @@ module Hastur
       extend self
 
       def context
-        @context ||= ZMQ::Context.new
+        @context ||= ::ZMQ::Context.new
       end
 
       def port_open?(port_num)
@@ -112,10 +114,9 @@ module Hastur
             socket[:forwarder_port] = allocate_port
             socket[:forwarder_thread] = Thread.new do
               begin
-                STDERR.puts "*** Spawning forwarding thread for socket #{socket[:name]} at port #{socket[:listen]} forwarded to port #{socket[:forwarder_port]} ***"
                 forward_packets(socket)
               rescue
-                STDERR.puts "   ---> Exception killed forwarding thread: #{$!.message}\n#{$!.backtrace.join("\n")}"
+                STDERR.puts "\n   ---> Exception killed forwarding thread: #{$!.message}\n#{$!.backtrace.join("\n")}"
               end
             end
 
@@ -171,10 +172,10 @@ module Hastur
 
         # Set HWM to 1 so we don't get "instant send" on one end and everything backed
         # up here.
-        incoming = bind_socket(context, type, uri_in, :hwm => 1)
-        outgoing = connect_socket(context, SEND_PORT_FOR[type], uri_out, :hwm => 1)
+        incoming = ZMQUtils.bind_socket(context, type.to_s, uri_in, :hwm => 1)
+        outgoing = ZMQUtils.connect_socket(context, SEND_PORT_FOR[type].to_s, uri_out, :hwm => 1)
 
-        poller = ZMQ::Poller.new
+        poller = ::ZMQ::Poller.new
         poller.register_readable incoming
         poller.register_readable outgoing
 
@@ -187,7 +188,7 @@ module Hastur
             multi_send(incoming, message)
           end
 
-          unless (poller.readables - outgoing).empty?
+          unless (poller.readables - [outgoing]).empty?
             message = multi_recv(incoming)
             capture_packet_to(message, uri_out)
 
