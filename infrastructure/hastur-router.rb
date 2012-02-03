@@ -53,7 +53,7 @@ end
 # ZeroMQ setup
 version_hash = ZMQ::LibZMQ.version
 version = "#{version_hash[:major]}.#{version_hash[:minor]}p#{version_hash[:patch]}"
-STDERR.puts "Using ZeroMQ version #{version}"
+STDERR.puts "Hastur Router (#{Process.pid}) -- Using ZeroMQ version #{version}"
 
 ctx = ZMQ::Context.new(1)
 
@@ -95,7 +95,15 @@ poller = ZMQ::Poller.new
 poller.register_readable(router_socket)
 poller.register_readable(from_sink_socket)
 
-loop do
+running = true
+
+%w(INT TERM KILL).each do | sig |
+  Signal.trap(sig) do
+    running = false
+  end
+end
+
+while running do
   method = "error"      # by default, all messages will be routed to the "error" sink
   poller.poll_nonblock
   # reading messages that are sent to the router from client
