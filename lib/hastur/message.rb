@@ -8,15 +8,9 @@ module Hastur
   # Updating existing messages is not currently supported. Unless we come across a clear case where
   # it will help clean up code or improve performance measurably, it won't happen.
   #
-  # Envelopes are reusable.
-  #
   module Message
-    # application boot time, intentionally not system boot time
-    BOOT_TIME = Time.new.to_f
-
     # pre-declare the class structure to make introspection work
     class Seq;                    end
-    class Envelope;               end
     class Base;                   end
     class Stat            < Base; end
     class Error           < Base; end
@@ -26,21 +20,108 @@ module Hastur
     class RegisterClient  < Base; end
     class RegisterPlugin  < Base; end
     class RegisterService < Base; end
+  end
 
-    # every message has a route/method embedded, make sure they're valid
-    # and let apps shunt everything else to :error
-    # also handy for mapping a symbol/string to the right class consistently
-    ROUTES = {
-      :stat             => Stat,
-      :error            => Error,
-      :rawdata          => Rawdata,
-      :plugin_exec      => PluginExec,
-      :plugin_result    => PluginResult,
-      :register_client  => RegisterClient,
-      :register_plugin  => RegisterPlugin,
-      :register_service => RegisterService,
-    }
+  # application boot time, intentionally not system boot time
+  BOOT_TIME = Time.new.to_f
 
+  # every message has a route/method embedded, make sure they're valid
+  # and let apps shunt everything else to :error
+  # also handy for mapping a symbol/string to the right class consistently
+  ROUTES = {
+    :stat             => Hastur::Message::Stat,
+    :error            => Hastur::Message::Error,
+    :rawdata          => Hastur::Message::Rawdata,
+    :plugin_exec      => Hastur::Message::PluginExec,
+    :plugin_result    => Hastur::Message::PluginResult,
+    :register_client  => Hastur::Message::RegisterClient,
+    :register_plugin  => Hastur::Message::RegisterPlugin,
+    :register_service => Hastur::Message::RegisterService,
+  }
+
+  UUID_RE = /\A[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12}\Z/i
+
+  #
+  # parsing & creating Hastur envelopes, V1
+  # Format:
+  # field: version  route      ack      uuid         mime type
+  # type:  <uint16> <char[16]> <uint16> <char[16]>   <char 32>
+  # pack:  n        Z16        n        H8H4H4H4H12  a32
+  #
+  # Version doesn't really have to be bumped unless one of these 4 fields
+  # changes type incompatibly.  For example, we can add an HMAC field on the
+  # end later on and old unpacks will just ignore data at the end.
+  #
+  class Envelope
+    VERSION = 1
+    MSGBYTES = 68
+    PACK = %w[ n Z16 H8 H4 H4 H4 H12 n a32 ].join
+    attr_reader :version, :route, :uuid, :ack, :mime_type
+
+    #
+    # parse a Hastur routing envelope, usually in the multi part just ahead of the payload
+    # it is a binary string with a version, the route (string), an ack flag (1/0), and the UUID
+    #
+    def self.parse(msg)
+      parts = msg.unpack(PACK)
+      Envelope.new({
+        :version   => parts[0],
+        :route     => parts[1],
+        :uuid      => parts[2..6].join('-'),
+        :ack       => parts[7],
+        :mime_type => parts[8],
+      })
+    end
+
+    #
+    # pack an envelope into a binary string, ready to send on the wire
+    #
+    def pack
+      [@version, @route.to_s, *@uuid.split(/-/), @ack, @mime_type].pack(PACK)
+    end
+
+    #
+    # create a new envelope, only the route is required and acks can be enabled (default off)
+    #
+    def initialize(opts)
+      raise ArgumentError.new(":route argument is required") unless opts[:route]
+      raise ArgumentError.new("Invalid route '#{opts[:route]}'") unless ROUTES.has_key?(opts[:route].to_sym)
+      raise ArgumentError.new(":uuid argument is required") unless opts[:uuid]
+      raise ArgumentError.new("'#{opts[:uuid]} is not a valid UUID") unless UUID_RE.match(opts[:uuid])
+
+      @route   = opts[:route].to_sym
+      @uuid    = opts[:uuid]
+      @version = opts[:version] || VERSION
+
+      if opts[:ack].kind_of? Fixnum
+        @ack = opts[:ack]
+      elsif opts[:ack].kind_of? TrueClass
+        @ack = 1
+      else
+        @ack = 0
+      end
+
+      # mime type input is ignored for now, since it should always be JSON, its presence
+      # in the protocol is for future use (e.g. core files, compression, encryption)
+      @mime_type = opts[:mime_type] || "application/json"
+    end
+    
+    #
+    # check whether acks are enabled on the envelope
+    #
+    def ack?
+      @ack > 0 ? true : false
+    end
+
+    def to_s
+      pack.unpack('H*')[0]
+    end
+  end
+
+  #
+  # A collection of classes for managing common Hastur messages.
+  #
+  module Message
     #
     # keep a single, global counter for the :sequence field
     #
@@ -51,54 +132,6 @@ module Hastur
       end
     end
 
-    #
-    # parsing & creating Hastur message envelopes, V1 only
-    #
-    class Envelope
-      attr_reader :route, :version
-
-      #
-      # parse a Hastur routing envelope, usually in the multi part just ahead of the payload
-      #
-      def self.parse(msg)
-        parts = msg.split("\n")
-        Envelope.new(parts[1].to_sym, parts[2])
-      end
-
-      #
-      # create a new envelope, only the route is required and acks can be enabled (default off)
-      #
-      def initialize(route, ack=false)
-        raise ArgumentError.new("Invalid route '#{route}'") unless ROUTES.has_key?(route)
-
-        @route   = route
-        @version = 'v1'
-
-        if ack == true or ack == "ack:1"
-          @ack = true
-        else
-          @ack = false
-        end
-      end
-      
-      def ack
-        @ack ? "ack:1" : "ack:0"
-      end
-
-      #
-      # check whether acks are enabled on the envelope
-      #
-      def ack?
-        @ack
-      end
-
-      #
-      # stringify to the on-wire format
-      #
-      def to_s
-        [@version, @route, ack() ].join("\n")
-      end
-    end
 
     #
     # receive a message from a ZeroMQ socket and return an appropriate Hastur::Message::* class,
@@ -106,7 +139,7 @@ module Hastur
     # 
     # object = Hastur::Message.recv(@socket)
     # object.route    # symbol for the route
-    # object.envelope # Hastur::Message::Envelope
+    # object.envelope # Hastur::Envelope
     # object.payload  # usually JSON
     # object.send(@socket)
     #
@@ -117,13 +150,13 @@ module Hastur
       payload = messages[-1].copy_out_string
       messages.pop.close
 
-      envelope = Envelope.parse messages[-1].copy_out_string
+      envelope = Hastur::Envelope.parse messages[-1].copy_out_string
       messages.pop.close
 
       if klass = ROUTES[envelope.route]
         return klass.new(:payload => payload, :envelope => envelope)
       else
-        raise ArgumentError.new "Invalid route '#{route}'"
+        raise ArgumentError.new "Invalid route '#{envelope.route}'"
       end
     end
 
@@ -131,16 +164,24 @@ module Hastur
     # base class for the various Hastur::Message types
     #
     class Base
-      attr_reader :route, :envelope, :payload, :parts, :timestamp, :uptime, :sequence
+      attr_reader :envelope, :payload, :zmq_parts, :timestamp, :uptime, :sequence
 
-      def initialize(route, envelope, payload, data)
-        raise ArgumentError.new("Invalid route '#{route}'") unless ROUTES.has_key?(route)
-        @route = route
-        @envelope = envelope.nil? ? Envelope.new(route) : envelope
+      def initialize(envelope, payload, data, route, uuid)
+        if envelope.nil? and uuid
+          @envelope = Hastur::Envelope.new :route => route, :uuid => uuid
+        elsif not envelope.nil?
+          @envelope = envelope
+        else
+          raise ArgumentError.new "One of :envelope or :uuid arguments are required."
+        end
+
+        unless self.kind_of? ROUTES[@envelope.route]
+          raise ArgumentError.new "Envelope route '#{@envelope.route.to_s}' does not match class '#{self.class}'"
+        end
 
         if payload.nil? and not data.nil?
           unless data.respond_to?(:to_hash)
-            raise ArgumentError.new "4th argument must have a to_hash() method."
+            raise ArgumentError.new "second argument must be nil or respond to to_hash()."
           end
           @payload = MultiJson.encode(data.to_hash)
         elsif data.nil? and not payload.nil?
@@ -163,12 +204,12 @@ module Hastur
       def send(socket)
         messages = []
 
-        if @parts and not @parts.empty?
-          messages << @parts
-          @parts.replace([]) # clear it
+        if @zmq_parts and not @zmq_parts.empty?
+          messages << @zmq_parts
+          @zmq_parts.replace([]) # clear it
         end
 
-        messages << ZMQ::Message.new(@envelope.to_s)
+        messages << ZMQ::Message.new(@envelope.pack)
         payload = ZMQ::Message.new(@payload.to_s)
 
         # https://github.com/chuckremes/ffi-rzmq/blob/bdd0a399/lib/ffi-rzmq/socket.rb#L278
@@ -191,7 +232,8 @@ module Hastur
     # 
     class Stat
       def initialize(opts)
-        super(:stat, opts[:envelope], opts[:payload], opts[:stat])
+        opts[:route] = :stat
+        super(opts[:envelope], opts[:payload], opts[:stat], :stat, opts[:uuid])
       end
     end
 
@@ -220,7 +262,7 @@ module Hastur
           }
         end
 
-        super(:error, opts[:envelope], opts[:payload], data)
+        super(opts[:envelope], opts[:payload], data, :error, opts[:uuid])
       end
     end
 
@@ -230,37 +272,37 @@ module Hastur
         if opts[:rawdata]
           data = { :rawdata => opts[:rawdata] }
         end
-        super(:rawdata, opts[:envelope], opts[:payload], data)
+        super(opts[:envelope], opts[:payload], data, :rawdata, opts[:uuid])
       end
     end
 
     class PluginExec
       def initialize(opts)
-        super(:plugin_exec, opts[:envelope], opts[:payload], opts[:plugin_exec])
+        super(opts[:envelope], opts[:payload], opts[:plugin_exec], :plugin_exec, opts[:uuid])
       end
     end
 
     class PluginResult
       def initialize(opts)
-        super(:plugin_result, opts[:envelope], opts[:payload], opts[:plugin_result])
+        super(opts[:envelope], opts[:payload], opts[:plugin_result], :plugin_result, opts[:uuid])
       end
     end
 
     class RegisterClient
       def initialize(opts)
-        super(:register_client, opts[:envelope], opts[:payload], opts[:register_client])
+        super(opts[:envelope], opts[:payload], opts[:register_client], :register_client, opts[:uuid])
       end
     end
 
     class RegisterService
       def initialize(opts)
-        super(:register_service, opts[:envelope], opts[:payload], opts[:register_service])
+        super(opts[:envelope], opts[:payload], opts[:register_service], :register_service, opts[:uuid])
       end
     end
 
     class RegisterPlugin
       def initialize(opts)
-        super(:register_plugin, opts[:envelope], opts[:payload], opts[:register_plugin])
+        super(opts[:envelope], opts[:payload], opts[:register_plugin], :register_plugin, opts[:uuid])
       end
     end
   end

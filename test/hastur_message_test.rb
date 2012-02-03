@@ -3,6 +3,7 @@
 require 'rubygems'
 require 'minitest/autorun'
 require 'ffi-rzmq'
+require 'securerandom'
 require_relative '../lib/hastur/stat'
 require_relative '../lib/hastur/message'
 
@@ -27,27 +28,42 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   end
 
   def test_envelope
+    uuid = SecureRandom.uuid
+    noopt = Hastur::Envelope.new :route => :rawdata, :uuid => uuid
+    assert_equal false, noopt.ack? # should default to false
+    assert_equal :rawdata, noopt.route
+    expect = "000172617764617461000000000000000000" + uuid.split(/-/).join + "0000" +
+      "6170706c69636174696f6e2f6a736f6e00000000000000000000000000000000"
+    assert_equal expect, noopt.to_s
+    assert_equal [expect].pack('H*'), noopt.pack
+
     assert_raises ArgumentError do
-      Hastur::Message::Envelope.new
-      Hastur::Message::Envelope.new :foobar
-      Hastur::Message::Envelope.new :stats # should be just "stat", this must error
-      Hastur::Message::Envelope.new :sta   # should be just "stat", this must error
+      Hastur::Envelope.new
+      Hastur::Envelope.new :foobar
     end
 
-    noopt = Hastur::Message::Envelope.new :stat
-    assert_equal false, noopt.ack?
-    assert_equal :stat, noopt.route
-    assert_equal "v1\nstat\nack:0", noopt.to_s
+    # :route and :uuid are both required
+    assert_raises ArgumentError do
+      Hastur::Envelope.new :uuid => SecureRandom.uuid
+      Hastur::Envelope.new :route => :error
+    end
 
-    acked = Hastur::Message::Envelope.new :stat, true
+    # test mispeled ruotes
+    assert_raises ArgumentError do
+      Hastur::Envelope.new :route => :stats, :uuid => SecureRandom.uuid
+      Hastur::Envelope.new :route => :sta,   :uuid => SecureRandom.uuid
+      Hastur::Envelope.new :ruote => :stat,  :uuid => SecureRandom.uuid
+    end
+
+    acked = Hastur::Envelope.new :route => :stat, :uuid => SecureRandom.uuid.split(/-/).join, :ack => true
     assert_equal true,  acked.ack?
     assert_equal :stat, acked.route
-    assert_equal "v1\nstat\nack:1", acked.to_s
 
-    noack = Hastur::Message::Envelope.new :stat, false
+    noack = Hastur::Envelope.new :route => :stat, :uuid => SecureRandom.uuid, :ack => false
     assert_equal false, noack.ack?
     assert_equal :stat, noack.route
-    assert_equal "v1\nstat\nack:0", noack.to_s
+    assert_equal 136,   noack.to_s.length
+    assert_equal 68,    noack.pack.bytesize
   end
 
   def test_base
@@ -59,7 +75,8 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   end
 
   def test_stat
-    hmsg = Hastur::Message::Stat.new(:stat => STAT_HASH)
+    e = Hastur::Envelope.new :route => :stat, :uuid => SecureRandom.uuid
+    hmsg = Hastur::Message::Stat.new :envelope => e, :stat => STAT_HASH
     refute_nil hmsg
     assert_kind_of Hastur::Message::Base, hmsg
     refute_nil hmsg.to_s
@@ -74,8 +91,8 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   # below are dumb placeholders for the moment
 
   def test_error
-    e = Hastur::Message::Error.new :error => "eek!"
-    assert_kind_of Hastur::Message::Base, e
+    err = Hastur::Message::Error.new :error => "eek!", :uuid => SecureRandom.uuid
+    assert_kind_of Hastur::Message::Base, err
   end
   def test_rawdata
     Hastur::Message::Rawdata
