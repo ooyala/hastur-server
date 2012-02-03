@@ -108,6 +108,10 @@ module Hastur
     #  Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PULL, "tcp://127.0.0.1:1234")
     #
     def bind_or_connect_socket(ctx, type, uri, opts = {})
+      if type.kind_of?(Symbol) || type.kind_of?(String)
+        type = ZMQ.const_get(type.to_s.upcase)
+      end
+
       socket = ctx.socket(type)
 
       opts[:linger] = 1 unless opts.has_key?(:linger)
