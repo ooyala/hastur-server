@@ -183,13 +183,13 @@ module Hastur
           poller.poll 0.1
 
           if poller.readables.include?(outgoing)
-            message = multi_recv(outgoing)
+            message = ZMQUtils.multi_recv(outgoing)
             capture_packet_to(message, uri_in)
-            multi_send(incoming, message)
+            ZMQUtils.multi_send(incoming, message)
           end
 
           unless (poller.readables - [outgoing]).empty?
-            message = multi_recv(incoming)
+            message = ZMQUtils.multi_recv(incoming)
             capture_packet_to(message, uri_out)
 
             if socket[:type] == :router
@@ -197,9 +197,9 @@ module Hastur
               client_id = message.shift
 
               @router_sockets ||= {}
-              @router_sockets[client_id] ||= connect_socket(context, SEND_PORT_FOR[type],
-                                                            uri_out, :hwm => 1,
-                                                            :identity => client_id)
+              @router_sockets[client_id] ||= ZMQUtils.connect_socket(context, SEND_PORT_FOR[type],
+                                                                     uri_out, :hwm => 1,
+                                                                     :identity => client_id)
               outgoing = @router_sockets[client_id]
 
               poller.register_readable(outgoing)
@@ -207,7 +207,7 @@ module Hastur
 
             end
 
-            multi_send(outgoing, message)
+            ZMQUtils.multi_send(outgoing, message)
           end
         end
       end
