@@ -141,6 +141,8 @@ module Hastur
       private
 
       def expand_text(command, locals = {})
+        return command.map {|c| expand_text(c, locals) } if command.kind_of?(Array)
+
         begin
           eruby = Erubis::Eruby.new command
           eruby.result locals
