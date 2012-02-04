@@ -13,10 +13,10 @@ namespace "test" do
   Rake::TestTask.new(:integration) do |t|
     t.libs += [".", "test"]  # require from test subdir
     t.test_files = Dir["test/integration/*_test.rb"]
-    t.loader = :direct
+    #t.loader = :direct
     t.verbose = true
   end
 end
 
 # Put together a test target for Jenkins
-task :test => ["test:units"]
+task :test => ["test:units", "test:integration"]
