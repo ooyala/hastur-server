@@ -10,7 +10,6 @@ module Hastur
   #
   module Message
     # pre-declare the class structure to make introspection work
-    class Seq;                    end
     class Base;                   end
     class Stat            < Base; end
     class Error           < Base; end
@@ -42,21 +41,31 @@ module Hastur
   UUID_RE = /\A[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12}\Z/i
 
   #
+  # keep a single, global counter for the :sequence field
+  #
+  @counter = 0
+  def self.next
+    @counter+=1
+  end
+
+  #
   # parsing & creating Hastur envelopes, V1
   # Format:
-  # field: version  route      ack      uuid         mime type
-  # type:  <uint16> <char[16]> <uint16> <char[16]>   <char 32>
-  # pack:  n        Z16        n        H8H4H4H4H12  a32
+  # field: version route      uuid         ack    sequence timestamp uptime
+  # type:  <int16> <char[16]> <int128>     <int8> <int64>  <double>  <double>
+  # pack:  n       Z16        H8H4H4H4H12  C      Q>       G         G
   #
-  # Version doesn't really have to be bumped unless one of these 4 fields
+  # Version doesn't really have to be bumped unless one of these fields
   # changes type incompatibly.  For example, we can add an HMAC field on the
   # end later on and old unpacks will just ignore data at the end.
   #
+  # Numbers are big endian wherever it makes sense.
+  # 
   class Envelope
     VERSION = 1
-    MSGBYTES = 68
-    PACK = %w[ n Z16 H8 H4 H4 H4 H12 n a32 ].join
-    attr_reader :version, :route, :uuid, :ack, :mime_type
+    PACK =  %w[ n         Z16     H8H4H4H4H12 C     Q>         G           G ].join
+    #           0         1       2-6         7     8          9           10
+    attr_reader :version, :route, :uuid,      :ack, :sequence, :timestamp, :uptime
 
     #
     # parse a Hastur routing envelope, usually in the multi part just ahead of the payload
@@ -64,53 +73,52 @@ module Hastur
     #
     def self.parse(msg)
       parts = msg.unpack(PACK)
-      Envelope.new({
+      Envelope.new(
         :version   => parts[0],
-        :route     => parts[1],
+        :route     => parts[1].to_sym,
         :uuid      => parts[2..6].join('-'),
         :ack       => parts[7],
-        :mime_type => parts[8],
-      })
+        :sequence  => parts[8],
+        :timestamp => parts[9],
+        :uptime    => parts[10],
+      )
     end
 
     #
     # pack an envelope into a binary string, ready to send on the wire
     #
     def pack
-      [@version, @route.to_s, *@uuid.split(/-/), @ack, @mime_type].pack(PACK)
+      [@version, @route.to_s, *@uuid.split(/-/), @ack, @sequence, @timestamp, @uptime].pack(PACK)
     end
 
     #
     # create a new envelope, only the route is required and acks can be enabled (default off)
     #
     def initialize(opts)
-      raise ArgumentError.new(":route argument is required") unless opts[:route]
+      raise ArgumentError.new(":route is required") unless opts[:route]
+      raise ArgumentError.new(":uuid is required") unless opts[:uuid]
       raise ArgumentError.new("Invalid route '#{opts[:route]}'") unless ROUTES.has_key?(opts[:route].to_sym)
-      raise ArgumentError.new(":uuid argument is required") unless opts[:uuid]
       raise ArgumentError.new("'#{opts[:uuid]} is not a valid UUID") unless UUID_RE.match(opts[:uuid])
 
-      @route   = opts[:route].to_sym
-      @uuid    = opts[:uuid]
-      @version = opts[:version] || VERSION
+      @version   = opts[:version] || VERSION
+      @route     = opts[:route].to_sym
+      @uuid      = opts[:uuid]
+      @sequence  = opts[:sequence]  || Hastur.next
+      @timestamp = opts[:timestamp] || Time.new.to_f
+      @uptime    = opts[:uptime]    || @timestamp - BOOT_TIME
 
-      if opts[:ack].kind_of? Fixnum
-        @ack = opts[:ack]
-      elsif opts[:ack].kind_of? TrueClass
-        @ack = 1
-      else
-        @ack = 0
+      case opts[:ack]
+        when true; @ack = 1
+        when 1;    @ack = 1
+        else;      @ack = 0
       end
-
-      # mime type input is ignored for now, since it should always be JSON, its presence
-      # in the protocol is for future use (e.g. core files, compression, encryption)
-      @mime_type = opts[:mime_type] || "application/json"
     end
     
     #
     # check whether acks are enabled on the envelope
     #
     def ack?
-      @ack > 0 ? true : false
+      @ack == 0 ? false : true
     end
 
     def to_s
@@ -122,16 +130,16 @@ module Hastur
   # A collection of classes for managing common Hastur messages.
   #
   module Message
-    #
-    # keep a single, global counter for the :sequence field
-    #
-    class Seq
-      @counter = 0
-      def self.next
-        @counter+=1
+    def self.new(opts)
+      envelope = opts[:envelope] or raise ArgumentError.new(":envelope is required")
+      payload  = opts[:payload]  or raise ArgumentError.new(":payload is required")
+      
+      if klass = ROUTES[envelope.route]
+        return klass.new(:payload => payload, :envelope => envelope)
+      else
+        raise ArgumentError.new "Invalid route in envelope: '#{envelope.route}'"
       end
     end
-
 
     #
     # receive a message from a ZeroMQ socket and return an appropriate Hastur::Message::* class,
@@ -143,9 +151,12 @@ module Hastur
     # object.payload  # usually JSON
     # object.send(@socket)
     #
-    def self.recv(socket)
+    def self.recv(socket, zmq_flags=0)
       messages = []
-      rc = socket.recvmsgs messages
+      rc = socket.recvmsgs messages, zmq_flags
+      return rc if zmq_flags != 0 and rc != -1
+
+      raise "socket.recvmsgs failed" unless rc == 0
 
       payload = messages[-1].copy_out_string
       messages.pop.close
@@ -153,46 +164,43 @@ module Hastur
       envelope = Hastur::Envelope.parse messages[-1].copy_out_string
       messages.pop.close
 
-      if klass = ROUTES[envelope.route]
-        return klass.new(:payload => payload, :envelope => envelope)
-      else
-        raise ArgumentError.new "Invalid route '#{envelope.route}'"
-      end
+      self.new :envelope => envelope, :payload => payload, :zmq_parts => messages
     end
 
     #
     # base class for the various Hastur::Message types
     #
     class Base
-      attr_reader :envelope, :payload, :zmq_parts, :timestamp, :uptime, :sequence
+      attr_reader :envelope, :payload
+      attr_accessor :zmq_parts
 
-      def initialize(envelope, payload, data, route, uuid)
-        if envelope.nil? and uuid
-          @envelope = Hastur::Envelope.new :route => route, :uuid => uuid
-        elsif not envelope.nil?
-          @envelope = envelope
+      # this should only really ever get called via super() in the
+      # subclasses below
+      def initialize(opts)
+        if opts[:envelope].kind_of? Hastur::Envelope
+          @envelope = opts[:envelope]
+        # automatically construct an envelope if :uuid & :route are provided (all flags passed through)
+        elsif not opts[:envelope] and opts[:uuid] and opts[:route]
+          @envelope = Hastur::Envelope.new opts
         else
-          raise ArgumentError.new "One of :envelope or :uuid arguments are required."
+          raise ArgumentError.new ":envelope or :uuid/:route arguments are required."
         end
 
         unless self.kind_of? ROUTES[@envelope.route]
           raise ArgumentError.new "Envelope route '#{@envelope.route.to_s}' does not match class '#{self.class}'"
         end
 
-        if payload.nil? and not data.nil?
-          unless data.respond_to?(:to_hash)
-            raise ArgumentError.new "second argument must be nil or respond to to_hash()."
-          end
-          @payload = MultiJson.encode(data.to_hash)
-        elsif data.nil? and not payload.nil?
-          data = MultiJson.decode(payload)
+        if opts[:data].respond_to? :to_hash and not opts[:payload]
+          @payload = MultiJson.encode opts[:data].to_hash
+        elsif opts[:payload]
+          @payload = opts[:payload]
         else
-          raise ArgumentError.new "One or both of the 3rd/4th arguments must be set."
+          raise ArgumentError.new "Either :data or :payload is required."
         end
 
-        @timestamp = data[:timestamp] || Time.new.to_f
-        @uptime    = data[:uptime]    || @timestamp - BOOT_TIME
-        @sequence  = data[:sequence]  || Hastur::Message::Seq.next
+        if opts[:zmq_parts] and opts[:zmq_parts].length > 0
+          @zmq_parts = opts[:zmq_parts]
+        end
       end
 
       #
@@ -202,11 +210,10 @@ module Hastur
       # are generally use-once only.
       #
       def send(socket)
-        messages = []
+        messages = @zmq_parts
 
-        if @zmq_parts and not @zmq_parts.empty?
+        unless @zmq_parts.nil? or @zmq_parts.empty?
           messages << @zmq_parts
-          @zmq_parts.replace([]) # clear it
         end
 
         messages << ZMQ::Message.new(@envelope.pack)
@@ -220,7 +227,15 @@ module Hastur
           #end
         end
 
+        # messages are not reusable
+        messages.each { |m| m.close }
+        @zmq_parts []
+
         socket.send_and_close(payload)
+      end
+
+      def to_s
+        payload
       end
     end
 
@@ -233,7 +248,8 @@ module Hastur
     class Stat
       def initialize(opts)
         opts[:route] = :stat
-        super(opts[:envelope], opts[:payload], opts[:stat], :stat, opts[:uuid])
+        opts[:data]  = opts.delete :stat
+        super(opts)
       end
     end
 
@@ -246,63 +262,60 @@ module Hastur
     # 
     class Error
       def initialize(opts)
-        data = nil
-
         if opts.kind_of? String
-          data = {
-            :error        => opts,
-            :error_string => opts
+          opts = {
+            :route   => :error,
+            :payload => { :error => opts }
           }
         elsif opts[:error]
-          # might want to be more strict about the type of error, or add some
-          # automatic conversions for things like exceptions
-          data = {
-            :error        => opts[:error],
-            :error_string => opts[:error].to_s
-          }
+          opts[:route]   = :error
+          opts[:payload] = MultiJson.encode opts.delete :error
         end
 
-        super(opts[:envelope], opts[:payload], data, :error, opts[:uuid])
+        super(opts)
       end
     end
 
     class Rawdata
       def initialize(opts)
-        data = nil
-        if opts[:rawdata]
-          data = { :rawdata => opts[:rawdata] }
-        end
-        super(opts[:envelope], opts[:payload], data, :rawdata, opts[:uuid])
+        opts[:route]   = :rawdata
+        opts[:payload] = MultiJson.encode opts.delete :rawdata
+        super(opts)
       end
     end
 
     class PluginExec
       def initialize(opts)
-        super(opts[:envelope], opts[:payload], opts[:plugin_exec], :plugin_exec, opts[:uuid])
+        opts[:route] = :plugin_exec
+        super(opts)
       end
     end
 
     class PluginResult
       def initialize(opts)
-        super(opts[:envelope], opts[:payload], opts[:plugin_result], :plugin_result, opts[:uuid])
+        opts[:route] = :plugin_result
+        super(opts)
       end
     end
 
     class RegisterClient
       def initialize(opts)
-        super(opts[:envelope], opts[:payload], opts[:register_client], :register_client, opts[:uuid])
+        opts[:route] = :register_client
+        super(opts)
       end
     end
 
     class RegisterService
       def initialize(opts)
-        super(opts[:envelope], opts[:payload], opts[:register_service], :register_service, opts[:uuid])
+        opts[:route] = :register_service
+        super(opts)
       end
     end
 
     class RegisterPlugin
       def initialize(opts)
-        super(opts[:envelope], opts[:payload], opts[:register_plugin], :register_plugin, opts[:uuid])
+        opts[:route] = :register_plugin
+        super(opts)
       end
     end
   end
