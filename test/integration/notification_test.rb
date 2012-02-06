@@ -12,7 +12,6 @@ class NotificationTest < Test::Unit::TestCase
     u = UDPSocket.new
     u.send('{ "params":{ "name":"name", "subsystem":"backlot", "uuid":"thisismyuuid", "id":"notification-id"}, "method":"notify" }', 
            0, "127.0.0.1", 8125)
-    sleep 1
     # wait for 1 second for notification
     sleep 1
     # get messages from the sink shims for notifications
