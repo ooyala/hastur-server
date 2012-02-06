@@ -98,12 +98,16 @@ def process_udp_message(msg)
     if !hash['params'].nil? && hash['params']['id']
       @notifications[hash['params']['id']] = hash
     else
-      Hastur::ZMQUtils.hastur_send @router_socket, "log", hash.merge('uuid' => CLIENT_UUID, 'message' => "Unable to parse for notification id")
+      Hastur::ZMQUtils.hastur_send(
+        @router_socket,
+        "log", 
+        hash.merge('uuid' => CLIENT_UUID, 'message' => "Unable to parse for notification id"))
     end
   end
 
   # forward the message to the message bus
-  Hastur::ZMQUtils.hastur_send @router_socket, hash['method'] || "error", hash.merge('uuid' => CLIENT_UUID)
+  Hastur::ZMQUtils.hastur_send(
+    @router_socket, hash['method'] || "error", hash.merge('uuid' => CLIENT_UUID))
 end
 
 #
@@ -219,7 +223,8 @@ def poll_zmq(plugins)
       process_notification_ack msgs[-1] 
     else
       # log error
-      Hastur::ZMQUtils.hastur_send(@router_socket, "error", {:message => "Unable to deal with this type of message => #{msgs[-2]}"})
+      Hastur::ZMQUtils.hastur_send(@router_socket, "error",
+        {:message => "Unable to deal with this type of message => #{msgs[-2]}"})
     end
   end
   # read messages from Services
@@ -230,7 +235,8 @@ def poll_zmq(plugins)
   # perform heartbeat check
   if Time.now - @last_heartbeat > HEARTBEAT_INTERVAL
     STDERR.puts "Sending heartbeat"
-    Hastur::ZMQUtils.hastur_send(@router_socket, "heartbeat", { :name => "hastur thin client", :uuid => CLIENT_UUID } )
+    Hastur::ZMQUtils.hastur_send(@router_socket, "heartbeat",
+      { :name => "hastur thin client", :uuid => CLIENT_UUID } )
     @last_heartbeat = Time.now
   end
   # perform notification resends if necessary
@@ -259,7 +265,8 @@ def register_client(uuid)
       :method => "register_client"
     }
   # log to hastur that we at least attempted to register this client
-  Hastur::ZMQUtils.hastur_send @router_socket, "logs", { :message => "Attempting to register client #{CLIENT_UUID}", :uuid => CLIENT_UUID }
+  Hastur::ZMQUtils.hastur_send(@router_socket, "logs", 
+    { :message => "Attempting to register client #{CLIENT_UUID}", :uuid => CLIENT_UUID })
 end
 
 #
