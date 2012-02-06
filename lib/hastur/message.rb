@@ -11,6 +11,7 @@ module Hastur
   module Message
     # pre-declare the class structure to make introspection work
     class Base;                   end
+    class Request         < Base; end
     class Stat            < Base; end
     class Error           < Base; end
     class Rawdata         < Base; end
@@ -30,6 +31,7 @@ module Hastur
   ROUTES = {
     :stat             => Hastur::Message::Stat,
     :error            => Hastur::Message::Error,
+    :request          => Hastur::Message::Request,
     :rawdata          => Hastur::Message::Rawdata,
     :plugin_exec      => Hastur::Message::PluginExec,
     :plugin_result    => Hastur::Message::PluginResult,
@@ -73,7 +75,7 @@ module Hastur
     #
     def self.parse(msg)
       parts = msg.unpack(PACK)
-      Envelope.new(
+      self.new(
         :version   => parts[0],
         :route     => parts[1].to_sym,
         :uuid      => parts[2..6].join('-'),
@@ -130,7 +132,7 @@ module Hastur
   # A collection of classes for managing common Hastur messages.
   #
   module Message
-    def self.new(opts)
+    def self.create(opts)
       envelope = opts[:envelope] or raise ArgumentError.new(":envelope is required")
       payload  = opts[:payload]  or raise ArgumentError.new(":payload is required")
       
@@ -139,32 +141,6 @@ module Hastur
       else
         raise ArgumentError.new "Invalid route in envelope: '#{envelope.route}'"
       end
-    end
-
-    #
-    # receive a message from a ZeroMQ socket and return an appropriate Hastur::Message::* class,
-    # e.g. route => :rawdata will return a Hastur::Message::Rawdata
-    # 
-    # object = Hastur::Message.recv(@socket)
-    # object.route    # symbol for the route
-    # object.envelope # Hastur::Envelope
-    # object.payload  # usually JSON
-    # object.send(@socket)
-    #
-    def self.recv(socket, zmq_flags=0)
-      messages = []
-      rc = socket.recvmsgs messages, zmq_flags
-      return rc if zmq_flags != 0 and rc != -1
-
-      raise "socket.recvmsgs failed" unless rc == 0
-
-      payload = messages[-1].copy_out_string
-      messages.pop.close
-
-      envelope = Hastur::Envelope.parse messages[-1].copy_out_string
-      messages.pop.close
-
-      self.new :envelope => envelope, :payload => payload, :zmq_parts => messages
     end
 
     #
@@ -203,6 +179,46 @@ module Hastur
         end
       end
 
+      def self.request(socket, opts={})
+        raise ArgumentError.new "First argument must be a ZMQ::Socket." unless socket.kind_of? ZMQ::Socket
+        opts[:uuid] ||= SecureRandom.uuid
+
+        e = Hastur::Envelope.new :uuid => opts[:uuid], :route => :request
+
+        messages = [ ZMQ::Message.new(e.pack), ZMQ::Message.new('') ]
+
+        rc = socket.sendmsgs messages
+        messages.each { |m| m.close }
+        rc
+      end
+
+      #
+      # receive a message from a ZeroMQ socket and return an appropriate Hastur::Message::* class,
+      # e.g. route => :rawdata will return a Hastur::Message::Rawdata
+      # 
+      # object = Hastur::Message.recv(@socket)
+      # object.route    # symbol for the route
+      # object.envelope # Hastur::Envelope
+      # object.payload  # usually JSON
+      # object.send(@socket)
+      #
+      def self.recv(socket, zmq_flags=0)
+        raise ArgumentError.new "First argument must be a ZMQ::Socket." unless socket.kind_of? ZMQ::Socket
+        messages = []
+        rc = socket.recvmsgs messages, zmq_flags
+        return rc if zmq_flags != 0 and rc == -1
+
+        raise "socket.recvmsgs failed" unless rc != -1
+
+        payload = messages[-1].copy_out_string
+        messages.pop.close
+
+        envelope = Hastur::Envelope.parse messages[-1].copy_out_string
+        messages.pop.close
+
+        self.new :envelope => envelope, :payload => payload, :zmq_parts => messages
+      end
+
       #
       # send the message on a ZeroMQ socket. This is not particular about what kind of ZeroMQ socket.
       # Care is taken to try to use ZMQ::Message as-is without converting to/from strings until it's
@@ -210,32 +226,37 @@ module Hastur
       # are generally use-once only.
       #
       def send(socket)
-        messages = @zmq_parts
+        raise ArgumentError.new "First argument must be a ZMQ::Socket." unless socket.kind_of? ZMQ::Socket
+        messages = []
 
         unless @zmq_parts.nil? or @zmq_parts.empty?
-          messages << @zmq_parts
+          messages = @zmq_parts.clone
+          @zmq_parts.clear
         end
 
         messages << ZMQ::Message.new(@envelope.pack)
-        payload = ZMQ::Message.new(@payload.to_s)
+        messages << ZMQ::Message.new(@payload.to_s)
 
-        # https://github.com/chuckremes/ffi-rzmq/blob/bdd0a399/lib/ffi-rzmq/socket.rb#L278
-        messages.each do |p|
-          rc = socket.send_and_close(p, ZMQ::SNDMORE)
-          #unless ZMQ::Util.resultcode_ok?(rc)
-          #  raise Hastur::ZMQReturnCodeError.new rc
-          #end
-        end
-
-        # messages are not reusable
+        rc = socket.sendmsgs messages
         messages.each { |m| m.close }
-        @zmq_parts []
-
-        socket.send_and_close(payload)
+        rc
       end
 
       def to_s
         payload
+      end
+    end
+
+    class Request
+      def initialize(socket)
+        raise ArgumentError.new "First argument must be a ZMQ::Socket." unless socket.kind_of? ZMQ::Socket
+        STDERR.write '-'
+        @socket = socket
+      end
+
+      def reply(message)
+        message.send(@socket)
+        STDERR.write '+'
       end
     end
 
@@ -279,7 +300,7 @@ module Hastur
     class Rawdata
       def initialize(opts)
         opts[:route]   = :rawdata
-        opts[:payload] = MultiJson.encode opts.delete :rawdata
+        opts[:payload] = opts.delete :payload
         super(opts)
       end
     end

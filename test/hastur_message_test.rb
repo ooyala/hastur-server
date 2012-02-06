@@ -19,12 +19,12 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   STAT_JSON = '{"name":"foo.bar","value":1024,"units":"s","timestamp":1328176249.1028926,"tags":{"blahblah":456}}'
   STAT_OBJECT = Hastur::Stat.new(STAT)
 
-  DEALER_COUNT = 40 # number of emulated ZMQ::DEALER clients to run
+  DEALER_COUNT = 10 # number of emulated ZMQ::DEALER clients to run
   ROUTER_COUNT = 4  # number of emulated routers to run
   PULLER_COUNT = 4  # number of sinks to run, must divide evenly into dealer count
   DEALER_MESSAGES = DEALER_COUNT * DEALER_COUNT
   PULLER_MESSAGES = DEALER_MESSAGES / PULLER_COUNT # pullers use this to know when to exit, be careful
-  DEALER_IDS = 1.upto(DEALER_COUNT).map { SecureRandom.uuid }
+  DEALER_IDS = DEALER_COUNT.times.map { SecureRandom.uuid }
 
   puts "MESSAGES: #{DEALER_MESSAGES}, PULLER_MESSAGES: #{PULLER_MESSAGES}"
 
@@ -98,76 +98,58 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
 
   def zmq_sockopts(s)
     s.setsockopt(ZMQ::LINGER, -1)
-    s.setsockopt(ZMQ::SNDHWM, DEALER_MESSAGES)
-    s.setsockopt(ZMQ::RCVHWM, DEALER_MESSAGES)
+    s.setsockopt(ZMQ::HWM, 0)
   end
 
   def zmq_router(ctx, router_uri, pusher_uri)
-    puts "Router on #{router_uri}"
-    puts "Pusher on #{pusher_uri}"
-
     router = ctx.socket(ZMQ::ROUTER)
     zmq_sockopts(router)
     router.bind(router_uri)
 
-    push = ctx.socket(ZMQ::PUSH)
+    push = ctx.socket(ZMQ::REP)
     zmq_sockopts(push)
     push.bind(pusher_uri)
 
-    saw = 0
+    @mutex.synchronize { @counts[router_uri] = 0 }
 
     loop do
-      rc = router.recvmsgs stuff = [], ZMQ::DONTWAIT
-      if rc >= 0
-        STDERR.write '<'
-        push.sendmsgs stuff
-        STDERR.write '>'
-        saw += 1
-      else
-        STDERR.write '-'
-        sleep 0.01
-        break if @count == DEALER_MESSAGES
-      end
+      msg = Hastur::Message::Stat.recv(router)
+      req = Hastur::Message::Request.new(push)
+      req.reply(msg)
+      @mutex.synchronize { @counts[:routed] += 1 ; @counts[router_uri] += 1 }
+      STDERR.write '-'
     end
 
     STDERR.write ' P$ R$ '
-    STDERR.write "Router(#{saw})"
-
     push.close
     router.close
   end
 
   def zmq_puller(ctx, pushers, id)
-    sleep 1
-    pull = ctx.socket(ZMQ::PULL)
+    pull = ctx.socket(ZMQ::REQ)
     zmq_sockopts(pull)
     pushers.each { |uri| pull.connect(uri) }
 
     STDERR.write ' p^ '
 
-    1.upto(PULLER_MESSAGES) do |n|
-      #got = Hastur::Message.recv(pull)
-      rc = router.recvmsgs stuff = [], ZMQ::DONTWAIT
-      STDERR.write '#'
-      STDERR.write " (#{n}/#{DEALER_MESSAGES}/#{id}) "
+    loop do
+      msg = Hastur::Message::Stat.request(pull)
+      @mutex.synchronize { @counts[:pulled] += 1; @counts[id] += 1; }
+      STDERR.write "<"
     end
 
-    @mutex.synchronize { @count = @count + PULLER_MESSAGES }
-
-    STDERR.write " p$ (#{@count}/#{DEALER_MESSAGES}/#{id}) "
     pull.close
-    puts "\nDONE!\n"
+    STDERR.write "p$"
   end
 
-  def zmq_dealer(ctx, uuid, routers)
-    sleep 1
+  def zmq_dealer(ctx, uuid, count, routers)
     dealer = ctx.socket(ZMQ::DEALER)
     zmq_sockopts(dealer)
     routers.each { |r| dealer.connect(r) }
 
     STDERR.write ' d^ '
 
-    1.upto(DEALER_COUNT) do |num|
+    count.times do |num|
       msg = Hastur::Message::Stat.new(
        :uuid => uuid,
         :stat => {
@@ -177,8 +159,8 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
           :timestamp => Time.new.to_f,
         }
       )
-      STDERR.write '@'
       msg.send(dealer)
+      STDERR.write '>'
     end
 
     dealer.close
@@ -187,41 +169,55 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
 
   def test_zmq_send
     @mutex  = Mutex.new
-    ctx     = ZMQ::Context.new
-    count   = 0
-    threads = []
-    routers = []
-    dealers = []
-    pushers = []
+    @counts = { :pulled => 0, :routed => 0 }
+    @sent   = 0
+    @routed = 0
+    @sunk   = 0
+    router_uris = []
+    pusher_uris = []
+    routers = {}
+    dealers = {}
+    pullers = {}
 
+        ctx = ZMQ::Context.new
     # start up routers
-    1.upto(ROUTER_COUNT) do |num|
-      routers << router = "ipc://router#{num}"
-      pushers << pusher = "ipc://push#{num}"
-      #routers << router = "tcp://127.0.0.1:#{num + 3000}"
-      #pushers << pusher = "tcp://127.0.0.1:#{num + 2000}"
-      threads << Thread.new { zmq_router(ctx, router, pusher) }
+    ROUTER_COUNT.times do |num|
+      router_uris << router = "ipc://router#{num}"
+      pusher_uris << pusher = "ipc://push#{num}"
+      routers[router] = Thread.new do
+        zmq_router(ctx, router, pusher)
+      end
     end
-
-    sleep 1
-
-    # start dealers and produce data (clients)
-    1.upto(DEALER_COUNT) do |c|
-      uuid = DEALER_IDS[c - 1]
-      threads << Thread.new { zmq_dealer(ctx, uuid, routers) }
-    end
-
-    sleep 1
 
     # start up consumers (sinks)
-    1.upto(PULLER_COUNT) do |n|
-      threads << Thread.new { zmq_puller(ctx, pushers, n) }
+    PULLER_COUNT.times do |num|
+      pullers[num] = Thread.new do
+        zmq_puller(ctx, pusher_uris, "puller#{num}")
+      end
     end
 
+    # start dealers and produce data (clients)
+    DEALER_COUNT.times do |num|
+      uuid = DEALER_IDS[num - 1]
+      dealers[uuid] = Thread.new do 
+        zmq_dealer(ctx, uuid, DEALER_COUNT, router_uris)
+      end
+    end
+
+    loop do
+      # TODO: remove this debug output
+      @mutex.synchronize do
+        puts @counts
+      end
+      sleep 0.5
+    end
+
+    # block until all the dealers are done
+    dealers.each {|_,thr| thr.join }
+    pullers.each {|_,thr| thr.join }
+    routers.each {|_,thr| thr.join }
+
     STDERR.write ' $$ '
-    stopped = 0
-    threads.each {|t| t.join } #; stopped += 1; puts "#{stopped}/#{threads.count} stopped"}
-    ctx.terminate
   end
 
   # below are dumb placeholders for the moment
