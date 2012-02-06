@@ -26,6 +26,7 @@ class NotificationTest < Test::Unit::TestCase
     # verify that the count of messages on the notify shims are accurate
     assert_equal(1, sec_1_messages.size)
     assert_equal(2, sec_6_messages.size)
+    # TODO(viet): whenever there is a true notificationD, need to use that to test notification_acks
   end
 
   def setup
