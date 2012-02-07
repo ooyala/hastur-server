@@ -135,12 +135,16 @@ module Hastur
     def self.create(opts)
       envelope = opts[:envelope] or raise ArgumentError.new(":envelope is required")
       payload  = opts[:payload]  or raise ArgumentError.new(":payload is required")
-      
+
       if klass = ROUTES[envelope.route]
         return klass.new(:payload => payload, :envelope => envelope)
       else
         raise ArgumentError.new "Invalid route in envelope: '#{envelope.route}'"
       end
+    end
+
+    def self.recv(*args)
+      Message::Base.recv(*args)
     end
 
     #
@@ -171,7 +175,7 @@ module Hastur
         elsif opts[:payload]
           @payload = opts[:payload]
         else
-          raise ArgumentError.new "Either :data or :payload is required."
+          raise ArgumentError.new "Exactly one of :data or :payload is required."
         end
 
         if opts[:zmq_parts] and opts[:zmq_parts].length > 0
@@ -341,4 +345,3 @@ module Hastur
     end
   end
 end
-
