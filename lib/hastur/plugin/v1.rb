@@ -25,6 +25,8 @@ module Hastur
         # must happen after the fork/exec or these pipes would be useless
         @out_w.close
         @err_w.close
+
+        @pid
       end
 
       # will block if called before the process has closed its stdout/stderr or exited

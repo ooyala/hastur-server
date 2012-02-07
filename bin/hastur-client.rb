@@ -10,6 +10,7 @@ require 'socket'
 
 require "hastur/zmq_utils"
 require "hastur/client/uuid"
+require "hastur/plugin/v1"
 
 MultiJson.engine = :yajl
 NOTIFICATION_INTERVAL = 5   # Hardcode for now
@@ -34,30 +35,6 @@ CLIENT_UUID = opts[:uuid]
 ROUTERS = opts[:router]
 LOCAL_PORT = opts[:port]
 HEARTBEAT_INTERVAL = opts[:heartbeat]
-
-#
-# Executes a plugin asychronously. Using Kernel.spawn it allows the client to limt the cpu and memory usage.
-#
-# Return: 
-#   - child_pid => process ID of the plugin being excuted
-#   - hash containing the stdout and stderr output from the plugin
-#
-def exec_plugin(plugin_command, plugin_args=[])
-  child_out_r, child_out_w = IO.pipe
-  child_err_r, child_err_w = IO.pipe
-
-  child_pid = spawn(plugin_command, plugin_args, 
-    :out => child_out_w,
-    :err => child_err_w,
-    :rlimit_cpu => 5,   # 5 seconds of CPU time
-    :rlimit_as  => 2**5 # 32MB of memory total
-  )
-
-  child_out_w.close
-  child_err_w.close
-
-  return child_pid, { :stdout => child_out_r, :stderr => child_err_r }
-end
 
 #
 # Processes a random UDP message that was sent to the client. For now,
@@ -149,23 +126,19 @@ end
 # if the plugin is done with its execution.
 #
 def poll_plugin_pids(plugins)
-  # if we really want to be paranoid about blocking, use select to check
-  # the readability of the filehandles, but really they're either straight EOF
-  # once the process dies, or can be read in one swoop
-  plugins.each do |pid, info|
-    cpid, status = Process.waitpid2(pid, Process::WNOHANG)
-    unless cpid.nil?
-      # process is dead, we can read all of its data safely without blocking
-      plugin_stdout = info[:stdout].readlines()
-      plugin_stderr = info[:stderr].readlines()
-      # let Hastur know of the results
-      Hastur::ZMQUtils.hastur_send(@router_socket, "stats",
-        { :pid    => cpid,
-        :status => status,
-        :stdout => plugin_stdout,
-        :stderr => plugin_stderr }
-      )
-      plugins.delete cpid
+  plugins.each do |pid,plugin|
+    if plugin.done?
+      # when the process is done, it's safe to slurp the filehandles without blocking
+      stdout, stderr = plugin.slurp
+
+      Hastur::ZMQUtils.hastur_send(@router_socket, "stats", {
+        :pid    => plugin.pid,
+        :status => plugin.status,
+        :stdout => stdout,
+        :stderr => stderr
+      })
+
+      plugins.delete pid
     end
   end
 end
@@ -222,8 +195,9 @@ def poll_zmq(plugins)
     case msgs[-2]
     when "schedule"
       plugin_command, plugin_args = process_schedule_message(msgs[-1])
-      pid, info = exec_plugin(plugin_command, plugin_args)
-      plugins[pid] = info
+      plugin = Hastur::Plugin::V1.new(:command => plugin_command, :args => plugin_args)
+      pid = plugin.run
+      plugins[pid] = plugin
     when "notification_ack"
       process_notification_ack msgs[-1] 
     else
