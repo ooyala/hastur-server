@@ -241,7 +241,9 @@ module Hastur
       #
       def reset
         @packet_captures_to.clear
-        @last_port_num = 21000
+        # TODO(viet): uncomment this when we are confident that the ports allocated
+        #             are properly freed when the topology component is "stop"ped.
+        #@last_port_num = 21000
       end
     end
   end
