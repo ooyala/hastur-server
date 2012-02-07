@@ -90,10 +90,9 @@ end
 
 def to_console(data)
   prefix = PREFIX.dup.underline
-  prefix = prefix.color(PRECOLOR) if PRECOLOR
-  line = prefix + " " + data
-  line = line.color(COLOR) if COLOR
-  STDERR.print(line + "\n")
+  prefix = prefix.color(PRECOLOR.to_sym) if PRECOLOR
+  data = data.dup.color(COLOR.to_sym) if COLOR
+  STDERR.print(prefix + " " + data + "\n")
 end
 
 # ZeroMQ setup

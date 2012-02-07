@@ -74,7 +74,7 @@ EOS
                  {
                    :name => :heartbeat_worker,
                    :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [heartbeat] --uri <%= zmq[:heartbeat] %>
+    ./tools/zmqcli.rb --color red --precolor blue --type pull --connect --prefix [heartbeat] --uri <%= zmq[:heartbeat] %>
 EOS
                  },
                  {
