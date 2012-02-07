@@ -30,7 +30,7 @@ class PluginTest < Test::Unit::TestCase
     ./infrastructure/hastur-router.rb --heartbeat-uri <%= zmq[:heartbeat] %>
                      --register-uri <%= zmq[:register] %>
                      --notify-uri <%= zmq[:notify] %> --stats-uri <%= zmq[:stats] %>
-                     --logs-uri <%= zmq[:logs] %> --error-uri <%= zmq[:error] %>
+                     --logs-uri <%= zmq[:logs] %> --error-uri <%= zmq[:errors] %>
                      --router-uri <%= zmq[:router] %> --from-sink-uri <%= zmq[:from_sink] %>
 EOS
                    :resources => {
