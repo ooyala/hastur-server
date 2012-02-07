@@ -109,30 +109,30 @@ while running do
   # reading messages that are sent to the router from client
   if poller.readables.include?(router_socket)
     messages = Hastur::ZMQUtils.multi_recv(router_socket)
-    STDERR.puts "Read from router socket: #{messages.inspect}"
+    #STDERR.puts "Read from router socket: #{messages.inspect}"
     method = process_messages_for_routing(messages)
-    STDERR.puts "Routing data to #{method.inspect}: #{messages.inspect}"
-    STDERR.puts "Sending to from-client PUB socket"
+    #STDERR.puts "Routing data to #{method.inspect}: #{messages.inspect}"
+    #STDERR.puts "Sending to from-client PUB socket"
     Hastur::ZMQUtils.multi_send(from_client_pub_socket, messages)
     if sockets[method.to_sym]
-      STDERR.puts "Pushing packet to #{method} socket"
+      #STDERR.puts "Pushing packet to #{method} socket"
       Hastur::ZMQUtils.multi_send(sockets[method.to_sym], messages)
     else
-      STDERR.puts "Pushing packet to error socket due to invalid method #{method}."
+      #STDERR.puts "Pushing packet to error socket due to invalid method #{method}."
       Hastur::ZMQUtils.multi_send(error_socket, messages)
     end
-    STDERR.puts "Finished pushing packet to #{method} socket"
+    #STDERR.puts "Finished pushing packet to #{method} socket"
   end
   # reading messages that are sent to the router from a sink
   if poller.readables.include?(from_sink_socket)
-    STDERR.puts "Attempting to read from sink socket"
+    #STDERR.puts "Attempting to read from sink socket"
     messages = Hastur::ZMQUtils.multi_recv(from_sink_socket)
 
-    STDERR.puts "Sending to to-client PUB socket"
+    #STDERR.puts "Sending to to-client PUB socket"
     Hastur::ZMQUtils.multi_send(to_client_pub_socket, messages)
 
-    STDERR.puts "Read from sink socket, sending on router socket: #{messages.inspect}"
+    #STDERR.puts "Read from sink socket, sending on router socket: #{messages.inspect}"
     Hastur::ZMQUtils.multi_send(router_socket, messages)
-    STDERR.puts "Finished sending on router socket"
+    #STDERR.puts "Finished sending on router socket"
   end
 end

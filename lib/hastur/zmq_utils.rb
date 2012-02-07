@@ -85,13 +85,13 @@ module Hastur
       @uptime ||= Time.now.to_i
       # TODO(noah): add client UUID here
       packet_data = {
-        'method' => method,
         'sequence' => @seq_num,
         'uptime' => @uptime,
         'time' => Time.now,
       }
+      method_data = { 'method' => method } if data_hash[:method].nil?
       @seq_num += 1
-      json = MultiJson.encode(data_hash.merge(packet_data))
+      json = MultiJson.encode(data_hash.merge(packet_data).merge(method_data || {}))
       envelope = [ "v1\n#{method}\nack:none" ]
       multi_send(socket, envelope + [ json ])
     end

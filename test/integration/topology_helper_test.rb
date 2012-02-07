@@ -7,7 +7,7 @@ class TopologyHelperTest < Test::Unit::TestCase
   def test_topology_setup
     h= [{
       :name => :client1, 
-      :command => "#{HASTUR_ROOT}/bin/hastur-client.rb --router tcp://127.0.0.1:4321 --port 8125"
+      :command => "#{HASTUR_ROOT}/bin/hastur-client.rb --router tcp://192.168.1.1:9876 --port 8125"
     }]
     t = Hastur::Test::Topology.new(h)
     t.start_all
@@ -24,10 +24,10 @@ class TopologyHelperTest < Test::Unit::TestCase
   def test_stop_all
     h= [{
       :name => :client1, 
-      :command => "#{HASTUR_ROOT}/bin/hastur-client.rb --router tcp://127.0.0.1:4321 --port 8125"
+      :command => "#{HASTUR_ROOT}/bin/hastur-client.rb --router tcp://192.168.1.1:8765 --port 8125"
       }, {
       :name => :client2, 
-      :command => "#{HASTUR_ROOT}/bin/hastur-client.rb --router tcp://127.0.0.1:4321 --port 8125"
+      :command => "#{HASTUR_ROOT}/bin/hastur-client.rb --router tcp://192.168.1.1:8765 --port 8125"
       }]
     t = Hastur::Test::Topology.new(h)
     t.start_all

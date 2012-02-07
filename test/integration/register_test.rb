@@ -3,18 +3,19 @@
 require "test/unit"
 require_relative "./integration_test_helper"
 
-class HeartbeatTest < Test::Unit::TestCase
+class RegisterTest < Test::Unit::TestCase
 
-  def test_heartbeat
-    puts "Sleeping for 6 seconds..."
-    sleep 6
-    # get messages from the sink shims
-    puts "Retrieving packets from heartbeat..."
-    messages = Hastur::Test::ZMQ.all_payloads_to(:heartbeat)
-    # verify that the messages on the heartbeat shims are heartbeat messages
-    assert_equal(messages.size, messages.fuzzy_filter( {"method" => "heartbeat"} ).size)
-    # verify that the count of messages on the heartbeat shims are accurate
-    assert_equal(2, messages.size)
+  def test_register
+    # wait for 5 second for registration to happen
+    sleep 5
+    # get messages from the register shims
+    sec_1_messages = Hastur::Test::ZMQ.all_payloads_to(:register)
+    # verify that the messages on the register shims are registration messages
+    sec_1_messages.each do |m|
+      assert_equal("register_client", m['method'])
+    end
+    # verify that the count of messages on the notify shims are accurate
+    assert_equal(2, sec_1_messages.size)
   end
 
   def setup
@@ -22,12 +23,12 @@ class HeartbeatTest < Test::Unit::TestCase
     processes = [
                  {
                    :name => :client1,
-                   :command => "./bin/hastur-client.rb --heartbeat 5 --router <%= zmq[:router] %> --port 8125",
+                   :command => "./bin/hastur-client.rb --router <%= zmq[:router] %> --port 8125",
                    # TODO(noah): mock UDP port to catch or forward messages?
                  },
                  {
                    :name => :client2,
-                   :command => "./bin/hastur-client.rb --heartbeat 5 --router <%= zmq[:router] %> --port 8126",
+                   :command => "./bin/hastur-client.rb --router <%= zmq[:router] %> --port 8126",
                    # TODO(noah): mock UDP port to catch or forward messages?
                  },
                  {
@@ -100,7 +101,7 @@ EOS
   def teardown
     puts "Tearing down all of the topology components..."
     @topology.stop_all
-    `pkill -f hastur-client`
+    `pkill -f hastur-cient`
     `pkill -f hastur-router`
     `pkill -f zmqcli`
     Hastur::Test::ZMQ.reset

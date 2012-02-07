@@ -38,11 +38,6 @@ class NotificationTest < Test::Unit::TestCase
                    # TODO(noah): mock UDP port to catch or forward messages?
                  },
                  {
-                   :name => :client2,
-                   :command => "./bin/hastur-client.rb --router <%= zmq[:router] %> --port 8126",
-                   # TODO(noah): mock UDP port to catch or forward messages?
-                 },
-                 {
                    :name => :router,
                    :command => <<EOS ,
     ./infrastructure/hastur-router.rb --heartbeat-uri <%= zmq[:heartbeat] %>
@@ -64,6 +59,12 @@ EOS
                        { :name => :from_sink, :type => :pull, :listen => 4323 }
                      ],
                    }
+                 },
+                 {
+                   :name => :register_worker,
+                   :command => <<EOS ,
+    ./tools/zmqcli.rb --type pull --connect --prefix [register] --uri <%= zmq[:register] %>
+EOS
                  },
                  {
                    :name => :notify_worker,
@@ -107,6 +108,7 @@ EOS
     puts "Tearing down all of the topology components..."
     @topology.stop_all
     `pkill -f hastur`
+    Hastur::Test::ZMQ.reset
     puts "Topology is torn down..."
   end
 end

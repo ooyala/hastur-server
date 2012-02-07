@@ -143,7 +143,7 @@ module Hastur
             # in between nodes. This will lead to a gridlock situation because HWM is only at 1.
             #
             # TODO(viet): Perhaps this should be a configurable.
-            sleep 0.1
+            sleep 1
           end
         end
 
@@ -185,19 +185,15 @@ module Hastur
         type = socket[:type]
         uri_in = "tcp://127.0.0.1:#{socket[:forwarder_port]}"
         uri_out = "tcp://127.0.0.1:#{socket[:listen]}"
-
         # Set HWM to 1 so we don't get "instant send" on one end and everything backed
         # up here.
         incoming = ZMQUtils.bind_socket(context, type.to_s, uri_in, :hwm => 1)
         outgoing = ZMQUtils.connect_socket(context, SEND_PORT_FOR[type].to_s, uri_out, :hwm => 1)
-
         poller = ::ZMQ::Poller.new
         poller.register_readable incoming
         poller.register_readable outgoing
-
         loop do
           poller.poll 0.1
-
           if poller.readables.include?(outgoing)
             message = ZMQUtils.multi_recv(outgoing)
             # TODO: Should we keep this? Not really sure how people will know of the dynamically
@@ -206,33 +202,35 @@ module Hastur
             capture_packet_to(message, socket[:name])
             ZMQUtils.multi_send(incoming, message)
           end
-
           unless (poller.readables - [outgoing]).empty?
             message = ZMQUtils.multi_recv(incoming)
             # TODO: Should we keep this? Not really sure how people will know of the dynamically
             #       constructed URI to access it
             capture_packet_to(message, uri_out)
-
             if socket[:type] == :router
               # Remove the extra envelope section added by receiving on a router socket
               client_id = message.shift
-
               @router_sockets ||= {}
               @router_sockets[client_id] ||= ZMQUtils.connect_socket(context, SEND_PORT_FOR[type],
                                                                      uri_out, :hwm => 1,
                                                                      :identity => client_id)
               outgoing = @router_sockets[client_id]
-
               poller.register_readable(outgoing)
             elsif socket[:type] == :dealer
-
+              # TODO: Not sure what to do here
             end
-
             ZMQUtils.multi_send(outgoing, message)
           end
         end
       end
 
+      #
+      # Resets the Topology ZMQ Helper as if it was brand new.
+      #
+      def reset
+        @packet_captures_to.clear
+        @last_port_num = 21000
+      end
     end
   end
 end
