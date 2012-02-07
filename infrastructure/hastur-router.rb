@@ -6,8 +6,15 @@ require 'yajl'
 require 'multi_json'
 require 'socket'
 require 'trollop'
+require 'termite'
 
-require_relative "../lib/hastur/zmq_utils"
+$LOAD_PATH << File.join(__FILE__, "..", "..", "lib")
+require "hastur/zmq_utils"
+require "hastur/message"
+
+Ecology.read("hastur-router.ecology")
+
+logger = Termite::Logger.new
 
 MultiJson.engine = :yajl
 
@@ -53,7 +60,7 @@ end
 # ZeroMQ setup
 version_hash = ZMQ::LibZMQ.version
 version = "#{version_hash[:major]}.#{version_hash[:minor]}p#{version_hash[:patch]}"
-STDERR.puts "Hastur Router (#{Process.pid}) -- Using ZeroMQ version #{version}"
+logger.info "Hastur Router (#{Process.pid}) -- Using ZeroMQ version #{version}"
 
 ctx = ZMQ::Context.new(1)
 
@@ -108,31 +115,69 @@ while running do
   poller.poll_nonblock
   # reading messages that are sent to the router from client
   if poller.readables.include?(router_socket)
-    messages = Hastur::ZMQUtils.multi_recv(router_socket)
-    #STDERR.puts "Read from router socket: #{messages.inspect}"
-    method = process_messages_for_routing(messages)
-    #STDERR.puts "Routing data to #{method.inspect}: #{messages.inspect}"
-    #STDERR.puts "Sending to from-client PUB socket"
-    Hastur::ZMQUtils.multi_send(from_client_pub_socket, messages)
-    if sockets[method.to_sym]
-      #STDERR.puts "Pushing packet to #{method} socket"
-      Hastur::ZMQUtils.multi_send(sockets[method.to_sym], messages)
-    else
-      #STDERR.puts "Pushing packet to error socket due to invalid method #{method}."
-      Hastur::ZMQUtils.multi_send(error_socket, messages)
+    messages = []
+    err = router_socket.recv_strings messages
+    if err < 0
+      logger.error "Error #{err} reading router socket!"
+      next
     end
-    #STDERR.puts "Finished pushing packet to #{method} socket"
+
+    logger.debug "Read from router socket: #{messages.inspect}"
+    # TODO(noah): add routing envelope to Hastur::Envelope and use it here!
+
+    method = process_messages_for_routing(messages)
+
+    # TODO(noah): check envelope and do router acking, if any
+
+    logger.debug "Routing data to #{method.inspect}: #{messages.inspect}"
+    logger.debug "Sending to from-client PUB socket"
+    err = from_client_pub_socket.send_strings(messages)
+    if err < 0
+      logger.error "Error #{err} writing to from-client pub socket!"
+      next
+    end
+
+    if sockets[method.to_sym]
+      logger.debug "Pushing packet to #{method} socket"
+      err = sockets[method.to_sym].send_strings(messages)
+      if err < 0
+        logger.error "Error #{err} writing to #{method} socket!"
+        next
+      end
+    else
+      logger.error "Pushing packet to error socket due to invalid method #{method}."
+      err = error_socket.send_strings(messages)
+      if err < 0
+        logger.error "Error #{err} writing to error socket with invalid method #{method}!"
+        next
+      end
+    end
+    logger.debug "Finished pushing packet to #{method} socket"
   end
+
   # reading messages that are sent to the router from a sink
   if poller.readables.include?(from_sink_socket)
-    #STDERR.puts "Attempting to read from sink socket"
-    messages = Hastur::ZMQUtils.multi_recv(from_sink_socket)
+    logger.debug "Attempting to read from sink socket"
+    messages = []
+    err = from_sink_socket.recv_strings(messages)
+    if err < 0
+      logger.error "Error #{err} reading from sink socket!"
+      next
+    end
 
-    #STDERR.puts "Sending to to-client PUB socket"
-    Hastur::ZMQUtils.multi_send(to_client_pub_socket, messages)
+    logger.debug "Sending to to-client PUB socket"
+    err = to_client_pub_socket.send_strings messages
+    if err < 0
+      logger.error "Error #{err} writing to to-client pub socket!"
+      next
+    end
 
-    #STDERR.puts "Read from sink socket, sending on router socket: #{messages.inspect}"
-    Hastur::ZMQUtils.multi_send(router_socket, messages)
-    #STDERR.puts "Finished sending on router socket"
+    logger.debug "Read from sink socket, sending on router socket: #{messages.inspect}"
+    err = router_socket.send_strings messages
+    if err < 0
+      logger.error "Error #{err} writing to to-client router socket!"
+      next
+    end
+    logger.debug "Finished sending on router socket"
   end
 end

@@ -50,33 +50,6 @@ module Hastur
     end
 
     #
-    # receive a multi-part message in one go as an array
-    #
-    def multi_recv(socket)
-      messages = []
-      socket.recv_string(data = "")
-      messages << data
-      while socket.more_parts?
-        socket.recv_string(data = "")
-        messages << data
-      end
-      messages
-    end
-
-    #
-    # Send a multi-part message using an array.
-    #
-    def multi_send(socket, messages)
-      last_message = messages[-1]
-      (messages[0..-2]).each do |message|
-        # I know you can't resend a 0mq message...  Does ffi-rzmq shield us from that
-        # or do we need to dup?
-        socket.send_string(message.dup, ZMQ::SNDMORE)
-      end
-      socket.send_string(last_message)
-    end
-
-    #
     # Send a Hastur-specific message with a header envelope containing version, time, and sequence.
     #
     def hastur_send(socket, method, data_hash)
@@ -93,7 +66,7 @@ module Hastur
       @seq_num += 1
       json = MultiJson.encode(data_hash.merge(packet_data).merge(method_data || {}))
       envelope = [ "v1\n#{method}\nack:none" ]
-      multi_send(socket, envelope + [ json ])
+      socket.send_strings(envelope + [ json ])
     end
 
     private
