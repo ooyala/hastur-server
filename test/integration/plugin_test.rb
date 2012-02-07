@@ -5,6 +5,9 @@ require_relative "./integration_test_helper"
 
 class PluginTest < Test::Unit::TestCase
 
+  FROM_SINK_URI="tcp://127.0.0.1:4323"
+  ROUTER_URI="tcp://127.0.0.1:4321"
+
   def test_plugin
     # let the schedule message actually get through
     sleep 10
@@ -18,10 +21,11 @@ class PluginTest < Test::Unit::TestCase
 
   def setup
     Dir.chdir HASTUR_ROOT
+
     processes = [
                  {
                    :name => :client1,
-                   :command => "./bin/hastur-client.rb --router <%= zmq[:router] %> --port 8125 --uuid thisismyuuid",
+                   :command => "./bin/hastur-client.rb --router #{ROUTER_URI} --port 8125 --uuid thisismyuuid",
                    # TODO(noah): mock UDP port to catch or forward messages?
                  },
                  {
@@ -31,11 +35,11 @@ class PluginTest < Test::Unit::TestCase
                      --register-uri <%= zmq[:register] %>
                      --notify-uri <%= zmq[:notify] %> --stats-uri <%= zmq[:stats] %>
                      --logs-uri <%= zmq[:logs] %> --error-uri <%= zmq[:error] %>
-                     --router-uri <%= zmq[:router] %> --from-sink-uri <%= zmq[:from_sink] %>
+                     --router-uri #{ROUTER_URI} --from-sink-uri #{FROM_SINK_URI}
 EOS
                    :resources => {
                      :zmq => [
-                       { :name => :router, :type => :router, :listen => 4321 },
+#                       { :name => :router, :type => :router, :listen => 4321 },
                        { :name => :register, :type => :push, :listen => 4330 },
                        { :name => :notify, :type => :push, :listen => 4331 },
                        { :name => :stats, :type => :push, :listen => 4332 },
@@ -43,7 +47,7 @@ EOS
                        { :name => :logs, :type => :push, :listen => 4334 },
                        { :name => :error, :type => :push, :listen => 4350 },
 #                       { :name => :pub, :type => :pub, :listen => 4322 },
-                       { :name => :from_sink, :type => :pull, :listen => 4323 }
+#                       { :name => :from_sink, :type => :pull, :listen => 4323 }
                      ],
                    }
                  },
@@ -86,7 +90,7 @@ EOS
                  {
                    :name => :scheduleD,
                    :command => <<EOS ,
-    ./infrastructure/hastur-scheduler.rb --initial-sleep 5 --router <%= zmq[:router] %> --data test/data/json/sample.txt --client thisismyuuid
+    ./infrastructure/hastur-scheduler.rb --initial-sleep 5 --router #{FROM_SINK_URI} --data test/data/json/sample.txt --client thisismyuuid
 EOS
                    # TODO(noah): mock UDP port to catch or forward messages?
                  }

@@ -29,7 +29,7 @@ basic-router.rb - a simple 0mq router.  Clients connect to the router URI,
 EOS
   opt :router_uri,          "ZMQ Router (incoming) URI", :default => "tcp://127.0.0.1:4321", :type => String
   opt :from_client_pub_uri, "ZMQ Pub URI for sinks",     :default => "tcp://127.0.0.1:4322", :type => String
-  opt :to_client_pub_uri,   "ZMQ Pub URI for sinks",     :default => "tcp://127.0.0.1:4322", :type => String
+  opt :to_client_pub_uri,   "ZMQ Pub URI for sinks",     :default => "tcp://127.0.0.1:4320", :type => String
   opt :from_sink_uri,       "ZMQ from-sink URI",         :default => "tcp://127.0.0.1:4323", :type => String
 
   port = 4330
@@ -83,10 +83,15 @@ def process_messages_for_routing(messages)
 end
 
 sockets = {}
+logger.debug "Setting up router socket on #{opts[:router_uri]}"
 router_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::ROUTER, opts[:router_uri], opts)
+logger.debug "Setting up from_client_pub_uri socket on #{opts[:from_client_pub_uri]}"
 from_client_pub_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PUB, opts[:from_client_pub_uri], opts)
+logger.debug "Setting up to_client_pub_uri socket on #{opts[:to_client_pub_uri]}"
 to_client_pub_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PUB, opts[:to_client_pub_uri], opts)
+logger.debug "Setting up from_sink_uri socket on #{opts[:from_sink_uri]}"
 from_sink_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PULL, opts[:from_sink_uri], opts)
+logger.debug "Setting up error_uri socket on #{opts[:error_uri]}"
 error_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PUSH, opts[:error_uri], opts)
 
 METHODS.each do |method|
@@ -158,7 +163,6 @@ while running do
 
   # reading messages that are sent to the router from a sink
   if poller.readables.include?(from_sink_socket)
-    logger.debug "Attempting to read from sink socket"
     messages = []
     err = from_sink_socket.recv_strings(messages)
     if err < 0
@@ -166,19 +170,17 @@ while running do
       next
     end
 
-    logger.debug "Sending to to-client PUB socket"
     err = to_client_pub_socket.send_strings messages
     if err < 0
       logger.error "Error #{err} writing to to-client pub socket!"
       next
     end
 
-    logger.debug "Read from sink socket, sending on router socket: #{messages.inspect}"
+    logger.debug "Read from sink socket, sending on router socket [#{opts[:router_uri]}]: #{messages.inspect}"
     err = router_socket.send_strings messages
     if err < 0
       logger.error "Error #{err} writing to to-client router socket!"
       next
     end
-    logger.debug "Finished sending on router socket"
   end
 end

@@ -243,7 +243,7 @@ module Hastur
 
             if socket[:type] == :router
               # Remove the extra envelope section added by receiving on a router socket
-              client_id = message.shift
+              #client_id = message.shift
             end
             err = outgoing.send_strings(message)
             if err < 0
