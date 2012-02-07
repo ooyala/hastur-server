@@ -57,7 +57,7 @@ EOS
                  {
                    :name => :register_worker,
                    :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [register] --uri <%= zmq[:register] %>
+    ./tools/zmqcli.rb --color yellow --precolor blue --type pull --connect --prefix [register] --uri <%= zmq[:register] %>
 EOS
                  },
                  {

@@ -69,7 +69,7 @@ EOS
                  {
                    :name => :notify_worker,
                    :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [notify] --uri <%= zmq[:notify] %>
+    ./tools/zmqcli.rb --color green --precolor blue --type pull --connect --prefix [notify] --uri <%= zmq[:notify] %>
 EOS
                  },
                  {
