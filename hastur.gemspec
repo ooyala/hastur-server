@@ -8,8 +8,12 @@ Gem::Specification.new do |s|
   s.authors     = ["Noah Gibbs"]
   s.email       = ["noah@ooyala.com"]
   s.homepage    = ""
-  s.summary     = %q{TODO: Write a gem summary}
-  s.description = %q{TODO: Write a gem description}
+  s.summary     = %q{A monitoring router to tame the eldritch horror of your network}
+  s.description = <<EOS
+Hastur is a monitoring network (like Nagios) running clients on the monitored systems,
+routers to forward the information and various back-end sinks to organize and store
+information about your systems.
+EOS
 
   s.rubyforge_project = "hastur"
 
