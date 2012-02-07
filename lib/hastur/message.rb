@@ -11,8 +11,8 @@ module Hastur
   module Message
     # pre-declare the class structure to make introspection work
     class Base;                   end
-    class Request         < Base; end
     class Stat            < Base; end
+    class Log             < Base; end
     class Error           < Base; end
     class Rawdata         < Base; end
     class PluginExec      < Base; end
@@ -30,6 +30,7 @@ module Hastur
   # ["string"].pack('Z16').unpack('H8H4H4H4H12').join('-')
   ROUTES = {
     :stat             => '73746174-0000-0000-0000-000000000000',
+    :log              => '6c6f6700-0000-0000-0000-000000000000',
     :error            => '6572726f-7200-0000-0000-000000000000',
     :rawdata          => '72617764-6174-6100-0000-000000000000',
     :plugin_exec      => '706c7567-696e-5f65-7865-630000000000',
@@ -44,6 +45,7 @@ module Hastur
   # easy mapping of route id's to handler classes
   ROUTE_KLASS = {
     '73746174-0000-0000-0000-000000000000' => Hastur::Message::Stat,
+    '6c6f6700-0000-0000-0000-000000000000' => Hastur::Message::Log,
     '6572726f-7200-0000-0000-000000000000' => Hastur::Message::Error,
     '72617764-6174-6100-0000-000000000000' => Hastur::Message::Rawdata,
     '706c7567-696e-5f65-7865-630000000000' => Hastur::Message::PluginExec,
@@ -289,7 +291,7 @@ module Hastur
     end
 
     #
-    # s = Hastur::Message::Stat.new(:payload => json_string)
+    # s = Hastur::Message::Stat.new(:from => from, :payload => json_string)
     #
     # stat = Hastur::Stat.new( ... )
     # s = Hastur::Message::Stat.new(stat)
@@ -297,6 +299,16 @@ module Hastur
     class Stat
       def initialize(opts)
         opts[:to] = ROUTES[:stat]
+        super(opts)
+      end
+    end
+
+    #
+    # m = Hastur::Message::Log.new :from => from, :payload => string
+    #
+    class Log
+      def initialize(opts)
+        opts[:to] = ROUTES[:log]
         super(opts)
       end
     end
