@@ -16,7 +16,7 @@ class PluginTest < Test::Unit::TestCase
     # verify that the messages on the heartbeat shims are heartbeat messages
     assert_equal(messages.size, messages.fuzzy_filter( {"method" => "stats"} ).size)
     # verify that the count of messages on the heartbeat shims are accurate
-    assert_equal(2, messages.size)
+    assert_equal(1, messages.size)
   end
 
   def setup
@@ -66,7 +66,7 @@ EOS
                  {
                    :name => :stats_worker,
                    :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [stats] --uri <%= zmq[:stats] %>
+    ./tools/zmqcli.rb --color red --precolor blue --type pull --connect --prefix [stats] --uri <%= zmq[:stats] %>
 EOS
                  },
                  {

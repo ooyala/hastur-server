@@ -15,11 +15,11 @@ module Hastur
         opts[:rlimit_cpu] ||= 10
         opts[:rlimit_as]  ||= 2**26 # 64MB of memory
 
-        @pid = Kernel.spawn(@command, *@args, 
+        @pid = Kernel.spawn(@command, *@args,
           :out => @out_w,
           :err => @err_w,
           :rlimit_cpu => opts[:rlimit_cpu],
-          :rlimit_as  => opts[:rlimit_as],
+          :rlimit_as  => opts[:rlimit_as]
         )
 
         # must happen after the fork/exec or these pipes would be useless

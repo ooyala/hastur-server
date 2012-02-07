@@ -103,6 +103,7 @@ def process_schedule_message(message)
     @logger.debug "Received invalid JSON packet: #{msg.inspect}"
     return
   end
+
   [ hash["plugin_path"], hash["plugin_args"] ]
 end
 
@@ -199,7 +200,7 @@ def poll_zmq(plugins)
     case msgs[-2]
     when "schedule"
       plugin_command, plugin_args = process_schedule_message(msgs[-1])
-      plugin = Hastur::Plugin::V1.new(:command => plugin_command, :args => plugin_args)
+      plugin = Hastur::Plugin::V1.new(plugin_command, plugin_args)
       pid = plugin.run
       plugins[pid] = plugin
     when "notification_ack"
