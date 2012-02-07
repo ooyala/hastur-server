@@ -195,31 +195,43 @@ module Hastur
         loop do
           poller.poll 0.1
           if poller.readables.include?(outgoing)
-            message = ZMQUtils.multi_recv(outgoing)
+            message = []
+            err = outgoing.recv_strings(message)
+            if err < 0
+              STDERR.puts "Forwarding socket got error #{err} when reading outgoing port #{uri_out}!"
+              next
+            end
+
             # TODO: Should we keep this? Not really sure how people will know of the dynamically
             #       constructed URI to access it
             capture_packet_to(message, uri_in)
             capture_packet_to(message, socket[:name])
-            ZMQUtils.multi_send(incoming, message)
+            err = incoming.send_strings(message)
+            if err < 0
+              STDERR.puts "Forwarding socket got error #{err} when writing incoming port #{uri_in}!"
+              next
+            end
           end
-          unless (poller.readables - [outgoing]).empty?
-            message = ZMQUtils.multi_recv(incoming)
-            # TODO: Should we keep this? Not really sure how people will know of the dynamically
-            #       constructed URI to access it
+          if poller.readables.include?(incoming)
+            message = []
+            err = incoming.recv_strings(message)
+            if err < 0
+              STDERR.puts "Forwarding socket got error #{err} when reading incoming port #{uri_in}!"
+              next
+            end
+
+            # TODO(noah): fix how we store this so people can find it
             capture_packet_to(message, uri_out)
+
             if socket[:type] == :router
               # Remove the extra envelope section added by receiving on a router socket
               client_id = message.shift
-              @router_sockets ||= {}
-              @router_sockets[client_id] ||= ZMQUtils.connect_socket(context, SEND_PORT_FOR[type],
-                                                                     uri_out, :hwm => 1,
-                                                                     :identity => client_id)
-              outgoing = @router_sockets[client_id]
-              poller.register_readable(outgoing)
-            elsif socket[:type] == :dealer
-              # TODO: Not sure what to do here
             end
-            ZMQUtils.multi_send(outgoing, message)
+            err = outgoing.send_strings(message)
+            if err < 0
+              STDERR.puts "Forwarding socket got error #{err} when writing outgoing port #{uri_out}!"
+              next
+            end
           end
         end
       end
