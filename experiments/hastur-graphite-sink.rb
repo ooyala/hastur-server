@@ -20,7 +20,13 @@ def main(routers)
   router.setsockopt(ZMQ::LINGER, 1)
 
   loop do
-    payload = multi_recv(router)[-1]
+    payload = []
+    err = router.recv_strings(payload)
+    if err < 0
+      STDERR.puts "Error #{err} reading router socket!"
+      next
+    end
+    payload = payload[-1]
 
     puts payload
   end

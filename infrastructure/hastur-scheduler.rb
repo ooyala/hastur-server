@@ -44,9 +44,11 @@ loop do
     File.open(opts[:data], "r") do |f|
       msg = f.gets
       puts "Sending schedule message..#{msg}"
-      Hastur::ZMQUtils.multi_send router_socket, [ uuid, "schedule", msg ]
+      err = router_socket.send_strings [ uuid, "schedule", msg ]
+      if err < 0
+        STDERR.puts "Error #{err} sending scheduling message!"
+      end
     end
   end
   sleep opts[:interval]
 end
-

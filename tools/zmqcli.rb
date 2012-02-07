@@ -141,11 +141,16 @@ def send_string(sock, data)
   messages = envelope + [ data ]
 
   to_console "Sending message(s): #{messages.inspect}"
-  Hastur::ZMQUtils.multi_send sock, messages
+  err = sock.send_strings messages
+  if err < 0
+    to_console "Error #{err} sending on socket!"
+  end
 end
 
 def recv_string(sock)
-  data = Hastur::ZMQUtils.multi_recv(sock)
+  message = []
+  sock.recv_strings message
+  message
 end
 
 # ZMQ::REP, blocking loop

@@ -213,7 +213,12 @@ def poll_zmq(plugins)
   @poller.poll_nonblock
   # read messages from Hastur
   if @poller.readables.include?(@router_socket)
-    msgs = multi_recv @router_socket
+    msgs = []
+    err = @router_socket.recv_strings msgs
+    if err < 0
+      STDERR.puts "Error #{err} reading router socket!"
+      return
+    end
     case msgs[-2]
     when "schedule"
       plugin_command, plugin_args = process_schedule_message(msgs[-1])
