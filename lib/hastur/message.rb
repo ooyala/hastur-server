@@ -31,7 +31,6 @@ module Hastur
   ROUTES = {
     :stat             => Hastur::Message::Stat,
     :error            => Hastur::Message::Error,
-    :request          => Hastur::Message::Request,
     :rawdata          => Hastur::Message::Rawdata,
     :plugin_exec      => Hastur::Message::PluginExec,
     :plugin_result    => Hastur::Message::PluginResult,
@@ -183,19 +182,6 @@ module Hastur
         end
       end
 
-      def self.request(socket, opts={})
-        raise ArgumentError.new "First argument must be a ZMQ::Socket." unless socket.kind_of? ZMQ::Socket
-        opts[:uuid] ||= SecureRandom.uuid
-
-        e = Hastur::Envelope.new :uuid => opts[:uuid], :route => :request
-
-        messages = [ ZMQ::Message.new(e.pack), ZMQ::Message.new('') ]
-
-        rc = socket.sendmsgs messages
-        messages.each { |m| m.close }
-        rc
-      end
-
       #
       # receive a message from a ZeroMQ socket and return an appropriate Hastur::Message::* class,
       # e.g. route => :rawdata will return a Hastur::Message::Rawdata
@@ -248,19 +234,6 @@ module Hastur
 
       def to_s
         payload
-      end
-    end
-
-    class Request
-      def initialize(socket)
-        raise ArgumentError.new "First argument must be a ZMQ::Socket." unless socket.kind_of? ZMQ::Socket
-        STDERR.write '-'
-        @socket = socket
-      end
-
-      def reply(message)
-        message.send(@socket)
-        STDERR.write '+'
       end
     end
 
