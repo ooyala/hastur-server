@@ -13,6 +13,7 @@ module Hastur
           %w(INT TERM KILL).each do | sig |
             Signal.trap(sig) do
               ::Hastur::Test::ZMQ.running(:no)
+              Signal.trap(sig, "DEFAULT")
             end
           end
         end

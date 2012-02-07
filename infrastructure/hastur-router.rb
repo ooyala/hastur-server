@@ -107,6 +107,7 @@ running = true
 %w(INT TERM KILL).each do | sig |
   Signal.trap(sig) do
     running = false
+    Signal.trap(sig, "DEFAULT")
   end
 end
 
