@@ -20,8 +20,8 @@ PROCESSES = [
                :command => <<EOS ,
 ./infrastructure/hastur-router.rb --heartbeat-uri <%= zmq[:heartbeat] %>
                  --register-uri <%= zmq[:register] %>
-                 --notify-uri <%= zmq[:notify] %> --stats-uri <%= zmq[:stats] %>
-                 --logs-uri <%= zmq[:logs] %> --error-uri <%= zmq[:errors] %>
+                 --notify-uri <%= zmq[:notify] %> --stats-uri <%= zmq[:stat] %>
+                 --log-uri <%= zmq[:log] %> --error-uri <%= zmq[:error] %>
                  --router-uri <%= zmq[:router] %> --from-sink-uri <%= zmq[:from_sink] %>
 EOS
                :resources => {
