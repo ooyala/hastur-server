@@ -52,6 +52,8 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
       Hastur::Envelope.new :route => :stats, :from => SecureRandom.uuid
       Hastur::Envelope.new :route => :sta,   :from => SecureRandom.uuid
       Hastur::Envelope.new :ruote => :stat,  :from => SecureRandom.uuid
+      Hastur::Envelope.new :ruote => :data,  :from => SecureRandom.uuid
+      Hastur::Envelope.new :route => :dat,   :from => SecureRandom.uuid
     end
 
     acked = Hastur::Envelope.new :route => :stat, :from => SecureRandom.uuid.split(/-/).join, :ack => true
@@ -75,7 +77,7 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
 
   def test_stat
     e = Hastur::Envelope.new :route => :stat, :from => SecureRandom.uuid
-    hmsg = Hastur::Message::Stat.new :envelope => e, :stat => STAT
+    hmsg = Hastur::Message::Stat.new :envelope => e, :data => STAT
     refute_nil hmsg
     assert_kind_of Hastur::Message::Base, hmsg
     refute_nil hmsg.to_s
@@ -87,8 +89,9 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   # below are dumb placeholders for the moment
 
   def test_error
-    err = Hastur::Message::Error.new :error => "eek!", :from => SecureRandom.uuid
+    err = Hastur::Message::Error.new :payload => "eek!", :from => SecureRandom.uuid
     assert_kind_of Hastur::Message::Base, err
+    assert_kind_of Hastur::Message::Error, err
   end
   def test_rawdata
     Hastur::Message::Rawdata

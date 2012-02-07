@@ -189,7 +189,7 @@ module Hastur
         if opts[:envelope].kind_of? Hastur::Envelope
           @envelope = opts[:envelope]
         # automatically construct an envelope if :from & :route are provided (all flags passed through)
-        elsif not opts[:envelope] and opts[:from] and opts[:route]
+        elsif not opts[:envelope] and opts[:from] and (opts[:route] or opts[:to])
           @envelope = Hastur::Envelope.new opts
         else
           raise ArgumentError.new ":envelope or :from/:route arguments are required."
@@ -275,29 +275,30 @@ module Hastur
     # 
     class Stat
       def initialize(opts)
-        opts[:route] = :stat
-        opts[:data]  = opts.delete :stat
+        opts[:to] = ROUTES[:stat]
         super(opts)
       end
     end
 
     #
+    # When given a straight payload, it's passed through unmodified. Otherwise,
+    # it'll try to DTRT for most inputs, even outside of hash paremeters.
+    #
     # s = Hastur::Message::Error.new :payload => json_string
-    # 
+    #
     # rescue FooBar => e
-    #   s = Hastur::Message::Error.new :error => e
+    #   s = Hastur::Message::Error.new e
     # end
     # 
     class Error
-      def initialize(opts)
-        if opts.kind_of? String
-          opts = {
-            :route   => :error,
-            :payload => { :error => opts }
-          }
-        elsif opts[:error]
-          opts[:route]   = :error
-          opts[:payload] = MultiJson.encode opts.delete :error
+      def initialize(opts_in)
+        opts = { :to => ROUTES[:error] }
+
+        if opts_in.kind_of? Hastur::Message::Base
+          opts[:from] = opts_in.envelope.from
+          opts[:payload] = opts_in.dump
+        elsif opts_in.kind_of? Hash
+          opts.merge! opts_in
         end
 
         super(opts)
@@ -306,45 +307,47 @@ module Hastur
 
     class Rawdata
       def initialize(opts)
-        opts[:route]   = :rawdata
+        opts[:to] = ROUTES[:rawdata]
         opts[:payload] = opts.delete :payload
+        raise ArgumentError.new "Rawdata only supports raw payloads, e.g. :payload => 'stuff'" if opts[:data]
         super(opts)
       end
     end
 
     class PluginExec
       def initialize(opts)
-        opts[:route] = :plugin_exec
+        opts[:to] = ROUTES[:plugin_exec]
         super(opts)
       end
     end
 
     class PluginResult
       def initialize(opts)
-        opts[:route] = :plugin_result
+        opts[:to] = ROUTES[:plugin_result]
         super(opts)
       end
     end
 
     class RegisterClient
       def initialize(opts)
-        opts[:route] = :register_client
+        opts[:to] = ROUTES[:register_client]
         super(opts)
       end
     end
 
     class RegisterService
       def initialize(opts)
-        opts[:route] = :register_service
+        opts[:to] = ROUTES[:register_service]
         super(opts)
       end
     end
 
     class RegisterPlugin
       def initialize(opts)
-        opts[:route] = :register_plugin
+        opts[:to] = ROUTES[:register_plugin]
         super(opts)
       end
     end
   end
 end
+
