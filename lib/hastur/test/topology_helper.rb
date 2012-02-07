@@ -145,7 +145,7 @@ module Hastur
 
         begin
           eruby = Erubis::Eruby.new command
-          eruby.result locals
+          eruby.result(locals).gsub("\n", " ")
         rescue
           STDERR.puts "Error evaluating in erubis!"
           STDERR.puts "Text: #{command}"
