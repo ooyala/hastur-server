@@ -1,6 +1,5 @@
 #!/usr/bin/env ruby
-
-# TODO: more testing, more modularity
+$:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
 
 require 'ffi-rzmq'
 require 'yajl'
@@ -8,8 +7,9 @@ require 'multi_json'
 require 'trollop'
 require 'uuid'
 require 'socket'
-require_relative "../lib/hastur/zmq_utils"
-require_relative "../lib/hastur/client/uuid"
+
+require "hastur/zmq_utils"
+require "hastur/client/uuid"
 
 MultiJson.engine = :yajl
 NOTIFICATION_INTERVAL = 5   # Hardcode for now
