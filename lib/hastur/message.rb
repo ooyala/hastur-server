@@ -152,6 +152,18 @@ module Hastur
       @ack == 0 ? false : true
     end
 
+    def to_hash
+      {
+        :version   => @version,
+        :to        => @to,
+        :from      => @from,
+        :ack       => @ack,
+        :sequence  => @sequence,
+        :timestamp => @timestamp,
+        :uptime    => @uptime,
+      }
+    end
+
     def to_s
       pack.unpack('H*')[0]
     end
@@ -262,6 +274,15 @@ module Hastur
         rc
       end
 
+      def to_hash
+        {
+          :klass     => self.class,
+          :envelope  => @envelope.to_hash,
+          :zmq_parts => @zmq_parts,
+          :payload   => @payload,
+        }
+      end
+
       def to_s
         payload
       end
@@ -296,7 +317,7 @@ module Hastur
 
         if opts_in.kind_of? Hastur::Message::Base
           opts[:from] = opts_in.envelope.from
-          opts[:payload] = opts_in.dump
+          opts[:payload] = MultiJson.encode(opts_in.to_hash)
         elsif opts_in.kind_of? Hash
           opts.merge! opts_in
         end
