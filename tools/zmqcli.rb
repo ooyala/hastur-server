@@ -5,6 +5,7 @@ require 'ffi-rzmq'
 require 'yajl'
 require 'multi_json'
 require 'trollop'
+require 'rainbow'
 require 'uuid'
 
 require_relative "../lib/hastur/zmq_utils"
@@ -33,27 +34,31 @@ Examples:
 
   Options:
 EOS
-  opt :uri,       "ZeroMQ URI",                                      :type => String, :required => true
-  opt :type,      "ZMQ Socket Type, one of: #{ZMQ_TYPELIST}",        :type => String, :required => true
-  opt :bind,      "bind()",           :default => false,             :type => :boolean
-  opt :connect,   "connect()",        :default => false,             :type => :boolean
-  opt :linger,    "set ZMQ_LINGER",   :default => 1,                 :type => Integer
-  opt :hwm,       "set ZMQ_HWM",      :default => 1,                 :type => Integer
-  opt :id,        "set ZMQ_IDENTITY", :default => UUID.new.generate, :type => String
-  opt :send,      "send() - only for router or dealer sockets",      :type => :boolean
-  opt :recv,      "recv() - only for router or dealer sockets",      :type => :boolean
-  opt :sleep,     "sleep seconds",    :default => 0.1,               :type => Float
-  opt :spam,      "spam 1 msg",       :default => false,             :type => :boolean
-  opt :infile,    "read from <filename> instead of STDIN",           :type => String
-  opt :outfile,   "append to <filename> instead of STDOUT",          :type => String
-  opt :subscribe, "subscribe pattern",:default => "",                :type => String
-  opt :normalize, "normalize JSON",   :default => false,             :type => :boolean
-  opt :prefix,    "prefix string",    :default => "",                :type => String
-  opt :envelope,  "envelope string",                                 :type => String, :multi => true
-  opt :route,     "do Hastur client routing",                        :type => :boolean
+  opt :uri,       "ZeroMQ URI",                                       :type => String, :required => true
+  opt :type,      "ZMQ Socket Type, one of: #{ZMQ_TYPELIST}",         :type => String, :required => true
+  opt :bind,      "bind()",            :default => false,             :type => :boolean
+  opt :connect,   "connect()",         :default => false,             :type => :boolean
+  opt :linger,    "set ZMQ_LINGER",    :default => 1,                 :type => Integer
+  opt :hwm,       "set ZMQ_HWM",       :default => 1,                 :type => Integer
+  opt :id,        "set ZMQ_IDENTITY",  :default => UUID.new.generate, :type => String
+  opt :send,      "send() - only for router or dealer sockets",       :type => :boolean
+  opt :recv,      "recv() - only for router or dealer sockets",       :type => :boolean
+  opt :sleep,     "sleep seconds",     :default => 0.1,               :type => Float
+  opt :spam,      "spam 1 msg",        :default => false,             :type => :boolean
+  opt :infile,    "read from <filename> instead of STDIN",            :type => String
+  opt :outfile,   "append to <filename> instead of STDOUT",           :type => String
+  opt :subscribe, "subscribe pattern", :default => "",                :type => String
+  opt :normalize, "normalize JSON",    :default => false,             :type => :boolean
+  opt :prefix,    "prefix string",     :default => "",                :type => String
+  opt :color,     "color to print in",                                :type => String
+  opt :precolor,  "color to print prefix in",                         :type => String
+  opt :envelope,  "envelope string",                                  :type => String, :multi => true
+  opt :route,     "do Hastur client routing",                         :type => :boolean
 end
 
 PREFIX = opts[:prefix]
+PRECOLOR = opts[:precolor]
+COLOR = opts[:color]
 ENVELOPE = opts[:envelope]
 NORMALIZE = opts[:normalize]
 ROUTE = opts[:route]
@@ -84,7 +89,11 @@ unless ZMQ::SocketTypeNameMap.has_value?(opts[:type].upcase)
 end
 
 def to_console(data)
-  STDERR.puts PREFIX + " " + data
+  prefix = PREFIX.dup.underline
+  prefix = prefix.color(PRECOLOR) if PRECOLOR
+  line = prefix + " " + data
+  line = line.color(COLOR) if COLOR
+  STDERR.print(line + "\n")
 end
 
 # ZeroMQ setup
