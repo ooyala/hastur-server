@@ -4,6 +4,7 @@ PATH
     hastur (0.0.1)
       ffi-rzmq
       multi_json
+      termite
       trollop
       uuid
       yajl-ruby
@@ -12,6 +13,10 @@ GEM
   remote: http://rubygems.org/
   remote: http://gems.sv2/
   specs:
+    ecology (0.0.17)
+      erubis
+      multi_json
+    erubis (2.7.0)
     ffi (1.0.11)
     ffi-rzmq (0.9.3)
       ffi
@@ -22,9 +27,13 @@ GEM
     mocha (0.10.3)
       metaclass (~> 0.0.1)
     multi_json (1.0.4)
+    rainbow (1.1.3)
     scope (0.2.3)
       minitest
     systemu (2.4.2)
+    termite (0.0.12)
+      ecology (~> 0.0.6)
+      multi_json
     trollop (1.16.2)
     uuid (2.3.5)
       macaddr (~> 1.0)
@@ -34,6 +43,8 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  erubis
   hastur!
   mocha
+  rainbow
   scope
