@@ -42,8 +42,13 @@ class NotificationTest < Test::Unit::TestCase
                    :command => <<EOS ,
     ./infrastructure/hastur-router.rb --heartbeat-uri <%= zmq[:heartbeat] %>
                      --register-uri <%= zmq[:register] %>
+<<<<<<< Updated upstream
                      --notify-uri <%= zmq[:notify] %> --stats-uri <%= zmq[:stat] %>
                      --log-uri <%= zmq[:log] %> --error-uri <%= zmq[:error] %>
+=======
+                     --notify-uri <%= zmq[:notify] %> --stats-uri <%= zmq[:stats] %>
+                     --logs-uri <%= zmq[:logs] %> --error-uri <%= zmq[:error] %>
+>>>>>>> Stashed changes
                      --router-uri <%= zmq[:router] %> --from-sink-uri <%= zmq[:from_sink] %>
 EOS
                    :resources => {
@@ -54,7 +59,7 @@ EOS
                        { :name => :stats, :type => :push, :listen => 4332 },
                        { :name => :heartbeat, :type => :push, :listen => 4333 },
                        { :name => :logs, :type => :push, :listen => 4334 },
-                       { :name => :errors, :type => :push, :listen => 4350 },
+                       { :name => :error, :type => :push, :listen => 4350 },
 #                       { :name => :pub, :type => :pub, :listen => 4322 },
                        { :name => :from_sink, :type => :pull, :listen => 4323 }
                      ],
@@ -93,7 +98,7 @@ EOS
                  {
                    :name => :errors_worker,
                    :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [errors] --uri <%= zmq[:errors] %>
+    ./tools/zmqcli.rb --type pull --connect --prefix [error] --uri <%= zmq[:error] %>
 EOS
                  },
     ]
