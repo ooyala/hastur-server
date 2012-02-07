@@ -104,7 +104,7 @@ EOS
     `pkill -f hastur-client`
     `pkill -f hastur-router`
     `pkill -f zmqcli`
-    Hastur::Test::ZMQ.reset
+    @topology.reset
     puts "Topology is torn down..."
   end
 end

@@ -108,7 +108,7 @@ EOS
     puts "Tearing down all of the topology components..."
     @topology.stop_all
     `pkill -f hastur`
-    Hastur::Test::ZMQ.reset
+    @topology.reset
     puts "Topology is torn down..."
   end
 end

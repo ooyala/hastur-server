@@ -198,6 +198,14 @@ module Hastur
         Topology.send_to_plugins(:free_resources, @processes)
         @fully_initialized = false
       end
+
+      public
+
+      def reset
+        stop_all
+
+        Topology.send_to_plugins(:reset)
+      end
     end
   end
 end
