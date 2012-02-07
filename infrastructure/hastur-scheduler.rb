@@ -20,7 +20,10 @@ EOS
   opt :hwm,       "set ZMQ_HWM",        :default => 1,                      :type => Integer
   opt :prefix,    "prefix string",      :default => "scheduleD",            :type => String
   opt :client,    "Client UUID",                                            :type => String, :multi => true, :required => true
-  opt :interval,  "Delay between reqs", :default => 45,                     :type => :int
+  opt :interval,  "Delay between reqs", :default => 60,                     :type => :int
+  opt :initial_sleep, "Time allowed before sending schedule messages", :default => 0, :type => :int
+  opt :data,      "Location of scheduled messages", :default => "../test/data/json/sample.txt",
+                                        :type => String, :required => true
 end
 
 if opts[:router] !~ /\w+:\/\/[^:]+:\d+/
@@ -32,21 +35,18 @@ if ZMQ::LibZMQ.version2? && opts[:router] =~ /\Wlocalhost\W/
 end
 
 ctx = ZMQ::Context.new(1)
-router_socket = Hastur::ZMQUtils.bind_socket(ctx, ZMQ::PUSH, opts[:router], opts.merge({ :connect => true }) )
+router_socket = Hastur::ZMQUtils.connect_socket(ctx, ZMQ::PUSH, opts[:router] )
+
+sleep opts[:initial_sleep]
 
 loop do
   opts[:client].each do |uuid|
-    hash = {
-      "uuid" => uuid,
-      "method" => "schedule",
-      "plugin" => "fake plugin",
-      "plugin_path" => "echo",
-      "plugin_args" => "OK",
-      "interval" => "#{opts[:interval]} seconds"
-    }
-    json = MultiJson.encode hash
-    Hastur::ZMQUtils.multi_send router_socket, [ uuid, "schedule", json ]
+    File.open(opts[:data], "r") do |f|
+      msg = f.gets
+      puts "Sending schedule message..#{msg}"
+      Hastur::ZMQUtils.multi_send router_socket, [ uuid, "schedule", msg ]
+    end
   end
-
   sleep opts[:interval]
 end
+
