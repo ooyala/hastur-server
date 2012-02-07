@@ -7,6 +7,7 @@ require 'multi_json'
 require 'trollop'
 require 'uuid'
 require 'socket'
+require 'termite'
 
 require "hastur/zmq_utils"
 require "hastur/client/uuid"
@@ -31,24 +32,27 @@ unless opts[:uuid]
   opts[:uuid] = Hastur::Client::UUID.get_uuid
   puts opts[:uuid]
 end
+
 CLIENT_UUID = opts[:uuid]
 ROUTERS = opts[:router]
 LOCAL_PORT = opts[:port]
 HEARTBEAT_INTERVAL = opts[:heartbeat]
+
+@logger = Termite::Logger.new
 
 #
 # Processes a random UDP message that was sent to the client. For now,
 # the message simply gets forwarded on to the message bus.
 #
 def process_udp_message(msg)
-  STDERR.puts "Received UDP message: #{msg.inspect}"
+  @logger.debug "Received UDP message: #{msg.inspect}"
 
   # check that the message looks like json before calling the decoder
   if msg =~ /\A\s*\{.+\}\s*\z/s
     begin
       hash = MultiJson.decode(msg)
     rescue
-      STDERR.puts "Received invalid JSON packet: #{msg.inspect}"
+      @logger.debug "Received invalid JSON packet: #{msg.inspect}"
       return
     end
   # try statsd protocol
@@ -66,7 +70,7 @@ def process_udp_message(msg)
     }
   # TODO: this should forward to the error topic
   else
-    STDERR.puts "Received unrecognized (not JSON or statsd) packet: #{msg.inspect}"
+    @logger.debug "Received unrecognized (not JSON or statsd) packet: #{msg.inspect}"
     return
   end
 
@@ -93,10 +97,10 @@ end
 #   2. plugin_args
 #
 def process_schedule_message(message)
-  STDERR.puts "Cheerfully ignoring multipart to-client message: #{message.inspect}"
+  @logger.debug "Cheerfully ignoring multipart to-client message: #{message.inspect}"
   hash = MultiJson.decode(message) rescue nil
   unless hash
-    STDERR.puts "Received invalid JSON packet: #{msg.inspect}"
+    @logger.debug "Received invalid JSON packet: #{msg.inspect}"
     return
   end
   [ hash["plugin_path"], hash["plugin_args"] ]
@@ -108,11 +112,11 @@ end
 def process_notification_ack(msg)
   hash = MultiJson.decode(msg) rescue nil
   unless hash
-    STDERR.puts "Received invalid JSON packet: #{msg.inspect}"
+    @logger.debug "Received invalid JSON packet: #{msg.inspect}"
     return 
   end
 
-  STDERR.puts "ACK received for notification [#{hash['id']}]"
+  @logger.debug "ACK received for notification [#{hash['id']}]"
   notification = @notifications.delete(hash['id'])
   unless notification
     Hastur::ZMQUtils.hastur_send(@router_socket, "log", 
@@ -148,7 +152,7 @@ end
 #
 def set_up_local_ports
   @udp_socket = UDPSocket.new
-  STDERR.puts "Binding UDP socket localhost:#{LOCAL_PORT}"
+  @logger.debug "Binding UDP socket localhost:#{LOCAL_PORT}"
   @udp_socket.bind nil, LOCAL_PORT
   @tcp_socket = nil
 end
@@ -189,7 +193,7 @@ def poll_zmq(plugins)
     msgs = []
     err = @router_socket.recv_strings msgs
     if err < 0
-      STDERR.puts "Error #{err} reading router socket!"
+      @logger.debug "Error #{err} reading router socket!"
       return
     end
     case msgs[-2]
@@ -213,14 +217,14 @@ def poll_zmq(plugins)
   sleep 0.1
   # perform heartbeat check
   if Time.now - @last_heartbeat > HEARTBEAT_INTERVAL
-    STDERR.puts "Sending heartbeat"
+    @logger.debug "Sending heartbeat"
     Hastur::ZMQUtils.hastur_send(@router_socket, "heartbeat",
       { :name => "hastur thin client", :uuid => CLIENT_UUID } )
     @last_heartbeat = Time.now
   end
   # perform notification resends if necessary
   if Time.now - @last_notification_check > NOTIFICATION_INTERVAL && !@notifications.empty?
-    STDERR.puts "Checking unsent notifications #{@notifications.inspect}"
+    @logger.debug "Checking unsent notifications #{@notifications.inspect}"
     @notifications.each_pair do |notification_id, notification|
       Hastur::ZMQUtils.hastur_send(@router_socket, "notify", notification)
     end
