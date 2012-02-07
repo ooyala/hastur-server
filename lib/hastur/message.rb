@@ -25,18 +25,32 @@ module Hastur
   # application boot time, intentionally not system boot time
   BOOT_TIME = Time.new.to_f
 
-  # every message has a route/method embedded, make sure they're valid
-  # and let apps shunt everything else to :error
-  # also handy for mapping a symbol/string to the right class consistently
+  # map human-readable route names to their 128-bit "UUID", in this case, it's not actually a GUID
+  # but instead the strings encoded with:
+  # ["string"].pack('Z16').unpack('H8H4H4H4H12').join('-')
   ROUTES = {
-    :stat             => Hastur::Message::Stat,
-    :error            => Hastur::Message::Error,
-    :rawdata          => Hastur::Message::Rawdata,
-    :plugin_exec      => Hastur::Message::PluginExec,
-    :plugin_result    => Hastur::Message::PluginResult,
-    :register_client  => Hastur::Message::RegisterClient,
-    :register_plugin  => Hastur::Message::RegisterPlugin,
-    :register_service => Hastur::Message::RegisterService,
+    :stat             => '73746174-0000-0000-0000-000000000000',
+    :error            => '6572726f-7200-0000-0000-000000000000',
+    :rawdata          => '72617764-6174-6100-0000-000000000000',
+    :plugin_exec      => '706c7567-696e-5f65-7865-630000000000',
+    :plugin_result    => '706c7567-696e-5f72-6573-756c74000000',
+    :register_client  => '72656769-7374-6572-5f63-6c69656e7400',
+    :register_plugin  => '72656769-7374-6572-5f70-6c7567696e00',
+    :register_service => '72656769-7374-6572-5f73-657276696365',
+  }
+
+  ROUTE_NAME = ROUTES.invert
+
+  # easy mapping of route id's to handler classes
+  ROUTE_KLASS = {
+    '73746174-0000-0000-0000-000000000000' => Hastur::Message::Stat,
+    '6572726f-7200-0000-0000-000000000000' => Hastur::Message::Error,
+    '72617764-6174-6100-0000-000000000000' => Hastur::Message::Rawdata,
+    '706c7567-696e-5f65-7865-630000000000' => Hastur::Message::PluginExec,
+    '706c7567-696e-5f72-6573-756c74000000' => Hastur::Message::PluginResult,
+    '72656769-7374-6572-5f63-6c69656e7400' => Hastur::Message::RegisterClient,
+    '72656769-7374-6572-5f70-6c7567696e00' => Hastur::Message::RegisterPlugin,
+    '72656769-7374-6572-5f73-657276696365' => Hastur::Message::RegisterService,
   }
 
   UUID_RE = /\A[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12}\Z/i
@@ -52,9 +66,9 @@ module Hastur
   #
   # parsing & creating Hastur envelopes, V1
   # Format:
-  # field: version route      uuid         ack    sequence timestamp uptime
-  # type:  <int16> <char[16]> <int128>     <int8> <int64>  <double>  <double>
-  # pack:  n       Z16        H8H4H4H4H12  C      Q>       G         G
+  # field: version to           from         ack    sequence timestamp uptime
+  # type:  <int16> <int128>     <int128>     <int8> <int64>  <double>  <double>
+  # pack:  n       H8H4H4H4H12  H8H4H4H4H12  C      Q>       G         G
   #
   # Version doesn't really have to be bumped unless one of these fields
   # changes type incompatibly.  For example, we can add an HMAC field on the
@@ -64,9 +78,9 @@ module Hastur
   # 
   class Envelope
     VERSION = 1
-    PACK =  %w[ n         Z16     H8H4H4H4H12 C     Q>         G           G ].join
-    #           0         1       2-6         7     8          9           10
-    attr_reader :version, :route, :uuid,      :ack, :sequence, :timestamp, :uptime
+    PACK =  %w[ n         H8H4H4H4H12 H8H4H4H4H12 C     Q>         G           G ].join
+    #           0         1-5         6-10        11    12         13          14
+    attr_reader :version, :to,        :from,      :ack, :sequence, :timestamp, :uptime
 
     #
     # parse a Hastur routing envelope, usually in the multi part just ahead of the payload
@@ -76,12 +90,12 @@ module Hastur
       parts = msg.unpack(PACK)
       self.new(
         :version   => parts[0],
-        :route     => parts[1].to_sym,
-        :uuid      => parts[2..6].join('-'),
-        :ack       => parts[7],
-        :sequence  => parts[8],
-        :timestamp => parts[9],
-        :uptime    => parts[10],
+        :to        => parts[1..5].join('-'),
+        :from      => parts[6..10].join('-'),
+        :ack       => parts[11],
+        :sequence  => parts[12],
+        :timestamp => parts[13],
+        :uptime    => parts[14],
       )
     end
 
@@ -89,30 +103,46 @@ module Hastur
     # pack an envelope into a binary string, ready to send on the wire
     #
     def pack
-      [@version, @route.to_s, *@uuid.split(/-/), @ack, @sequence, @timestamp, @uptime].pack(PACK)
+      [@version, *@to.split(/-/), *@from.split(/-/), @ack, @sequence, @timestamp, @uptime].pack(PACK)
     end
 
     #
-    # create a new envelope, only the route is required and acks can be enabled (default off)
+    # create a new envelope
+    # :to is required, but can be passed as :route => SYM to be human readable
+    # :from is required, generally the client UUID
+    # :ack is optional, defaults to disabled
+    # :sequence, :timestamp, and :uptime are optional and will be set to sane defaults
     #
     def initialize(opts)
-      raise ArgumentError.new(":route is required") unless opts[:route]
-      raise ArgumentError.new(":uuid is required") unless opts[:uuid]
-      raise ArgumentError.new("Invalid route '#{opts[:route]}'") unless ROUTES.has_key?(opts[:route].to_sym)
-      raise ArgumentError.new("'#{opts[:uuid]} is not a valid UUID") unless UUID_RE.match(opts[:uuid])
+      raise ArgumentError.new(":from is required") unless opts[:from]
+      raise ArgumentError.new("'#{opts[:from]} is not a valid UUID") unless UUID_RE.match(opts[:from])
+
+      if not opts[:to] and opts[:route]
+        raise ArgumentError.new("Invalid route '#{opts[:route]}'") unless ROUTES.has_key?(opts[:route].to_sym)
+        opts[:to] = ROUTES[opts[:route]]
+      end
+
+      raise ArgumentError.new(":to or :route is required") unless opts[:to]
+      raise ArgumentError.new(":to '#{opts[:to]} is not a valid UUID") unless UUID_RE.match(opts[:to])
+        
 
       @version   = opts[:version] || VERSION
-      @route     = opts[:route].to_sym
-      @uuid      = opts[:uuid]
+      @to        = opts[:to]
+      @from      = opts[:from]
       @sequence  = opts[:sequence]  || Hastur.next
       @timestamp = opts[:timestamp] || Time.new.to_f
       @uptime    = opts[:uptime]    || @timestamp - BOOT_TIME
 
       case opts[:ack]
-        when true; @ack = 1
-        when 1;    @ack = 1
-        else;      @ack = 0
+        when true;   @ack = 1
+        when false;  @ack = 0
+        when Fixnum; @ack = opts[:ack]
+        else;        @ack = 0
       end
+    end
+
+    def route
+      ROUTE_NAME[@to]
     end
     
     #
@@ -135,7 +165,7 @@ module Hastur
       envelope = opts[:envelope] or raise ArgumentError.new(":envelope is required")
       payload  = opts[:payload]  or raise ArgumentError.new(":payload is required")
 
-      if klass = ROUTES[envelope.route]
+      if klass = ROUTE_KLASS[envelope.to]
         return klass.new(:payload => payload, :envelope => envelope)
       else
         raise ArgumentError.new "Invalid route in envelope: '#{envelope.route}'"
@@ -158,14 +188,14 @@ module Hastur
       def initialize(opts)
         if opts[:envelope].kind_of? Hastur::Envelope
           @envelope = opts[:envelope]
-        # automatically construct an envelope if :uuid & :route are provided (all flags passed through)
-        elsif not opts[:envelope] and opts[:uuid] and opts[:route]
+        # automatically construct an envelope if :from & :route are provided (all flags passed through)
+        elsif not opts[:envelope] and opts[:from] and opts[:route]
           @envelope = Hastur::Envelope.new opts
         else
-          raise ArgumentError.new ":envelope or :uuid/:route arguments are required."
+          raise ArgumentError.new ":envelope or :from/:route arguments are required."
         end
 
-        unless self.kind_of? ROUTES[@envelope.route]
+        unless self.kind_of? ROUTE_KLASS[@envelope.to]
           raise ArgumentError.new "Envelope route '#{@envelope.route.to_s}' does not match class '#{self.class}'"
         end
 
