@@ -42,16 +42,21 @@ module Hastur
         stats = {}
         offset = 0
 
-        begin
-          while offset < data.bytesize
-            key, value, offset = self.decode_part(data, offset)
-            stats[key] = value
-          end
-        rescue
-          return nil
+        while offset < data.bytesize
+          key, value, offset = self.decode_part(data, offset)
+          stats[key] = value
         end
 
         return stats
+      end
+
+      # same as decode_packet, but returns nil if the data is not decodable
+      def self.decode(data)
+        begin
+          self.decode_packet(data)
+        rescue
+          return nil
+        end
       end
 
       # Decodes a collectd "part" and returns key, value.

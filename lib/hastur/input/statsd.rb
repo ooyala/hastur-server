@@ -15,6 +15,10 @@ module Hastur
       def self.decode_packet(data)
         RE.match(data)
       end
+
+      def self.decode(data)
+        self.decode_packet(data)
+      end
     end
   end
 end
