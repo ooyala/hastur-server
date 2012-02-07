@@ -1,11 +1,12 @@
 #!/usr/bin/env ruby
+$:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
 
 require 'rubygems'
 require 'minitest/autorun'
 require 'ffi-rzmq'
 require 'securerandom'
-require_relative '../lib/hastur/stat'
-require_relative '../lib/hastur/message'
+require 'hastur/stat'
+require 'hastur/message'
 
 class TestClassHasturMessage < MiniTest::Unit::TestCase
   # this should be consistent .... if another json encoder changes the order it will break

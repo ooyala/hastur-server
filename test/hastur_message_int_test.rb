@@ -1,11 +1,12 @@
 #!/usr/bin/env ruby
+$:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
 
 require 'rubygems'
 require 'minitest/autorun'
 require 'ffi-rzmq'
 require 'securerandom'
-require_relative '../lib/hastur/stat'
-require_relative '../lib/hastur/message'
+require 'hastur/stat'
+require 'hastur/message'
 
 # This test is complicated on purpose. The idea is to over-parallelize with minimal locking
 # shake out concurrency bugs. It has already exposed a few interesting bugs that are now fixed.
@@ -44,7 +45,7 @@ class TestClassHasturMessageIntegration < MiniTest::Unit::TestCase
 
     count = 0
     loop do
-      msg = Hastur::Message::Stat.recv(router)
+      msg = Hastur::Message.recv(router)
       msg.send(push)
       count += 1
       STDERR.write '-'
@@ -66,7 +67,7 @@ class TestClassHasturMessageIntegration < MiniTest::Unit::TestCase
 
     count = 0
     loop do
-      msg = Hastur::Message::Stat.recv(pull)
+      msg = Hastur::Message.recv(pull)
       count += 1
       break if count == PULLER_MESSAGES
       STDERR.write "<"
