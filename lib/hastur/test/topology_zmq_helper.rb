@@ -9,7 +9,23 @@ module Hastur
       extend self
 
       def context
+        unless @context
+          %w(INT TERM KILL).each do | sig |
+            Signal.trap(sig) do
+              ::Hastur::Test::ZMQ.running(:no)
+            end
+          end
+        end
+
         @context ||= ::ZMQ::Context.new
+      end
+
+      def running(new_value = nil)
+        @running ||= :yes
+
+        @running = new_value if new_value
+
+        @running == :yes
       end
 
       def port_open?(port_num)
@@ -192,7 +208,8 @@ module Hastur
         poller = ::ZMQ::Poller.new
         poller.register_readable incoming
         poller.register_readable outgoing
-        loop do
+
+        while ::Hastur::Test::ZMQ.running do
           poller.poll 0.1
           if poller.readables.include?(outgoing)
             message = []
@@ -244,6 +261,7 @@ module Hastur
         # TODO(viet): uncomment this when we are confident that the ports allocated
         #             are properly freed when the topology component is "stop"ped.
         #@last_port_num = 21000
+        ::Hastur::Test::ZMQ.running(:yes)
       end
     end
   end
