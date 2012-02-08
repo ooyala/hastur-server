@@ -8,7 +8,10 @@ Bluepill.application("hastur_router") do |app|
 
   app.process("hastur_router_1") do |process|
     process.start_command = "hastur-router"
+    #process.stop_command = "kill -QUIT {{PID}}"
+    process.stop_signals = [:quit, 30.seconds, :term, 5.seconds, :kill]
     #process.working_dir = ""
+    #process.stdout = process.stderr = "/tmp/router.log"
     process.pid_file = "/tmp/hastur-router-1.pid"
     process.daemonize = true
 
