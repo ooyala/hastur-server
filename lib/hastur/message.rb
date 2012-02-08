@@ -344,7 +344,7 @@ module Hastur
       end
 
       def decode
-        MultiJson.decode @payload
+        MultiJson.decode @payload, :symbolize_keys => true
       end
     end
 

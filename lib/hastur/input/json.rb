@@ -10,10 +10,7 @@ module Hastur
       RE = /\A\s*{.*}\s*\Z/
 
       def self.decode_packet(data)
-        hash = MultiJson.decode(data)
-
-        hash[:method] = hash.delete "method" if hash["method"]
-        hash[:params] = hash.delete "params" if hash["params"]
+        hash = MultiJson.decode(data, :symbolize_keys => true)
 
         unless hash.has_key? :method 
           raise Hastur::PacketDecodingError.new "missing :method key in JSON" 
