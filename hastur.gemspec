@@ -33,4 +33,5 @@ EOS
   s.add_runtime_dependency "trollop"
   s.add_runtime_dependency "uuid"
   s.add_runtime_dependency "termite"
+  s.add_runtime_dependency "bluepill"
 end
