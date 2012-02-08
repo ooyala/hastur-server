@@ -7,5 +7,9 @@ module Hastur
 
   class UnsupportedError < StandardError
   end
+
+  # thrown when something is an outright bug
+  class BUGError < StandardError
+  end
 end
 
