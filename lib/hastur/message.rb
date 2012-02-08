@@ -1,6 +1,7 @@
 require 'ffi-rzmq'
 require 'multi_json'
 require 'hastur/exception'
+require 'hastur/util'
 
 module Hastur
   #
@@ -11,34 +12,37 @@ module Hastur
   #
   module Message
     # pre-declare the class structure to make introspection work
-    class Base;                   end
-    class Stat            < Base; end
-    class Log             < Base; end
-    class Error           < Base; end
-    class Rawdata         < Base; end
-    class PluginExec      < Base; end
-    class PluginResult    < Base; end
-    class RegisterClient  < Base; end
-    class RegisterPlugin  < Base; end
-    class RegisterService < Base; end
+    class Base;                    end
+    class Stat             < Base; end
+    class Log              < Base; end
+    class Error            < Base; end
+    class Rawdata          < Base; end
+    class Notification     < Base; end
+    class HeartbeatClient  < Base; end
+    class HeartbeatService < Base; end
+    class PluginExec       < Base; end
+    class PluginResult     < Base; end
+    class RegisterClient   < Base; end
+    class RegisterPlugin   < Base; end
+    class RegisterService  < Base; end
   end
-
-  # application boot time, intentionally not system boot time
-  BOOT_TIME = Time.new.to_f
 
   # map human-readable route names to their 128-bit "UUID", in this case, it's not actually a GUID
   # but instead the strings encoded with:
   # ["string"].pack('Z16').unpack('H8H4H4H4H12').join('-')
   ROUTES = {
-    :stat             => '73746174-0000-0000-0000-000000000000',
-    :log              => '6c6f6700-0000-0000-0000-000000000000',
-    :error            => '6572726f-7200-0000-0000-000000000000',
-    :rawdata          => '72617764-6174-6100-0000-000000000000',
-    :plugin_exec      => '706c7567-696e-5f65-7865-630000000000',
-    :plugin_result    => '706c7567-696e-5f72-6573-756c74000000',
-    :register_client  => '72656769-7374-6572-5f63-6c69656e7400',
-    :register_plugin  => '72656769-7374-6572-5f70-6c7567696e00',
-    :register_service => '72656769-7374-6572-5f73-657276696365',
+    :stat              => '73746174-0000-0000-0000-000000000000',
+    :log               => '6c6f6700-0000-0000-0000-000000000000',
+    :error             => '6572726f-7200-0000-0000-000000000000',
+    :rawdata           => '72617764-6174-6100-0000-000000000000',
+    :notification      => '6e6f7469-6669-6361-7469-6f6e00000000',
+    :heartbeat_client  => '68656172-7462-6561-745f-636c69656e74',
+    :heartbeat_service => '68656172-7462-6561-745f-736572766963',
+    :plugin_exec       => '706c7567-696e-5f65-7865-630000000000',
+    :plugin_result     => '706c7567-696e-5f72-6573-756c74000000',
+    :register_client   => '72656769-7374-6572-5f63-6c69656e7400',
+    :register_plugin   => '72656769-7374-6572-5f70-6c7567696e00',
+    :register_service  => '72656769-7374-6572-5f73-657276696365',
   }
 
   ROUTE_NAME = ROUTES.invert
@@ -49,6 +53,9 @@ module Hastur
     '6c6f6700-0000-0000-0000-000000000000' => Hastur::Message::Log,
     '6572726f-7200-0000-0000-000000000000' => Hastur::Message::Error,
     '72617764-6174-6100-0000-000000000000' => Hastur::Message::Rawdata,
+    '6e6f7469-6669-6361-7469-6f6e00000000' => Hastur::Message::Notification,
+    '68656172-7462-6561-745f-636c69656e74' => Hastur::Message::HeartbeatClient,
+    '68656172-7462-6561-745f-736572766963' => Hastur::Message::HeartbeatService,
     '706c7567-696e-5f65-7865-630000000000' => Hastur::Message::PluginExec,
     '706c7567-696e-5f72-6573-756c74000000' => Hastur::Message::PluginResult,
     '72656769-7374-6572-5f63-6c69656e7400' => Hastur::Message::RegisterClient,
@@ -56,17 +63,6 @@ module Hastur
     '72656769-7374-6572-5f73-657276696365' => Hastur::Message::RegisterService,
   }
 
-  UUID_RE = /\A[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12}\Z/i
-
-  #
-  # keep a single, global counter for the :sequence field
-  #
-  @counter = 0
-  def self.next
-    @counter+=1
-  end
-
-  #
   # parsing & creating Hastur envelopes, V1
   # Format:
   # field: version to           from         ack    sequence timestamp uptime
@@ -118,7 +114,7 @@ module Hastur
     #
     def initialize(opts)
       raise ArgumentError.new(":from is required") unless opts[:from]
-      raise ArgumentError.new("'#{opts[:from]} is not a valid UUID") unless UUID_RE.match(opts[:from])
+      raise ArgumentError.new("'#{opts[:from]} is not a valid UUID") unless Hastur::Util.valid_uuid?(opts[:from])
 
       if not opts[:to] and opts[:route]
         raise ArgumentError.new("Invalid route '#{opts[:route]}'") unless ROUTES.has_key?(opts[:route].to_sym)
@@ -126,15 +122,15 @@ module Hastur
       end
 
       raise ArgumentError.new(":to or :route is required") unless opts[:to]
-      raise ArgumentError.new(":to '#{opts[:to]} is not a valid UUID") unless UUID_RE.match(opts[:to])
+      raise ArgumentError.new(":to '#{opts[:to]} is not a valid UUID") unless Hastur::Util.valid_uuid?(opts[:to])
         
 
       @version   = opts[:version] || VERSION
       @to        = opts[:to]
       @from      = opts[:from]
-      @sequence  = opts[:sequence]  || Hastur.next
+      @sequence  = opts[:sequence]  || Hastur::Util.next_seq
       @timestamp = opts[:timestamp] || Time.new.to_f
-      @uptime    = opts[:uptime]    || @timestamp - BOOT_TIME
+      @uptime    = opts[:uptime]    || Hastur::Util.uptime(@timestamp)
 
       case opts[:ack]
         when true;   @ack = 1
@@ -189,6 +185,18 @@ module Hastur
       else
         raise ArgumentError.new "Invalid route in envelope: '#{envelope.route}'"
       end
+    end
+
+    # check if a route (string or symbol) represents a valid route
+    def self.valid_route?(route)
+      ROUTES.has_key? route.to_sym
+    end
+
+    # return the class for a given route string/symbol
+    # e.g. klass = Hastur::Message.route_class("notification")
+    def self.route_class(route)
+      route_id = ROUTES[route.to_sym]
+      ROUTE_KLASS[route_id]
     end
 
     #
@@ -256,6 +264,8 @@ module Hastur
 
         if opts[:zmq_parts] and opts[:zmq_parts].length > 0
           @zmq_parts = opts[:zmq_parts]
+        else
+          @zmq_parts = []
         end
       end
 
@@ -265,13 +275,21 @@ module Hastur
       # necessary. Generally this only helps with router envelopes where they exist, since ZMQ::Message's
       # are generally use-once only.
       #
+      # Messages can be sent more than once.
+      #
+      # Messages with zmq_parts will not automatically close the ZMQ::Message objects. Call msg.close.
+      #
       def send(socket)
         raise ArgumentError.new "First argument must be a ZMQ::Socket." unless socket.kind_of? ZMQ::Socket
         messages = []
 
-        unless @zmq_parts.nil? or @zmq_parts.empty?
-          messages = @zmq_parts.clone
-          @zmq_parts.clear
+        @zmq_parts.each do |part|
+          if part.kind_of? ZMQ::Message
+            # copy zmq parts rather than using them in case a message needs 
+            messages << part.copy
+          else
+            raise Hastur::BUGError.new "an @zmq_part was not a ZMQ::Message. This is a fatal bug."
+          end
         end
 
         messages << ZMQ::Message.new(@envelope.pack)
@@ -280,6 +298,19 @@ module Hastur
         rc = socket.sendmsgs messages
         messages.each { |m| m.close }
         rc
+      end
+
+      #
+      # Close all of the related ZMQ::Message objects in msg.zmq_parts.
+      #
+      def close_zmq_parts
+        @zmq_parts.each do |part|
+          if part.kind_of? ZMQ::Message
+            part.close
+          else
+            raise Hastur::BUGError.new "an @zmq_part was not a ZMQ::Message. This is a fatal bug."
+          end
+        end
       end
 
       def to_hash
@@ -311,6 +342,10 @@ module Hastur
         opts[:to] = ROUTES[:stat]
         super(opts)
       end
+
+      def decode
+        MultiJson.decode @payload
+      end
     end
 
     #
@@ -320,6 +355,46 @@ module Hastur
       def initialize(opts)
         opts[:to] = ROUTES[:log]
         super(opts)
+      end
+    end
+
+    #
+    # a notification, acks are enabled by default
+    #
+    class Notification
+      def initialize(opts)
+        opts[:to] = ROUTES[:log]
+        unless opts.has_key? :ack
+          opts[:ack] = true
+        end
+        super(opts)
+      end
+    end
+
+    #
+    # an ack
+    # generally the ack_id will the the ack'ed message's envelope
+    # e.g. ack = Hastur::Message::Ack.new :from => uuid, :data => msg.envelope
+    # the destination UUID is automatically extracted from the envelope
+    #
+    class Ack
+      def initialize(opts)
+        unless opts[:data].kind_of? Hastur::Envelope
+          raise ArgumentError.new "acks can only be created from Hastur::Envelope objects"
+        end
+
+        opts[:to] = opts[:data].from
+        opts[:payload] = opts[:data].pack
+        opts[:ack] = false
+
+        super(opts)
+      end
+
+      #
+      # Return the envelope of the acked message.
+      #
+      def acked
+        Hastur::Envelope.parse @payload
       end
     end
 
@@ -357,6 +432,22 @@ module Hastur
       end
     end
 
+    class HeartbeatClient
+      def initialize(opts)
+        opts[:to] = ROUTES[:heartbeat_client]
+        opts[:payload] = ''
+        super(opts)
+      end
+    end
+
+    # TODO: what do we want in these?
+    class HeartbeatService
+      def initialize(opts)
+        opts[:to] = ROUTES[:heartbeat_service]
+        super(opts)
+      end
+    end
+
     class PluginExec
       def initialize(opts)
         opts[:to] = ROUTES[:plugin_exec]
@@ -374,6 +465,15 @@ module Hastur
     class RegisterClient
       def initialize(opts)
         opts[:to] = ROUTES[:register_client]
+        opts[:data] = {
+          :method => 'register_client',
+          :params => {
+            :uuid     => opts[:from],
+            :hostname => Socket.gethostname,
+            :ipv4     => IPSocket.getaddress(Socket.gethostname),
+          }
+        }
+
         super(opts)
       end
     end
