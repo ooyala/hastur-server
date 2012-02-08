@@ -1,7 +1,8 @@
 # This is an intentionally 'lush' file - we don't need all these
 # checks, but it makes it clear how to do them.
 
-Bluepill.application("hastur_router") do |app|
+# If we don't specify a log file, we get syslog logging to LOCAL6 by default.
+Bluepill.application("hastur_router", :log_file => "/tmp/bluepill.log") do |app|
   # Can also set per-process.  Let's not.
   #app.uid = "hastur"
   #app.gid = "hastur"
