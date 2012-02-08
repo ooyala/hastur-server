@@ -1,8 +1,9 @@
 #!/usr/bin/env ruby
+$:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
 
 require 'rubygems'
 require 'minitest/autorun'
-require_relative '../lib/hastur/input/json'
+require 'hastur/input/json'
 
 class TestHasturInputJSON < MiniTest::Unit::TestCase
   def test_re_binary_garbage
@@ -18,8 +19,11 @@ class TestHasturInputJSON < MiniTest::Unit::TestCase
   end
 
   def test_json_doesnt_match
+    stat = Hastur::Input::JSON.decode("{\"method\": \"rawdata\", \"params\": {\"foo\": \"bar\"}")
+    refute_nil stat, "should not return nil when fed valid JSON with correct :method and :params"
+
     stat = Hastur::Input::JSON.decode("{\"foo\": \"bar\"}")
-    refute_nil stat, "should not return nil when fed valid JSON"
+    assert_nil stat, "should return nil when fed valid JSON that does not have :method and :params"
 
     stat = Hastur::Input::JSON.decode("{globs:1|c")
     assert_nil stat, "should return nil when fed invalid JSON"

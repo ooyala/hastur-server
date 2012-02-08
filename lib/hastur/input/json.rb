@@ -1,4 +1,8 @@
 require 'multi_json'
+require 'yajl'
+require 'hastur/exception'
+
+MultiJson.engine = :yajl
 
 module Hastur
   module Input
@@ -6,7 +10,20 @@ module Hastur
       RE = /\A\s*{.*}\s*\Z/
 
       def self.decode_packet(data)
-        MultiJson.decode(data)
+        hash = MultiJson.decode(data)
+
+        hash[:method] = hash.delete "method" if hash["method"]
+        hash[:params] = hash.delete "params" if hash["params"]
+
+        unless hash.has_key? :method 
+          raise Hastur::PacketDecodingError.new "missing :method key in JSON" 
+        end
+
+        unless hash.has_key? :params
+          raise Hastur::PacketDecodingError.new "missing :params key in JSON"
+        end
+
+        return hash
       end
 
       # Returns nil on invalid/unparsable data.
