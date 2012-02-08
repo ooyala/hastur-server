@@ -51,6 +51,26 @@ module Hastur
 
         false
       end
+
+      # TODO: get the CPU / memory used from the child status and return it
+      # ready to go as a hastur stat
+      #def stats
+      #end
+
+      # Note: may block if the plugin is still running!
+      def to_hash
+        # when the process is done, it's safe to slurp the filehandles without blocking
+        stdout, stderr = self.slurp
+
+        {
+          :command => @command,
+          :args    => @args,
+          :pid     => @pid,
+          :status  => @status.to_s,
+          :stdout  => stdout,
+          :stderr  => stderr
+        }
+      end
     end
   end
 end
