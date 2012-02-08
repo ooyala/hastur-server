@@ -42,11 +42,13 @@ sleep opts[:initial_sleep]
 loop do
   opts[:client].each do |uuid|
     File.open(opts[:data], "r") do |f|
-      msg = f.gets
-      puts "Sending schedule message..#{msg}"
-      err = router_socket.send_strings [ uuid, "schedule", msg ]
-      if err < 0
-        STDERR.puts "Error #{err} sending scheduling message!"
+      while msg = f.gets 
+        puts "Sending schedule message..#{msg}"
+        err = router_socket.send_strings [ uuid, "schedule", msg ]
+        if err < 0
+          STDERR.puts "Error #{err} sending scheduling message!"
+        end
+        sleep 0.1
       end
     end
   end

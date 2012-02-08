@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# encoding: utf-8
 
 require 'rubygems'
 require 'ffi-rzmq'
@@ -54,6 +55,7 @@ EOS
   opt :precolor,  "color to print prefix in",                         :type => String
   opt :envelope,  "envelope string",                                  :type => String, :multi => true
   opt :route,     "do Hastur client routing",                         :type => :boolean
+  opt :spark,     "Use spark to report numbers", :default => false,   :type => :boolean
 end
 
 PREFIX = opts[:prefix]
@@ -62,6 +64,7 @@ COLOR = opts[:color]
 ENVELOPE = opts[:envelope]
 NORMALIZE = opts[:normalize]
 ROUTE = opts[:route]
+SPARK = opts[:spark]
 
 # further option handling / checking
 if (opts[:bind].nil? and opts[:connect].nil?) or (opts[:bind] == opts[:connect])
@@ -88,11 +91,45 @@ unless ZMQ::SocketTypeNameMap.has_value?(opts[:type].upcase)
   Trollop::die :type, "must be one of: #{ZMQ_TYPELIST}"
 end
 
+#
+# The spark ASCII drawings
+#
+SCALE = %w[ ▁  ▂  ▃  ▄  ▅  ▆  ▇  █ ]
+
+#
+# TODO(viet): Move all of this drawing business out of here.
+#
+# Draws all of the statistics on the console
+#
+def draw
+  @values.keys.each do |stat_name|
+    puts "Statistics for #{stat_name}"
+    @values[stat_name].each do |stat|
+      print SCALE[ (stat.to_i/10.0).round ]
+    end
+    puts ""
+  end
+end
+
+#
+# Prints and colors things on the console
+#
 def to_console(data)
-  prefix = PREFIX.dup.underline
-  prefix = prefix.color(PRECOLOR.to_sym) if PRECOLOR
-  data = data.dup.color(COLOR.to_sym) if COLOR
-  STDERR.print(prefix + " " + data + "\n")
+  if SPARK && data.kind_of?(Array)
+    # TODO(viet): major hack! clean this up after the demo
+    @values ||= {}
+    stat_hash = (MultiJson.decode (MultiJson.decode data[-1])['stdout'][0])
+    @values[stat_hash['name']] ||= []
+    @values[stat_hash['name']] << stat_hash['value']
+    @values[stat_hash['name']].delete_at(0) if @values[stat_hash['name']].size > 30
+    system('clear')
+    draw
+  else
+    prefix = PREFIX.dup.underline
+    prefix = prefix.color(PRECOLOR.to_sym) if PRECOLOR
+    data = data.dup.color(COLOR.to_sym) if COLOR
+    STDERR.print(prefix + " " + data + "\n")
+  end
 end
 
 # ZeroMQ setup
@@ -199,6 +236,7 @@ elsif socktype == ZMQ::SUB or socktype == ZMQ::PULL
   while data = recv_string(sock)
     outfile.puts data[-1]
     to_console "Received: #{data.inspect}"
+    to_console data if SPARK
   end
 # DEALER / ROUTER?, poll-based
 elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
@@ -218,6 +256,7 @@ elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
       data = recv_string(sock)
       outfile.puts data[-1]
       to_console "Received: #{data.inspect}"
+      to_console data if SPARK
     end
 
     poller.writables.each do |sock|

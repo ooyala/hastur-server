@@ -1,0 +1,1 @@
+{ "uuid":"thisismyuuid", "method":"schedule", "plugin":"fake plugin", "plugin_path":"echo", "plugin_args":"random.1", "interval":"10 seconds" }

@@ -90,7 +90,7 @@ EOS
                  {
                    :name => :scheduleD,
                    :command => <<EOS ,
-    ./infrastructure/hastur-scheduler.rb --initial-sleep 5 --router #{FROM_SINK_URI} --data test/data/json/sample.txt --client thisismyuuid
+    ./infrastructure/hastur-scheduler.rb --initial-sleep 5 --router #{FROM_SINK_URI} --data test/data/json/test.txt --client thisismyuuid
 EOS
                    # TODO(noah): mock UDP port to catch or forward messages?
                  }
