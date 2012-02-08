@@ -9,7 +9,7 @@ module Hastur
   end
 
   # thrown when something is an outright bug
-  class BUGError < StandardError
+  class BugError < StandardError
   end
 end
 

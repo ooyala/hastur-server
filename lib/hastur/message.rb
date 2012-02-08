@@ -288,7 +288,7 @@ module Hastur
             # copy zmq parts rather than using them in case a message needs 
             messages << part.copy
           else
-            raise Hastur::BUGError.new "an @zmq_part was not a ZMQ::Message. This is a fatal bug."
+            raise Hastur::BugError.new "an @zmq_part was not a ZMQ::Message. This is a fatal bug."
           end
         end
 
@@ -308,7 +308,7 @@ module Hastur
           if part.kind_of? ZMQ::Message
             part.close
           else
-            raise Hastur::BUGError.new "an @zmq_part was not a ZMQ::Message. This is a fatal bug."
+            raise Hastur::BugError.new "an @zmq_part was not a ZMQ::Message. This is a fatal bug."
           end
         end
       end
