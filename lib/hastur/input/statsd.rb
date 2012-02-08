@@ -1,23 +1,81 @@
+require 'hastur/util'
+require 'hastur/exception'
+
 module Hastur
   module Input
     module Statsd
       RE = %r{
-        \A\s*               # start of string, any amount of whitespace 
-        (?<name>[-\.\w]+)   # stat name, letters, numbers, ., _, and - are allowed
-        :                   # : separator
-        (?<value>[\.\d]+)   # a number, integer or floating point
-        \|                  # | separator
-        (?<unit>\p{Graph}+) # the unit, e.g. "c" or "ms", but could have |@\d\.\d but don't parse that yet
-        \s*\Z               # any amount of whitespace, end of string
+        \A\s*             # start of string, any amount of whitespace 
+        (?<name>[-\.\w]+) # stat name, letters, numbers, ., _, and - are allowed
+        :                 # : separator
+        (?<values>         # capture all values
+          [\.\d]+         # a number, integer or floating point
+          \|              # | separator
+          \p{Graph}+      # the unit, e.g. "c" or "ms", but could have |@\d\.\d but don't parse that yet
+        )\s*\Z
       }xn
 
-      # Returns nil on invalid/unparsable data.
-      def self.decode_packet(data)
-        RE.match(data)
+      @counters = {}
+
+      def self.counters
+        @counters.clone
       end
 
+      def self.decode_packet(data)
+        stat = RE.match(data)
+
+        if stat.nil?
+          raise Hastur::PacketDecodingError.new("Invalid statsd packet")
+        end 
+
+        name = stat[:name].gsub(/\s+/, '_').gsub(/\//, '-').gsub(/[^a-zA-Z_\-0-9\.]/, '');
+        out = nil
+
+        # statsd has a similar loop, but it doesn't look like it actually supports multiple values
+        # separated by : so mimic for the moment and verify later
+        stat[:values].split(/:/).each do |item|
+          # TODO: ignoring sample_rate for now, implement it later if we need it
+          value_in, unit, sample_rate = item.split(/\|/)
+          timestamp = Time.now.to_f
+          value = value_in.to_i
+
+          if unit == 'c' 
+            if @counters.has_key? name
+              value = @counters[name] += value
+            else
+              value = @counters[name] = value
+            end
+          #elsif unit == 'ms'
+          # nothing to do
+          end
+          
+          out = {
+            :method => :stat,
+            :params => {
+              :name        => name,
+              :value       => value,
+              :units       => unit,
+              :timestamp   => timestamp,
+              :uptime      => Hastur::Util.uptime(timestamp),
+              # optional/additional fields
+              :type        => 'counter',
+              :original    => data,
+              :sample_rate => sample_rate
+            }
+          }
+
+        end
+        
+        return out
+      end
+
+      # Returns nil on invalid/unparsable data.
       def self.decode(data)
-        self.decode_packet(data)
+        begin
+          self.decode_packet(data)
+        rescue
+          nil
+        end
       end
     end
   end
