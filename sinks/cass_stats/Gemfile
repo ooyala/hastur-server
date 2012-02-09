@@ -1,0 +1,4 @@
+source :rubygems
+
+gem "hector", :git => "http://github.com/jashmenn/hector.rb"
+gem "trollop"
