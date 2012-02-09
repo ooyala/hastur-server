@@ -87,6 +87,20 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     assert_equal STAT_JSON, hmsg.payload
   end
 
+  def test_route_id
+    refute_nil Hastur.route_id(:stat)
+    refute_nil Hastur.route_id('73746174-0000-0000-0000-000000000000')
+    assert_equal '73746174-0000-0000-0000-000000000000', Hastur.route_id(:stat)
+    assert_equal '73746174-0000-0000-0000-000000000000', Hastur.route_id('73746174-0000-0000-0000-000000000000')
+  end
+
+  def test_route_symbol
+    refute_nil Hastur.route_symbol(:stat)
+    refute_nil Hastur.route_symbol('73746174-0000-0000-0000-000000000000')
+    assert_equal :stat, Hastur.route_symbol(:stat)
+    assert_equal :stat, Hastur.route_symbol('73746174-0000-0000-0000-000000000000')
+  end
+
   # below are dumb placeholders for the moment
 
   def test_error

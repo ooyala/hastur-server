@@ -63,6 +63,34 @@ module Hastur
     '72656769-7374-6572-5f73-657276696365' => Hastur::Message::RegisterService,
   }
 
+  #
+  # Given either a route UUID or symbol, always return the UUID.
+  # Raises an argument exception if the provided value is not a valid route symbol/uuid.
+  #
+  def self.route_id(route)
+    if ROUTE_NAME.has_key? route
+      route
+    elsif ROUTES.has_key? route
+      ROUTES[route]
+    else
+      raise ArgumentException.new "'#{route}' is not a valid route symbol or uuid"
+    end
+  end
+
+  #
+  # Given either a route UUID or symbol, always return the symbol.
+  # Raises an argument exception if the provided value is not a valid route symbol/uuid.
+  #
+  def self.route_symbol(route)
+    if ROUTE_NAME.has_key? route
+      ROUTE_NAME[route]
+    elsif ROUTES.has_key? route
+      route
+    else
+      raise ArgumentException.new "'#{route}' is not a valid route symbol or uuid"
+    end
+  end
+
   # parsing & creating Hastur envelopes, V1
   # Format:
   # field: version to           from         ack    sequence timestamp uptime
