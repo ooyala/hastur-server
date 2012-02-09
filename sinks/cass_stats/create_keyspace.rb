@@ -1,22 +1,19 @@
 #!/usr/bin/env ruby
 
 require "rubygems"
-require "java"
+require "cassandra-cql"
 require "trollop"
 
 opts = Trollop::options do
-  opt :host, :default => "127.0.0.1", :type => String
-  opt :keyspace, :default => "Hastur", :type => String
+  banner "Creates a Cassandra keyspace\n\nOptions:"
+  opt :host,     "Hostname", :default => "127.0.0.1", :type => String
+  opt :keyspace, "Keyspace", :default => "Hastur",    :type => String
 end
 
-# Require all the Hector jar files
-Dir["hector-core-1.0-3/*.jar"].each do |f|
-  require f
-end
+puts "Connecting to database at #{opts[:host]}:9160"
+db = CassandraCQL::Database.new("#{opts[:host]}:9160")
 
-java_import me.prettyprint.hector.api
-
-newKeyspace = HFactory.createKeyspaceDefinition("MyKeyspace",                 
-                                                ThriftKsDef.DEF_STRATEGY_CLASS,  
-                                                replicationFactor, 
-                                                Arrays.asList(cfDef));
+puts "Creating keyspace #{opts[:keyspace]}..."
+db.execute("CREATE KEYSPACE #{opts[:keyspace]} WITH strategy_class='org.apache.cassandra.locator.SimpleStrategy' AND strategy_options:replication_factor=1")
+db.execute("USE #{opts[:keyspace]}")
+puts "Done!"
