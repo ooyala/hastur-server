@@ -7,6 +7,7 @@ PATH
       ffi-rzmq
       multi_json
       termite
+      thrift_client (~> 0.7.1)
       trollop
       uuid
       yajl-ruby
@@ -51,9 +52,9 @@ GEM
     termite (0.0.12)
       ecology (~> 0.0.6)
       multi_json
-    thrift (0.8.0)
-    thrift_client (0.8.1)
-      thrift (~> 0.8.0)
+    thrift (0.7.0)
+    thrift_client (0.7.1)
+      thrift (~> 0.7.0)
     trollop (1.16.2)
     uuid (2.3.5)
       macaddr (~> 1.0)

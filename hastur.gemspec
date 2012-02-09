@@ -35,4 +35,5 @@ EOS
   s.add_runtime_dependency "termite"
   s.add_runtime_dependency "bluepill"
   s.add_runtime_dependency "cassandra-cql"
+  s.add_runtime_dependency "thrift_client", "~> 0.7.1"
 end
