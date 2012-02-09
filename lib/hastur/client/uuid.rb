@@ -7,7 +7,7 @@
 require "uuid"
 
 module Hastur
-  module Client
+  module ClientUtil
     module UUID
       @@system_uuid_file = "/etc/uuid" # Default location of the system's UUID
 
