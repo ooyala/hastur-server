@@ -163,8 +163,8 @@ module Hastur
               :payload => "Received an unexpected ack with ID: '#{ack_key}'"
           end
         when Hastur::Message::PluginExec
-          plugin_command, plugin_args = process_schedule_message(msgs[-1])
-          plugin = Hastur::Plugin::V1.new(plugin_command, plugin_args)
+          config = msg.decode
+          plugin = Hastur::Plugin::V1.new(config[:plugin_path], config[:plugin_args])
           pid = plugin.run
           @plugins[pid] = plugin
         else
