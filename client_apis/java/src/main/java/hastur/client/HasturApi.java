@@ -1,5 +1,7 @@
 package hastur.client;
 
+import hastur.client.util.StatUnit;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -14,13 +16,13 @@ import org.json.JSONObject;
  */
 public class HasturApi {
 
-  public static final int HASTUR_UDP_PORT = 8125;
+  private static int udpPort = 8125;
   private static InetAddress localAddr;
 
   /**
    * Sends a UDP packet to 127.0.0.1:8125. 
    */ 
-  protected static boolean udp_send(JSONObject json) {
+  protected static boolean udpSend(JSONObject json) {
     DatagramSocket socket = null;
     boolean success = true;
     try {
@@ -29,7 +31,7 @@ public class HasturApi {
       DatagramPacket msg = new DatagramPacket(msgString.getBytes(), 
                                               msgString.length(), 
                                               getLocalAddr(), 
-                                              HASTUR_UDP_PORT);
+                                              getUdpPort());
       socket.send(msg);
     } catch(Exception e) {
       e.printStackTrace();
@@ -54,11 +56,17 @@ public class HasturApi {
 
   /**
    * Records a stat.
+   *
+   * @param name - Unique dotted-name that describes the stat
+   * @param stat - Value of the stat
+   * @param unit - A unit of measurement that is associated with stat
+   @ @param tags - A list of strings which describes the stat
+   *
    */
-  public static boolean recordStat(String type, String name, double stat, String unit, List<String> tags) {
+  public static boolean recordStat(String name, double stat, StatUnit unit,
+                                   List<String> tags) {
     JSONObject o = new JSONObject();
     try {
-      o.put("type", type);
       o.put("name", name);
       o.put("stat", stat);
       o.put("unit", unit);
@@ -67,7 +75,7 @@ public class HasturApi {
       e.printStackTrace();
       return false;
     }
-    return udp_send(o);
+    return udpSend(o);
   }
 
   /**
@@ -75,7 +83,7 @@ public class HasturApi {
    */
   public static boolean notify(String message) {
     JSONObject o = new JSONObject();
-    return udp_send(o);
+    return udpSend(o);
   }
 
   /**
@@ -83,25 +91,25 @@ public class HasturApi {
    * continue to send heartbeats, it implies that something is wrong
    * with the application.
    */
-  public static boolean record_heartbeat(String service, double interval) {
+  public static boolean recordHeartbeat(String service, double interval) {
     JSONObject o = new JSONObject();
-    return udp_send(o);
+    return udpSend(o);
   }
 
   /**
    * Registers a plugin with Hastur.
    */ 
-  public static boolean register_plugin(String path, String args, String name, double interval) {
+  public static boolean registerPlugin(String path, String args, String name, double interval) {
     JSONObject o = new JSONObject();
-    return udp_send(o);
+    return udpSend(o);
   }
 
   /**
    * Registers the application with Hastur.
    */ 
-  public static boolean register_service(String service) {
+  public static boolean registerService(String service) {
     JSONObject o = new JSONObject();
-    return udp_send(o);
+    return udpSend(o);
   }
 
   /**
@@ -116,5 +124,19 @@ public class HasturApi {
       }
     }
     return localAddr;
+  }
+
+  /**
+   * Returns the UDP port that this library sends messages to.
+   */
+  public static int getUdpPort() {
+    return udpPort;
+  }
+
+  /**
+   * Sets the UDP port that this library sends messages to.
+   */ 
+  public static void setUdpPort(int port) {
+    udpPort = port;
   }
 }

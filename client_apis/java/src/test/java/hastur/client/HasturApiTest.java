@@ -1,6 +1,7 @@
 package hastur.client;
 
 import hastur.client.HasturApi;
+import hastur.client.util.StatUnit;
 
 /**
  * Only do .* for tests. Do not do this in shipped code.
@@ -17,7 +18,7 @@ public class HasturApiTest {
   @Before
   public void setUp() {
     try {
-      server = new DatagramSocket(HasturApi.HASTUR_UDP_PORT);
+      server = new DatagramSocket(HasturApi.getUdpPort());
       server.setSoTimeout(1000);
     } catch(Exception e) {
       e.printStackTrace();
@@ -33,16 +34,15 @@ public class HasturApiTest {
 
   @Test
   public void testRecordStat() {
-    boolean isSuccess = HasturApi.recordStat("latency", "myLatency", 1.2, "seconds", null);
+    boolean isSuccess = HasturApi.recordStat("myLatency", 1.2, StatUnit.SECS, null);
     try {
       DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
       server.receive(msg);
       String rawMsg = new String(msg.getData());
       JSONObject o = new JSONObject(rawMsg);
-      assertEquals("latency", o.get("type"));
       assertEquals("myLatency", o.get("name"));
       assertEquals(1.2, o.get("stat"));
-      assertEquals("seconds", o.get("unit"));
+      assertEquals(StatUnit.SECS.toString(), o.get("unit"));
       assertEquals("", o.get("tags"));
     } catch(Exception e) {
       e.printStackTrace();
