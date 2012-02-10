@@ -70,8 +70,8 @@ module Hastur
   def self.route_id(route)
     if ROUTE_NAME.has_key? route
       route
-    elsif ROUTES.has_key? route
-      ROUTES[route]
+    elsif ROUTES.has_key? route.to_sym
+      ROUTES[route.to_sym]
     else
       raise ArgumentError.new "'#{route}' is not a valid route symbol or uuid"
     end
@@ -84,8 +84,8 @@ module Hastur
   def self.route_symbol(route)
     if ROUTE_NAME.has_key? route
       ROUTE_NAME[route]
-    elsif ROUTES.has_key? route
-      route
+    elsif ROUTES.has_key? route.to_sym
+      route.to_sym
     else
       raise ArgumentError.new "'#{route}' is not a valid route symbol or uuid"
     end
@@ -97,7 +97,7 @@ module Hastur
   def self.route?(route)
     if ROUTE_NAME.has_key? route
       true
-    elsif ROUTES.has_key? route
+    elsif ROUTES.has_key? route.to_sym
       true
     else
       false
@@ -155,14 +155,23 @@ module Hastur
     #
     def initialize(opts)
       raise ArgumentError.new(":from is required") unless opts[:from]
-      raise ArgumentError.new("'#{opts[:from]} is not a valid UUID") unless Hastur::Util.valid_uuid?(opts[:from])
+      raise ArgumentError.new("'#{opts[:from]}' is not a valid UUID") unless Hastur::Util.valid_uuid?(opts[:from])
 
       if opts[:to].nil? and opts.has_key? :route
         opts[:to] = Hastur.route_id(opts.delete :route)
       end
 
       raise ArgumentError.new(":to or :route is required") unless opts[:to]
-      raise ArgumentError.new(":to '#{opts[:to]} is not a valid route") unless Hastur.route?(opts[:to])
+
+      if opts[:reversed] 
+        unless Hastur::Util.valid_uuid?(opts[:to])
+          raise ArgumentError.new("'#{opts[:to]}' is not a valid UUID")
+        end
+      else
+        unless Hastur.route?(opts[:to])
+          raise ArgumentError.new(":to '#{opts[:to]}' is not a valid route") 
+        end
+      end
 
       @version   = opts[:version] || VERSION
       @to        = opts[:to]
@@ -229,7 +238,8 @@ module Hastur
     # return the class for a given route string/symbol
     # e.g. klass = Hastur::Message.route_class("notification")
     def self.route_class(route)
-      ROUTE_KLASS[Hastur.route_id(route)]
+      route_id = Hastur.route_id(route)
+      ROUTE_KLASS[route_id]
     end
 
     #
@@ -283,10 +293,6 @@ module Hastur
           raise ArgumentError.new ":envelope or :from/:route arguments are required."
         end
 
-        unless self.kind_of? ROUTE_KLASS[@envelope.to]
-          raise ArgumentError.new "Envelope route '#{@envelope.route.to_s}' does not match class '#{self.class}'"
-        end
-
         if opts[:data].respond_to? :to_hash and not opts[:payload]
           @payload = MultiJson.encode opts[:data].to_hash
         elsif opts[:payload]
@@ -319,7 +325,8 @@ module Hastur
         @zmq_parts.each do |part|
           if part.kind_of? ZMQ::Message
             # copy zmq parts rather than using them in case a message needs 
-            messages << part.copy
+            messages << ZMQ::Message.new
+            messages[-1].copy part.pointer
           else
             raise Hastur::BugError.new "an @zmq_part was not a ZMQ::Message. This is a fatal bug."
           end
@@ -336,7 +343,7 @@ module Hastur
       #
       # Close all of the related ZMQ::Message objects in msg.zmq_parts.
       #
-      def close_zmq_parts
+      def close
         @zmq_parts.each do |part|
           if part.kind_of? ZMQ::Message
             part.close
@@ -419,6 +426,7 @@ module Hastur
         opts[:to] = opts[:data].from
         opts[:payload] = opts[:data].pack
         opts[:ack] = false
+        opts[:reversed] = true # data flows from core -> client
 
         super(opts)
       end
@@ -483,8 +491,17 @@ module Hastur
 
     class PluginExec
       def initialize(opts)
-        opts[:to] = ROUTES[:plugin_exec]
+        unless Hastur::Util.valid_uuid?(opts[:to])
+          raise ArgumentError.new("'#{opts[:to]}' is not a valid UUID")
+        end
+
+        opts[:reversed] = true # data flows from core -> client
+
         super(opts)
+      end
+
+      def decode
+        MultiJson.decode @payload, :symbolize_keys => true
       end
     end
 
