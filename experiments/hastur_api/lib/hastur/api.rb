@@ -14,7 +14,12 @@ module Hastur
   module API
     extend self
 
-    HASTUR_UDP_PORT=8125
+    #
+    # Allow the UDP port to be configurable. Defaults to 8125.
+    #
+    def udp_port
+      @udp_port || 8125
+    end
 
     #
     # Constructs and sends a stat UDP packet
@@ -80,11 +85,10 @@ module Hastur
     end
 
     #
-    # Sends a message unmolested to the HASTUR_UDP_PORT on 127.0.0.1
-    #
+    # Sends a message unmolested to the HASTUR_UDP_PORT on 127.0.0.1 #
     def send_to_udp(m)
       u = ::UDPSocket.new
-      u.send MultiJson.encode(m), 0, "127.0.0.1", HASTUR_UDP_PORT
+      u.send MultiJson.encode(m), 0, "127.0.0.1", udp_port
     end
 
   end
