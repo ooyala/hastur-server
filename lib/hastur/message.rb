@@ -73,7 +73,7 @@ module Hastur
     elsif ROUTES.has_key? route
       ROUTES[route]
     else
-      raise ArgumentException.new "'#{route}' is not a valid route symbol or uuid"
+      raise ArgumentError.new "'#{route}' is not a valid route symbol or uuid"
     end
   end
 
@@ -87,7 +87,20 @@ module Hastur
     elsif ROUTES.has_key? route
       route
     else
-      raise ArgumentException.new "'#{route}' is not a valid route symbol or uuid"
+      raise ArgumentError.new "'#{route}' is not a valid route symbol or uuid"
+    end
+  end
+
+  #
+  # Given either a route UUID or symbol, return true/false if it's valid for routing
+  #
+  def self.route?(route)
+    if ROUTE_NAME.has_key? route
+      true
+    elsif ROUTES.has_key? route
+      true
+    else
+      false
     end
   end
 
@@ -144,14 +157,12 @@ module Hastur
       raise ArgumentError.new(":from is required") unless opts[:from]
       raise ArgumentError.new("'#{opts[:from]} is not a valid UUID") unless Hastur::Util.valid_uuid?(opts[:from])
 
-      if not opts[:to] and opts[:route]
-        raise ArgumentError.new("Invalid route '#{opts[:route]}'") unless ROUTES.has_key?(opts[:route].to_sym)
-        opts[:to] = ROUTES[opts[:route]]
+      if opts[:to].nil? and opts.has_key? :route
+        opts[:to] = Hastur.route_id(opts.delete :route)
       end
 
       raise ArgumentError.new(":to or :route is required") unless opts[:to]
-      raise ArgumentError.new(":to '#{opts[:to]} is not a valid UUID") unless Hastur::Util.valid_uuid?(opts[:to])
-        
+      raise ArgumentError.new(":to '#{opts[:to]} is not a valid route") unless Hastur.route?(opts[:to])
 
       @version   = opts[:version] || VERSION
       @to        = opts[:to]
@@ -215,16 +226,10 @@ module Hastur
       end
     end
 
-    # check if a route (string or symbol) represents a valid route
-    def self.valid_route?(route)
-      ROUTES.has_key? route.to_sym
-    end
-
     # return the class for a given route string/symbol
     # e.g. klass = Hastur::Message.route_class("notification")
     def self.route_class(route)
-      route_id = ROUTES[route.to_sym]
-      ROUTE_KLASS[route_id]
+      ROUTE_KLASS[Hastur.route_id(route)]
     end
 
     #
