@@ -1,0 +1,22 @@
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <name>Hastur Client API JAR</name>
+
+  <groupId>hastur.client</groupId>
+  <artifactId>hastur-client-api</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+  
+  <!--
+    Try to keep the list of dependencies as small as possible. Ideally,
+    one JAR deployment will make it easier for consumers to use.
+  -->
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.0</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

@@ -29,7 +29,7 @@ end
 
 unless opts[:uuid]
   # attempt to retrieve UUID from disk; UUID gets created on the fly if it doesn't exist
-  opts[:uuid] = Hastur::Client::UUID.get_uuid
+  opts[:uuid] = Hastur::ClientUtil::UUID.get_uuid
   puts opts[:uuid]
 end
 

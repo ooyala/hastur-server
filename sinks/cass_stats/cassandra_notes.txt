@@ -1,0 +1,9 @@
+Talked extensively about what to use for keys.  Timestamp and host UUID are the obvious things.  New C* indices will work fine for UUIDs, but not for timestamps.  So row keys sorted mostly on timestamp?
+
+Storing several categories of data:
+
+* Raw JSON blobs as they arrive.  This includes several kinds of tags and other "misc" data that any summary format would necessarily drop.  This will almost never be queried, just archived, and it's not clear it's even useful to put it into Cassandra.
+
+* Parsed raw data.  Counters with arrival times, guage values, raw data with timestamps, etc.  This is the "rawest" data that will normally be queried.  We currently plan to put it into 5-minute buckets for stats, longer-duration buckets for other data types, up to full-day buckets for registrations and similar infrequent data.  A "bucket" in this case will generally be a C* row.
+
+* Summary data over time.  These will be in various longer-duration buckets, summed up appropriately.
