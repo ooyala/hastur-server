@@ -16,10 +16,9 @@ class HasturApiTest < Test::Unit::TestCase
   end
 
   def test_register_service
-    Hastur::API.stat("type", "name", "stat", "unit", "")
+    Hastur::API.stat("name", "stat", "unit", "")
     msg = @server.recvfrom(65000)[0]
     hash = MultiJson.decode msg
-    assert_equal("type", hash['type'])
     assert_equal("name", hash['name'])
     assert_equal("stat", hash['stat'])
     assert_equal("unit", hash['unit'])

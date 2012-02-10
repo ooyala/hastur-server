@@ -24,10 +24,9 @@ module Hastur
     #
     # Constructs and sends a stat UDP packet
     #
-    def stat(type, name, stat, unit, tags)
+    def stat(name, stat, unit, tags)
       m = {
             :method => "stat",
-            :type   => type,
             :name   => name,
             :stat   => stat,
             :unit   => unit,
