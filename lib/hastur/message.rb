@@ -95,10 +95,8 @@ module Hastur
   # Given either a route UUID or symbol, return true/false if it's valid for routing
   #
   def self.route?(route)
-    if ROUTE_NAME.has_key? route
-      true
-    elsif ROUTES.has_key? route.to_sym
-      true
+    if ROUTE_NAME.has_key? route or ROUTES.has_key? route.to_sym
+      true 
     else
       false
     end
@@ -154,23 +152,20 @@ module Hastur
     # :sequence, :timestamp, and :uptime are optional and will be set to sane defaults
     #
     def initialize(opts)
+      # make sure required arguments exist
       raise ArgumentError.new(":from is required") unless opts[:from]
-      raise ArgumentError.new("'#{opts[:from]}' is not a valid UUID") unless Hastur::Util.valid_uuid?(opts[:from])
-
       if opts[:to].nil? and opts.has_key? :route
         opts[:to] = Hastur.route_id(opts.delete :route)
       end
-
       raise ArgumentError.new(":to or :route is required") unless opts[:to]
 
-      if opts[:reversed] 
-        unless Hastur::Util.valid_uuid?(opts[:to])
-          raise ArgumentError.new("'#{opts[:to]}' is not a valid UUID")
-        end
-      else
-        unless Hastur.route?(opts[:to])
-          raise ArgumentError.new(":to '#{opts[:to]}' is not a valid route") 
-        end
+      # make sure :to/:from are proper UUID's in 36-byte hex, but don't be
+      # opinionated about them beyond that
+      unless Hastur::Util.valid_uuid?(opts[:to])
+        raise ArgumentError.new(":to => '#{opts[:to]}' is not a valid UUID")
+      end
+      unless Hastur::Util.valid_uuid?(opts[:from])
+        raise ArgumentError.new(":from => '#{opts[:from]}' is not a valid UUID")
       end
 
       @version   = opts[:version] || VERSION
@@ -224,17 +219,6 @@ module Hastur
   # A collection of classes for managing common Hastur messages.
   #
   module Message
-    def self.create(opts)
-      envelope = opts[:envelope] or raise ArgumentError.new(":envelope is required")
-      payload  = opts[:payload]  or raise ArgumentError.new(":payload is required")
-
-      if klass = ROUTE_KLASS[envelope.to]
-        return klass.new(:payload => payload, :envelope => envelope)
-      else
-        raise ArgumentError.new "Invalid route in envelope: '#{envelope.route}'"
-      end
-    end
-
     # return the class for a given route string/symbol
     # e.g. klass = Hastur::Message.route_class("notification")
     def self.route_class(route)
@@ -266,12 +250,9 @@ module Hastur
       envelope = Hastur::Envelope.parse messages[-1].copy_out_string
       messages.pop.close
 
-      if ROUTE_KLASS.has_key? envelope.to
-        klass = ROUTE_KLASS[envelope.to]
-        klass.new :envelope => envelope, :payload => payload, :zmq_parts => messages
-      else
-        raise Hastur::UnsupportedError.new "unsupported route in envelope: #{envelope.to_json}"
-      end
+      klass = ROUTE_KLASS[envelope.to] || ROUTE_KLASS[envelope.from]
+      raise Hastur::UnsupportedError.new "no route in envelope: #{envelope.to_json}" unless klass
+      klass.new :envelope => envelope, :payload => payload, :zmq_parts => messages
     end
 
     #
@@ -318,18 +299,14 @@ module Hastur
       #
       # Messages with zmq_parts will not automatically close the ZMQ::Message objects. Call msg.close.
       #
-      def send(socket)
+      def send(socket, opts={})
         raise ArgumentError.new "First argument must be a ZMQ::Socket." unless socket.kind_of? ZMQ::Socket
-        messages = []
+        opts[:final] ||= false
 
-        @zmq_parts.each do |part|
-          if part.kind_of? ZMQ::Message
-            # copy zmq parts rather than using them in case a message needs 
-            messages << ZMQ::Message.new
-            messages[-1].copy part.pointer
-          else
-            raise Hastur::BugError.new "an @zmq_part was not a ZMQ::Message. This is a fatal bug."
-          end
+        if opts[:final]
+          messages = @zmq_parts
+        else
+          messages = clone_zmq_parts
         end
 
         messages << ZMQ::Message.new(@envelope.pack)
@@ -337,19 +314,32 @@ module Hastur
 
         rc = socket.sendmsgs messages
         messages.each { |m| m.close }
+        @zmq_parts = [] if opts[:final]
         rc
       end
 
       #
       # Close all of the related ZMQ::Message objects in msg.zmq_parts.
       #
-      def close
+      def close_zmq_parts
         @zmq_parts.each do |part|
           if part.kind_of? ZMQ::Message
             part.close
           else
             raise Hastur::BugError.new "an @zmq_part was not a ZMQ::Message. This is a fatal bug."
           end
+        end
+        @zmq_parts = []
+      end
+
+      #
+      # Make a copy of all the ZMQ::Message parts in @zmq_parts, or empty list if there are none.
+      # 
+      def clone_zmq_parts
+        @zmq_parts.map do |part|
+          new = ZMQ::Message.new
+          new.copy part.pointer
+          new
         end
       end
 
@@ -379,6 +369,7 @@ module Hastur
     # 
     class Stat
       def initialize(opts)
+        return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:stat]
         super(opts)
       end
@@ -393,6 +384,7 @@ module Hastur
     #
     class Log
       def initialize(opts)
+        return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:log]
         super(opts)
       end
@@ -403,10 +395,9 @@ module Hastur
     #
     class Notification
       def initialize(opts)
+        return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:log]
-        unless opts.has_key? :ack
-          opts[:ack] = true
-        end
+        opts[:ack] = true unless opts.has_key? :ack
         super(opts)
       end
     end
@@ -419,6 +410,8 @@ module Hastur
     #
     class Ack
       def initialize(opts)
+        return super(opts) if opts.has_key? :envelope
+
         unless opts[:data].kind_of? Hastur::Envelope
           raise ArgumentError.new "acks can only be created from Hastur::Envelope objects"
         end
@@ -451,6 +444,8 @@ module Hastur
     # 
     class Error
       def initialize(opts_in)
+        return super(opts_in) if opts_in.has_key? :envelope
+
         opts = { :to => ROUTES[:error] }
 
         if opts_in.kind_of? Hastur::Message::Base
@@ -466,6 +461,7 @@ module Hastur
 
     class Rawdata
       def initialize(opts)
+        return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:rawdata]
         opts[:payload] = opts.delete :payload
         raise ArgumentError.new "Rawdata only supports raw payloads, e.g. :payload => 'stuff'" if opts[:data]
@@ -475,6 +471,7 @@ module Hastur
 
     class HeartbeatClient
       def initialize(opts)
+        return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:heartbeat_client]
         opts[:payload] = ''
         super(opts)
@@ -484,6 +481,7 @@ module Hastur
     # TODO: what do we want in these?
     class HeartbeatService
       def initialize(opts)
+        return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:heartbeat_service]
         super(opts)
       end
@@ -491,11 +489,13 @@ module Hastur
 
     class PluginExec
       def initialize(opts)
+        return super(opts) if opts.has_key? :envelope
+
+        opts[:from] = ROUTES[:plugin_exec]
+
         unless Hastur::Util.valid_uuid?(opts[:to])
           raise ArgumentError.new("'#{opts[:to]}' is not a valid UUID")
         end
-
-        opts[:reversed] = true # data flows from core -> client
 
         super(opts)
       end
@@ -507,6 +507,7 @@ module Hastur
 
     class PluginResult
       def initialize(opts)
+        return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:plugin_result]
         super(opts)
       end
@@ -514,6 +515,7 @@ module Hastur
 
     class RegisterClient
       def initialize(opts)
+        return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:register_client]
         opts[:data] = {
           :method => 'register_client',
@@ -530,6 +532,7 @@ module Hastur
 
     class RegisterService
       def initialize(opts)
+        return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:register_service]
         super(opts)
       end
@@ -537,6 +540,7 @@ module Hastur
 
     class RegisterPlugin
       def initialize(opts)
+        return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:register_plugin]
         super(opts)
       end

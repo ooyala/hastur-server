@@ -21,7 +21,7 @@ module Hastur
 
       @uuid       = uuid
       @route_fds  = {} # hash of fd => [ {route}, {route}, ... ]
-      @dynamic    = {} # hash of client_uuid => [zmq parts]
+      @dynamic    = {} # hash of client_uuid => [socket, [zmq parts]]
       @timestamps = {} # hash of client_uuid => timestamp (float)
       @logger     = Termite::Logger.new
       @poller     = ZMQ::Poller.new
@@ -127,7 +127,8 @@ module Hastur
         if @timestamps.has_key? from 
           # expire cached zmq_parts every 10 minutes
           if @dynamic.has_key? from and @timestamps[from] < (time - 600)
-            @dynamic.delete(from).each { |part| part.close }
+            dynsock, zmq_parts = @dynamic.delete(from)
+            zmq_parts.each { |part| part.close }
           end
         else
           @timestamps[from] = time
@@ -135,14 +136,13 @@ module Hastur
 
         # make a copy of the ZeroMQ routing headers and story by source UUID
         # this is what makes it possible to deliver messages to clients
-        unless @dynamic[from]
-          @dynamic[from] = msg.zmq_parts.map do |origin|
-            clone = ZMQ::Message.new
-            clone.copy origin.pointer
-            clone
-          end
+        if @dynamic[from]
+          msg.close_zmq_parts
+        else
+          @dynamic[from] = [socket, msg.zmq_parts]
         end
-        
+        msg.zmq_parts = []
+
         # use the fd to map back to a route list
         rc = socket.getsockopt(ZMQ::FD, vals=[]) 
         fd = vals[0]
@@ -173,9 +173,24 @@ module Hastur
             times_routed += 1
 
           else
-            times_routed += 1
             @stats[:missed] += 1
+            times_routed += 1
           end
+        end
+
+        # Messages destined to clients on the ZMQ::ROUTER socket can only be
+        # reached via their zeromq-assigned identities.
+        # Swap whatever zeromq envelope came with the message for a copy of an envelope
+        # captured from inbound clients. It's a bit like ARP.
+        # Future: We may eventually want a router broadcast channel for an arp-like "who has" pattern.
+        if @dynamic.has_key? to
+          # messages are not reusable: copy each message (usually 1) from the cache
+          msg.zmq_parts = @dynamic[to][1].map do |original|
+            new = ZMQ::Message.new
+            new.copy original.pointer
+            new
+          end
+          msg.send(@dynamic[to][0], :final => true)
         end
 
         # no route match, should not happen really except in integration tests that don't wire everything up
@@ -188,6 +203,19 @@ module Hastur
       end
     end
 
+    #
+    # Free ZMQ::Message parts cached in @dynamic hash.
+    #
+    def free_dynamic
+      @dynamic.keys do |uuid|
+        sock, zmq_parts = @dynamic.delete uuid
+        zmq_parts.each { |part| part.close }
+      end
+    end
+
+    #
+    # Set the shutdown flag so the run() loop exits cleanly.
+    #
     def shutdown
       @running = false
     end
@@ -200,6 +228,7 @@ module Hastur
       while @running == true
         poll(zmq_poll_timeout)
       end
+      free_dynamic
     end
   end
 end

@@ -31,7 +31,8 @@ class TestClassHasturRouterModule < MiniTest::Unit::TestCase
   }
 
   def initialize(*args)
-    @running = true
+    @sink_running = true
+    @router_running = true
     @ctx = ZMQ::Context.new
     @mutex = Mutex.new
     @sink_messages = 0
@@ -49,13 +50,10 @@ class TestClassHasturRouterModule < MiniTest::Unit::TestCase
   end
 
   def client_stub
-    puts "Client stub thread alive!"
     client = @ctx.socket(ZMQ::DEALER) 
 
     zmq_sockopts(client)
     client.connect ROUTER_URIS[:client_router][1]
-
-    sleep 0.2
 
     reg = Hastur::Message::RegisterClient.new(
       :from => CLIENT_UUID,
@@ -65,20 +63,20 @@ class TestClassHasturRouterModule < MiniTest::Unit::TestCase
     assert reg.send(client) != -1
     @mutex.synchronize { @sink_messages += 1 }
 
-    puts "Client waiting for plugin_exec"
-    msg = Hastur::Message.recv(client)
-    puts "Client Msg: #{msg}"
-    assert_kind_of Hastur::Message::PluginExec, msg
-    msg.close
+    pexec = Hastur::Message.recv(client)
+    assert_kind_of Hastur::Message::PluginExec, pexec
 
     assert reg.send(client) != -1
     @mutex.synchronize { @sink_messages += 1 }
+
+    # messages received on the client should not have any zmq envelopes
+    assert pexec.zmq_parts.empty?, "Received client message should have no ZMQ envelope parts."
+    assert reg.zmq_parts.empty?, "Generated registration message should have no ZMQ envelope parts."
 
     client.close
   end
 
   def run_router
-    puts "Router thread alive!"
     router_sockets = {}
 
     ROUTER_URIS.each do |key, opts|
@@ -101,6 +99,8 @@ class TestClassHasturRouterModule < MiniTest::Unit::TestCase
         dest = router_sockets[:heartbeat]
       elsif route.to_s =~ /^register/
         dest = router_sockets[:register]
+      elsif route == :plugin_exec
+        router.route :from => :plugin_exec, :src => dest, :dest => client_router, :static => true
       elsif not router_sockets.has_key? route
         next
       end
@@ -109,21 +109,19 @@ class TestClassHasturRouterModule < MiniTest::Unit::TestCase
       router.route :to => route, :src => client_router, :dest => dest, :static => true
     end
 
-    sleep 0.2
-
     count = 0
-    while @running
+    while @router_running
       router.poll(1)
-      puts "router loop #{count += 1}"
       break if count > 20
     end
 
+    router.free_dynamic
     router_sockets.each { |key,sock| sock.close }
+
     client_router.close
   end
 
   def sink_stub
-    puts "Sink stub thread alive!"
     puller = @ctx.socket(ZMQ::PULL)
     zmq_sockopts(puller)
 
@@ -133,13 +131,16 @@ class TestClassHasturRouterModule < MiniTest::Unit::TestCase
     end
 
     count = 0
-    while @running
+    while @sink_running
       if @mutex.synchronize { @sink_messages <= count }
-        sleep 0.5
+        sleep 0.2
       else
         msg = Hastur::Message.recv(puller)
-        puts "SUNK MSG: #{msg.to_json}"
-        msg.close
+
+        # endpoints should not have to deal with router parts, make sure they've been stipped
+        assert msg.zmq_parts.empty?, "Received sink message should have no ZMQ envelope parts."
+        # of course, if this assert fails, there's a decent chance of segfaulting
+
         count += 1
       end
     end
@@ -147,8 +148,26 @@ class TestClassHasturRouterModule < MiniTest::Unit::TestCase
     puller.close
   end
 
-  def test_router
+  def scheduled_stub
+    scheduler = @ctx.socket(ZMQ::PUSH) 
+    zmq_sockopts(scheduler)
+    scheduler.connect ROUTER_URIS[:plugin_exec][1]
 
+    plugin = Hastur::Message::PluginExec.new(
+      :to   => CLIENT_UUID,
+      :data => {
+        :_route      => :plugin_exec,
+        :plugin_path => "/bin/echo",
+        :plugin_args => "random.1"
+      }
+    )
+    
+    assert plugin.send(scheduler) != -1 # schedule the plugin
+
+    scheduler.close
+  end
+
+  def test_router
     # run the router in a thread
     router_thread = Thread.new { run_router rescue STDERR.puts $!.inspect, $@ }
 
@@ -158,34 +177,17 @@ class TestClassHasturRouterModule < MiniTest::Unit::TestCase
     # pretend to be a client
     client_thread = Thread.new { client_stub rescue STDERR.puts $!.inspect, $@ }
 
-    sleep 1
+    # pretend to be a scheduled
+    scheduled_thread = Thread.new { scheduled_stub rescue STDERR.puts $!.inspect, $@ }
 
-    # pretend to be a scheduler
-    scheduler = @ctx.socket(ZMQ::PUSH) 
-    zmq_sockopts(scheduler)
-    scheduler.connect ROUTER_URIS[:plugin_exec][1]
-
-    plugin = Hastur::Message::PluginExec.new(
-      :from => SCHED_UUID,
-      :to   => CLIENT_UUID,
-      :data => {
-        :method => :plugin_exec,
-        :params => {
-          :plugin_path => "/bin/echo",
-          :plugin_args => "random.1"
-        }
-      }
-    )
-
-    plugin.send(scheduler) # schedule the plugin
-
-    @running = false
-
-    sleep 0.2
-    puts "Looks like I'm done"
+    scheduled_thread.join
 
     client_thread.join
+
+    @sink_running = false
     sink_thread.join
+
+    @router_running = false
     router_thread.join
 
     @ctx.terminate
