@@ -8,11 +8,13 @@ Gem::Specification.new do |s|
   s.authors     = ["Noah Gibbs"]
   s.email       = ["noah@ooyala.com"]
   s.homepage    = ""
-  s.summary     = %q{A monitoring router to tame the eldritch horror of your network}
+  s.summary     = %q{A monitoring system to tame the eldritch horror of your network}
   s.description = <<EOS
-Hastur is a monitoring network (like Nagios) running clients on the monitored systems,
-routers to forward the information and various back-end sinks to organize and store
-information about your systems.
+Hastur is a monitoring network, so it's a bit like Nagios.  You run
+clients on the monitored systems, routers to forward the information
+and various back-end sinks to organize and store information about
+your systems.  Hastur tracks registrations, statistics and metrics,
+notifications and errors, log entries and plugins.
 EOS
 
   s.rubyforge_project = "hastur"
@@ -26,7 +28,6 @@ EOS
   s.add_development_dependency "scope"
   s.add_development_dependency "mocha"
   s.add_development_dependency "erubis"
-  s.add_development_dependency "rainbow"
   s.add_runtime_dependency "yajl-ruby"
   s.add_runtime_dependency "multi_json"
   s.add_runtime_dependency "ffi-rzmq"
@@ -35,5 +36,7 @@ EOS
   s.add_runtime_dependency "termite"
   s.add_runtime_dependency "bluepill"
   s.add_runtime_dependency "cassandra"
+  s.add_runtime_dependency "rainbow"
+  s.add_runtime_dependency "cassandra-cql"
   s.add_runtime_dependency "thrift_client", "~> 0.7.1"
 end

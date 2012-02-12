@@ -4,8 +4,10 @@ PATH
     hastur (0.0.1)
       bluepill
       cassandra
+      cassandra-cql
       ffi-rzmq
       multi_json
+      rainbow
       termite
       thrift_client (~> 0.7.1)
       trollop
@@ -29,6 +31,9 @@ GEM
       rake
       simple_uuid (>= 0.2.0)
       thrift_client (>= 0.7.0)
+    cassandra-cql (1.0.2)
+      simple_uuid (>= 0.2.0)
+      thrift_client (>= 0.7.1)
     daemons (1.1.8)
     ecology (0.0.17)
       erubis
@@ -71,5 +76,4 @@ DEPENDENCIES
   erubis
   hastur!
   mocha
-  rainbow
   scope
