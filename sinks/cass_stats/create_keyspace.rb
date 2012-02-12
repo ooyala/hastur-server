@@ -13,7 +13,25 @@ end
 puts "Connecting to database at #{opts[:host]}:9160"
 db = CassandraCQL::Database.new("#{opts[:host]}:9160")
 
-puts "Creating keyspace #{opts[:keyspace]}..."
-db.execute("CREATE KEYSPACE #{opts[:keyspace]} WITH strategy_class='org.apache.cassandra.locator.SimpleStrategy' AND strategy_options:replication_factor=1")
+begin
+  puts "Trying to create keyspace #{opts[:keyspace]}..."
+  db.execute("CREATE KEYSPACE #{opts[:keyspace]} WITH strategy_class='org.apache.cassandra.locator.SimpleStrategy' AND strategy_options:replication_factor=1")
+rescue Exception
+  raise unless $!.message =~ /unique/
+  puts "Keyspace seems to exist...  Continuing."
+end
+
 db.execute("USE #{opts[:keyspace]}")
+
+COLUMNFAMILIES = [ :StatsArchive ]
+COLUMNFAMILIES.each do |cf|
+  begin
+    puts "Trying to create columnfamily #{cf}..."
+    db.execute("CREATE COLUMNFAMILY #{cf} (id utf8 PRIMARY KEY)")
+  rescue Exception
+    puts $!.inspect
+    raise
+  end
+end
+
 puts "Done!"
