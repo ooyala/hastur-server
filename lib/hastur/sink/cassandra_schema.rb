@@ -51,11 +51,10 @@ module Hastur
       value = hash[:value]
       colname = "#{name}-#{hash[:timestamp]}"
 
-      client.insert(:StatsArchive, key, :json => json_string, options)
+      client.insert(:StatsArchive, key, colname => json_string, options)
       client.insert(cf, key, { colname => value }, options)
 
     end
 
   end
 end
-
