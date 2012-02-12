@@ -23,10 +23,16 @@ module Hastur
       @route_fds  = {} # hash of fd => [ {route}, {route}, ... ]
       @dynamic    = {} # hash of client_uuid => [socket, [zmq parts]]
       @timestamps = {} # hash of client_uuid => timestamp (float)
+      @handlers   = {} # hash of socket fd => blocks for integrating extra sockets into the poller
       @logger     = Termite::Logger.new
       @poller     = ZMQ::Poller.new
       @stats      = { :to => 0, :from => 0, :to_from => 0, :missed => 0 }
       @errors     = 0
+    end
+
+    def sockfd(socket)
+      rc = socket.getsockopt(ZMQ::FD, val=[])
+      val[0]
     end
 
     #
@@ -37,7 +43,7 @@ module Hastur
     #  :to      - either a symbolic route or a route UUID
     #  :src     - ZMQ socket to read from
     #  :dest    - ZMQ socket to write to
-    #  :static? - (bool) this route cannot be modified at runtime
+    #  :static  - (bool) this route cannot be modified at runtime
     #
     # Examples:
     # r.route :to => :stat, :src => client_router_sock, :dest => stat_sink_sock
@@ -75,7 +81,7 @@ module Hastur
       route = {
         :src     => opts[:src],
         :dest    => opts[:dest],
-        :static? => opts[:static?] ? true : false
+        :static  => opts[:static] ? true : false
       }
 
       if opts[:to] 
@@ -95,10 +101,25 @@ module Hastur
 
       # socket fd's are unique inside a process and can be looked up
       # inside the poll loop to get the routes for that socket
-      rc = route[:src].getsockopt(ZMQ::FD, val=[])
-      src_fd = val[0]
+      src_fd = sockfd(route[:src])
       @route_fds[src_fd] ||= []
       @route_fds[src_fd] << route
+    end
+
+    #
+    # return all of the routes, mostly for dumping to console at the moment
+    #
+    def routes
+      { :static => @route_fds, :dynamic => @dynamic }
+    end
+
+    #
+    # Allow registration of a single block for a socket to be checked in the poll() loop.
+    # This is for things like control sockets to manage a router.
+    #
+    def handle(socket, &block)
+      @poller.register_readable socket
+      @handlers[sockfd(socket)] = block
     end
 
     #
@@ -115,6 +136,16 @@ module Hastur
       end
 
       @poller.readables.each do |socket|
+        # use the fd to map back to a route list
+        fd = sockfd(socket)
+
+        # additional socket handlers can be registered for things like control or route advertisement
+        if @handlers[fd]
+          @handlers[fd].call(socket)
+          next
+        end
+
+        # everything else is expected to be a Hastur message
         msg = Hastur::Message.recv(socket)
 
         # convenience variables
@@ -142,10 +173,6 @@ module Hastur
           @dynamic[from] = [socket, msg.zmq_parts]
         end
         msg.zmq_parts = []
-
-        # use the fd to map back to a route list
-        rc = socket.getsockopt(ZMQ::FD, vals=[]) 
-        fd = vals[0]
 
         times_routed = 0
         @route_fds[fd].each do |r|
