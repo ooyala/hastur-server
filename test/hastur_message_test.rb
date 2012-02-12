@@ -25,12 +25,12 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     e = Hastur::Envelope.new(
       :route     => :rawdata,
       :from      => uuid,
-      :timestmap => 1328301436.9485276,
+      :timestamp => 1328301436.9485276,
       :uptime    => 12.401439189910889,
       :sequence  => 1234
     )
     assert_equal false, e.ack? # should default to false
-    assert_equal :rawdata, e.route
+    assert_equal '72617764-6174-6100-0000-000000000000', e.to
 
     ehex = e.to_s # returns envelope in hex
     assert_equal "0001",               ehex[0,  4 ], "check version"
@@ -58,14 +58,42 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     end
 
     acked = Hastur::Envelope.new :route => :stat, :from => SecureRandom.uuid.split(/-/).join, :ack => true
-    assert_equal true,  acked.ack?
-    assert_equal :stat, acked.route
+    assert_equal true, acked.ack?
+    assert_equal '73746174-0000-0000-0000-000000000000', acked.to
 
     noack = Hastur::Envelope.new :route => :stat, :from => SecureRandom.uuid, :ack => false
     assert_equal false, noack.ack?
-    assert_equal :stat, noack.route
     assert_equal 118,   noack.to_s.length
     assert_equal 59,    noack.pack.bytesize
+    assert_equal '73746174-0000-0000-0000-000000000000', noack.to
+  end
+
+  def test_serialize
+    zmq_part = "00670243f680d448deae3f2ca4513bb1e8"
+    e = Hastur::Message::Rawdata.new(
+      :from      => "be7f4980-6a1f-4120-b0ce-26de709afcf6",
+      :payload   => "a b c d e f g",
+      :timestamp => 1328301436.0000000,
+      :uptime    => 12.400000000000000,
+      :sequence  => 1234
+    )
+
+    json1 = "{\"klass\":\"Hastur::Message::Rawdata\",\"envelope\":{\"version\":1,\"to\":\"72617764-6174-6100-0000-000000000000\",\"from\":\"be7f4980-6a1f-4120-b0ce-26de709afcf6\",\"ack\":0,\"sequence\":1234,\"timestamp\":1328301436.0,\"uptime\":12.4},\"payload\":\"a b c d e f g\",\"zmq_parts\":[]}"
+    json2 = "{\"klass\":\"Hastur::Message::Rawdata\",\"envelope\":{\"version\":1,\"to\":\"72617764-6174-6100-0000-000000000000\",\"from\":\"be7f4980-6a1f-4120-b0ce-26de709afcf6\",\"ack\":0,\"sequence\":1234,\"timestamp\":1328301436.0,\"uptime\":12.4},\"payload\":\"a b c d e f g\",\"zmq_parts\":[\"#{zmq_part}\"]}"
+
+    assert_equal json1, e.to_json
+
+    e1 = Hastur::Message::Rawdata.from_json(json1)
+    refute_nil e1
+    assert e1.zmq_parts.empty?, "First json string has no zmq parts."
+
+    e2 = Hastur::Message::Rawdata.from_json(json2)
+    refute_nil e2
+    refute e2.zmq_parts.empty?, "Second json string has a zmq part."
+    assert_kind_of ZMQ::Message, e2.zmq_parts[0], "ZMQ part decoded correctly."
+
+    assert_equal json1, e1.to_json, "re-encode decoded message should be exact same json"
+    assert_equal json2, e2.to_json, "re-encode decoded message should be exact same json"
   end
 
   def test_base

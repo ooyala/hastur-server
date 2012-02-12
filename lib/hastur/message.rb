@@ -183,10 +183,6 @@ module Hastur
       end
     end
 
-    def route
-      ROUTE_NAME[@to]
-    end
-    
     #
     # check whether acks are enabled on the envelope
     #
@@ -194,6 +190,9 @@ module Hastur
       @ack == 0 ? false : true
     end
 
+    #
+    # Return the envelope as a plain hash.
+    #
     def to_hash
       {
         :version   => @version,
@@ -206,10 +205,24 @@ module Hastur
       }
     end
 
+    #
+    # Return the envelope as a JSON string.
+    #
     def to_json
       MultiJson.encode to_hash
     end
 
+    #
+    # Construct a Hastur::Envelope from a JSON string.
+    #
+    def self.from_json(json)
+      data = MultiJson.decode json, :symbolize_keys => true
+      self.new(data)
+    end
+
+    #
+    # Return the envelope as a hex string representation of the on-wire data.
+    #
     def to_s
       pack.unpack('H*')[0]
     end
@@ -343,6 +356,9 @@ module Hastur
         end
       end
 
+      #
+      # convert the message to a hash suitable for serialization
+      #
       def to_hash
         {
           :klass     => self.class,
@@ -352,10 +368,29 @@ module Hastur
         }
       end
 
+      #
+      # return the message as a string of json
+      # zmq_parts will be encoded in hex
+      #
       def to_json
-        MultiJson.encode to_hash
+        hash = to_hash
+        hash[:zmq_parts] = hash.delete(:zmq_parts).map { |p| p.copy_out_string.unpack('H*')[0] }
+        MultiJson.encode hash
       end
 
+      #
+      # decode a json data structure into an object
+      #
+      def self.from_json(json)
+        hash = MultiJson.decode json, :symbolize_keys => true
+        hash[:zmq_parts] = hash.delete(:zmq_parts).map { |p| ZMQ::Message.new([p].pack('H*')) }
+        hash[:envelope] = Envelope.new hash.delete(:envelope)
+        self.new(hash)
+      end
+
+      #
+      # returns the payload as-is
+      #
       def to_s
         payload
       end
