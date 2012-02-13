@@ -1,0 +1,3 @@
+CONNECT localhost/9160;
+
+DROP KEYSPACE Hastur;
