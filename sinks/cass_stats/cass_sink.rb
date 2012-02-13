@@ -28,7 +28,7 @@ end
 
 while @running do
   message = Hastur::Message.recv(socket)
-  Hastur::Cassandra.insert(message.payload)
+  Hastur::Cassandra.insert_stat(message.payload)
 end
 
 STDERR.puts "Exited!"
