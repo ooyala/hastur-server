@@ -51,6 +51,11 @@ module Hastur
       value = hash[:value]
       colname = "#{name}-#{hash[:timestamp]}"
 
+      if options.has_key?(:uuid)
+        hash[:uuid] = options[:uuid]
+        json_string = MultiJson.encode(hash)
+      end
+
       STDERR.puts "Insert: client.insert(:StatsArchive, #{key.inspect}, { #{colname.inspect} => #{json_string.inspect} }, #{options.inspect})"
 
       client.insert(:StatsArchive, key, { colname => json_string }, options)

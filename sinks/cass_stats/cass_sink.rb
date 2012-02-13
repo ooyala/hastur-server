@@ -28,7 +28,8 @@ end
 
 while @running do
   message = Hastur::Message.recv(socket)
-  Hastur::Cassandra.insert_stat(message.payload)
+  uuid = message.envelope.from
+  Hastur::Cassandra.insert_stat(message.to_json)
 end
 
 STDERR.puts "Exited!"
