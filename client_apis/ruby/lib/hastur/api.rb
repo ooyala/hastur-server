@@ -4,7 +4,8 @@ require "socket"
 #
 # Hastur API gem that allows services/apps to easily publish
 # correct Hastur-commands to their local machine's UDP sockets. 
-# Bare minimum for all JSON packets is to have 'method' key/values.
+# Bare minimum for all JSON packets is to have '_route' key/values.
+# This is how the Hastur router will know where to route the message.
 #
 
 # TODO: Potentially figure out how to get ecology stuff.
@@ -22,15 +23,45 @@ module Hastur
     end
 
     #
-    # Constructs and sends a stat UDP packet
+    # Sends a 'mark' stat to Hastur client daemon.
     #
-    def stat(name, stat, unit, tags)
+    def mark(name, timestamp, labels = {})
       m = {
-            :method => "stat",
-            :name   => name,
-            :stat   => stat,
-            :unit   => unit,
-            :tags   => tags
+            :_route    => "stat",
+            :type      => "mark",
+            :name      => name,
+            :timestamp => timestamp,
+            :labels    => labels
+          }
+      send_to_udp(m)
+    end
+
+    #
+    # Sends a 'counter' stat to Hastur client daemon.
+    #
+    def counter(name, timestamp, increment, labels = {})
+      m = {
+            :_route    => "stat",
+            :type      => "counter",
+            :name      => name,
+            :timestamp => timestamp,
+            :increment => increment,
+            :labels    => labels
+          }
+      send_to_udp(m)
+    end
+
+    #
+    # Sends a 'gauge' stat to Hastur client daemon.
+    #
+    def gauge(name, timestamp, value, labels = {})
+       m = {
+            :_route    => "stat",
+            :type      => "mark",
+            :name      => name,
+            :timestamp => timestamp,
+            :value     => value,
+            :labels    => labels
           }
       send_to_udp(m)
     end
@@ -40,20 +71,8 @@ module Hastur
     #
     def notification(message)
       m = {
-            :method  => "notification",
+            :_route  => "notification",
             :message => message
-          }
-      send_to_udp(m)
-    end
- 
-    #
-    # Constructs and sends a heartbeat UDP packet
-    #
-    def heartbeat_service(name, interval)
-      m = {
-            :method   => "heartbeat_service",
-            :name     => name,
-            :interval => interval
           }
       send_to_udp(m)
     end
@@ -63,7 +82,7 @@ module Hastur
     #
     def register_plugin(plugin_path, plugin_args, plugin_name, interval)
       m = {
-            :method      => "register_plugin",
+            :_route      => "register_plugin",
             :plugin_path => plugin_path,
             :plugin_args => plugin_args,
             :interval    => interval,
@@ -77,7 +96,7 @@ module Hastur
     #
     def register_service(app)
       m = {
-            :method => "register_service",
+            :_route => "register_service",
             :app    => app # TODO: get the app name somewhere (ecology?)
           }
       send_to_udp(m)
@@ -85,6 +104,7 @@ module Hastur
 
     #
     # Sends a message unmolested to the HASTUR_UDP_PORT on 127.0.0.1 #
+    #
     def send_to_udp(m)
       u = ::UDPSocket.new
       u.send MultiJson.encode(m), 0, "127.0.0.1", udp_port

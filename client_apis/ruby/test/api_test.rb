@@ -15,14 +15,14 @@ class HasturApiTest < Test::Unit::TestCase
     @server.close if @server.closed?
   end
 
-  def test_register_service
-    Hastur::API.stat("name", "stat", "unit", "")
+  def test_mark
+    curr_time = Time.now.to_i
+    Hastur::API.mark("name", curr_time)
     msg = @server.recvfrom(65000)[0]
     hash = MultiJson.decode msg
     assert_equal("name", hash['name'])
-    assert_equal("stat", hash['stat'])
-    assert_equal("unit", hash['unit'])
-    assert_equal("", hash['tags'])
+    assert_equal(curr_time, hash['timestamp'])
+    assert_equal({}, hash['labels'])
   end
 
 end
