@@ -1,7 +1,5 @@
 package hastur.client;
 
-import hastur.client.util.StatUnit;
-
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -63,7 +61,7 @@ public class HasturApi {
    @ @param tags - A list of strings which describes the stat
    *
    */
-  public static boolean recordStat(String name, double stat, StatUnit unit,
+  public static boolean recordStat(String name, double stat, String unit,
                                    List<String> tags) {
     JSONObject o = new JSONObject();
     try {
