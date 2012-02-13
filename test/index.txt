@@ -1,0 +1,26 @@
+UNIT TESTS:
+
+  hastur_client_module_test
+  hastur_input_collectd_test - for collectd input
+  hastur_input_json_test - for json input format detection
+  hastur_input_statsd_test - for statsd input
+  hastur_message_test
+  hastur_plugin_v1_test - tests various sorts of plugins matching the v1 plugin API
+  hastur_router_module_test
+  hastur_stats_test - stats format test (outdated)
+  units/assert_test - test packet assertions
+  units/monkeypatch_test - testing fuzzy_filter
+  units/zmq_utils_test - testing ZMQ utils (outdated?)
+  integration/topology_helper_test - tests the Topology test harness
+
+INTEGRATION AND SPECIAL-CASE TESTS
+
+  hastur_message_int_test - this is a large concurrency test to shake out intermittent bugs
+  integration/heartbeat_test - test routing network, heartbeat sink
+  integration/plugin_test - test routing network, heartbeat sink
+  integration/register_test - test routing network, heartbeat sink
+  integration/notification_test - test routing network, heartbeat sink
+
+LOAD TESTING
+
+  load/stats/insert_cassandra.rb - insert stats into C* for load testing
