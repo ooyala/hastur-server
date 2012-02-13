@@ -37,6 +37,4 @@ EOS
   s.add_runtime_dependency "bluepill"
   s.add_runtime_dependency "cassandra"
   s.add_runtime_dependency "rainbow"
-  s.add_runtime_dependency "cassandra-cql"
-  s.add_runtime_dependency "thrift_client", "~> 0.7.1"
 end
