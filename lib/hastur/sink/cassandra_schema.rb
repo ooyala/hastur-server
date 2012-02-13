@@ -44,15 +44,17 @@ module Hastur
     def insert_stat(client, json_string, options = { :consistency => 2 })
       hash = MultiJson.decode(json_string, :symbolize_keys => true)
       key = ::Hastur::Cassandra.row_key(hash)
-      cf = CF_FOR_STAT_TYPES[hash[:type]]
+      cf = CF_FOR_STAT_TYPES[hash[:type].to_sym]
       raise "Unknown stat type #{hash[:type].inspect}!" unless cf
 
       name = hash[:name]
       value = hash[:value]
       colname = "#{name}-#{hash[:timestamp]}"
 
+      STDERR.puts "Insert: client.insert(:StatsArchive, #{key.inspect}, { #{colname.inspect} => #{json_string.inspect} }, #{options.inspect})"
+
       client.insert(:StatsArchive, key, { colname => json_string }, options)
-      client.insert(cf, key, { colname => value }, options)
+      client.insert(cf, key, { colname => value.to_s }, options)
 
     end
 

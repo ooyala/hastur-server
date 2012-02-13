@@ -14,7 +14,7 @@ opts = Trollop.options do
   opt :print,   "Print messages",      :default => false,                 :type => :boolean
   opt :insert,  "Write messages to C*",:default => true,                  :type => :boolean
   opt :keyspace,"Keyspace to write",   :default => "Hastur",              :type => String
-  opt :host,    "Cassandra host",      :default => "127.0.0.1",           :type => String
+  opt :host,    "Cassandra host",      :default => "127.0.0.1:9160",      :type => String
 end
 
 opts[:time] = Time.now.to_s unless opts[:time]
@@ -29,7 +29,7 @@ else
   time_increment = (start_time - end_time).to_f / (opts[:n] - 1)
 end
 
-client = Cassandra.new(opts[:keyspace].to_sym, opts[:host])
+client = Cassandra.new(opts[:keyspace], opts[:host])
 
 opts[:n].times do |i|
   type = opts[:types].sample
@@ -38,6 +38,7 @@ opts[:n].times do |i|
   time = start_time.to_f + i * time_increment
   message = <<EOM
 {
+  "uuid": "a6-a6-a6-a6-a6-a6-a6",
   "type": "#{type}",
   "name": "#{name}",
   "value": #{value},
