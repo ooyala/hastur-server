@@ -32,17 +32,18 @@ public class HasturApiTest {
   }
 
   @Test
-  public void testRecordStat() {
-    boolean isSuccess = HasturApi.recordStat("myLatency", 1.2, "s", null);
+  public void testMark() {
+    long currTime = System.currentTimeMillis();
+    boolean isSuccess = HasturApi.mark("myLatency", currTime, null);
     try {
       DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
       server.receive(msg);
       String rawMsg = new String(msg.getData());
       JSONObject o = new JSONObject(rawMsg);
       assertEquals("myLatency", o.get("name"));
-      assertEquals(1.2, o.get("stat"));
-      assertEquals("s", o.get("unit"));
-      assertEquals("", o.get("tags"));
+      assertEquals("stat", o.get("_route"));
+      assertEquals("mark", o.get("type"));
+      assertEquals("{}", o.get("labels"));
     } catch(Exception e) {
       e.printStackTrace();
       assertTrue(false);

@@ -6,6 +6,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.json.JSONObject;
 
 /**
@@ -53,22 +54,67 @@ public class HasturApi {
   }
 
   /**
-   * Records a stat.
-   *
-   * @param name - Unique dotted-name that describes the stat
-   * @param stat - Value of the stat
-   * @param unit - A unit of measurement that is associated with stat
-   @ @param tags - A list of strings which describes the stat
-   *
+   * Generates a string representation of the labels in JSON format.
    */
-  public static boolean recordStat(String name, double stat, String unit,
-                                   List<String> tags) {
+  protected static String generateLabelsJson(Map<String, String> labels) throws org.json.JSONException {
+    JSONObject o = new JSONObject();
+    if(labels != null) {
+      for(String key : labels.keySet()) {
+        o.put(key, labels.get(key));
+      }
+    }
+    return o.toString();
+  }
+
+  /**
+   * Sends a 'mark' stat to Hastur client daemon.
+   */
+  public static boolean mark(String name, long timestamp, Map<String, String> labels) {
     JSONObject o = new JSONObject();
     try {
+      o.put("_route", "stat");
+      o.put("type", "mark");
       o.put("name", name);
-      o.put("stat", stat);
-      o.put("unit", unit);
-      o.put("tags", flattenList(tags));
+      o.put("timestamp", timestamp);
+      o.put("labels", generateLabelsJson(labels));
+    } catch(Exception e) {
+      e.printStackTrace();
+      return false;
+    }
+    return udpSend(o);
+  }
+
+  /**
+   * Sends a 'counter' stat to Hastur client daemon.
+   */
+  public static boolean counter(String name, long timestamp, double increment, Map<String, String> labels) {
+    JSONObject o = new JSONObject();
+    try {
+      o.put("_route", "stat");
+      o.put("type", "counter");
+      o.put("name", name);
+      o.put("timestamp", timestamp);
+      o.put("increment", increment);
+      o.put("labels", generateLabelsJson(labels));
+    } catch(Exception e) {
+      e.printStackTrace();
+      return false;
+    }
+    return udpSend(o);
+  }
+
+  /**
+   * Sends a 'gauge' stat to Hastur client daemon.
+   */
+  public static boolean gauge(String name, long timestamp, double value, Map<String, String> labels) {
+    JSONObject o = new JSONObject();
+    try {
+      o.put("_route", "stat");
+      o.put("type", "gauge");
+      o.put("name", name);
+      o.put("timestamp", timestamp);
+      o.put("value", value);
+      o.put("labels", generateLabelsJson(labels));
     } catch(Exception e) {
       e.printStackTrace();
       return false;
@@ -81,16 +127,13 @@ public class HasturApi {
    */
   public static boolean notify(String message) {
     JSONObject o = new JSONObject();
-    return udpSend(o);
-  }
-
-  /**
-   * Records an application heartbeat. If the application does not 
-   * continue to send heartbeats, it implies that something is wrong
-   * with the application.
-   */
-  public static boolean recordHeartbeat(String service, double interval) {
-    JSONObject o = new JSONObject();
+    try {
+      o.put("_route", "notification");
+      o.put("message", message);
+    } catch(Exception e) {
+      e.printStackTrace();
+      return false;
+    }
     return udpSend(o);
   }
 
@@ -99,6 +142,16 @@ public class HasturApi {
    */ 
   public static boolean registerPlugin(String path, String args, String name, double interval) {
     JSONObject o = new JSONObject();
+    try {
+      o.put("_route", "register_plugin");
+      o.put("plugin_path", path);
+      o.put("plugin_args", args);
+      o.put("interval", interval);
+      o.put("plugin", name);
+    } catch(Exception e) {
+      e.printStackTrace();
+      return false;
+    }
     return udpSend(o);
   }
 
@@ -107,6 +160,13 @@ public class HasturApi {
    */ 
   public static boolean registerService(String service) {
     JSONObject o = new JSONObject();
+    try {
+      o.put("_route", "register_service");
+      o.put("app", service);
+    } catch(Exception e) {
+      e.printStackTrace();
+      return false;
+    }
     return udpSend(o);
   }
 
