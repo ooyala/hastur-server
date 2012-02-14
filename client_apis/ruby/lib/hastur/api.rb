@@ -15,6 +15,16 @@ module Hastur
   module API
     extend self
 
+    SECS_2100       = 4102444800
+    MILLI_SECS_2100 = 4102444800000
+    MICRO_SECS_2100 = 4102444800000000
+    NANO_SECS_2100  = 4102444800000000000
+
+    SECS_1971       = 31536000
+    MILLI_SECS_1971 = 31536000000
+    MICRO_SECS_1971 = 31536000000000
+    NANO_SECS_1971  = 31536000000000000
+
     #
     # Allow the UDP port to be configurable. Defaults to 8125.
     #
@@ -23,19 +33,23 @@ module Hastur
     end
 
     #
-    # TODO(viet): Best effort to make all timestamps 64 bit numbers
-    #             that represent the total number of microseconds since
-    #             the beginning of 1971.
+    # Best effort to make all timestamps 64 bit numbers that represent the total number of
+    # microseconds since the beginning of 1971.
     #
     def normalize_timestamp(timestamp)
-      
+      return timestamp.to_f*1000000 if timestamp.kind_of?(Hash)
+      return timestamp * 1000000    if timestamp.between?(SECS_1971, SECS_2100)
+      return timestamp * 1000       if timestamp.between?(MILLI_SECS_1971, MILLI_SECS_2100)
+      return timestamp              if timestamp.between?(MICRO_SECS_1971, MICRO_SECS_2100)
+      return timestamp / 1000       if timestamp.between?(NANO_SECS_1971, NANO_SECS_2100)
+      # if the program made it here, raise an error. Do not know what to do with this timestamp.
+      raise "Unable to validate timestamp: #{timestamp}"
     end
 
     #
     # Sends a 'mark' stat to Hastur client daemon.
     #
-    def mark(name, timestamp=(Time.now.to_f*1000000), labels = {})
-      normalize_timestamp(timestamp)
+    def mark(name, timestamp=normalize_timestamp(Time.now), labels = {})
       m = {
             :_route    => "stat",
             :type      => "mark",
@@ -49,7 +63,7 @@ module Hastur
     #
     # Sends a 'counter' stat to Hastur client daemon.
     #
-    def counter(name, increment, timestamp=(Time.now.to_f*1000000), labels = {})
+    def counter(name, increment, timestamp=normalize_timestamp(Time.now), labels = {})
       normalize_timestamp(timestamp)
       m = {
             :_route    => "stat",
@@ -65,7 +79,7 @@ module Hastur
     #
     # Sends a 'gauge' stat to Hastur client daemon.
     #
-    def gauge(name, value, timestamp=(Time.now.to_f*1000000), labels = {})
+    def gauge(name, value, timestamp=normalize_timestamp(Time.now), labels = {})
       normalize_timestamp(timestamp)
        m = {
             :_route    => "stat",
