@@ -17,11 +17,12 @@ public class HasturApi {
 
   private static int udpPort = 8125;
   private static InetAddress localAddr;
+  private static HeartbeatThread heartbeatThread;
 
   /**
    * Sends a UDP packet to 127.0.0.1:8125. 
    */ 
-  protected static boolean udpSend(JSONObject json) {
+  public static boolean udpSend(JSONObject json) {
     DatagramSocket socket = null;
     boolean success = true;
     try {
@@ -171,6 +172,28 @@ public class HasturApi {
       return false;
     }
     return udpSend(o);
+  }
+
+  /**
+   * Constructs and sends heartbeat UDP packets. Interval is given in seconds.
+   */
+  public static boolean heartbeat(String service, double intervalSeconds) {
+    try {
+      if(heartbeatThread == null) {
+        JSONObject o = new JSONObject();
+        o.put("_route", "heartbeat");
+        o.put("app", service);
+        o.put("interval", intervalSeconds);
+        heartbeatThread = new HeartbeatThread(o);
+        heartbeatThread.start();
+      } else {
+        heartbeatThread.setIntervalSeconds(intervalSeconds);
+      }
+    } catch(Exception e) {
+      e.printStackTrace();
+      return false;
+    }
+    return true;
   }
 
   /**

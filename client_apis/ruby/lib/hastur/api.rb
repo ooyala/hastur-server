@@ -115,6 +115,25 @@ module Hastur
     end
 
     #
+    # Constructs and sends heartbeat UDP packets. Interval is given in seconds.
+    #
+    def heartbeat(app, interval)
+      if @heartbeat_thread.nil?
+        @heartbeat_thread = Thread.new do
+          m = {
+                :_route   => "heartbeat",
+                :app      => app, # TODO: get the app name somewhere (ecology?)
+                :interval => interval
+              }
+          loop do
+            send_to_udp(m)
+            sleep interval
+          end
+        end
+      end
+    end
+
+    #
     # Sends a message unmolested to the HASTUR_UDP_PORT on 127.0.0.1 #
     #
     def send_to_udp(m)

@@ -96,4 +96,28 @@ public class HasturApiTest {
     }
     assertTrue(isSuccess);
   }
+
+  @Test
+  public void testHeartbeat() {
+    HasturApi.heartbeat("myApp", 2);  // heartbeat every 2 seconds
+    try {
+      Thread.sleep(2500);
+      DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
+      int numMsgs = 0;
+      for(int i = 0 ; i < 2; i++) {
+        server.receive(msg);
+        numMsgs++;
+      }
+      assertEquals(2, numMsgs);
+      String rawMsg = new String(msg.getData());
+      JSONObject o = new JSONObject(rawMsg);
+      assertEquals("heartbeat", o.get("_route"));
+      assertEquals("myApp", o.get("app"));
+      assertEquals(2, o.get("interval"));
+
+    } catch(Exception e) {
+      e.printStackTrace();
+      assertTrue(false);
+    }
+  }
 }
