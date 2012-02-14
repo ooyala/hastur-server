@@ -1,6 +1,6 @@
 #!/bin/bash
 
-: ${REPO_ROOT:="$WORKSPACE/ooyala"}
+: ${REPO_ROOT:="$WORKSPACE"}
 source $HOME/.rvm/scripts/rvm
 
 cd $REPO_ROOT/hastur
