@@ -19,6 +19,41 @@ public class HasturApi {
   private static InetAddress localAddr;
   private static HeartbeatThread heartbeatThread;
 
+  private static final long SECS_2100       = 4102444800L;
+  private static final long MILLI_SECS_2100 = 4102444800000L;
+  private static final long MICRO_SECS_2100 = 4102444800000000L;
+  private static final long NANO_SECS_2100  = 4102444800000000000L;
+
+  private static final long SECS_1971       = 31536000L;
+  private static final long MILLI_SECS_1971 = 31536000000L;
+  private static final long MICRO_SECS_1971 = 31536000000000L;
+  private static final long NANO_SECS_1971  = 31536000000000000L;
+
+  /**
+   * Computes if a number is inclusively between a range.
+   */
+  public static boolean isBetween(long x, long lower, long upper) {
+    return lower <= x && x <= upper;
+  }
+
+  /**
+   * Returns the timestamp in terms of microseconds since 1971. Guesses
+   * based on the ranges.
+   */
+  public static long normalizeTimestamp(long time) {
+    if(isBetween(time, SECS_1971, SECS_2100)) {
+      return time * 1000000;
+    } else if(isBetween(time, MILLI_SECS_1971, MILLI_SECS_2100)) {
+      return time * 1000;
+    } else if(isBetween(time, MICRO_SECS_1971, MICRO_SECS_2100)) {
+      return time;
+    } else if(isBetween(time, NANO_SECS_1971, NANO_SECS_2100)) {
+      return time / 1000;
+    } else {
+      throw new IllegalArgumentException("Unable to validate timestamp: " + time);
+    }
+  }
+
   /**
    * Sends a UDP packet to 127.0.0.1:8125. 
    */ 
@@ -74,6 +109,7 @@ public class HasturApi {
     if(timestamp == null) timestamp = System.nanoTime() / 1000;
     JSONObject o = new JSONObject();
     try {
+      normalizeTimestamp(timestamp);
       o.put("_route", "stat");
       o.put("type", "mark");
       o.put("name", name);
@@ -93,6 +129,7 @@ public class HasturApi {
     if(timestamp == null) timestamp = System.nanoTime() / 1000;
     JSONObject o = new JSONObject();
     try {
+      normalizeTimestamp(timestamp);
       o.put("_route", "stat");
       o.put("type", "counter");
       o.put("name", name);
@@ -113,6 +150,7 @@ public class HasturApi {
     if(timestamp == null) timestamp = System.nanoTime() / 1000;
     JSONObject o = new JSONObject();
     try {
+      normalizeTimestamp(timestamp);
       o.put("_route", "stat");
       o.put("type", "gauge");
       o.put("name", name);
