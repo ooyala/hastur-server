@@ -23,9 +23,19 @@ module Hastur
     end
 
     #
+    # TODO(viet): Best effort to make all timestamps 64 bit numbers
+    #             that represent the total number of microseconds since
+    #             the beginning of 1971.
+    #
+    def normalize_timestamp(timestamp)
+      
+    end
+
+    #
     # Sends a 'mark' stat to Hastur client daemon.
     #
-    def mark(name, timestamp, labels = {})
+    def mark(name, timestamp=(Time.now.to_f*1000000), labels = {})
+      normalize_timestamp(timestamp)
       m = {
             :_route    => "stat",
             :type      => "mark",
@@ -39,7 +49,8 @@ module Hastur
     #
     # Sends a 'counter' stat to Hastur client daemon.
     #
-    def counter(name, timestamp, increment, labels = {})
+    def counter(name, increment, timestamp=(Time.now.to_f*1000000), labels = {})
+      normalize_timestamp(timestamp)
       m = {
             :_route    => "stat",
             :type      => "counter",
@@ -54,7 +65,8 @@ module Hastur
     #
     # Sends a 'gauge' stat to Hastur client daemon.
     #
-    def gauge(name, timestamp, value, labels = {})
+    def gauge(name, value, timestamp=(Time.now.to_f*1000000), labels = {})
+      normalize_timestamp(timestamp)
        m = {
             :_route    => "stat",
             :type      => "mark",
