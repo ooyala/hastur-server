@@ -69,7 +69,7 @@ module Hastur
       normalize_timestamp(timestamp)
        m = {
             :_route    => "stat",
-            :type      => "mark",
+            :type      => "gauge",
             :name      => name,
             :timestamp => timestamp,
             :value     => value,
