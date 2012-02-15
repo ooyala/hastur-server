@@ -18,6 +18,7 @@ public class HasturApi {
   private static int udpPort = 8125;
   private static InetAddress localAddr;
   private static HeartbeatThread heartbeatThread;
+  private static String appName = computeAppName();
 
   private static final long SECS_2100       = 4102444800L;
   private static final long MILLI_SECS_2100 = 4102444800000L;
@@ -43,9 +44,16 @@ public class HasturApi {
   }
 
   /**
+   * Overrides the computed application name.
+   */
+  public static void setAppName(String newAppName) {
+    appName = newAppName;
+  }
+
+  /**
    * Computes if a number is inclusively between a range.
    */
-  public static boolean isBetween(long x, long lower, long upper) {
+  private static boolean isBetween(long x, long lower, long upper) {
     return lower <= x && x <= upper;
   }
 
@@ -75,6 +83,10 @@ public class HasturApi {
     boolean success = true;
     try {
       socket = new DatagramSocket();
+      // always make sure that the JSON contains information about who shot this message.
+      if( !json.has("app") ) {
+        json.put("app", appName);
+      }
       String msgString = json.toString();
       DatagramPacket msg = new DatagramPacket(msgString.getBytes(), 
                                               msgString.length(), 
@@ -210,11 +222,11 @@ public class HasturApi {
   /**
    * Registers the application with Hastur.
    */ 
-  public static boolean registerService(String service) {
+  public static boolean registerService(Map<String, String> labels) {
     JSONObject o = new JSONObject();
     try {
       o.put("_route", "register_service");
-      o.put("app", service);
+      o.put("labels", generateLabelsJson(labels));
     } catch(Exception e) {
       e.printStackTrace();
       return false;
@@ -225,34 +237,29 @@ public class HasturApi {
   /**
    * Constructs and sends heartbeat UDP packets. Interval is given in seconds.
    */
-  protected static boolean heartbeat(String heartbeatName, String appName) {
+  public static boolean heartbeat(String heartbeatName, Map<String, String> labels) {
     JSONObject o = new JSONObject();
     try {
       o.put("_route", "heartbeat");
-      o.put("app", appName);
       o.put("name", heartbeatName);
+      o.put("labels", generateLabelsJson(labels));
     } catch(Exception e) {
       e.printStackTrace();
       return false;
     }
     return udpSend(o);
-  }
-
-  /**
-   * Constructs and sends heartbeat UDP packets. Interval is given in seconds.
-   * The application name will be automatically computed if possible.  
-   */
-  public static boolean heartbeat(String heartbeatName) {
-    return heartbeat(heartbeatName, computeAppName());
   }
 
   /**
    * Dynamically compute the application name
    */
   private static String computeAppName() {
-    StackTraceElement[] stack = Thread.currentThread ().getStackTrace ();
-    StackTraceElement main = stack[stack.length - 1];
-    return main.getClassName();
+    if(appName == null) {
+      StackTraceElement[] stack = Thread.currentThread ().getStackTrace ();
+      StackTraceElement main = stack[stack.length - 1];
+      appName = main.getClassName();
+    }
+    return appName;
   }
 
   /**

@@ -123,7 +123,9 @@ public class HasturApiTest {
 
   @Test
   public void testHeartbeat() {
-    HasturApi.heartbeat("heartbeatName");
+    String appName = "foobar";
+    HasturApi.setAppName( appName );
+    HasturApi.heartbeat("heartbeatName", null);
     try {
       DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
       server.receive(msg);
@@ -131,9 +133,11 @@ public class HasturApiTest {
       JSONObject o = new JSONObject(rawMsg);
       assertEquals("heartbeat", o.get("_route"));
       assertEquals("heartbeatName", o.get("name"));
+      assertEquals(appName, o.get("app"));
     } catch(Exception e) {
       e.printStackTrace();
       assertTrue(false);
     }
   }
+
 }

@@ -28,7 +28,7 @@ public class HeartbeatThread extends Thread {
   public void run() {
     while(true) {
       try {
-        HasturApi.heartbeat(CLIENT_HEARTBEAT);
+        HasturApi.heartbeat(CLIENT_HEARTBEAT, null);
         Thread.sleep((int)(intervalSeconds * 1000));
       } catch(java.lang.InterruptedException e) {
         e.printStackTrace();
