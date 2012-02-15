@@ -62,7 +62,7 @@ module Hastur
           end
         end
 
-        if @stderr_handler.resond_to? :call
+        if @stderr_handler.respond_to? :call
           @threads << Thread.new do
             begin
               @stderr.lines { |line| @mutex.synchronize { @stderr_handler.call(line) } }
