@@ -21,7 +21,7 @@ class HasturApiTest < Test::Unit::TestCase
     msg = @server.recvfrom(65000)[0]
     hash = MultiJson.decode msg
     assert_equal("name", hash['name'])
-    assert_equal(curr_time, hash['timestamp'])
+    assert_equal(curr_time*1000000, hash['timestamp'])
     assert_equal(1, hash['increment'])
     assert_equal("counter", hash['type'])
     assert_equal({}, hash['labels'])
@@ -33,7 +33,7 @@ class HasturApiTest < Test::Unit::TestCase
     msg = @server.recvfrom(65000)[0]
     hash = MultiJson.decode msg
     assert_equal("name", hash['name'])
-    assert_equal(curr_time, hash['timestamp'])
+    assert_equal(curr_time * 1000000, hash['timestamp'])
     assert_equal(9, hash['value'])
     assert_equal("gauge", hash['type'])
     assert_equal({}, hash['labels'])
@@ -46,7 +46,7 @@ class HasturApiTest < Test::Unit::TestCase
     hash = MultiJson.decode msg
     assert_equal("name", hash['name'])
     assert_equal("mark", hash['type'])
-    assert_equal(curr_time, hash['timestamp'])
+    assert_equal(curr_time*1000000, hash['timestamp'])
     assert_equal({}, hash['labels'])
   end
 

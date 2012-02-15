@@ -49,7 +49,8 @@ module Hastur
     #
     # Sends a 'mark' stat to Hastur client daemon.
     #
-    def mark(name, timestamp=normalize_timestamp(Time.now), labels = {})
+    def mark(name, timestamp=Time.now, labels = {})
+      timestamp = normalize_timestamp(timestamp)
       m = {
             :_route    => "stat",
             :type      => "mark",
@@ -63,8 +64,8 @@ module Hastur
     #
     # Sends a 'counter' stat to Hastur client daemon.
     #
-    def counter(name, increment, timestamp=normalize_timestamp(Time.now), labels = {})
-      normalize_timestamp(timestamp)
+    def counter(name, increment, timestamp=Time.now, labels = {})
+      timestamp = normalize_timestamp(timestamp)
       m = {
             :_route    => "stat",
             :type      => "counter",
@@ -79,9 +80,9 @@ module Hastur
     #
     # Sends a 'gauge' stat to Hastur client daemon.
     #
-    def gauge(name, value, timestamp=normalize_timestamp(Time.now), labels = {})
-      normalize_timestamp(timestamp)
-       m = {
+    def gauge(name, value, timestamp=Time.now, labels = {})
+      timestamp = normalize_timestamp(timestamp)
+      m = {
             :_route    => "stat",
             :type      => "gauge",
             :name      => name,
