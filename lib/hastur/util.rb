@@ -29,12 +29,10 @@ module Hastur
 
     # not really thorough yet
     def self.valid_zmq_uri?(uri)
-      if uri =~ /\Aipc:\/\/./
-        true
-      elsif uri =~ /tcp:\/\/[^:]+:\d+/
-        true
-      else
-        false
+      case uri
+        when %r{ipc://.};         true
+        when %r{tcp://[^:]+:\d+}; true
+        else;                     false
       end
     end
   end
