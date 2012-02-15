@@ -10,6 +10,7 @@ module Hastur
 
       def initialize(resources, opts={}, *argv)
         @argv = argv.flatten.map do |arg|
+          # only symbols are auto-translated to resource strings, String keys intentionally do not match
           if arg.kind_of? Symbol and resources.has_key? arg
             resources[arg].to_s
           else
