@@ -12,6 +12,10 @@ module Hastur
           super(opts)
         end
 
+        def stop
+          File.unlink(@path) if File.socket?(@path)
+        end
+
         def to_s
           @path
         end

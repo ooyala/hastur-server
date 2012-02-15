@@ -13,8 +13,6 @@ class HeartbeatTest < Test::Unit::TestCase
 
   HTRZMQ = Hastur::Test::Resource::ZeroMQ
   def initialize(*args)
-    String.send(:include, Sickill::Rainbow)
-
     @resources = {
       :client1      => Hastur::Test::Resource::UnixSocket.new,
       :client2      => Hastur::Test::Resource::UnixSocket.new,

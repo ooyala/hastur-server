@@ -19,6 +19,9 @@ module Hastur
           end
         end
 
+        def stop
+        end
+
         def add_action(action)
           case action
             when Proc

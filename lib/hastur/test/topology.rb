@@ -89,6 +89,8 @@ module Hastur
       # Kills all of the nodes in the topology.
       #
       def stop_all
+        @resources.each { |key,r| r.stop if r.respond_to? :stop }
+
         puts "enter stop_all"
         return if @all_stopped
 

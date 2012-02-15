@@ -25,6 +25,8 @@ module Hastur
         #
         def initialize(opts, &block)
           @mutex = Mutex.new
+          @threads = []
+          @unlinks = []
 
           if opts[:ctx]
             @ctx = opts[:ctx]
@@ -46,13 +48,22 @@ module Hastur
         end
 
         # must come after @type is set
+        # For now, socket files are specified so they land in PWD, in the future we might want to specify a
+        # temp dir, but that has a whole different bag of issues, so stick with simple until it's needed.
         def _uri_param(val, type, method)
           case val
             when :gen
-              @uri = "ipc://#{::Process.pid}-#{Hastur::Util.next_seq}"
+              file = "#{::Process.pid}-#{Hastur::Util.next_seq}"
+              @unlinks << file
+              @uri = "ipc://#{file}"
             when :tap
-              @uri = "ipc://#{::Process.pid}-#{Hastur::Util.next_seq}"
-              @real_uri = "ipc://#{::Process.pid}-#{Hastur::Util.next_seq}"
+              # generate two filenames, that become two IPC URI's
+              file = "#{::Process.pid}-#{Hastur::Util.next_seq}"
+              real = "#{::Process.pid}-#{Hastur::Util.next_seq}"
+              @unlinks += [ file, real ]
+              @uri = "ipc://#{file}"
+              @real_uri = "ipc://#{real}"
+
               tap(@uri, @real_uri, type, method)
             when String
               @uri = val
@@ -68,6 +79,10 @@ module Hastur
         def stop
           @running = false
           @threads.each { |t| t.join }
+
+          @unlinks.each do |file|
+            File.unlink(file) if File.socket?(file)
+          end
         end
 
         #
