@@ -114,7 +114,7 @@ public class HasturApiTest {
       String rawMsg = new String(msg.getData());
       JSONObject o = new JSONObject(rawMsg);
       assertEquals("heartbeat", o.get("_route"));
-      assertEquals(HeartbeatThread.CLIENT_HEARTBEAT, o.get("app"));
+      assertEquals(HeartbeatThread.CLIENT_HEARTBEAT, o.get("name"));
     } catch(Exception e) {
       e.printStackTrace();
       assertTrue(false);

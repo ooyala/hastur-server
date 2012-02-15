@@ -228,7 +228,7 @@ public class HasturApi {
   /**
    * Constructs and sends heartbeat UDP packets. Interval is given in seconds.
    */
-  public static boolean heartbeat(String heartbeatName, String appName) {
+  protected static boolean heartbeat(String heartbeatName, String appName) {
     JSONObject o = new JSONObject();
     try {
       o.put("_route", "heartbeat");
