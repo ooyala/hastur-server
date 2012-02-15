@@ -26,17 +26,28 @@ module Hastur
     NANO_SECS_1971  = 31536000000000000
 
     #
-    # Allow the UDP port to be configurable. Defaults to 8125.
+    # Get the UDP port.  Defaults to 8125.
     #
     def udp_port
       @udp_port || 8125
     end
 
     #
+    # Set the UDP port.  Defaults to 8125
+    #
+    def udp_port=(new_port)
+      @udp_port = new_port
+    end
+
+    protected
+
+    #
     # Best effort to make all timestamps 64 bit numbers that represent the total number of
     # microseconds since the beginning of 1971.
     #
     def normalize_timestamp(timestamp)
+      return Time.now if timestamp.nil?
+
       return timestamp.to_f*1000000 if timestamp.kind_of?(Time)
       return timestamp * 1000000    if timestamp.between?(SECS_1971, SECS_2100)
       return timestamp * 1000       if timestamp.between?(MILLI_SECS_1971, MILLI_SECS_2100)
@@ -46,17 +57,71 @@ module Hastur
       raise "Unable to validate timestamp: #{timestamp}"
     end
 
+    def default_labels
+      @pid ||= Process.pid
+      thread = Thread.current
+      unless thread[:tid]
+        thread[:tid] = thread_id(thread)
+      end
+
+      {
+        :pid => @pid,
+        :tid => thread[:tid],
+        :app => app_name,
+      }
+    end
+
+    # This is a convenience function because the Ruby
+    # thread API has no accessor for the thread ID,
+    # but includes it in "to_s" (buh?)
+    def thread_id(thread)
+      return "main" if thread == Thread.main
+
+      str = thread.to_s
+
+      match = nil
+      match  = str.match /(0x\d+)/
+      return nil unless match
+      match[1]
+    end
+
+    public
+
+    def app_name=(new_name)
+      @app_name = new_name
+    end
+
+    protected
+
+    def app_name
+      return @app_name if @app_name
+
+      eco = Ecology rescue nil
+      return @app_name = Ecology.application if eco
+
+      @app_name = $0
+    end
+
+    #
+    # Sends a message unmolested to the HASTUR_UDP_PORT on 127.0.0.1 #
+    #
+    def send_to_udp(m)
+      u = ::UDPSocket.new
+      u.send MultiJson.encode(m), 0, "127.0.0.1", udp_port
+    end
+
+    public
+
     #
     # Sends a 'mark' stat to Hastur client daemon.
     #
     def mark(name, timestamp=Time.now, labels = {})
-      timestamp = normalize_timestamp(timestamp)
       m = {
             :_route    => "stat",
             :type      => "mark",
             :name      => name,
-            :timestamp => timestamp,
-            :labels    => labels
+            :timestamp => normalize_timestamp(timestamp),
+            :labels    => default_labels.merge(labels)
           }
       send_to_udp(m)
     end
@@ -64,15 +129,14 @@ module Hastur
     #
     # Sends a 'counter' stat to Hastur client daemon.
     #
-    def counter(name, increment, timestamp=Time.now, labels = {})
-      timestamp = normalize_timestamp(timestamp)
+    def counter(name, increment = 1, timestamp=Time.now, labels = {})
       m = {
             :_route    => "stat",
             :type      => "counter",
             :name      => name,
-            :timestamp => timestamp,
+            :timestamp => normalize_timestamp(timestamp),
             :increment => increment,
-            :labels    => labels
+            :labels    => default_labels.merge(labels),
           }
       send_to_udp(m)
     end
@@ -81,14 +145,13 @@ module Hastur
     # Sends a 'gauge' stat to Hastur client daemon.
     #
     def gauge(name, value, timestamp=Time.now, labels = {})
-      timestamp = normalize_timestamp(timestamp)
       m = {
             :_route    => "stat",
             :type      => "gauge",
             :name      => name,
-            :timestamp => timestamp,
+            :timestamp => normalize_timestamp(timestamp),
             :value     => value,
-            :labels    => labels
+            :labels    => default_labels.merge(labels),
           }
       send_to_udp(m)
     end
@@ -107,13 +170,14 @@ module Hastur
     #
     # Constructs and sends a register_plugin UDP packet
     #
-    def register_plugin(plugin_path, plugin_args, plugin_name, interval)
+    def register_plugin(plugin_path, plugin_args, plugin_name, interval, labels = {})
       m = {
             :_route      => "register_plugin",
             :plugin_path => plugin_path,
             :plugin_args => plugin_args,
             :interval    => interval,
-            :plugin      => plugin_name
+            :plugin      => plugin_name,
+            :labels      => default_labels.merge(labels),
           }
       send_to_udp(m)
     end
@@ -121,10 +185,10 @@ module Hastur
     #
     # Constructs and sends a register_service UDP packet
     #
-    def register_service(app)
+    def register_service(app, labels = {})
       m = {
             :_route => "register_service",
-            :app    => app # TODO: get the app name somewhere (ecology?)
+            :labels => default_labels.merge(labels),
           }
       send_to_udp(m)
     end
@@ -132,28 +196,12 @@ module Hastur
     #
     # Constructs and sends heartbeat UDP packets. Interval is given in seconds.
     #
-    def heartbeat(app, interval)
-      if @heartbeat_thread.nil?
-        @heartbeat_thread = Thread.new do
-          m = {
-                :_route   => "heartbeat",
-                :app      => app, # TODO: get the app name somewhere (ecology?)
-                :interval => interval
-              }
-          loop do
-            send_to_udp(m)
-            sleep interval
-          end
-        end
-      end
-    end
-
-    #
-    # Sends a message unmolested to the HASTUR_UDP_PORT on 127.0.0.1 #
-    #
-    def send_to_udp(m)
-      u = ::UDPSocket.new
-      u.send MultiJson.encode(m), 0, "127.0.0.1", udp_port
+    def heartbeat(name = "app_heartbeat", timestamp = Time.now, labels = {})
+      send_to_udp({
+        :_route    => "heartbeat",
+        :timestamp => normalize_timestamp(timestamp),
+        :labels    => default_labels.merge(labels),
+      })
     end
 
   end

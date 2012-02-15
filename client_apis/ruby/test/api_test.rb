@@ -24,7 +24,8 @@ class HasturApiTest < Test::Unit::TestCase
     assert_equal(curr_time*1000000, hash['timestamp'])
     assert_equal(1, hash['increment'])
     assert_equal("counter", hash['type'])
-    assert_equal({}, hash['labels'])
+    assert hash['labels'].keys.sort == ["app", "pid", "tid"],
+      "Wrong keys #{hash['labels'].keys.inspect} in default labels!"
   end
 
   def test_gauge
@@ -36,7 +37,8 @@ class HasturApiTest < Test::Unit::TestCase
     assert_equal(curr_time * 1000000, hash['timestamp'])
     assert_equal(9, hash['value'])
     assert_equal("gauge", hash['type'])
-    assert_equal({}, hash['labels'])
+    assert hash['labels'].keys.sort == ["app", "pid", "tid"],
+      "Wrong keys #{hash['labels'].keys.inspect} in default labels!"
   end
  
   def test_mark
@@ -47,22 +49,20 @@ class HasturApiTest < Test::Unit::TestCase
     assert_equal("name", hash['name'])
     assert_equal("mark", hash['type'])
     assert_equal(curr_time*1000000, hash['timestamp'])
-    assert_equal({}, hash['labels'])
+    assert hash['labels'].keys.sort == ["app", "pid", "tid"],
+      "Wrong keys #{hash['labels'].keys.inspect} in default labels!"
   end
 
   def test_heartbeat
-    Hastur::API.heartbeat("myApp", 2)
-    sleep 2.5
-    num_msgs = 0
-    1.upto(2) do
-      msg = @server.recvfrom(65000)[0]
-      hash = MultiJson.decode msg
-      assert_equal("myApp", hash['app'])
-      assert_equal(2, hash['interval'])
-      assert_equal("heartbeat", hash['_route'])
-      num_msgs += 1
-    end
-    assert_equal(2, num_msgs);
+    Hastur::API.heartbeat("myApp", nil, "app" => "myApp")
+
+    msg = @server.recvfrom(65000)[0]
+    hash = MultiJson.decode msg
+    STDERR.puts "Received hash: #{hash.inspect}"
+    assert_equal("myApp", hash['labels']['app'])
+    assert_equal("heartbeat", hash['_route'])
+    assert hash['labels'].keys.sort == ["app", "pid", "tid"],
+      "Wrong keys #{hash['labels'].keys.inspect} in default labels!"
   end
 
 end
