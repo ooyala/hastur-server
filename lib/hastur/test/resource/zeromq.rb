@@ -5,9 +5,24 @@ require 'ffi-rzmq'
 module Hastur
   module Test
     module Resource
+      #
+      # A resource for setting up and testing ZeroMQ message flows. The most basic usage will provide
+      # auto-generated IPC URI's, which can be handy for testing. More advanced usage uses the built-in
+      # tap device to sniff messages while they're in-flight.
+      #
       class ZeroMQ < Hastur::Test::Resource::Base
         attr_reader :ctx, :uri, :backend, :type, :error_count
 
+        #
+        # Optional:
+        #  :ctx - provide a ZeroMQ context, if unset one is created
+        # Required:
+        #  :type - the type of ZeroMQ socket (e.g. ZMQ::PULL)
+        #  :bind / :connect - the "direction" of the socket, with a value
+        #    :gen - generate an IPC URI
+        #    :tap - create a tap device and run actions against messages that cross it
+        #    ""   - specify a string URI (unchecked)
+        #
         def initialize(opts, &block)
           @mutex = Mutex.new
 
@@ -24,14 +39,14 @@ module Hastur
             raise ArgumentException.new ":type is required for ZeroMQ"
           end
 
-          uri_param(opts[:bind],    @type, :bind)    if opts[:bind]
-          uri_param(opts[:connect], @type, :connect) if opts[:connect]
+          _uri_param(opts[:bind],    @type, :bind)    if opts[:bind]
+          _uri_param(opts[:connect], @type, :connect) if opts[:connect]
 
           super(opts, &block)
         end
 
         # must come after @type is set
-        def uri_param(val, type, method)
+        def _uri_param(val, type, method)
           case val
             when :gen
               @uri = "ipc://#{::Process.pid}-#{Hastur::Util.next_seq}"
@@ -46,14 +61,29 @@ module Hastur
           end
         end
 
+        #
+        # Sets the running flag to false so the tap devices can exit cleanly. Then joins any threads
+        # that are running.
+        #
         def stop
           @running = false
+          @threads.each { |t| t.join }
         end
 
+        #
+        # Return the URI generated/provided for this resource. For tapped devices, the "front" side
+        # of the tap is returned.
+        #
         def to_s
           @uri
         end
 
+        #
+        # Set up a tap "device" (in zmq parlance) in a thread.  Currently, only the simple tap device is supported.
+        #
+        # The device calls recvmsgs, copies the data out of the message into Ruby strings (with copy_out_string),
+        # calls all of the registered :action blocks inside a mutex, then forwards the messages on unmodified.
+        #
         def tap(uri, backend_uri, type, method)
           backend_type = case type
             when ZMQ::PULL;   ZMQ::PUSH
@@ -101,6 +131,15 @@ module Hastur
             end
           end
 
+          #
+          # Tap & forward device.
+          #
+          # This device ill work for most 1:1 cases, but will cause bewildering results for 1:N or N:1 cases.
+          # For now, the best bet is to keep taps out at the edge where things can generally be 1:1.  If we
+          # really need to tap ROUTER/DEALER N:N scenarios, a much more sophisticated tap will have to be
+          # written that creates all of the connections so the socket identities can be lined up. And even
+          # then, there are weird issues for some of the use cases we have in mind.
+          #
           def simple_tap_device(uri, from, to)
             @poller = ZMQ::Poller.new
             @poller.register_readable from
