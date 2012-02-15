@@ -44,6 +44,7 @@ module Hastur
       @uuid            = opts[:uuid]
       @routers         = opts[:routers]
       @port            = opts[:port]
+      @unix            = opts[:unix] # can use a unix socket for testing, should never see production
       @heartbeat       = opts[:heartbeat]
       @last_heartbeat  = Time.now - @heartbeat
       @last_ack_check  = Time.now - @ack_interval
@@ -116,9 +117,13 @@ module Hastur
     # Sets up the local UDP and TCP sockets. Services communicate with the client through these sockets.
     #
     def set_up_local_ports
-      @udp_socket = UDPSocket.new
+      if @unix
+        @udp_socket = UNIXServer.new(@unix)
+      else
+        @udp_socket = UDPSocket.new
+        @udp_socket.bind nil, @port 
+      end
       @logger.debug "Binding UDP socket localhost:#{@port}"
-      @udp_socket.bind nil, @port 
       @tcp_socket = nil
     end
 

@@ -13,19 +13,21 @@ require "hastur/zmq_utils"
 require "hastur/client/uuid"
 require "hastur/plugin/v1"
 require "hastur/client"
+require "hastur/util"
 
 MultiJson.engine = :yajl
 NOTIFICATION_INTERVAL = 5   # Hardcode for now
 
 opts = Trollop::options do
-  opt :router,    "Router URI",         :type => String,  :required => true, :multi => true
+  opt :router,    "Router URI",         :type => String, :required => true, :multi => true
   opt :uuid,      "System UUID",        :type => String
-  opt :port,      "Local socket port",  :type => String,  :required => true
+  opt :port,      "Local socket port",  :type => Integer, :default => 8125
+  opt :unix,      "UNIX domain socket", :type => String
   opt :heartbeat, "Heartbeat interval", :type => Integer, :default => 15
 end
 
-if opts[:router].any? { |uri| uri !~ /\w+:\/\/[^:]+:\d+/ }
-  Trollop::die :router, "--router is required and must be in this format: protocol://hostname:port"
+unless opts[:router].any? { |uri| Hastur::Util.valid_zmq_uri? uri }
+  Trollop::die :router, "must be in this format: protocol://hostname:port"
 end
 
 unless opts[:uuid]
@@ -39,7 +41,4 @@ opts[:port] = opts[:port].to_i
 
 client = ::Hastur::Client.new(opts)
 client.run
-
-
-
 
