@@ -37,7 +37,7 @@ module Hastur
     # microseconds since the beginning of 1971.
     #
     def normalize_timestamp(timestamp)
-      return timestamp.to_f*1000000 if timestamp.kind_of?(Hash)
+      return timestamp.to_f*1000000 if timestamp.kind_of?(Time)
       return timestamp * 1000000    if timestamp.between?(SECS_1971, SECS_2100)
       return timestamp * 1000       if timestamp.between?(MILLI_SECS_1971, MILLI_SECS_2100)
       return timestamp              if timestamp.between?(MICRO_SECS_1971, MICRO_SECS_2100)
