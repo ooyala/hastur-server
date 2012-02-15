@@ -122,11 +122,10 @@ public class HasturApi {
     if(timestamp == null) timestamp = System.nanoTime() / 1000;
     JSONObject o = new JSONObject();
     try {
-      normalizeTimestamp(timestamp);
       o.put("_route", "stat");
       o.put("type", "mark");
       o.put("name", name);
-      o.put("timestamp", timestamp);
+      o.put("timestamp", normalizeTimestamp(timestamp));
       o.put("labels", generateLabelsJson(labels));
     } catch(Exception e) {
       e.printStackTrace();
@@ -142,11 +141,10 @@ public class HasturApi {
     if(timestamp == null) timestamp = System.nanoTime() / 1000;
     JSONObject o = new JSONObject();
     try {
-      normalizeTimestamp(timestamp);
       o.put("_route", "stat");
       o.put("type", "counter");
       o.put("name", name);
-      o.put("timestamp", timestamp);
+      o.put("timestamp", normalizeTimestamp(timestamp));
       o.put("increment", increment);
       o.put("labels", generateLabelsJson(labels));
     } catch(Exception e) {
@@ -163,11 +161,10 @@ public class HasturApi {
     if(timestamp == null) timestamp = System.nanoTime() / 1000;
     JSONObject o = new JSONObject();
     try {
-      normalizeTimestamp(timestamp);
       o.put("_route", "stat");
       o.put("type", "gauge");
       o.put("name", name);
-      o.put("timestamp", timestamp);
+      o.put("timestamp", normalizeTimestamp(timestamp));
       o.put("value", value);
       o.put("labels", generateLabelsJson(labels));
     } catch(Exception e) {
