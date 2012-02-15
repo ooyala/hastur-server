@@ -86,14 +86,10 @@ module Hastur
               end
 
               case type
-                when ZMQ::PULL, ZMQ::PUB, ZMQ::REP
+                when ZMQ::PULL, ZMQ::PUB, ZMQ::REP, ZMQ::DEALER
                   simple_tap_device(uri, backend, socket)
-                when ZMQ::PUSH, ZMQ::SUB, ZMQ::REQ
-                  simple_tap_device(uri, socket, backen)
-                when ZMQ::ROUTER
+                when ZMQ::PUSH, ZMQ::SUB, ZMQ::REQ, ZMQ::ROUTER
                   simple_tap_device(uri, socket, backend)
-                when ZMQ::DEALER
-                  simple_tap_device(uri, backend, socket)
               end
 
               backend.setsockopt(ZMQ::LINGER, 0.1)

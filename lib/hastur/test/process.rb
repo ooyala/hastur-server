@@ -12,8 +12,6 @@ module Hastur
         @argv = argv.flatten.map do |arg|
           if arg.kind_of? Symbol and resources.has_key? arg
             resources[arg].to_s
-          elsif arg.kind_of? String
-            arg
           else
             arg.to_s
           end
@@ -54,10 +52,9 @@ module Hastur
           :err => @stderr_w,
         )
 
-        if @stdout_handler.kind_of? Proc
+        if @stdout_handler.respond_to? :call
           @threads << Thread.new do
             begin
-              STDERR.puts "Yay!"
               @stdout.lines { |line| @mutex.synchronize { @stdout_handler.call(line) } }
             rescue 
               STDERR.puts $!.inspect, $@
@@ -65,7 +62,7 @@ module Hastur
           end
         end
 
-        if @stderr_handler.kind_of? Proc
+        if @stderr_handler.resond_to? :call
           @threads << Thread.new do
             begin
               @stderr.lines { |line| @mutex.synchronize { @stderr_handler.call(line) } }
@@ -86,8 +83,8 @@ module Hastur
 
       def slurp
         raise ProcessStillRunningError.new "Cannot slurp() until the process is done." unless done?
-        stdout = @stdout_handler.kind_of? Proc ? nil : @stdout.lines
-        stderr = @stderr_handler.kind_of? Proc ? nil : @stderr.lines
+        stdout = @stdout_handler.respond_to? :call ? nil : @stdout.lines
+        stderr = @stderr_handler.respond_to? :call ? nil : @stderr.lines
         return stdout, stderr
       end
 
@@ -115,7 +112,6 @@ module Hastur
         pid, status = ::Process.waitpid2(@pid, ::Process::WNOHANG)
 
         if pid.nil? or pid == -1
-          system("ps -ef |grep #{@pid}")
           raise ProcessNotRunningError.new "no such child process at pid #{@pid} (waitpid said: #{pid}, #{status})"
         elsif pid == @pid
           return
@@ -143,14 +139,8 @@ module Hastur
 
       def done?
         return true if @pid.nil?
-
         pid, st = status
-        puts "STATUS: #{pid} -> #{st}"
-        if pid == @pid
-          true
-        else
-          false
-        end
+        pid == @pid
       end
     end
   end

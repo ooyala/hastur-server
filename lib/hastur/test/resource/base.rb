@@ -13,7 +13,8 @@ module Hastur
           if opts[:actions]
             opts[:actions].each { |a| add_action(a) }
           end
-          if block.kind_of? Proc
+
+          if block_given?
             add_action(block)
           end
         end
@@ -23,7 +24,7 @@ module Hastur
             when Proc
               @actions << action
             when :capture
-              @actions << Proc.new { |item| @items << item }
+              @actions << proc { |item| @items << item }
             when :drain
             when :ignore
             when nil
