@@ -1,6 +1,7 @@
 package hastur.client;
 
 import hastur.client.HasturApi;
+import hastur.client.HeartbeatThread;
 
 /**
  * Only do .* for tests. Do not do this in shipped code.
@@ -113,7 +114,7 @@ public class HasturApiTest {
       String rawMsg = new String(msg.getData());
       JSONObject o = new JSONObject(rawMsg);
       assertEquals("heartbeat", o.get("_route"));
-      assertEquals(HasturApi.HASTUR_API_LIB, o.get("app"));
+      assertEquals(HeartbeatThread.CLIENT_HEARTBEAT, o.get("app"));
     } catch(Exception e) {
       e.printStackTrace();
       assertTrue(false);

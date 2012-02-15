@@ -30,16 +30,11 @@ public class HasturApi {
   private static final long NANO_SECS_1971  = 31536000000000000L;
 
   public static final int HASTUR_API_HEARTBEAT_INTERVAL = 10;
-  public static final String HASTUR_API_LIB = "hasturApiLib";
 
   // Automatically send heartbeats whenever this library is loaded in the CL
   static {
     try {
-      JSONObject o = new JSONObject();
-      o.put("_route", "heartbeat");
-      o.put("app", HASTUR_API_LIB);
       heartbeatThread = HeartbeatThread.getInstance();
-      heartbeatThread.setJson(o);
       heartbeatThread.setIntervalSeconds((double)HASTUR_API_HEARTBEAT_INTERVAL);
       heartbeatThread.start();
     } catch(Exception e) {
@@ -58,7 +53,7 @@ public class HasturApi {
    * Returns the timestamp in terms of microseconds since 1971. Guesses
    * based on the ranges.
    */
-  public static long normalizeTimestamp(long time) {
+  protected static long normalizeTimestamp(long time) {
     if(isBetween(time, SECS_1971, SECS_2100)) {
       return time * 1000000;
     } else if(isBetween(time, MILLI_SECS_1971, MILLI_SECS_2100)) {
@@ -75,7 +70,7 @@ public class HasturApi {
   /**
    * Sends a UDP packet to 127.0.0.1:8125. 
    */ 
-  public static boolean udpSend(JSONObject json) {
+  protected static boolean udpSend(JSONObject json) {
     DatagramSocket socket = null;
     boolean success = true;
     try {
@@ -233,17 +228,25 @@ public class HasturApi {
   /**
    * Constructs and sends heartbeat UDP packets. Interval is given in seconds.
    */
-  public static boolean heartbeat(String heartbeatName) {
+  public static boolean heartbeat(String heartbeatName, String appName) {
     JSONObject o = new JSONObject();
     try {
       o.put("_route", "heartbeat");
-      o.put("app", computeAppName());
+      o.put("app", appName);
       o.put("name", heartbeatName);
     } catch(Exception e) {
       e.printStackTrace();
       return false;
     }
     return udpSend(o);
+  }
+
+  /**
+   * Constructs and sends heartbeat UDP packets. Interval is given in seconds.
+   * The application name will be automatically computed if possible.  
+   */
+  public static boolean heartbeat(String heartbeatName) {
+    return heartbeat(heartbeatName, computeAppName());
   }
 
   /**

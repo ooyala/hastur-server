@@ -9,9 +9,9 @@ import org.json.JSONObject;
 public class HeartbeatThread extends Thread {
 
   private static final HeartbeatThread instance = new HeartbeatThread();
-
   private Double intervalSeconds;
-  private JSONObject o;
+  
+  public static final String CLIENT_HEARTBEAT = "client_heartbeat";
 
   private HeartbeatThread() {
 
@@ -25,14 +25,10 @@ public class HeartbeatThread extends Thread {
     this.intervalSeconds = intervalSeconds;
   }
 
-  public void setJson(JSONObject o) throws org.json.JSONException {
-    this.o = o;
-  }
-
   public void run() {
     while(true) {
       try {
-        HasturApi.udpSend(o);
+        HasturApi.heartbeat(CLIENT_HEARTBEAT, CLIENT_HEARTBEAT);
         Thread.sleep((int)(intervalSeconds * 1000));
       } catch(java.lang.InterruptedException e) {
         e.printStackTrace();
