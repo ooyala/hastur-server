@@ -8,16 +8,25 @@ import org.json.JSONObject;
  */
 public class HeartbeatThread extends Thread {
 
+  private static final HeartbeatThread instance = new HeartbeatThread();
+
   private Double intervalSeconds;
   private JSONObject o;
 
-  public HeartbeatThread(JSONObject o) throws org.json.JSONException {
-    intervalSeconds = (Double)o.get("interval");
-    this.o = o;
+  private HeartbeatThread() {
+
+  }
+
+  public static HeartbeatThread getInstance() {
+    return instance;
   }
 
   public void setIntervalSeconds(Double intervalSeconds) {
     this.intervalSeconds = intervalSeconds;
+  }
+
+  public void setJson(JSONObject o) throws org.json.JSONException {
+    this.o = o;
   }
 
   public void run() {

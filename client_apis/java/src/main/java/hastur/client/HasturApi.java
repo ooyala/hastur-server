@@ -29,6 +29,24 @@ public class HasturApi {
   private static final long MICRO_SECS_1971 = 31536000000000L;
   private static final long NANO_SECS_1971  = 31536000000000000L;
 
+  public static final int HASTUR_API_HEARTBEAT_INTERVAL = 10;
+  public static final String HASTUR_API_LIB = "hasturApiLib";
+
+  // Automatically send heartbeats whenever this library is loaded in the CL
+  static {
+    try {
+      JSONObject o = new JSONObject();
+      o.put("_route", "heartbeat");
+      o.put("app", HASTUR_API_LIB);
+      heartbeatThread = HeartbeatThread.getInstance();
+      heartbeatThread.setJson(o);
+      heartbeatThread.setIntervalSeconds((double)HASTUR_API_HEARTBEAT_INTERVAL);
+      heartbeatThread.start();
+    } catch(Exception e) {
+      e.printStackTrace();
+    }
+  }
+
   /**
    * Computes if a number is inclusively between a range.
    */
@@ -215,23 +233,26 @@ public class HasturApi {
   /**
    * Constructs and sends heartbeat UDP packets. Interval is given in seconds.
    */
-  public static boolean heartbeat(String service, double intervalSeconds) {
+  public static boolean heartbeat(String heartbeatName) {
+    JSONObject o = new JSONObject();
     try {
-      if(heartbeatThread == null) {
-        JSONObject o = new JSONObject();
-        o.put("_route", "heartbeat");
-        o.put("app", service);
-        o.put("interval", intervalSeconds);
-        heartbeatThread = new HeartbeatThread(o);
-        heartbeatThread.start();
-      } else {
-        heartbeatThread.setIntervalSeconds(intervalSeconds);
-      }
+      o.put("_route", "heartbeat");
+      o.put("app", computeAppName());
+      o.put("name", heartbeatName);
     } catch(Exception e) {
       e.printStackTrace();
       return false;
     }
-    return true;
+    return udpSend(o);
+  }
+
+  /**
+   * Dynamically compute the application name
+   */
+  private static String computeAppName() {
+    StackTraceElement[] stack = Thread.currentThread ().getStackTrace ();
+    StackTraceElement main = stack[stack.length - 1];
+    return main.getClassName();
   }
 
   /**

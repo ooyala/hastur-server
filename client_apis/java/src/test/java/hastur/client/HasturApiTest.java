@@ -35,24 +35,32 @@ public class HasturApiTest {
   public void testGauge() {
     long currTime = System.nanoTime() / 1000;
     boolean isSuccess = HasturApi.gauge("myLatency", currTime, 9.2, null);
+    boolean received = false;
     try {
       DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
-      server.receive(msg);
-      String rawMsg = new String(msg.getData());
-      JSONObject o = new JSONObject(rawMsg);
-      assertEquals("myLatency", o.get("name"));
-      assertEquals("stat", o.get("_route"));
-      assertEquals("gauge", o.get("type"));
-      assertEquals(currTime, o.get("timestamp"));
-      assertEquals(9.2, o.get("value"));
-      assertEquals("{}", o.get("labels"));
+      while(true) {
+        server.receive(msg);
+        String rawMsg = new String(msg.getData());
+        JSONObject o = new JSONObject(rawMsg);
+        if(o.get("_route").equals("stat")) {
+          assertEquals("myLatency", o.get("name"));
+          assertEquals("stat", o.get("_route"));
+          assertEquals("gauge", o.get("type"));
+          assertEquals(currTime, o.get("timestamp"));
+          assertEquals(9.2, o.get("value"));
+          assertEquals("{}", o.get("labels"));
+          received = true;
+        }
+      }
+    } catch(java.net.SocketTimeoutException e) {
+      // this is okay
     } catch(Exception e) {
       e.printStackTrace();
       assertTrue(false);
     }
+    assertTrue(received);
     assertTrue(isSuccess);
   }
-
 
   @Test
   public void testCounter() {
@@ -76,7 +84,6 @@ public class HasturApiTest {
     assertTrue(isSuccess);
   }
 
-
   @Test
   public void testMark() {
     long currTime = System.currentTimeMillis();
@@ -98,23 +105,31 @@ public class HasturApiTest {
   }
 
   @Test
-  public void testHeartbeat() {
-    HasturApi.heartbeat("myApp", 2);  // heartbeat every 2 seconds
+  public void testApiHeartbeat() {
     try {
-      Thread.sleep(2500);
+      Thread.sleep(HasturApi.HASTUR_API_HEARTBEAT_INTERVAL*1000);
       DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
-      int numMsgs = 0;
-      for(int i = 0 ; i < 2; i++) {
-        server.receive(msg);
-        numMsgs++;
-      }
-      assertEquals(2, numMsgs);
+      server.receive(msg);
       String rawMsg = new String(msg.getData());
       JSONObject o = new JSONObject(rawMsg);
       assertEquals("heartbeat", o.get("_route"));
-      assertEquals("myApp", o.get("app"));
-      assertEquals(2, o.get("interval"));
+      assertEquals(HasturApi.HASTUR_API_LIB, o.get("app"));
+    } catch(Exception e) {
+      e.printStackTrace();
+      assertTrue(false);
+    }
+  }
 
+  @Test
+  public void testHeartbeat() {
+    HasturApi.heartbeat("heartbeatName");
+    try {
+      DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
+      server.receive(msg);
+      String rawMsg = new String(msg.getData());
+      JSONObject o = new JSONObject(rawMsg);
+      assertEquals("heartbeat", o.get("_route"));
+      assertEquals("heartbeatName", o.get("name"));
     } catch(Exception e) {
       e.printStackTrace();
       assertTrue(false);
