@@ -30,13 +30,20 @@ module Hastur
     def normalize_timestamp(timestamp)
       timestamp = Time.now if timestamp.nil?
 
-      return timestamp.to_f*1000000 if timestamp.kind_of?(Time)
-      return timestamp * 1000000    if timestamp.between?(SECS_1971, SECS_2100)
-      return timestamp * 1000       if timestamp.between?(MILLI_SECS_1971, MILLI_SECS_2100)
-      return timestamp              if timestamp.between?(MICRO_SECS_1971, MICRO_SECS_2100)
-      return timestamp / 1000       if timestamp.between?(NANO_SECS_1971, NANO_SECS_2100)
-      # if the program made it here, raise an error. Do not know what to do with this timestamp.
-      raise "Unable to validate timestamp: #{timestamp}"
+      case timestamp
+      when Time
+        (timestamp.to_f*1000000).to_i
+      when SECS_1971..SECS_2100
+        timestamp * 1000000
+      when MILLI_SECS_1971..MILLI_SECS_2100
+        timestamp * 1000
+      when MICRO_SECS_1971..MICRO_SECS_2100
+        timestamp
+      when NANO_SECS_1971..NANO_SECS_2100
+        timestamp / 1000
+      else
+        raise "Unable to validate timestamp: #{timestamp}"
+      end
     end
 
     #
