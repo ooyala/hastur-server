@@ -52,17 +52,31 @@ module Hastur
     end
 
     #
-    # use the 'method' field in a JSON hash to choose a Hastur route
+    # use the '_route' field in a JSON hash to choose a Hastur route
     # and send the JSON along as the payload in a routed Hastur message
     #
-    def route_json(hash, json)
-      if klass = Hastur::Message.route_class(hash[:method])
-        ack = hash.has_key?(:ack) ? hash[:ack] : nil
-        msg = klass.new :from => @uuid, :payload => json, :ack => ack
-        msg.send @router_socket
+    def route_json(data)
+      route = data.delete :_route
+      if klass = Hastur::Message.route_class(route)
+        ack = data.has_key?(:ack) ? data.delete(:ack) : nil
 
-        if msg.envelope.ack? or ack
-          @acks[msg.envelope.to_s] = msg
+        # TODO: this is a bit primitive, needs to be smarter for various message types
+        payload = data[:payload]
+        if klass.json_payload?
+          payload = MultiJson.encode(data)
+        end
+
+        begin
+          msg = klass.new :from => @uuid, :payload => payload, :ack => ack
+          msg.send @router_socket
+
+          # invalid messages that cause exceptions and have acks won't make it this far
+          # TODO: what to do here?
+          if ack or msg.envelope.ack?
+            @acks[msg.envelope.to_s] = msg
+          end
+        rescue
+          # TODO: send an error, log, etc.
         end
       else
         e = Hastur::UnsupportedError.new "Cannot route JSON: #{json}"
@@ -83,9 +97,9 @@ module Hastur
       @logger.debug "Received UDP message: #{data.inspect}"
 
       if msg = Hastur::Input::JSON.decode(data)
-        route_json(msg, data)
+        route_json(msg)
       elsif msg = Hastur::Input::Statsd.decode(msg)
-        route_json(msg, MultiJson.encode(msg))
+        route_json(msg)
       # not ready yet
       #elsif msg = Hastur::Input::Collectd.decode(msg)
       #  forward_collectd_stat(msg)

@@ -16,11 +16,14 @@ class TestClassHasturClientModule < MiniTest::Unit::TestCase
   FAKE_UUID = SecureRandom.uuid
   STAT = {
     :name      => "foo.bar",
+    :type      => "gauge",
     :value     => 1024,
-    :units     => "s",
     :timestamp => 1328176249.1028926,
+    :labels    => { :units => "s", :pid => Process.pid },
   }
+  STATMSG = STAT.merge(:_route => :stat)
   LOG = "some stuff happened"
+  LOGMSG = { :_route => "log", :payload => LOG }
   ERROR = StandardError.new "something funky!"
 
   PLUGIN = {
@@ -49,7 +52,7 @@ class TestClassHasturClientModule < MiniTest::Unit::TestCase
           seen[msg.class.to_s] = msg.decode
         when Hastur::Message::Log
           break if msg.payload == "Client #{CLIENT_UUID} exiting."
-          seen[msg.class.to_s] = msg.paylaod
+          seen[msg.class.to_s] = msg.payload
         when Hastur::Message::Error
           assert_equal ERROR.to_s, msg.payload
         when Hastur::Message::HeartbeatClient
@@ -72,13 +75,11 @@ class TestClassHasturClientModule < MiniTest::Unit::TestCase
       msg.close_zmq_parts
     end
 
-    assert_equal STAT, seen['Hastur::Message::Stat']['params']
+    assert_equal STAT, seen['Hastur::Message::Stat']
     assert_equal LOG,  seen['Hastur::Message::Log']
     assert_equal 1,    seen['Hastur::Message::HeartbeatClient']
-    assert_equal 1,    seen['Hastur::Message::RegisterClient']
-    assert_equal PLUGIN_RESULT seen['Hastur::Message::PluginResult']
-
-    assert_equal LOG, seen['Hastur::Message::Log']
+    refute_nil seen['Hastur::Message::RegisterClient']
+    #assert_equal PLUGIN_RESULT, seen['Hastur::Message::PluginResult']
 
     router.close
   end
@@ -94,7 +95,7 @@ class TestClassHasturClientModule < MiniTest::Unit::TestCase
       :uuid         => CLIENT_UUID,
       :routers      => [ ROUTER_URI ],
       :port         => 20005,
-      :heartbeat    => 1,
+      :heartbeat    => 5,
       :ack_interval => 1,
     )
 
@@ -104,8 +105,8 @@ class TestClassHasturClientModule < MiniTest::Unit::TestCase
 
     sleep 0.2
 
-    packet = { :method => :stat, :params => STAT }
-    UDPSocket.new.send MultiJson.encode(packet), 0, '127.0.0.1', 20005
+    UDPSocket.new.send MultiJson.encode(STATMSG), 0, '127.0.0.1', 20005
+    UDPSocket.new.send MultiJson.encode(LOGMSG), 0, '127.0.0.1', 20005
 
     sleep 1
 

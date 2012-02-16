@@ -22,6 +22,7 @@ module Hastur
       end
 
       def self.decode_packet(data)
+        time = Time.now # get the time before any processing, statsd times are server-side
         stat = RE.match(data)
 
         if stat.nil?
@@ -36,8 +37,8 @@ module Hastur
         stat[:values].split(/:/).each do |item|
           # TODO: ignoring sample_rate for now, implement it later if we need it
           value_in, unit, sample_rate = item.split(/\|/)
-          timestamp = Time.now.to_f
           value = value_in.to_i
+          type = :counter
 
           if unit == 'c' 
             if @counters.has_key? name
@@ -45,20 +46,19 @@ module Hastur
             else
               value = @counters[name] = value
             end
-          #elsif unit == 'ms'
-          # nothing to do
+          elsif unit == 'ms'
+            type = :gauge
           end
           
           out = {
-            :method => :stat,
-            :params => {
-              :name        => name,
-              :value       => value,
+            :_route    => :stat,
+            :name      => name,
+            :type      => type,
+            :value     => value,
+            :timestamp => time.to_f * 1_000_000,
+            :labels    => {
+              :source      => :statsd,
               :units       => unit,
-              :timestamp   => timestamp,
-              :uptime      => Hastur::Util.uptime(timestamp),
-              # optional/additional fields
-              :type        => 'counter',
               :original    => data,
               :sample_rate => sample_rate
             }

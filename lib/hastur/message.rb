@@ -394,6 +394,13 @@ module Hastur
       def to_s
         payload
       end
+
+      #
+      # returns whether this class's payload is usually json or not
+      #
+      def self.json_payload?
+        true
+      end
     end
 
     #
@@ -422,6 +429,10 @@ module Hastur
         return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:log]
         super(opts)
+      end
+
+      def self.json_payload?
+        false
       end
     end
 
@@ -465,6 +476,10 @@ module Hastur
       def acked
         Hastur::Envelope.parse @payload
       end
+
+      def self.json_payload?
+        false
+      end
     end
 
     #
@@ -501,6 +516,10 @@ module Hastur
         opts[:payload] = opts.delete :payload
         raise ArgumentError.new "Rawdata only supports raw payloads, e.g. :payload => 'stuff'" if opts[:data]
         super(opts)
+      end
+
+      def self.json_payload?
+        false
       end
     end
 
@@ -552,12 +571,10 @@ module Hastur
         return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:register_client]
         opts[:data] = {
-          :method => 'register_client',
-          :params => {
-            :uuid     => opts[:from],
-            :hostname => Socket.gethostname,
-            :ipv4     => IPSocket.getaddress(Socket.gethostname),
-          }
+          :_route => 'register_client',
+          :uuid     => opts[:from],
+          :hostname => Socket.gethostname,
+          :ipv4     => IPSocket.getaddress(Socket.gethostname),
         }
 
         super(opts)
