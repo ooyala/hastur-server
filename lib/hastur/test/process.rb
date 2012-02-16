@@ -20,6 +20,7 @@ module Hastur
 
         @mutex = Mutex.new
         @threads = []
+        @status = nil
         @stdout_handler = _stdio_arg(opts, :stdout, resources)
         @stderr_handler = _stdio_arg(opts, :stdout, resources)
       end
@@ -45,9 +46,9 @@ module Hastur
         @stdout,  @stdout_w = IO.pipe
         @stderr,  @stderr_w = IO.pipe
 
-        STDERR.puts "Gonna spawn(#{@argv})"
-
-        @pid = spawn(*@argv,
+        # Simply calling spawn with *argv isn't good enough, it really needs the command
+        # to be separate and I haven't dug all the way into why that is.
+        @pid = spawn(argv[0], *argv[1..-1],
           :in  => @stdin_r,
           :out => @stdout_w,
           :err => @stderr_w,
@@ -78,10 +79,18 @@ module Hastur
         @stderr_w.close
       end
 
+      #
+      # puts to the stdin of the child process
+      #
       def puts(*args)
         @stdin.puts *args
       end
 
+      #
+      # Read all of the data from stdout/stderr of the child process in one go.
+      # Will raise ProcessStillRunningError if the process is still running, since otherwise this method
+      # would block.
+      #
       def slurp
         raise ProcessStillRunningError.new "Cannot slurp() until the process is done." unless done?
         stdout = @stdout_handler.respond_to? :call ? nil : @stdout.lines
@@ -89,59 +98,86 @@ module Hastur
         return stdout, stderr
       end
 
+      #
+      # Clear all of the state and prepare to be able to .run again.
+      # Raises ProcessStillRunningError if the child is still running.
+      #
       def reset
-        raise ProcessNotRunningError.new unless @pid
+        raise ProcessStillRunningError.new unless done?
         @pid = nil
         @stdin.close
         @stdout.close
         @stderr.close
       end
 
-      def kill(sig)
+      def _kill(sig)
+        # Do not use negative signals. You will _always_ get ESRCH for child processes, since they are
+        # by definition not process group leaders, which is usually synonymous with the process group id
+        # that "kill -9 $PID" relies on.  See kill(2).
+        raise ArgumentError.new "negative signals are wrong and unsupported" unless sig > 0
         raise ProcessNotRunningError.new unless @pid
 
-        #begin
-        #  ::Process.kill(sig, @pid)
-        #rescue Errno::ESRCH
-        #  STDERR.puts "No such process (#{@pid}) to kill."
-        #end
+        ::Process.kill(sig, @pid)
+        # do not catch ESRCH - ESRCH means we did something totally buggy, likewise, an exception
+        # should fire if the process is not running since there's all kinds of code already checking
+        # that it is running before getting this far.
       end
 
+      #
+      # Call Process.waitpid2, save the status (accessible with obj.status) and return just the pid value
+      # returned by waitpid2.
+      #
+      def waitpid
+        raise ProcessNotRunningError.new unless @pid
+        raise ProcessNotRunningError.new if @status
+        
+        pid, @status = ::Process.waitpid2(@pid, ::Process::WNOHANG)
+        pid
+      end
+
+      #
+      # Send SIGTERM (15) to the child process, sleep 1/25 of a second, then call waitpid. For well-behaving
+      # processes, this should be enough to make it stop.
+      # Returns true/false just like done?
+      #
+      def stop
+        return if done?
+        _kill 15 # never negative!
+        sleep 0.05
+        @pid == waitpid
+      end
+
+      #
+      # Send SIGKILL (9) to the child process, sleep 1/10 of a second, then call waitpid and return.
+      # Returns true/false just like done?
+      #
       def stop!
         raise ProcessNotRunningError.new unless @pid
+        return if done?
 
-        pid, status = ::Process.waitpid2(@pid, ::Process::WNOHANG)
-
-        if pid.nil? or pid == -1
-          raise ProcessNotRunningError.new "no such child process at pid #{@pid} (waitpid said: #{pid}, #{status})"
-        elsif pid == @pid
-          return
-        else
-          kill "TERM"
-          sleep 0.02
-
-          pid, status = ::Process.waitpid2(@pid, ::Process::WNOHANG)
-
-          if pid != @pid
-            kill -9
-            sleep 0.02
-            pid, status = ::Process.waitpid2(@pid, ::Process::WNOHANG)
-          end
-        end
+        _kill 9 # never negative!
+        sleep 0.1
+        @pid == waitpid
       end
 
+      #
+      # Return Process::Status as returned by Process::waitpid2.
+      #
       def status
-        begin
-          ::Process.waitpid2(@pid, ::Process::WNOHANG)
-        rescue Errno::ECHILD
-          return nil, nil
-        end
+        raise ProcessNotRunningError.new "Called .status before .run." unless @pid
+        waitpid unless @status
+        @status
       end
 
+      #
+      # Check whether the process has exited or been killed and cleaned up.
+      # Calls waitpid2 behind the scenes if necessary.
+      # Throws ProcessNotRunningError if called before .run.
+      #
       def done?
-        return true if @pid.nil?
-        pid, st = status
-        pid == @pid
+        raise ProcessNotRunningError.new "Called .done? before .run." unless @pid
+        return true if @status
+        waitpid == @pid
       end
     end
   end
