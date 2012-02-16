@@ -25,7 +25,7 @@ module Hastur
 
     #
     # Best effort to make all timestamps 64 bit numbers that represent the total number of
-    # microseconds since the beginning of 1971.
+    # microseconds since Jan 1, 1970 at midnight UTC.
     #
     def normalize_timestamp(timestamp)
       timestamp = Time.now if timestamp.nil?
