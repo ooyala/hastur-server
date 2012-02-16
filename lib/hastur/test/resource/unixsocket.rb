@@ -16,7 +16,7 @@ module Hastur
 
         def send(data)
           socket = UNIXSocket.new(@path)
-          socket.send(data)
+          socket.send(data, 0)
           socket.close
         end
 
