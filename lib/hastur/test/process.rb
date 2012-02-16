@@ -5,7 +5,7 @@ module Hastur
     class ProcessStillRunningError < StandardError; end
 
     class Process
-      attr_reader :argv, :pid
+      attr_reader :argv, :pid, :started, :ended
       attr_reader :stdin, :stdout, :stderr
 
       def initialize(resources, opts={}, *argv)
@@ -21,6 +21,8 @@ module Hastur
         @mutex = Mutex.new
         @threads = []
         @status = nil
+        @started = nil
+        @ended = nil
         @stdout_handler = _stdio_arg(opts, :stdout, resources)
         @stderr_handler = _stdio_arg(opts, :stdout, resources)
       end
@@ -53,6 +55,8 @@ module Hastur
           :out => @stdout_w,
           :err => @stderr_w,
         )
+
+        @started = Time.now
 
         if @stdout_handler.respond_to? :call
           @threads << Thread.new do
@@ -132,6 +136,10 @@ module Hastur
         raise ProcessNotRunningError.new if @status
         
         pid, @status = ::Process.waitpid2(@pid, ::Process::WNOHANG)
+
+        # this is as accurate as we can get, and it will generally be good enough for test work
+        @ended = Time.now if pid == @pid
+
         pid
       end
 
@@ -180,8 +188,34 @@ module Hastur
         waitpid == @pid
       end
 
+      #
+      # Return the elapsed time in milliseconds.
+      #
+      def elapsed
+        raise ProcessNotRunningError.new unless @started
+        raise ProcessStillRunningError.new unless @ended
+        @ended - @started
+      end
+
+      #
+      # Return most of the data about the process as a hash. This is safe to call at any point.
+      #
+      def to_hash
+        {:argv => @argv, :started => @started.to_i, :ended => @ended.to_i, :pid => @pid, :status => @status}
+      end
+
+      #
+      # Returns the command as a string.
+      #
       def to_s
         @argv.join(' ')
+      end
+
+      #
+      # Returns to_hash.inspect
+      #
+      def inspect
+        to_hash.inspect
       end
     end
   end
