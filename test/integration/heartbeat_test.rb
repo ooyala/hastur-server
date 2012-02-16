@@ -20,7 +20,7 @@ class HeartbeatTest < Test::Unit::TestCase
       :client1unix  => Hastur::Test::Resource::UnixSocket.new,
       :client2unix  => Hastur::Test::Resource::UnixSocket.new,
       :router       => HTRZMQ.new(:uri => :gen),
-      :heartbeat    => HTRZMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 2),
+      :heartbeat    => HTRZMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 4),
       :register     => HTRZMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :notification => HTRZMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :stat         => HTRZMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
@@ -33,12 +33,14 @@ class HeartbeatTest < Test::Unit::TestCase
       :client1 => Hastur::Test::Process.new(@resources, {:stdout => :greenio, :stderr => :redio},
         HASTUR_CLIENT_BIN,
         '--uuid',      C1UUID,
+        '--heartbeat', 1,
         '--router',    :router,
         '--unix',      :client1unix
       ),
       :client2 => Hastur::Test::Process.new(@resources, {:stdout => :greenio, :stderr => :redio},
         HASTUR_CLIENT_BIN,
         '--uuid',      C2UUID,
+        '--heartbeat', 1,
         '--router',    :router,
         '--unix',      :client2unix
       ),
@@ -70,7 +72,7 @@ class HeartbeatTest < Test::Unit::TestCase
 
   def test_heartbeat
     # wait for some messages to flow
-    sleep 2
+    sleep 3
 
     messages = @resources[:heartbeat].output
     # work with raw messages for now
@@ -78,9 +80,11 @@ class HeartbeatTest < Test::Unit::TestCase
     envelopes = messages.map { |m| m[-2].unpack("H*") }
     #puts messages.flatten.map { |i| i.unpack("H*") }
 
-    assert_equal 2, messages.count, "Should have exactly two captured messages"
+    assert_equal 4, messages.count, "Should have exactly two captured messages"
     assert_kind_of Array, messages[0], "messages should be 2-level arrays"
     assert_kind_of Array, messages[1], "messages should be 2-level arrays"
+    assert_kind_of Array, messages[2], "messages should be 2-level arrays"
+    assert_kind_of Array, messages[3], "messages should be 2-level arrays"
     assert_equal 2, messages[0].count, "each message should have 2 parts"
     assert_equal 2, messages[1].count, "each message should have 2 parts"
 
@@ -90,10 +94,8 @@ class HeartbeatTest < Test::Unit::TestCase
 
     c1uuid = C1UUID.gsub('-', '')
     c2uuid = C2UUID.gsub('-', '')
-    #puts "C1: #{c1uuid} #{envelopes[0]} #{envelopes[1]}"
-    #puts "C2: #{c2uuid} #{envelopes[0]} #{envelopes[1]}"
-    assert envelopes.any? { |e| e.index(c1uuid) }, "One of the envelopes has client 1's UUID"
-    assert envelopes.any? { |e| e.index(c2uuid) }, "One of the envelopes has client 2's UUID"
+    assert envelopes.flatten.any? { |e| e.include?(c1uuid) }, "No envelope contains client 1's UUID"
+    assert envelopes.flatten.any? { |e| e.include?(c2uuid) }, "No envelope contains client 2's UUID"
   end
 end
 
