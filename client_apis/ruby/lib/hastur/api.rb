@@ -224,7 +224,7 @@ module Hastur
     end
 
     #
-    # Constructs and sends heartbeat UDP packets. Interval is given in seconds.
+    # Constructs and sends heartbeat UDP packets.
     #
     def heartbeat(name = "app_heartbeat", timestamp = Time.now, labels = {})
       send_to_udp({
