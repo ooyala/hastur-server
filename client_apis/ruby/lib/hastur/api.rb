@@ -69,14 +69,14 @@ module Hastur
     # but includes it in "to_s" (buh?)
     #
     def thread_id(thread)
-      return "main" if thread == Thread.main
+      return 0 if thread == Thread.main
 
       str = thread.to_s
 
       match = nil
       match  = str.match /(0x\d+)/
       return nil unless match
-      match[1]
+      match[1].to_i
     end
 
     def app_name
