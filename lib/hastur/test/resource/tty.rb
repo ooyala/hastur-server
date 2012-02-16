@@ -17,9 +17,9 @@ module Hastur
           if opts[:fg] and opts[:bg]
             add_reader { |line| puts line.foreground(opts[:fg]).background(opts[:bg]) }
           elsif opts[:fg]
-            add_reader proc { |line| puts line.foreground(opts[:fg]) }
+            add_reader { |line| puts line.foreground(opts[:fg]) }
           elsif opts[:bg]
-            add_reader proc { |line| puts line.background(opts[:bg]) }
+            add_reader { |line| puts line.background(opts[:bg]) }
           else
             add_reader { |line| puts line }
           end
