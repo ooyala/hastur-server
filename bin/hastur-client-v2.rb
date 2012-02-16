@@ -19,11 +19,12 @@ MultiJson.engine = :yajl
 NOTIFICATION_INTERVAL = 5   # Hardcode for now
 
 opts = Trollop::options do
-  opt :router,    "Router URI",         :type => String, :required => true, :multi => true
-  opt :uuid,      "System UUID",        :type => String
-  opt :port,      "Local socket port",  :type => Integer, :default => 8125
-  opt :unix,      "UNIX domain socket", :type => String
-  opt :heartbeat, "Heartbeat interval", :type => Integer, :default => 15
+  opt :router,      "Router URI",         :type => String, :required => true, :multi => true
+  opt :uuid,        "System UUID",        :type => String
+  opt :port,        "Local socket port",  :default => 8125
+  opt :unix,        "UNIX domain socket", :type => String
+  opt :heartbeat,   "Heartbeat interval", :default => 30
+  opt :ack_timeout, "Time between unacked message resends", :default => 10
 end
 
 unless opts[:router].any? { |uri| Hastur::Util.valid_zmq_uri? uri }
