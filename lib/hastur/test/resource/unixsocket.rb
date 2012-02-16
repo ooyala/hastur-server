@@ -1,3 +1,4 @@
+require 'socket'
 require 'hastur/util'
 require 'hastur/test/resource/base'
 
@@ -11,6 +12,12 @@ module Hastur
           super(opts)
           @path = "#{::Process.pid}-#{Hastur::Util.next_seq}"
           @unlinks << @path
+        end
+
+        def send(data)
+          socket = UNIXSocket.new(@path)
+          socket.send(data)
+          socket.close
         end
 
         def to_s
