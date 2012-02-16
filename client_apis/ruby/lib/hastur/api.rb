@@ -56,9 +56,11 @@ module Hastur
       }
     end
 
+    #
     # This is a convenience function because the Ruby
     # thread API has no accessor for the thread ID,
     # but includes it in "to_s" (buh?)
+    #
     def thread_id(thread)
       return "main" if thread == Thread.main
 
@@ -70,7 +72,51 @@ module Hastur
       match[1]
     end
 
+    def app_name
+      return @app_name if @app_name
+
+      eco = Ecology rescue nil
+      return @app_name = Ecology.application if eco
+
+      @app_name = $0
+    end
+
+    def test_mode
+      @test_mode || false
+    end
+
+    #
+    # Get the UDP port.  Defaults to 8125.
+    #
+    def udp_port
+      @udp_port || 8125
+    end
+
+    #
+    # Sends a message unmolested to the HASTUR_UDP_PORT on 127.0.0.1
+    #
+    def send_to_udp(m)
+      if @test_mode
+        @msg_buffer ||= []
+        @msg_buffer << m
+      else
+        u = ::UDPSocket.new
+        u.send MultiJson.encode(m), 0, "127.0.0.1", udp_port
+      end
+    end
+
     public
+
+    #
+    # Returns a list of messages that were queued up when in test mode.
+    #
+    def msg_buffer
+      @msg_buffer ||= []
+    end
+
+    def test_mode=(test_mode)
+      @test_mode = test_mode
+    end
 
     def app_name=(new_name)
       @app_name = new_name
@@ -82,34 +128,6 @@ module Hastur
     def udp_port=(new_port)
       @udp_port = new_port
     end
-
-    protected
-
-    def app_name
-      return @app_name if @app_name
-
-      eco = Ecology rescue nil
-      return @app_name = Ecology.application if eco
-
-      @app_name = $0
-    end
-
-    #
-    # Get the UDP port.  Defaults to 8125.
-    #
-    def udp_port
-      @udp_port || 8125
-    end
-
-    #
-    # Sends a message unmolested to the HASTUR_UDP_PORT on 127.0.0.1 #
-    #
-    def send_to_udp(m)
-      u = ::UDPSocket.new
-      u.send MultiJson.encode(m), 0, "127.0.0.1", udp_port
-    end
-
-    public
 
     #
     # Sends a 'mark' stat to Hastur client daemon.
