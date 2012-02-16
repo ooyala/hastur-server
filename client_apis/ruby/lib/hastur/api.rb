@@ -7,10 +7,6 @@ require "socket"
 # Bare minimum for all JSON packets is to have '_route' key/values.
 # This is how the Hastur router will know where to route the message.
 #
-
-# TODO: Potentially figure out how to get ecology stuff.
-# TODO: Figure out how to get the service/app name on the fly (ecology?)
-# TODO: Figure out the proper JSON format for all UDP messages
 module Hastur
   module API
     extend self
@@ -25,20 +21,6 @@ module Hastur
     MICRO_SECS_1971 = 31536000000000
     NANO_SECS_1971  = 31536000000000000
 
-    #
-    # Get the UDP port.  Defaults to 8125.
-    #
-    def udp_port
-      @udp_port || 8125
-    end
-
-    #
-    # Set the UDP port.  Defaults to 8125
-    #
-    def udp_port=(new_port)
-      @udp_port = new_port
-    end
-
     protected
 
     #
@@ -46,7 +28,7 @@ module Hastur
     # microseconds since the beginning of 1971.
     #
     def normalize_timestamp(timestamp)
-      return Time.now if timestamp.nil?
+      timestamp = Time.now if timestamp.nil?
 
       return timestamp.to_f*1000000 if timestamp.kind_of?(Time)
       return timestamp * 1000000    if timestamp.between?(SECS_1971, SECS_2100)
@@ -57,6 +39,9 @@ module Hastur
       raise "Unable to validate timestamp: #{timestamp}"
     end
 
+    #
+    # Returns the default labels for any UDP message that ships.
+    #
     def default_labels
       @pid ||= Process.pid
       thread = Thread.current
@@ -91,6 +76,13 @@ module Hastur
       @app_name = new_name
     end
 
+    #
+    # Set the UDP port.  Defaults to 8125
+    #
+    def udp_port=(new_port)
+      @udp_port = new_port
+    end
+
     protected
 
     def app_name
@@ -100,6 +92,13 @@ module Hastur
       return @app_name = Ecology.application if eco
 
       @app_name = $0
+    end
+
+    #
+    # Get the UDP port.  Defaults to 8125.
+    #
+    def udp_port
+      @udp_port || 8125
     end
 
     #
