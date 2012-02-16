@@ -18,19 +18,7 @@ public class HasturApiTest {
 
   @Before
   public void setUp() {
-    try {
-      server = new DatagramSocket(HasturApi.getUdpPort());
-      server.setSoTimeout(1000);
-    } catch(Exception e) {
-      e.printStackTrace();
-    }
-  }
-
-  @After
-  public void tearDown() {
-    if(server != null) {
-      server.close();
-    }
+    HasturApi.__isTestMode(true);
   }
 
   @Test
@@ -38,28 +26,22 @@ public class HasturApiTest {
     long currTime = System.nanoTime() / 1000;
     boolean isSuccess = HasturApi.gauge("myLatency", currTime, 9.2, null);
     boolean received = false;
+    List<JSONObject> msgs = HasturApi.__getBufferedMsgs();
     try {
-      DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
-      while(true) {
-        server.receive(msg);
-        String rawMsg = new String(msg.getData());
-        JSONObject o = new JSONObject(rawMsg);
-        if(o.get("_route").equals("stat")) {
-          assertEquals("myLatency", o.get("name"));
-          assertEquals("stat", o.get("_route"));
-          assertEquals("gauge", o.get("type"));
-          assertEquals(currTime, o.get("timestamp"));
-          assertEquals(9.2, o.get("value"));
-          assertNotNull(o.get("labels"));
-          assertTrue(o.has("labels"));
-          assertTrue(((JSONObject)o.get("labels")).has("app"));
-          assertTrue(((JSONObject)o.get("labels")).has("pid"));
-          assertTrue(((JSONObject)o.get("labels")).has("tid"));
-          received = true;
-        }
+      JSONObject o = msgs.get(msgs.size()-1);
+      if(o.get("_route").equals("stat")) {
+        assertEquals("myLatency", o.get("name"));
+        assertEquals("stat", o.get("_route"));
+        assertEquals("gauge", o.get("type"));
+        assertEquals(currTime, o.get("timestamp"));
+        assertEquals(9.2, o.get("value"));
+        assertNotNull(o.get("labels"));
+        assertTrue(o.has("labels"));
+        assertTrue(((JSONObject)o.get("labels")).has("app"));
+        assertTrue(((JSONObject)o.get("labels")).has("pid"));
+        assertTrue(((JSONObject)o.get("labels")).has("tid"));
+        received = true;
       }
-    } catch(java.net.SocketTimeoutException e) {
-      // this is okay
     } catch(Exception e) {
       e.printStackTrace();
       assertTrue(false);
@@ -71,16 +53,14 @@ public class HasturApiTest {
   @Test
   public void testCounter() {
     long currTime = System.nanoTime() / 1000; 
-    boolean isSuccess = HasturApi.counter("myLatency", currTime, 2, null);
+    boolean isSuccess = HasturApi.counter("myLatency", currTime, 2.0, null);
+    List<JSONObject> msgs = HasturApi.__getBufferedMsgs();
     try {
-      DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
-      server.receive(msg);
-      String rawMsg = new String(msg.getData());
-      JSONObject o = new JSONObject(rawMsg);
+      JSONObject o = msgs.get(msgs.size()-1);
       assertEquals("myLatency", o.get("name"));
       assertEquals("stat", o.get("_route"));
       assertEquals(currTime, o.get("timestamp"));
-      assertEquals(2, o.get("increment"));
+      assertEquals(2d, o.get("increment"));
       assertEquals("counter", o.get("type"));
       assertNotNull(o.get("labels"));
       assertTrue(o.has("labels"));
@@ -98,11 +78,9 @@ public class HasturApiTest {
   public void testMark() {
     long currTime = System.currentTimeMillis();
     boolean isSuccess = HasturApi.mark("myLatency", currTime, null);
+    List<JSONObject> msgs = HasturApi.__getBufferedMsgs();
     try {
-      DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
-      server.receive(msg);
-      String rawMsg = new String(msg.getData());
-      JSONObject o = new JSONObject(rawMsg);
+      JSONObject o = msgs.get(msgs.size()-1);
       assertEquals("myLatency", o.get("name"));
       assertEquals("stat", o.get("_route"));
       assertEquals("mark", o.get("type"));
@@ -121,10 +99,8 @@ public class HasturApiTest {
   public void testApiHeartbeat() {
     try {
       Thread.sleep(HasturApi.HASTUR_API_HEARTBEAT_INTERVAL*1000);
-      DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
-      server.receive(msg);
-      String rawMsg = new String(msg.getData());
-      JSONObject o = new JSONObject(rawMsg);
+      List<JSONObject> msgs = HasturApi.__getBufferedMsgs();
+      JSONObject o = msgs.get(msgs.size()-1);
       assertEquals("heartbeat", o.get("_route"));
       assertEquals(HeartbeatThread.CLIENT_HEARTBEAT, o.get("name"));
       assertTrue(((JSONObject)o.get("labels")).has("app"));
@@ -141,11 +117,9 @@ public class HasturApiTest {
     String appName = "foobar";
     HasturApi.setAppName( appName );
     HasturApi.heartbeat("heartbeatName", null);
+    List<JSONObject> msgs = HasturApi.__getBufferedMsgs();
     try {
-      DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
-      server.receive(msg);
-      String rawMsg = new String(msg.getData());
-      JSONObject o = new JSONObject(rawMsg);
+      JSONObject o = msgs.get(msgs.size()-1);
       assertEquals("heartbeat", o.get("_route"));
       assertEquals("heartbeatName", o.get("name"));
       assertTrue(o.has("labels"));
@@ -163,11 +137,9 @@ public class HasturApiTest {
   public void testNotify() {
     String message = "This is my message.";
     HasturApi.notify(message, null);
+    List<JSONObject> msgs = HasturApi.__getBufferedMsgs();
     try {
-      DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
-      server.receive(msg);
-      String rawMsg = new String(msg.getData());
-      JSONObject o = new JSONObject(rawMsg);
+      JSONObject o = msgs.get(msgs.size()-1);
       assertEquals("notification", o.get("_route"));
       assertEquals(message, o.get("message"));
       assertTrue(o.has("labels"));
@@ -187,11 +159,9 @@ public class HasturApiTest {
     String name = "myName";
     double interval = 5.5;
     HasturApi.registerPlugin(path, args, name, interval, null);
+    List<JSONObject> msgs = HasturApi.__getBufferedMsgs();
     try {
-      DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
-      server.receive(msg);
-      String rawMsg = new String(msg.getData());
-      JSONObject o = new JSONObject(rawMsg);
+      JSONObject o = msgs.get(msgs.size()-1);
       assertEquals("register_plugin", o.get("_route"));
       assertEquals(path, o.get("plugin_path"));
       assertEquals(args, o.get("plugin_args"));
@@ -212,11 +182,9 @@ public class HasturApiTest {
     Map<String, String> labels = new HashMap<String, String>();
     labels.put("foo", "bar");
     HasturApi.registerService(labels);
+    List<JSONObject> msgs = HasturApi.__getBufferedMsgs();
     try {
-      DatagramPacket msg = new DatagramPacket(new byte[65000], 65000);
-      server.receive(msg);
-      String rawMsg = new String(msg.getData());
-      JSONObject o = new JSONObject(rawMsg);
+      JSONObject o = msgs.get(msgs.size()-1);
       assertEquals("register_service", o.get("_route"));
       assertTrue(o.has("labels"));
       assertTrue(((JSONObject)o.get("labels")).has("app"));

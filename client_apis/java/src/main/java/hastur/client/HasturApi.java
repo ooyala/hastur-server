@@ -23,6 +23,13 @@ public class HasturApi {
   private static HeartbeatThread heartbeatThread;
   private static String appName = computeAppName();
 
+  // Note: 
+  //   These variables are only used for testing purposes. They should not be used
+  //   in production. Otherwise, messages will only get buffered and not actually
+  //   sent through the UDP socket.
+  private static boolean isTestMode = false;
+  private static List<JSONObject> bufferedMsgs = new ArrayList<JSONObject>();
+
   private static final long SECS_2100       = 4102444800L;
   private static final long MILLI_SECS_2100 = 4102444800000L;
   private static final long MICRO_SECS_2100 = 4102444800000000L;
@@ -223,25 +230,33 @@ public class HasturApi {
    * Sends a UDP packet to 127.0.0.1:8125. 
    */ 
   protected static boolean udpSend(JSONObject json) {
-    DatagramSocket socket = null;
     boolean success = true;
-    try {
-      socket = new DatagramSocket();
-      String msgString = json.toString();
-      DatagramPacket msg = new DatagramPacket(msgString.getBytes(), 
-                                              msgString.length(), 
-                                              getLocalAddr(), 
-                                              getUdpPort());
-      socket.send(msg);
-    } catch(Exception e) {
-      e.printStackTrace();
-      success = false;
-    } finally {
-      if(socket != null) {
-        socket.close();
+    if( isTestMode ) {
+      bufferedMsgs.add(json);
+    } else {
+      DatagramSocket socket = null;
+      try {
+        socket = new DatagramSocket();
+        String msgString = json.toString();
+        DatagramPacket msg = new DatagramPacket(msgString.getBytes(), 
+                                                msgString.length(), 
+                                                getLocalAddr(), 
+                                                getUdpPort());
+        socket.send(msg);
+      } catch(Exception e) {
+        e.printStackTrace();
+        success = false;
+      } finally {
+        if(socket != null) {
+          socket.close();
+        }
       }
     }
     return success;
+  }
+
+  public static List<JSONObject> __getBufferedMsgs() {
+    return bufferedMsgs;
   }
 
   /**
@@ -297,5 +312,13 @@ public class HasturApi {
       }
     }
     return localAddr;
+  }
+
+  /**
+   * Sets the testMode attribute. When isTestMode is enabled then
+   * messages will be buffered instead of being sent through UDP.
+   */
+  public static void __isTestMode(boolean testMode) {
+    isTestMode = testMode;
   }
 }
