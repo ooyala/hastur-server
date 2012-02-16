@@ -7,7 +7,7 @@ require "multi_json"
 class HasturApiTest < Test::Unit::TestCase
 
   def setup
-    Hastur::API.test_mode = true
+    Hastur::API.__test_mode__ = true
   end
 
   def teardown
@@ -17,7 +17,7 @@ class HasturApiTest < Test::Unit::TestCase
   def test_counter
     curr_time = Time.now.to_i
     Hastur::API.counter("name", 1, curr_time)
-    msgs = Hastur::API.msg_buffer
+    msgs = Hastur::API.__test_msgs__
     assert_equal(1, msgs.size)
     hash = msgs[-1]
     assert_equal("name", hash[:name])
@@ -31,7 +31,7 @@ class HasturApiTest < Test::Unit::TestCase
   def test_gauge
     curr_time = Time.now.to_i
     Hastur::API.gauge("name", 9, curr_time)
-    msgs = Hastur::API.msg_buffer
+    msgs = Hastur::API.__test_msgs__
     hash = msgs[-1]
     assert_equal("name", hash[:name])
     assert_equal(curr_time * 1000000, hash[:timestamp])
@@ -44,7 +44,7 @@ class HasturApiTest < Test::Unit::TestCase
   def test_mark
     curr_time = Time.now.to_i
     Hastur::API.mark("name", curr_time)
-    msgs = Hastur::API.msg_buffer
+    msgs = Hastur::API.__test_msgs__
     hash = msgs[-1]
     assert_equal("name", hash[:name])
     assert_equal("mark", hash[:type])
@@ -55,7 +55,7 @@ class HasturApiTest < Test::Unit::TestCase
 
   def test_heartbeat
     Hastur::API.heartbeat("myApp", nil, :app => "myApp")
-    msgs = Hastur::API.msg_buffer
+    msgs = Hastur::API.__test_msgs__
     hash = msgs[-1]
     assert_equal("myApp", hash[:labels][:app])
     assert_equal("heartbeat", hash[:_route])
@@ -66,7 +66,7 @@ class HasturApiTest < Test::Unit::TestCase
   def test_notification
     notification_msg = "This is my message"
     Hastur::API.notification(notification_msg, {:foo => "foo", :bar => "bar"})
-    msgs = Hastur::API.msg_buffer
+    msgs = Hastur::API.__test_msgs__
     hash = msgs[-1]
     assert_equal("notification", hash[:_route])
     assert_equal(notification_msg, hash[:message])
@@ -81,7 +81,7 @@ class HasturApiTest < Test::Unit::TestCase
     interval = 100
     labels = {:foo => "foo"}
     Hastur::API.register_plugin(plugin_path, plugin_args, plugin_name, interval, labels)
-    msgs = Hastur::API.msg_buffer
+    msgs = Hastur::API.__test_msgs__
     hash = msgs[-1] 
     assert_equal("register_plugin", hash[:_route])
     assert_equal(plugin_path, hash[:plugin_path])
@@ -95,7 +95,7 @@ class HasturApiTest < Test::Unit::TestCase
   def test_register_service
     labels = {}
     Hastur::API.register_service(labels)
-    msgs = Hastur::API.msg_buffer
+    msgs = Hastur::API.__test_msgs__
     hash = msgs[-1]
     assert_equal("register_service", hash[:_route])
     assert hash[:labels].keys.sort == [:app, :pid, :tid],

@@ -96,9 +96,9 @@ module Hastur
     # Sends a message unmolested to the HASTUR_UDP_PORT on 127.0.0.1
     #
     def send_to_udp(m)
-      if @test_mode
-        @msg_buffer ||= []
-        @msg_buffer << m
+      if @__test_mode__
+        @__test_msgs__ ||= []
+        @__test_msgs__ << m
       else
         u = ::UDPSocket.new
         u.send MultiJson.encode(m), 0, "127.0.0.1", udp_port
@@ -110,12 +110,17 @@ module Hastur
     #
     # Returns a list of messages that were queued up when in test mode.
     #
-    def msg_buffer
-      @msg_buffer ||= []
+    def __test_msgs__
+      @__test_msgs__ ||= []
     end
 
-    def test_mode=(test_mode)
-      @test_mode = test_mode
+    #
+    # Switches the behavior of how messages gets handled. If test_mode is on, then 
+    # all messages are buffered in memory instead of getting shipped through UDP.
+    # Only use this method for testing purposes.
+    #
+    def __test_mode__=(test_mode)
+      @__test_mode__ = test_mode
     end
 
     def app_name=(new_name)
