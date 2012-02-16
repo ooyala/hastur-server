@@ -1,5 +1,7 @@
 package hastur.client;
 
+import java.lang.management.ManagementFactory;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -16,6 +18,7 @@ import org.json.JSONObject;
 public class HasturApi {
 
   private static int udpPort = 8125;
+  private static int pid;
   private static InetAddress localAddr;
   private static HeartbeatThread heartbeatThread;
   private static String appName = computeAppName();
@@ -38,6 +41,8 @@ public class HasturApi {
       heartbeatThread = HeartbeatThread.getInstance();
       heartbeatThread.setIntervalSeconds((double)HASTUR_API_HEARTBEAT_INTERVAL);
       heartbeatThread.start();
+      // retrieves the pid
+      pid = Integer.parseInt(ManagementFactory.getRuntimeMXBean().getName().split("@")[0]);
     } catch(Exception e) {
       e.printStackTrace();
     }
@@ -263,6 +268,8 @@ public class HasturApi {
     if( !o.has("app") ) {
       o.put("app", appName);
     }
+    o.put("pid", pid);
+    o.put("tid", Thread.currentThread().getId()); 
     return o;
   }
 
