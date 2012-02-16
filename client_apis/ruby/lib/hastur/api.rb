@@ -158,10 +158,11 @@ module Hastur
     #
     # Constructs and sends a notify UDP packet
     #
-    def notification(message)
+    def notification(message, labels = {})
       m = {
             :_route  => "notification",
-            :message => message
+            :message => message,
+            :labels  => default_labels.merge(labels)
           }
       send_to_udp(m)
     end
@@ -184,7 +185,7 @@ module Hastur
     #
     # Constructs and sends a register_service UDP packet
     #
-    def register_service(app, labels = {})
+    def register_service(labels = {})
       m = {
             :_route => "register_service",
             :labels => default_labels.merge(labels),

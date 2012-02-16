@@ -55,12 +55,49 @@ class HasturApiTest < Test::Unit::TestCase
 
   def test_heartbeat
     Hastur::API.heartbeat("myApp", nil, "app" => "myApp")
-
     msg = @server.recvfrom(65000)[0]
     hash = MultiJson.decode msg
-    STDERR.puts "Received hash: #{hash.inspect}"
     assert_equal("myApp", hash['labels']['app'])
     assert_equal("heartbeat", hash['_route'])
+    assert hash['labels'].keys.sort == ["app", "pid", "tid"],
+      "Wrong keys #{hash['labels'].keys.inspect} in default labels!"
+  end
+
+  def test_notification
+    notification_msg = "This is my message"
+    Hastur::API.notification(notification_msg, {:foo => "foo", :bar => "bar"})
+    msg = @server.recvfrom(65000)[0]
+    hash = MultiJson.decode msg
+    assert_equal("notification", hash['_route'])
+    assert_equal(notification_msg, hash['message'])
+    assert hash['labels'].keys.sort == ["app", "bar", "foo", "pid", "tid"],
+      "Wrong keys #{hash['labels'].keys.inspect} in default labels!"
+  end
+
+  def test_register_plugin
+    plugin_path = "plugin_path"
+    plugin_args = "plugin_args"
+    plugin_name = "plugin_name"
+    interval = 100
+    labels = {:foo => "foo"}
+    Hastur::API.register_plugin(plugin_path, plugin_args, plugin_name, interval, labels)
+    msg = @server.recvfrom(65000)[0]
+    hash = MultiJson.decode msg
+    assert_equal("register_plugin", hash['_route'])
+    assert_equal(plugin_path, hash['plugin_path'])
+    assert_equal(plugin_args, hash['plugin_args'])
+    assert_equal(plugin_name, hash['plugin'])
+    assert_equal(interval, hash['interval'])
+    assert hash['labels'].keys.sort == ["app", "foo", "pid", "tid"],
+      "Wrong keys #{hash['labels'].keys.inspect} in default labels!"
+  end
+
+  def test_register_service
+    labels = {}
+    Hastur::API.register_service(labels)
+    msg = @server.recvfrom(65000)[0]
+    hash = MultiJson.decode msg
+    assert_equal("register_service", hash['_route'])
     assert hash['labels'].keys.sort == ["app", "pid", "tid"],
       "Wrong keys #{hash['labels'].keys.inspect} in default labels!"
   end
