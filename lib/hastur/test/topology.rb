@@ -79,6 +79,7 @@ module Hastur
       #
       def stop name
         process = @processes[name]
+        process.stop
         process.stop! unless process.done?
         unless process.done?
           raise "Could not kill process with pid #{process.pid} and command line '#{process.argv.join(' ')}'"
