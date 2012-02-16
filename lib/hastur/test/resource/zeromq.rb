@@ -15,7 +15,15 @@ module Hastur
         attr_reader :ctx, :uri, :method, :type, :limit, :error_count
 
         #
-        #  :uri - either :gen or a string, :gen means generate an IPC URI
+        # :uri - either :gen/:generate or a string, :gen means generate an IPC URI, a string
+        #         must be a valid URI.
+        # :limit - exit the read loop after :limit messages are received
+        # :connect - create a socket and connect to the URI
+        # :bind - create a socket and bind to the URI
+        #
+        # :connect and :bind are allowed at the same time and must be of the same socket type.
+        #
+        # For the rest of the options, see Hastur::Test::Resource::Base.
         #
         def initialize(opts)
           @ctx = opts[:ctx] || ::ZMQ::Context.new
@@ -29,7 +37,7 @@ module Hastur
           case opts[:uri]
             # Socket files are specified so they land in PWD, in the future we might want to specify a temp
             # dir, but that has a whole different bag of issues, so stick with simple until it's needed.
-            when :gen
+            when :gen, :generate
               file = "#{::Process.pid}-#{Hastur::Util.next_seq}"
               @unlinks << file
               @uri = "ipc://#{file}"
