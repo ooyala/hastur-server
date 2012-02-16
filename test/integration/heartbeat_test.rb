@@ -14,9 +14,6 @@ require 'multi_json'
 class HeartbeatTest < Test::Unit::TestCase
   HTRZMQ = Hastur::Test::Resource::ZeroMQ
   def initialize(*args)
-    @c1uuid = '11111111-2222-3333-4444-555555555555'
-    @c2uuid = 'ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb'
-
     @resources = {
       :greenio      => Hastur::Test::Resource::Tty.new(:fg => :green),
       :redio        => Hastur::Test::Resource::Tty.new(:fg => :red),
@@ -35,13 +32,13 @@ class HeartbeatTest < Test::Unit::TestCase
     @processes = {
       :client1 => Hastur::Test::Process.new(@resources, {:stdout => :greenio, :stderr => :redio},
         HASTUR_CLIENT_BIN,
-        '--uuid',      @c1uuid,
+        '--uuid',      C1UUID,
         '--router',    :router,
         '--unix',      :client1unix
       ),
       :client2 => Hastur::Test::Process.new(@resources, {:stdout => :greenio, :stderr => :redio},
         HASTUR_CLIENT_BIN,
-        '--uuid',      @c2uuid,
+        '--uuid',      C2UUID,
         '--router',    :router,
         '--unix',      :client2unix
       ),
@@ -91,8 +88,8 @@ class HeartbeatTest < Test::Unit::TestCase
     assert_equal(payloads.count, payloads.fuzzy_filter( {"heartbeat" => Fixnum} ).count)
     assert_equal(payloads.count, payloads.fuzzy_filter( {"last_heartbeat" => String} ).count)
 
-    c1uuid = @c1uuid.gsub('-', '')
-    c2uuid = @c2uuid.gsub('-', '')
+    c1uuid = C1UUID.gsub('-', '')
+    c2uuid = C2UUID.gsub('-', '')
     #puts "C1: #{c1uuid} #{envelopes[0]} #{envelopes[1]}"
     #puts "C2: #{c2uuid} #{envelopes[0]} #{envelopes[1]}"
     assert envelopes.any? { |e| e.index(c1uuid) }, "One of the envelopes has client 1's UUID"
