@@ -49,7 +49,7 @@ public class HasturApiTest {
           assertEquals("gauge", o.get("type"));
           assertEquals(currTime, o.get("timestamp"));
           assertEquals(9.2, o.get("value"));
-          assertEquals("{}", o.get("labels"));
+          assertNotNull(o.get("labels"));
           received = true;
         }
       }
@@ -77,7 +77,7 @@ public class HasturApiTest {
       assertEquals(currTime, o.get("timestamp"));
       assertEquals(2, o.get("increment"));
       assertEquals("counter", o.get("type"));
-      assertEquals("{}", o.get("labels"));
+      assertNotNull(o.get("labels"));
     } catch(Exception e) {
       e.printStackTrace();
       assertTrue(false);
@@ -97,7 +97,6 @@ public class HasturApiTest {
       assertEquals("myLatency", o.get("name"));
       assertEquals("stat", o.get("_route"));
       assertEquals("mark", o.get("type"));
-      assertEquals("{}", o.get("labels"));
     } catch(Exception e) {
       e.printStackTrace();
       assertTrue(false);
@@ -133,7 +132,9 @@ public class HasturApiTest {
       JSONObject o = new JSONObject(rawMsg);
       assertEquals("heartbeat", o.get("_route"));
       assertEquals("heartbeatName", o.get("name"));
-      assertEquals(appName, o.get("app"));
+      assertTrue(o.has("labels"));
+      assertTrue(((JSONObject)o.get("labels")).has("app"));
+      assertEquals(appName, ((JSONObject)o.get("labels")).get("app"));
     } catch(Exception e) {
       e.printStackTrace();
       assertTrue(false);

@@ -44,90 +44,6 @@ public class HasturApi {
   }
 
   /**
-   * Overrides the computed application name.
-   */
-  public static void setAppName(String newAppName) {
-    appName = newAppName;
-  }
-
-  /**
-   * Computes if a number is inclusively between a range.
-   */
-  private static boolean isBetween(long x, long lower, long upper) {
-    return lower <= x && x <= upper;
-  }
-
-  /**
-   * Returns the timestamp in terms of microseconds since 1971. Guesses
-   * based on the ranges.
-   */
-  protected static long normalizeTimestamp(long time) {
-    if(isBetween(time, SECS_1971, SECS_2100)) {
-      return time * 1000000;
-    } else if(isBetween(time, MILLI_SECS_1971, MILLI_SECS_2100)) {
-      return time * 1000;
-    } else if(isBetween(time, MICRO_SECS_1971, MICRO_SECS_2100)) {
-      return time;
-    } else if(isBetween(time, NANO_SECS_1971, NANO_SECS_2100)) {
-      return time / 1000;
-    } else {
-      throw new IllegalArgumentException("Unable to validate timestamp: " + time);
-    }
-  }
-
-  /**
-   * Sends a UDP packet to 127.0.0.1:8125. 
-   */ 
-  protected static boolean udpSend(JSONObject json) {
-    DatagramSocket socket = null;
-    boolean success = true;
-    try {
-      socket = new DatagramSocket();
-      // always make sure that the JSON contains information about who shot this message.
-      if( !json.has("app") ) {
-        json.put("app", appName);
-      }
-      String msgString = json.toString();
-      DatagramPacket msg = new DatagramPacket(msgString.getBytes(), 
-                                              msgString.length(), 
-                                              getLocalAddr(), 
-                                              getUdpPort());
-      socket.send(msg);
-    } catch(Exception e) {
-      e.printStackTrace();
-      success = false;
-    } finally {
-      if(socket != null) {
-        socket.close();
-      }
-    }
-    return success;
-  }
-
-  /**
-   * Flattens a list of strings into a space-separated String.
-   */
-  private static String flattenList(List<String> l) {
-    if(l == null) l = new ArrayList<String>();
-    StringBuilder sBuilder = new StringBuilder();
-    for(String s : l) { sBuilder.append(s); sBuilder.append(" "); }
-    return sBuilder.toString();
-  }
-
-  /**
-   * Generates a string representation of the labels in JSON format.
-   */
-  protected static String generateLabelsJson(Map<String, String> labels) throws org.json.JSONException {
-    JSONObject o = new JSONObject();
-    if(labels != null) {
-      for(String key : labels.keySet()) {
-        o.put(key, labels.get(key));
-      }
-    }
-    return o.toString();
-  }
-
-  /**
    * Sends a 'mark' stat to Hastur client daemon.
    */
   public static boolean mark(String name, Long timestamp, Map<String, String> labels) {
@@ -189,11 +105,12 @@ public class HasturApi {
   /**
    * Notifies the Hastur client of a problem in the application.
    */
-  public static boolean notify(String message) {
+  public static boolean notify(String message, Map<String, String> labels) {
     JSONObject o = new JSONObject();
     try {
       o.put("_route", "notification");
       o.put("message", message);
+      o.put("labels", generateLabelsJson(labels));
     } catch(Exception e) {
       e.printStackTrace();
       return false;
@@ -204,7 +121,7 @@ public class HasturApi {
   /**
    * Registers a plugin with Hastur.
    */ 
-  public static boolean registerPlugin(String path, String args, String name, double interval) {
+  public static boolean registerPlugin(String path, String args, String name, double interval, Map<String, String> labels) {
     JSONObject o = new JSONObject();
     try {
       o.put("_route", "register_plugin");
@@ -212,6 +129,7 @@ public class HasturApi {
       o.put("plugin_args", args);
       o.put("interval", interval);
       o.put("plugin", name);
+      o.put("labels", generateLabelsJson(labels));
     } catch(Exception e) {
       e.printStackTrace();
       return false;
@@ -251,6 +169,104 @@ public class HasturApi {
   }
 
   /**
+   * Overrides the computed application name.
+   */
+  public static void setAppName(String newAppName) {
+    appName = newAppName;
+  }
+
+  /**
+   * Returns the UDP port that this library sends messages to.
+   */
+  public static int getUdpPort() {
+    return udpPort;
+  }
+
+  /**
+   * Sets the UDP port that this library sends messages to.
+   */ 
+  public static void setUdpPort(int port) {
+    udpPort = port;
+  }
+
+  /**
+   * Computes if a number is inclusively between a range.
+   */
+  private static boolean isBetween(long x, long lower, long upper) {
+    return lower <= x && x <= upper;
+  }
+
+  /**
+   * Returns the timestamp in terms of microseconds since 1971. Guesses
+   * based on the ranges.
+   */
+  protected static long normalizeTimestamp(long time) {
+    if(isBetween(time, SECS_1971, SECS_2100)) {
+      return time * 1000000;
+    } else if(isBetween(time, MILLI_SECS_1971, MILLI_SECS_2100)) {
+      return time * 1000;
+    } else if(isBetween(time, MICRO_SECS_1971, MICRO_SECS_2100)) {
+      return time;
+    } else if(isBetween(time, NANO_SECS_1971, NANO_SECS_2100)) {
+      return time / 1000;
+    } else {
+      throw new IllegalArgumentException("Unable to validate timestamp: " + time);
+    }
+  }
+
+  /**
+   * Sends a UDP packet to 127.0.0.1:8125. 
+   */ 
+  protected static boolean udpSend(JSONObject json) {
+    DatagramSocket socket = null;
+    boolean success = true;
+    try {
+      socket = new DatagramSocket();
+      String msgString = json.toString();
+      DatagramPacket msg = new DatagramPacket(msgString.getBytes(), 
+                                              msgString.length(), 
+                                              getLocalAddr(), 
+                                              getUdpPort());
+      socket.send(msg);
+    } catch(Exception e) {
+      e.printStackTrace();
+      success = false;
+    } finally {
+      if(socket != null) {
+        socket.close();
+      }
+    }
+    return success;
+  }
+
+  /**
+   * Flattens a list of strings into a space-separated String.
+   */
+  private static String flattenList(List<String> l) {
+    if(l == null) l = new ArrayList<String>();
+    StringBuilder sBuilder = new StringBuilder();
+    for(String s : l) { sBuilder.append(s); sBuilder.append(" "); }
+    return sBuilder.toString();
+  }
+
+  /**
+   * Generates a string representation of the labels in JSON format.
+   */
+  protected static JSONObject generateLabelsJson(Map<String, String> labels) throws org.json.JSONException {
+    JSONObject o = new JSONObject();
+    if(labels != null) {
+      for(String key : labels.keySet()) {
+        o.put(key, labels.get(key));
+      }
+    }
+    // always make sure that the JSON contains information about who shot this message.
+    if( !o.has("app") ) {
+      o.put("app", appName);
+    }
+    return o;
+  }
+
+  /**
    * Dynamically compute the application name
    */
   private static String computeAppName() {
@@ -274,19 +290,5 @@ public class HasturApi {
       }
     }
     return localAddr;
-  }
-
-  /**
-   * Returns the UDP port that this library sends messages to.
-   */
-  public static int getUdpPort() {
-    return udpPort;
-  }
-
-  /**
-   * Sets the UDP port that this library sends messages to.
-   */ 
-  public static void setUdpPort(int port) {
-    udpPort = port;
   }
 }
