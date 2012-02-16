@@ -201,7 +201,7 @@ module Hastur
       # Return most of the data about the process as a hash. This is safe to call at any point.
       #
       def to_hash
-        {:argv => @argv, :started => @started.to_i, :ended => @ended.to_i, :pid => @pid, :status => @status}
+        { :argv => @argv, :started => @started.to_i, :ended => @ended.to_i, :pid => @pid, :status => @status }
       end
 
       #
