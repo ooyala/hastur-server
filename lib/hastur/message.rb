@@ -508,7 +508,6 @@ module Hastur
       def initialize(opts)
         return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:heartbeat_client]
-        opts[:payload] = ''
         super(opts)
       end
     end
