@@ -56,11 +56,14 @@ module Hastur
       def start_all
         @processes.each { |name,_| start name }
 
+        # resources can run stuff, but are assumed to be safe to shut down along
+        # with the topology's process and don't need to be killed like processes
+        @resources.each { |k,r| r.run }
+
         # If we do many cycles, this will wind up getting called repeatedly.
         # The @all_stopped variable will make sure that's a really fast
         # operation.
         at_exit { stop_all }
-        puts "Exit start_all"
       end
 
       #
@@ -80,9 +83,12 @@ module Hastur
       def stop name
         process = @processes[name]
         process.stop
-        process.stop! unless process.done?
         unless process.done?
-          raise "Could not kill process with pid #{process.pid} and command line '#{process.argv.join(' ')}'"
+          STDERR.puts "SIGTERM to process #{name}, pid #{process.pid} failed. Sending SIGKILL ..."
+          process.stop!
+        end
+        unless process.done?
+          raise "Could not kill process (pid #{process.pid}) and command line '#{process}'"
         end
       end
 
@@ -90,14 +96,8 @@ module Hastur
       # Kills all of the nodes in the topology.
       #
       def stop_all
-        @resources.each { |key,r| r.stop if r.respond_to? :stop }
-
-        puts "enter stop_all"
-        return if @all_stopped
-
-        @processes.each { |name,process| process.stop! }
-
-        puts "exit stop_all"
+        @processes.each { |name,_| stop name } unless @all_stopped
+        @resources.each { |_,r| r.stop }
       end
 
       #

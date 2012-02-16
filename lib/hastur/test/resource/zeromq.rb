@@ -1,6 +1,7 @@
 require 'hastur/util'
 require 'hastur/test/resource/base'
 require 'ffi-rzmq'
+require 'thread'
 
 module Hastur
   module Test
@@ -11,78 +12,94 @@ module Hastur
       # tap device to sniff messages while they're in-flight.
       #
       class ZeroMQ < Hastur::Test::Resource::Base
-        attr_reader :ctx, :uri, :backend, :type, :error_count
+        attr_reader :ctx, :uri, :method, :type, :limit, :error_count
 
         #
-        # Optional:
-        #  :ctx - provide a ZeroMQ context, if unset one is created
-        # Required:
-        #  :type - the type of ZeroMQ socket (e.g. ZMQ::PULL)
-        #  :bind / :connect - the "direction" of the socket, with a value
-        #    :gen - generate an IPC URI
-        #    :tap - create a tap device and run actions against messages that cross it
-        #    ""   - specify a string URI (unchecked)
+        #  :uri - either :gen or a string, :gen means generate an IPC URI
         #
-        def initialize(opts, &block)
+        def initialize(opts)
+          @ctx = opts[:ctx] || ::ZMQ::Context.new
+          @zmq_thread = nil
           @mutex = Mutex.new
-          @threads = []
+          @error_count = 0
           @unlinks = []
+          @sockprocs = []
+          @limit = nil
 
-          if opts[:ctx]
-            @ctx = opts[:ctx]
-          else
-            @ctx = ::ZMQ::Context.new
-          end
-
-          if opts[:type]
-            # TODO: check type is valid
-            @type = opts[:type]
-          else
-            raise ArgumentException.new ":type is required for ZeroMQ"
-          end
-
-          _uri_param(opts[:bind],    @type, :bind)    if opts[:bind]
-          _uri_param(opts[:connect], @type, :connect) if opts[:connect]
-
-          super(opts, &block)
-        end
-
-        # must come after @type is set
-        # For now, socket files are specified so they land in PWD, in the future we might want to specify a
-        # temp dir, but that has a whole different bag of issues, so stick with simple until it's needed.
-        def _uri_param(val, type, method)
-          case val
+          case opts[:uri]
+            # Socket files are specified so they land in PWD, in the future we might want to specify a temp
+            # dir, but that has a whole different bag of issues, so stick with simple until it's needed.
             when :gen
               file = "#{::Process.pid}-#{Hastur::Util.next_seq}"
               @unlinks << file
               @uri = "ipc://#{file}"
-            when :tap
-              # generate two filenames, that become two IPC URI's
-              file = "#{::Process.pid}-#{Hastur::Util.next_seq}"
-              real = "#{::Process.pid}-#{Hastur::Util.next_seq}"
-              @unlinks += [ file, real ]
-              @uri = "ipc://#{file}"
-              @real_uri = "ipc://#{real}"
-
-              tap(@uri, @real_uri, type, method)
             when String
               @uri = val
             else
               raise ArgumentError.new "Invalid URI specifier: (#{val.class}) '#{val}'"
           end
+
+          if opts[:connect] and opts[:bind] and opts[:connect] != opts[:bind]
+            raise ArgumentError.new "ZMQ socket types must be the same when enabling :bind and :connect"
+          end
+
+          if opts[:connect]
+            @type = opts[:connect]
+            # defer socket creation/connect until the thread is started
+            @sockprocs << proc do
+              socket = @ctx.socket(@type)
+              socket.connect(@uri)
+              socket
+            end
+          end
+
+          if opts[:bind]
+            @type = opts[:bind]
+            # defer socket creation/bind until the thread is started
+            @sockprocs << proc do
+              socket = @ctx.socket(@type)
+              socket.bind(@uri)
+              socket
+            end
+          end
+
+          if opts[:limit]
+            @limit = opts[:limit]
+          end
+
+          super(opts)
+        end
+
+        def run
+          super
+          @zmq_thread = Thread.new do
+            begin
+              # sockets have to be created inside the thread that uses them
+              sockets = @sockprocs.map { |p| p.call }
+
+              _zmq_write(sockets)
+              _zmq_read(sockets)
+
+              sockets.each do |socket|
+                socket.setsockopt(ZMQ::LINGER, 0)
+                socket.close
+              end
+            rescue
+              STDERR.puts $!.inspect, $@
+            end
+          end
         end
 
         #
-        # Sets the running flag to false so the tap devices can exit cleanly. Then joins any threads
-        # that are running.
+        # Set a mutex that causes the ZMQ thread to exit, join that thread, then call
+        # any cleanup in Base.
         #
         def stop
-          @running = false
-          @threads.each { |t| t.join }
-
-          @unlinks.each do |file|
-            File.unlink(file) if File.socket?(file)
-          end
+          # I'm not entirely sure why this is sometimes getting called twice, but this
+          # seems to make everything work fine for now.
+          @mutex.lock unless @mutex.locked?
+          @zmq_thread.join
+          super
         end
 
         #
@@ -93,110 +110,85 @@ module Hastur
           @uri
         end
 
+        # write to the socket(s) if writer proces are defined in @writers
+        # assume it's ready by the time we get here, which seems to generally work with zeromq
         #
-        # Set up a tap "device" (in zmq parlance) in a thread.  Currently, only the simple tap device is supported.
-        #
-        # The device calls recvmsgs, copies the data out of the message into Ruby strings (with copy_out_string),
-        # calls all of the registered :action blocks inside a mutex, then forwards the messages on unmodified.
-        #
-        def tap(uri, backend_uri, type, method)
-          backend_type = case type
-            when ZMQ::PULL;   ZMQ::PUSH
-            when ZMQ::PUSH;   ZMQ::PULL
-            when ZMQ::PUB;    ZMQ::SUB
-            when ZMQ::SUB;    ZMQ::PUB
-            when ZMQ::REP;    ZMQ::REQ
-            when ZMQ::REQ;    ZMQ::REP
-            when ZMQ::ROUTER; ZMQ::DEALER
-            when ZMQ::DEALER; ZMQ::ROUTER
-            else
-              raise ArgumentError.new "Unsupported or invalid ZMQ type: #{type}"
-          end
-
-          @running = true
-
-          @thread  = Thread.new do
-            begin
-              backend = @ctx.socket(backend_type)
-              socket  = @ctx.socket(type)
-
-              if method == :bind
-                socket.bind(uri)
-                backend.connect(backend_uri)
-              elsif method == :connect
-                socket.connect(uri)
-                backend.bind(uri)
-              else
-                raise "BUG: invalid method to tap(), '#{method}'"
+        # one single-part:  r.add_writer proc { "a" }
+        # many single-part: r.add_writer proc { ["a", "b", "c"] }
+        # one multipart:    r.add_writer proc { [["a", "b"]] }
+        # many multipart:   r.add_writer proc { [["a", "b"],["c","d"]] }
+        def _zmq_write(sockets)
+          return if @writers.empty?
+          Hastur::Test::Resource.synchronize do
+            sockets.each do |socket|
+              @writers.each do |writer|
+                output = writer.call
+   
+                # returned a list
+                if output.respond_to? :each
+                  output.each do |item|
+                    # procs can send lists of lists to achieve multi-part output
+                    if item.respond_to? :map
+                      messages = item.map { |i| ZMQ::Message.new i }
+                      socket.sendmsgs messages # ignore errors
+                      messages.each { |m| m.close }
+                    # otherwise, it's just a string or something with a sane to_s
+                    else
+                      socket.send_string item.to_s
+                    end
+                  end
+                # returned a single item, send it as a string
+                else
+                  socket.send_string output.to_s
+                end
               end
-
-              case type
-                when ZMQ::PULL, ZMQ::PUB, ZMQ::REP, ZMQ::DEALER
-                  simple_tap_device(uri, backend, socket)
-                when ZMQ::PUSH, ZMQ::SUB, ZMQ::REQ, ZMQ::ROUTER
-                  simple_tap_device(uri, socket, backend)
-              end
-
-              backend.setsockopt(ZMQ::LINGER, 0.1)
-              backend.close
-
-              socket.setsockopt(ZMQ::LINGER, 0.1)
-              socket.close
-            rescue
             end
           end
+        end
 
-          #
-          # Tap & forward device.
-          #
-          # This device ill work for most 1:1 cases, but will cause bewildering results for 1:N or N:1 cases.
-          # For now, the best bet is to keep taps out at the edge where things can generally be 1:1.  If we
-          # really need to tap ROUTER/DEALER N:N scenarios, a much more sophisticated tap will have to be
-          # written that creates all of the connections so the socket identities can be lined up. And even
-          # then, there are weird issues for some of the use cases we have in mind.
-          #
-          def simple_tap_device(uri, from, to)
-            @poller = ZMQ::Poller.new
-            @poller.register_readable from
-            @poller.register_readable to
+        #
+        # Run a poll loop (using the zmq poller) on a 1/5 second timer, reading data
+        # from the socket and calling the registered procs.
+        # If :limit was set, will exit after that many messages are seen/processed.
+        # Otherwise, exits on the next iteration if the mutex is locked (which is done in stop).
+        #
+        def _zmq_read(sockets)
+          return if @readers.empty?
+          return if sockets.empty?
 
-            # TODO: figure out a decent way to hand errors back to the top
-            while @running
-              rc = @poller.poll(0.1)
+          poller = ::ZMQ::Poller.new
 
+          # no reader blocks, that means :ignore, don't run the poll loop
+          sockets.each { |s| poller.register_readable(s) }
+
+          # read on the socket(s) and call the registered reader blocks for every message, always using
+          # multipart and converting to ruby strings to avoid ZMQ::Message cleanup issues.
+          count = 0
+          loop do
+            break if @mutex.locked?
+
+            rc = poller.poll(0.2)
+            if rc <= 0
+              sleep 0.2
+              next
+            end
+
+            poller.readables.each do |sock|
+              rc = sock.recv_strings messages=[]
               if rc > -1
-                @poller.readables.each do |r|
-                  if r == from
-                    direction = :recv
-                  else
-                    direction = :send
+                count += 1
+                Hastur::Test::Resource.synchronize do
+                  @readers.each do |a|
+                    a.call(messages)
                   end
-
-                  rc = r.recvmsgs messages=[]
-                  items = messages.map { |msg| msg.copy_out_string }
-                  if rc > -1
-                    @mutex.synchronize do
-                      @actions.each do |a|
-                        a.call({:messages => items, :direction => direction})
-                      end
-                    end
-                  else
-                    @error_count += 1
-                  end
-
-                  if r == from
-                    rc = to.sendmsgs messages
-                  else
-                    rc = from.sendmsgs messages
-                  end
-
-                  @error_count +=1 unless rc > -1
-                  messages.each { |msg| msg.close if msg.respond_to? :close }
-
                 end
+                return if @limit and count == @limit
               else
                 @error_count += 1
+                break
               end
+
+              break if @limit and count == @limit
             end
           end
         end

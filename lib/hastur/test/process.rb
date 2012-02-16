@@ -32,7 +32,7 @@ module Hastur
         elsif opts[key]
           if resources[opts[key]]
             # only one proc is supported, assume there's only one
-            out = resources[opts[key]].actions[0]
+            out = resources[opts[key]].readers[0]
           else
             raise ArgumentError.new "Invalid value for :#{key} '#{opts[:key].inspect}'"
           end
@@ -48,7 +48,7 @@ module Hastur
 
         # Simply calling spawn with *argv isn't good enough, it really needs the command
         # to be separate and I haven't dug all the way into why that is.
-        @pid = spawn(argv[0], *argv[1..-1],
+        @pid = spawn(@argv[0], *@argv[1..-1],
           :in  => @stdin_r,
           :out => @stdout_w,
           :err => @stderr_w,
@@ -178,6 +178,10 @@ module Hastur
         raise ProcessNotRunningError.new "Called .done? before .run." unless @pid
         return true if @status
         waitpid == @pid
+      end
+
+      def to_s
+        @argv.join(' ')
       end
     end
   end

@@ -8,12 +8,9 @@ module Hastur
         attr_reader :path
 
         def initialize(opts={})
-          @path = "#{::Process.pid}-#{Hastur::Util.next_seq}"
           super(opts)
-        end
-
-        def stop
-          File.unlink(@path) if File.socket?(@path)
+          @path = "#{::Process.pid}-#{Hastur::Util.next_seq}"
+          @unlinks << @path
         end
 
         def to_s
