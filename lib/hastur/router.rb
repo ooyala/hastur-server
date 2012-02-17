@@ -153,11 +153,6 @@ module Hastur
         to   = msg.envelope.to
         time = msg.envelope.timestamp
         
-        puts "Message: #{msg.inspect}"
-        puts "From:    #{from.inspect}"
-        puts "To:      #{to.inspect}"
-        puts "Time:    #{time.inspect}"
-
         # update the list of when a UUID was last seen
         # use client timestamp to avoid problems due to clock skew
         if @timestamps.has_key? from 
