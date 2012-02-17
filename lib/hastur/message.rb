@@ -172,7 +172,7 @@ module Hastur
       @to        = opts[:to]
       @from      = opts[:from]
       @sequence  = opts[:sequence]  || Hastur::Util.next_seq
-      @timestamp = opts[:timestamp] || Time.new.to_f
+      @timestamp = opts[:timestamp] || (Time.new.to_f*1000000).to_i # convert to microseconds
       @uptime    = opts[:uptime]    || Hastur::Util.uptime(@timestamp)
 
       case opts[:ack]

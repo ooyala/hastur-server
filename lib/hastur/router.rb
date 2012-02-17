@@ -152,6 +152,11 @@ module Hastur
         from = msg.envelope.from
         to   = msg.envelope.to
         time = msg.envelope.timestamp
+        
+        puts "Message: #{msg.inspect}"
+        puts "From:    #{from.inspect}"
+        puts "To:      #{to.inspect}"
+        puts "Time:    #{time.inspect}"
 
         # update the list of when a UUID was last seen
         # use client timestamp to avoid problems due to clock skew
@@ -204,7 +209,7 @@ module Hastur
             times_routed += 1
           end
         end
-
+        
         # Messages destined to clients on the ZMQ::ROUTER socket can only be
         # reached via their zeromq-assigned identities.
         # Swap whatever zeromq envelope came with the message for a copy of an envelope
