@@ -6,14 +6,14 @@ require "multi_json"
 # For testing Hastur components, use the local version *first*.
 $LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..", "..", "lib")
 
-require "hastur/monkeypatch"
-require "hastur/test/topology"
-require "hastur/test/process"
+require "nodule/monkeypatch"
+require "nodule/topology"
+require "nodule/process"
 
 HASTUR_ROOT = File.join(File.dirname(__FILE__), "..", "..")
 
 HASTUR_ROUTER_BIN="#{HASTUR_ROOT}/infrastructure/hastur-router.rb"
-HASTUR_CLIENT_BIN="#{HASTUR_ROOT}/bin/hastur-client-v2.rb"
+HASTUR_CLIENT_BIN="#{HASTUR_ROOT}/bin/hastur-client.rb"
 HASTUR_MSGTOOL_BIN="#{HASTUR_ROOT}/tools/msgtool.rb"
 
 # easy to spot fake UUID's
