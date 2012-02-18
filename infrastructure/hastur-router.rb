@@ -57,7 +57,7 @@ sockets.each do |key,sock|
   sock.setsockopt(ZMQ::LINGER, -1)
   sock.setsockopt(ZMQ::HWM,     1)
   rc = sock.bind(opts[key])
-  # TODO: check rc, fail now rather than starting a bad router
+  abort "Error binding #{key} socket: #{ZMQ::Util.error_string}" unless rc > -1
 end
 
 R = Hastur::Router.new(opts[:uuid])
