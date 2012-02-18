@@ -19,7 +19,7 @@ class TestHasturInputJSON < MiniTest::Unit::TestCase
   end
 
   def test_json_doesnt_match
-    stat = Hastur::Input::JSON.decode("{\"method\": \"rawdata\", \"params\": {\"foo\": \"bar\"}")
+    stat = Hastur::Input::JSON.decode("{\"_route\": \"rawdata\", \"params\": {\"foo\": \"bar\"}}")
     refute_nil stat, "should not return nil when fed valid JSON with correct :method and :params"
 
     stat = Hastur::Input::JSON.decode("{\"foo\": \"bar\"}")
@@ -30,6 +30,27 @@ class TestHasturInputJSON < MiniTest::Unit::TestCase
 
     stat = Hastur::Input::JSON.decode("{globs:1|c")
     assert_nil stat, "should return nil when fed invalid JSON"
+  end
+
+  def test_multi_line_json
+    json =<<EOJSON
+
+{
+  "_route": "notification",
+  "sla": 604800,
+  "app": "dyson",
+  "recipients": [
+    "backlot-oncall",
+    "backlot-fyi",
+    "backlot-operations"
+  ]
+}
+
+EOJSON
+
+    assert_block do
+      Hastur::Input::JSON.decode(json) rescue nil
+    end
   end
 end
 

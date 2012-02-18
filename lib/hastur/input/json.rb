@@ -7,8 +7,6 @@ MultiJson.engine = :yajl
 module Hastur
   module Input
     module JSON
-      RE = /\A\s*{.*}\s*\Z/
-
       def self.decode_packet(data)
         hash = MultiJson.decode(data, :symbolize_keys => true)
 
@@ -21,7 +19,9 @@ module Hastur
 
       # Returns nil on invalid/unparsable data.
       def self.decode(data)
-        if RE.match(data)
+        # do an initial test for json-ish input before calling through to the parser
+        test = data.strip
+        if test.start_with?('{') and test.end_with?('}')
           decode_packet(data) rescue nil
         else
           return nil
