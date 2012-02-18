@@ -12,6 +12,7 @@ opts = Trollop::options do
   opt :server,   "Cassandra server",                      :type => String,   :default => "127.0.0.1:9160"
   opt :keyspace, "Cassandra keyspace",                    :type => String,   :default => "Hastur"
   opt :type,     "Stat type: counter, gauge, mark, json", :type => String,   :default => "json"
+  opt :date,     "Date to query for",                     :type => String
 end
 
 client = Cassandra.new(opts[:keyspace], opts[:server])
@@ -33,9 +34,15 @@ unless opts[:stat]
   raise "Must supply a stat name unless just querying rows!"
 end
 
+if opts[:date]
+  end_date = Date.parse(opts[:date]).to_time.utc + 24 * 60 * 60 - 1
+else
+  end_date = Time.now.utc
+end
+
 # Calculate start and end times in microseconds since the Unix epoch
-start_time = DateTime.parse("Jan 1, 2010").to_time.to_f * 1_000_000
-end_time = DateTime.parse("Jan 1, 2015").to_time.to_f * 1_000_000
+start_time = (end_date - 23 * 60 * 60).to_time.to_f * 1_000_000
+end_time = end_date.to_time.to_f * 1_000_000
 start_time = start_time.to_i
 end_time = end_time.to_i
 

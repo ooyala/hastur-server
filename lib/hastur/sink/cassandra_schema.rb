@@ -79,8 +79,9 @@ module Hastur
       start_ts = time_segment_for_timestamp(start_timestamp)
       end_ts = time_segment_for_timestamp(end_timestamp)
 
-      if (end_ts - start_ts) / FIVE_MINUTES > 288
-        raise "Too many time segments!  No more than a day at once."
+      num_ts = (end_ts - start_ts) / 1_000_000 / FIVE_MINUTES
+      if num_ts > 288
+        raise "Too many time segments (#{num_ts})!  No more than a day at once."
       end
 
       segments = [start_ts]
@@ -90,7 +91,7 @@ module Hastur
         segments << ts
       end
 
-      raise "Error calculating time segments (#{segments[0]}-#{segments[-1]} ~ #{end_ts})!" unless segments[-1] == end_ts
+      raise "Error calculating time segments!" unless segments[-1] == end_ts
 
       cf = CF_FOR_STAT_TYPES[type]
       raise "No such stat type as #{type}!" unless cf
