@@ -6,9 +6,12 @@ module Hastur
   module Cassandra
     extend self
 
-    FIVE_MINUTES = 5 * 60 * 60
+    FIVE_MINUTES = 5 * 60
 
     def time_segment_for_timestamp(timestamp, granularity = FIVE_MINUTES)
+      # :name, :value, :timestamp
+      time = Time.at(timestamp / 1_000_000)
+
       # Timestamp of start of day
       date = time.to_date.to_time.to_i
 
@@ -22,9 +25,6 @@ module Hastur
     end
 
     def row_key(uuid, timestamp, granularity = FIVE_MINUTES)
-      # :name, :value, :timestamp
-      time = Time.at(timestamp / 1_000_000)
-
       time_segment = time_segment_for_timestamp(timestamp, granularity)
 
       # The row key uses the client ID spelled out in hex, not compressed to 128 bits.
@@ -76,11 +76,12 @@ module Hastur
     end
 
     def get_stat(cass_client, client_uuid, stat, type, start_timestamp, end_timestamp)
-      start_row_key = ::Hastur::Cassandra.row_key(client_uuid, start_timestamp)
-      end_row_key = ::Hastur::Cassandra.row_key(client_uuid, end_timestamp)
-
       start_ts = time_segment_for_timestamp(start_timestamp)
       end_ts = time_segment_for_timestamp(end_timestamp)
+
+      if (end_ts - start_ts) / FIVE_MINUTES > 288
+        raise "Too many time segments!  No more than a day at once."
+      end
 
       segments = [start_ts]
       ts = start_ts
@@ -89,15 +90,17 @@ module Hastur
         segments << ts
       end
 
-      raise "Error calculating time segments!" unless segments[-1] == end_ts
+      raise "Error calculating time segments (#{segments[0]}-#{segments[-1]} ~ #{end_ts})!" unless segments[-1] == end_ts
 
       cf = CF_FOR_STAT_TYPES[type]
       raise "No such stat type as #{type}!" unless cf
 
-      row_keys = segments.map { |seg| "#{client_uuid}-#{seg}" }
-
       start_column = col_name(stat, start_timestamp)
       end_column = col_name(stat, end_timestamp)
+
+      start_row_key = ::Hastur::Cassandra.row_key(client_uuid, start_timestamp)
+      end_row_key = ::Hastur::Cassandra.row_key(client_uuid, end_timestamp)
+      row_keys = segments.map { |seg| "#{client_uuid}-#{seg}" }
 
       # For now, be stupid and get back all columns from all rows
       cass_client.multi_get(cf, row_keys, :count => 10_000)

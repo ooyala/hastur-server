@@ -34,8 +34,8 @@ unless opts[:stat]
 end
 
 # Calculate start and end times in microseconds since the Unix epoch
-start_time = DateTime.parse("Jan 1, 2010").to_f * 1_000_000
-end_time = DateTime.parse("Jan 1, 2015").to_f * 1_000_000
+start_time = DateTime.parse("Jan 1, 2010").to_time.to_f * 1_000_000
+end_time = DateTime.parse("Jan 1, 2015").to_time.to_f * 1_000_000
 start_time = start_time.to_i
 end_time = end_time.to_i
 
