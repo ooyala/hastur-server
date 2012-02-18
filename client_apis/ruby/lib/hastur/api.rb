@@ -145,87 +145,73 @@ module Hastur
     # Sends a 'mark' stat to Hastur client daemon.
     #
     def mark(name, timestamp=Time.now, labels = {})
-      send_to_udp({
-            :_route    => "stat",
-            :type      => "mark",
-            :name      => name,
-            :timestamp => normalize_timestamp(timestamp),
-            :labels    => default_labels.merge(labels)
-          })
+      send_to_udp :_route    => "stat",
+                  :type      => "mark",
+                  :name      => name,
+                  :timestamp => normalize_timestamp(timestamp),
+                  :labels    => default_labels.merge(labels)
     end
 
     #
     # Sends a 'counter' stat to Hastur client daemon.
     #
     def counter(name, increment = 1, timestamp=Time.now, labels = {})
-      send_to_udp({
-            :_route    => "stat",
-            :type      => "counter",
-            :name      => name,
-            :timestamp => normalize_timestamp(timestamp),
-            :increment => increment,
-            :labels    => default_labels.merge(labels),
-          })
+      send_to_udp :_route    => "stat",
+                  :type      => "counter",
+                  :name      => name,
+                  :timestamp => normalize_timestamp(timestamp),
+                  :increment => increment,
+                  :labels    => default_labels.merge(labels)
     end
 
     #
     # Sends a 'gauge' stat to Hastur client daemon.
     #
     def gauge(name, value, timestamp=Time.now, labels = {})
-      send_to_udp({
-            :_route    => "stat",
-            :type      => "gauge",
-            :name      => name,
-            :timestamp => normalize_timestamp(timestamp),
-            :value     => value,
-            :labels    => default_labels.merge(labels),
-          })
+      send_to_udp :_route    => "stat",
+                  :type      => "gauge",
+                  :name      => name,
+                  :timestamp => normalize_timestamp(timestamp),
+                  :value     => value,
+                  :labels    => default_labels.merge(labels)
     end
 
     #
     # Constructs and sends a notify UDP packet
     #
     def notification(message, labels = {})
-      send_to_udp({
-            :_route  => "notification",
-            :message => message,
-            :labels  => default_labels.merge(labels)
-          })
+      send_to_udp :_route  => "notification",
+                  :message => message,
+                  :labels  => default_labels.merge(labels)
     end
 
     #
     # Constructs and sends a register_plugin UDP packet
     #
     def register_plugin(plugin_path, plugin_args, plugin_name, interval, labels = {})
-      send_to_udp({
-            :_route      => "register_plugin",
-            :plugin_path => plugin_path,
-            :plugin_args => plugin_args,
-            :interval    => interval,
-            :plugin      => plugin_name,
-            :labels      => default_labels.merge(labels),
-          })
+      send_to_udp :_route      => "register_plugin",
+                  :plugin_path => plugin_path,
+                  :plugin_args => plugin_args,
+                  :interval    => interval,
+                  :plugin      => plugin_name,
+                  :labels      => default_labels.merge(labels)
     end
 
     #
     # Constructs and sends a register_service UDP packet
     #
     def register_service(labels = {})
-      send_to_udp({
-            :_route => "register_service",
-            :labels => default_labels.merge(labels),
-          })
+      send_to_udp :_route => "register_service",
+                  :labels => default_labels.merge(labels)
     end
 
     #
     # Constructs and sends heartbeat UDP packets.
     #
     def heartbeat(name = "app_heartbeat", timestamp = Time.now, labels = {})
-      send_to_udp({
-        :_route    => "heartbeat",
-        :timestamp => normalize_timestamp(timestamp),
-        :labels    => default_labels.merge(labels),
-      })
+      send_to_udp :_route    => "heartbeat",
+                  :timestamp => normalize_timestamp(timestamp),
+                  :labels    => default_labels.merge(labels)
     end
 
   end
