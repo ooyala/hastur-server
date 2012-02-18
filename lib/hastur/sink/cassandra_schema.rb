@@ -6,28 +6,40 @@ module Hastur
   module Cassandra
     extend self
 
-    # Default granularity: 5 minutes
-    def row_key(json_hash, granularity = 5 * (60 * 60))
-      # TODO(noah): Add type (gauge, counter, etc) when I know the JSON key for it
+    FIVE_MINUTES = 5 * 60 * 60
 
-      # :name, :value, :timestamp
-      time = Time.at(json_hash[:timestamp])
-
+    def time_segment_for_timestamp(timestamp, granularity = FIVE_MINUTES)
       # Timestamp of start of day
-      date = time.to_date.to_time
+      date = time.to_date.to_time.to_i
 
       # How many seconds we are into the day
       secs_into_day = (time - date).to_i
 
-      time_division = (secs_into_day / granularity) * granularity
+      time_division = (secs_into_day / granularity).to_i * granularity
 
       # This is the time, rounded down to the nearest 'granularity' seconds from start of day
-      time_segment = date.to_i + time_division
+      date + time_division
+    end
 
-      "#{json_hash[:uuid]}-#{time_segment}"
+    def row_key(uuid, timestamp, granularity = FIVE_MINUTES)
+      # :name, :value, :timestamp
+      time = Time.at(timestamp / 1_000_000)
+
+      time_segment = time_segment_for_timestamp(timestamp, granularity)
+
+      # The row key uses the client ID spelled out in hex, not compressed to 128 bits.
+      # However, rows are huge and this makes them easy to understand and query.
+      # Similarly, the time_segment is a timestamp in seconds rather than a compressed
+      # 64-bit number.
+      "#{uuid}-#{time_segment}"
+    end
+
+    def col_name(stat, timestamp)
+      colname = "#{name}-#{[timestamp].pack("Q>")}"
     end
 
     CF_FOR_STAT_TYPES = {
+      :json => :StatsArchive,
       :counter => :StatsCounter,
       :gauge => :StatsGauge,
       :timer => :StatsTimer,
@@ -38,27 +50,57 @@ module Hastur
       CF_FOR_STAT_TYPES[type]
     end
 
-    # Options:
+    # Options from Twitter Cassandra gem:
     #   :ttl
     #   :consistency
-    def insert_stat(client, json_string, options = { :consistency => 2 })
+    # Additional options:
+    #   :uuid - client UUID
+    def insert_stat(cass_client, json_string, options = { :consistency => 2 })
       hash = MultiJson.decode(json_string, :symbolize_keys => true)
-      key = ::Hastur::Cassandra.row_key(hash)
-      cf = CF_FOR_STAT_TYPES[hash[:type].to_sym]
-      raise "Unknown stat type #{hash[:type].inspect}!" unless cf
-
-      name = hash[:name]
-      value = hash[:value]
-      colname = "#{name}-#{hash[:timestamp]}"
 
       if options.has_key?(:uuid)
         hash[:uuid] = options[:uuid]
         json_string = MultiJson.encode(hash)
       end
 
-      client.insert(:StatsArchive, key, { colname => json_string }, options)
-      client.insert(cf, key, { colname => value.to_s }, options)
+      name = hash[:name]
+      value = hash[:value]
+      timestamp_usec = hash[:timestamp]
+      colname = col_name(name, timestamp_usec)
 
+      key = ::Hastur::Cassandra.row_key(hash[:uuid], hash[:timestamp])
+      cf = CF_FOR_STAT_TYPES[hash[:type].to_sym]
+      raise "Unknown stat type #{hash[:type].inspect}!" unless cf
+      cass_client.insert(:StatsArchive, key, { colname => json_string }, options)
+      cass_client.insert(cf, key, { colname => value.to_s }, options) unless cf == :StatsArchive
+    end
+
+    def get_stat(cass_client, client_uuid, stat, type, start_timestamp, end_timestamp)
+      start_row_key = ::Hastur::Cassandra.row_key(client_uuid, start_timestamp)
+      end_row_key = ::Hastur::Cassandra.row_key(client_uuid, end_timestamp)
+
+      start_ts = time_segment_for_timestamp(start_timestamp)
+      end_ts = time_segment_for_timestamp(end_timestamp)
+
+      segments = [start_ts]
+      ts = start_ts
+      while ts < end_ts
+        ts += FIVE_MINUTES
+        segments << ts
+      end
+
+      raise "Error calculating time segments!" unless segments[-1] == end_ts
+
+      cf = CF_FOR_STAT_TYPES[type]
+      raise "No such stat type as #{type}!" unless cf
+
+      row_keys = segments.map { |seg| "#{client_uuid}-#{seg}" }
+
+      start_column = col_name(stat, start_timestamp)
+      end_column = col_name(stat, end_timestamp)
+
+      # For now, be stupid and get back all columns from all rows
+      cass_client.multi_get(cf, row_keys, :count => 10_000)
     end
 
   end
