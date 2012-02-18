@@ -43,13 +43,13 @@ class HeartbeatTest < Test::Unit::TestCase
         '--uuid',         R1UUID,
         '--heartbeat',    :heartbeat,
         '--register',     :register,
-        '--notification', :notify,
+        '--notification', :notification,
         '--stat',         :stat,
         '--log',          :log,
         '--error',        :error,
         '--router',       :router,
         '--plugin-exec',  :plugin_exec,
-        :stdout => :greenio, :stderr => :redio,
+        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
       ),
     )
 
