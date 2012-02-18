@@ -132,7 +132,9 @@ module Hastur
     #
     def set_up_local_ports
       if @unix
-        @udp_socket = UNIXServer.new(@unix)
+        @udp_socket = Socket.new(:UNIX, :DGRAM, 0)
+        address = Addrinfo.unix(@unix)
+        @udp_socket.bind(address)
       else
         @udp_socket = UDPSocket.new
         @udp_socket.bind nil, @port 
