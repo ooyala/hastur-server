@@ -1,52 +1,46 @@
 #!/usr/bin/env ruby
 
+require "rubygems"
 require "test/unit"
 require_relative "./integration_test_helper"
 
-require 'hastur/test/resource/unixsocket'
-require 'hastur/test/resource/zeromq'
-require 'hastur/test/resource/tty'
-require 'hastur/test/process'
-require 'hastur/test/topology'
-require 'rainbow'
+require 'nodule/topology'
+require 'nodule/process'
+require 'nodule/console'
+require 'nodule/unixsocket'
+require 'nodule/zeromq'
 require 'multi_json'
 
 class HeartbeatTest < Test::Unit::TestCase
-  HTRZMQ = Hastur::Test::Resource::ZeroMQ
-  def initialize(*args)
-    @resources = {
-      :greenio      => Hastur::Test::Resource::Tty.new(:fg => :green),
-      :redio        => Hastur::Test::Resource::Tty.new(:fg => :red),
-      :client1unix  => Hastur::Test::Resource::UnixSocket.new,
-      :client2unix  => Hastur::Test::Resource::UnixSocket.new,
-      :router       => HTRZMQ.new(:uri => :gen),
-      :heartbeat    => HTRZMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 4),
-      :register     => HTRZMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :notification => HTRZMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :stat         => HTRZMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :log          => HTRZMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :error        => HTRZMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :control      => HTRZMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
-    }
+  def setup
+    @topology = Nodule::Topology.new(
+      :greenio      => Nodule::Console.new(:fg => :green),
+      :redio        => Nodule::Console.new(:fg => :red),
+      :client1unix  => Nodule::UnixSocket.new,
+      :client2unix  => Nodule::UnixSocket.new,
+      :router       => Nodule::ZeroMQ.new(:uri => :gen),
+      :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 4),
+      :register     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :notification => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :stat         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :log          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
+      :plugin_exec  => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
 
-    @processes = {
-      :client1 => Hastur::Test::Process.new(@resources, {:stdout => :greenio, :stderr => :redio},
-        HASTUR_CLIENT_BIN,
-        '--uuid',      C1UUID,
-        '--heartbeat', 1,
-        '--router',    :router,
-        '--unix',      :client1unix
+      :client1svc   => Nodule::Process.new(
+        HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--unix', :client1unix,
+        :stdout => :greenio, :stderr => :redio,
       ),
-      :client2 => Hastur::Test::Process.new(@resources, {:stdout => :greenio, :stderr => :redio},
-        HASTUR_CLIENT_BIN,
-        '--uuid',      C2UUID,
-        '--heartbeat', 1,
-        '--router',    :router,
-        '--unix',      :client2unix
+
+      :client2svc => Nodule::Process.new(
+        HASTUR_CLIENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--unix', :client2unix,
+        :stdout => :greenio, :stderr => :redio,
       ),
-      :router => Hastur::Test::Process.new(@resources, {:stdout => :greenio, :stderr => :redio},
+
+      :routersvc => Nodule::Process.new(
         HASTUR_ROUTER_BIN,
-        '--uuid',         'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        '--uuid',         R1UUID,
         '--heartbeat',    :heartbeat,
         '--register',     :register,
         '--notification', :notify,
@@ -54,15 +48,11 @@ class HeartbeatTest < Test::Unit::TestCase
         '--log',          :log,
         '--error',        :error,
         '--router',       :router,
-        '--plugin-exec',  :from_sink,
+        '--plugin-exec',  :plugin_exec,
+        :stdout => :greenio, :stderr => :redio,
       ),
-    }
+    )
 
-    super(*args)
-  end
-
-  def setup
-    @topology = Hastur::Test::Topology.new(@resources, @processes, :int_wait => 5)
     @topology.start_all
   end
 
@@ -74,7 +64,7 @@ class HeartbeatTest < Test::Unit::TestCase
     # wait for some messages to flow
     sleep 3
 
-    messages = @resources[:heartbeat].output
+    messages = @topology[:heartbeat].output
     # work with raw messages for now
     payloads  = messages.map { |m| MultiJson.decode(m[-1]) }
     envelopes = messages.map { |m| m[-2].unpack("H*") }
