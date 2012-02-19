@@ -15,49 +15,54 @@ class NotificationTest < Test::Unit::TestCase
     @ack_proc_calls = 0
 
     ack = proc do |messages|
+      STDERR.puts "Notification!"
+      e = Hastur::Envelope.parse(messages[-2])
+      refute_nil e, "Hastur::Envelope.parse on messages[-2] must return an envelope."
+      assert e.ack?, "Notifications must always have the ack flag enabled (got: #{e.ack})."
       @ack_proc_calls += 1
-      STDERR.puts "GOT A NOTIFICATION"
-      #e = Hastur::Envelope.parse(messages[-2])
-      #refute_nil e, "Hastur::Envelope.parse on messages[-2] must return an envelope."
-      #assert e.ack? "Notifications must always have the ack flag enabled."
     end
 
     @topology = Nodule::Topology.new(
-      :greenio      => Nodule::Console.new(:fg => :green),
-      :redio        => Nodule::Console.new(:fg => :red),
-      :cyanio       => Nodule::Console.new(:fg => :cyan),
-      :client1unix  => Nodule::UnixSocket.new,
-      :router       => Nodule::ZeroMQ.new(:uri => :gen),
-      :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
-      :register     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
-      :notification => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      #:notification => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => ack, :limit => 4),
-      :stat         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
-      :log          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
-      :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
-      :plugin_exec  => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
-      :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
-
-      :client1svc => Nodule::Process.new(
+      :greenio       => Nodule::Console.new(:fg => :green),
+      :redio         => Nodule::Console.new(:fg => :red),
+      :cyanio        => Nodule::Console.new(:fg => :cyan),
+      :client1unix   => Nodule::UnixSocket.new,
+      :router        => Nodule::ZeroMQ.new(:uri => :gen),
+      :notification  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => ack, :limit => 4),
+      :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
+      :register      => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
+      :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
+      :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
+      :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
+      :rawdata       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
+      :plugin_result => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :plugin_exec   => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
+      :acks          => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
+      :control       => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
+      :routersvc     => Nodule::Process.new(
+        HASTUR_ROUTER_BIN,
+        '--uuid',          R1UUID,
+        '--router',        :router,
+        '--notification',  :notification,
+        '--heartbeat',     :heartbeat,
+        '--register',      :register,
+        '--stat',          :stat,
+        '--log',           :log,
+        '--error',         :error,
+        '--plugin-exec',   :plugin_exec,
+        '--plugin-result', :plugin_result,
+        '--acks',          :acks,
+        '--rawdata',       :rawdata,
+        '--control',       :control,
+        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
+      ),
+      :client1svc    => Nodule::Process.new(
         HASTUR_CLIENT_BIN,
+        '--uuid',         C1UUID,
         '--router',       :router,
         '--unix',         :client1unix,
         '--ack-timeout',  1,
-        :stdout => :greenio, :stderr => :redio
-      ),
-
-      :routersvc => Nodule::Process.new(
-        HASTUR_ROUTER_BIN,
-        '--uuid',         R1UUID,
-        '--heartbeat',    :heartbeat,
-        '--register',     :register,
-        '--notification', :notification,
-        '--stat',         :stat,
-        '--log',          :log,
-        '--error',        :error,
-        '--router',       :router,
-        '--plugin-exec',  :plugin_exec,
-        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
+        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
     )
 
@@ -84,7 +89,7 @@ class NotificationTest < Test::Unit::TestCase
 EOJSON
 
     sleep 1
-    puts "Sending notification..."
+    puts "Sending notifications ..."
 
     @topology[:client1unix].send notification
     @topology[:client1unix].send notification
