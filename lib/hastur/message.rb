@@ -442,7 +442,7 @@ module Hastur
     class Notification
       def initialize(opts)
         return super(opts) if opts.has_key? :envelope
-        opts[:to] = ROUTES[:log]
+        opts[:to] = ROUTES[:notification]
         opts[:ack] = true unless opts.has_key? :ack
         super(opts)
       end
