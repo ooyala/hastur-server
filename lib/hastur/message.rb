@@ -187,7 +187,7 @@ module Hastur
     # check whether acks are enabled on the envelope
     #
     def ack?
-      @ack == 0 ? false : true
+      (@ack and @ack > 0) ? true : false
     end
 
     #
@@ -443,7 +443,7 @@ module Hastur
       def initialize(opts)
         return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:notification]
-        opts[:ack] = true unless opts.has_key? :ack
+        opts[:ack] = true unless opts.has_key?(:ack)
         super(opts)
       end
     end

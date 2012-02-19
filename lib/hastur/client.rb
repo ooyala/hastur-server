@@ -58,8 +58,7 @@ module Hastur
     def route_json(data)
       route = data.delete :_route
       if klass = Hastur::Message.route_class(route)
-        ack = data.has_key?(:ack) ? data.delete(:ack) : nil
-
+        # TODO: enable messages being able to request acks without breaking notification acks
         # TODO: this is a bit primitive, needs to be smarter for various message types
         payload = data[:payload]
         if klass.json_payload?
@@ -67,7 +66,7 @@ module Hastur
         end
 
         begin
-          msg = klass.new :from => @uuid, :payload => payload, :ack => ack
+          msg = klass.new :from => @uuid, :payload => payload
           msg.send @router_socket
 
           # invalid messages that cause exceptions and have acks won't make it this far
