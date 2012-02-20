@@ -91,6 +91,8 @@ module Hastur
       segments
     end
 
+    CASS_GET_OPTIONS = [ :consistency, :count, :start, :finish, :reversed ]
+
     def __get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp, options = {})
       segments = segments_for_timestamps(start_timestamp, end_timestamp)
 
@@ -101,7 +103,14 @@ module Hastur
 
       row_keys = segments.map { |seg| "#{client_uuid}-#{seg}" }
 
-      values = cass_client.multi_get(cf, row_keys, { :count => 10_000 }.merge(options))
+      cass_options = { :count => 10_000 }
+      CASS_GET_OPTIONS.each do |opt|
+        cass_options[opt] = options[opt] if options.has_key?(opt)
+      end
+      values = cass_client.multi_get(cf, row_keys, cass_options)
+
+      # Delete empty rows
+      values.delete_if { |_, value| value.nil? || value.empty? }
 
       values
     end
@@ -122,5 +131,15 @@ module Hastur
                       options.merge(:start => start_column, :finish => end_column, :type => type))
     end
 
+    def get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp, options = {})
+      if (end_timestamp - start_timestamp) / 1_000_000.0 > 72 * HOURS
+        raise "Don't query more than 3 days at once yet!"
+      end
+
+      values = __get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp,
+                               options.merge(:type => :json))
+
+      # TODO(noah): Filter by timestamp
+    end
   end
 end
