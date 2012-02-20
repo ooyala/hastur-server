@@ -6,7 +6,7 @@ require "time"
 
 opts = Trollop.options do
   opt :n,       "Number to insert",    :default => 1,                     :type => :int
-  opt :types,   "Types to insert",     :default => ["counter", "gauge"],  :type => :strings
+  opt :types,   "Types to insert",     :default => ["gauge"],             :type => :strings
   opt :names,   "Names to insert",     :default => ["test-stat"],         :type => :strings
   opt :time,    "Time to mark as",                                        :type => String
   opt :end_time,"End time to mark as",                                    :type => String
