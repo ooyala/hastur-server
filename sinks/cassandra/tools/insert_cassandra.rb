@@ -35,7 +35,7 @@ opts[:n].times do |i|
   type = opts[:types].sample
   name = opts[:names].sample
   value = rand() * rand() * 1000.0
-  time = start_time.to_f + i * time_increment
+  time = (start_time.to_f + i * time_increment) * 1_000_000.0
   message = <<EOM
 {
   "uuid": "a6-a6-a6-a6-a6-a6-a6",
