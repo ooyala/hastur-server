@@ -37,7 +37,7 @@ module Hastur
     end
 
     def col_name(stat, timestamp)
-      colname = "#{name}-#{[timestamp].pack("Q>")}"
+      colname = "#{stat}-#{[timestamp].pack("Q>")}"
     end
 
     def uuid_from_row_key(row_key)
@@ -45,7 +45,7 @@ module Hastur
     end
 
     def col_name_to_stat_and_timestamp(col_name)
-      time_packed = col_name[-8...-1]
+      time_packed = col_name[-8..-1]
       timestamp = time_packed.unpack("Q>")
 
       # Skip col_name[-9], which is the dash between stat name and packed timestamp
