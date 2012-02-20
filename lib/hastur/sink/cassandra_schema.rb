@@ -57,20 +57,16 @@ module Hastur
     #   :uuid - client UUID
     def insert_stat(cass_client, json_string, options = { :consistency => 2 })
       hash = MultiJson.decode(json_string, :symbolize_keys => true)
+      uuid = options[:uuid] || hash["uuid"]
 
-      if options.has_key?(:uuid)
-        hash[:uuid] = options[:uuid]
-        json_string = MultiJson.encode(hash)
-      end
-
-      name = hash[:name]
-      value = hash[:value]
-      timestamp_usec = hash[:timestamp]
+      name = hash["name"]
+      value = hash["value"]
+      timestamp_usec = hash["timestamp"]
       colname = col_name(name, timestamp_usec)
 
-      key = ::Hastur::Cassandra.row_key(hash[:uuid], hash[:timestamp])
-      cf = CF_FOR_STAT_TYPES[hash[:type].to_sym]
-      raise "Unknown stat type #{hash[:type].inspect}!" unless cf
+      key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec)
+      cf = CF_FOR_STAT_TYPES[hash["type"].to_sym]
+      raise "Unknown stat type #{hash["type"].inspect}!" unless cf
       cass_client.insert(:StatsArchive, key, { colname => json_string }, options)
       cass_client.insert(cf, key, { colname => value.to_s }, options) unless cf == :StatsArchive
     end
