@@ -21,13 +21,15 @@ opts[:time] = Time.now.to_s unless opts[:time]
 opts[:end_time] = (Time.now + 60 * 60).to_s unless opts[:end_time]
 
 start_time = Time.parse(opts[:time]).to_i
-end_time = Time.parse(opts[:time]).to_i
+end_time = Time.parse(opts[:end_time]).to_i
 
 if opts[:n] == 1
-  time_increment = 0.0
+  time_increment = 0
 else
-  time_increment = (start_time - end_time).to_f / (opts[:n] - 1)
+  time_increment = ((start_time - end_time).to_f / (opts[:n] - 1)).to_i
 end
+
+time_start = (start_time.to_f * 1_000_000).to_i
 
 client = Cassandra.new(opts[:keyspace], opts[:host])
 
@@ -35,7 +37,7 @@ opts[:n].times do |i|
   type = opts[:types].sample
   name = opts[:names].sample
   value = rand() * rand() * 1000.0
-  time = ((start_time.to_f + i * time_increment) * 1_000_000.0).to_i
+  time = time_start + i * time_increment
   message = <<EOM
 {
   "uuid": "a6-a6-a6-a6-a6-a6-a6",
