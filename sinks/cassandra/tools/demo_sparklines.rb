@@ -29,7 +29,8 @@ start_time = start_time.to_i
 end_time = end_time.to_i
 
 get "/" do
-  query = Hastur::Cassandra.get_all_stats(Client, opts[:uuid], start_time, end_time, :type => opts[:type])
+  query = Hastur::Cassandra.get_all_stats(Client, opts[:uuid], start_time, end_time,
+                                          :type => opts[:type].to_sym)
 
   @graph_values = []
 
