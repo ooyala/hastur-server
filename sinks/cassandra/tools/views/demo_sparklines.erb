@@ -1,0 +1,22 @@
+<html>
+  <head>
+    <title>Graphs for Hastur Cassandra Stats</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="http://omnipotent.net/jquery.sparkline/1.6/jquery.sparkline.min.js"></script>
+
+    <script type="text/javascript">
+      $(function() {
+        $('.sparkline').sparkline('html', { type: 'bar', barColor: 'blue' } );
+      });
+    </script>
+  </head>
+  <body>
+    <h1>Graphs for Hastur Cassandra stats </h1>
+
+    <h2> Stat </h2>
+
+    <p>
+      <span class="sparkline"><%= @graph_values.join(",") %></span>
+    </p>
+</body>
+</html>
