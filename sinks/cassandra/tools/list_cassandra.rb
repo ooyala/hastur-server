@@ -50,7 +50,8 @@ if opts[:stat]
                                     start_time, end_time)
 else
   puts "Querying all stats."
-  vals = Hastur::Cassandra.get_all_stats(client, opts[:client], start_time, end_time)
+  vals = Hastur::Cassandra.get_all_stats(client, opts[:client], start_time, end_time,
+                                         :type => opts[:type].to_sym)
 end
 
 puts "Values:"
