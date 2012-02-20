@@ -57,28 +57,27 @@ module Hastur
     #   :uuid - client UUID
     def insert_stat(cass_client, json_string, options = { :consistency => 2 })
       hash = MultiJson.decode(json_string, :symbolize_keys => true)
-      uuid = options[:uuid] || hash["uuid"]
+      uuid = options[:uuid] || hash[:uuid]
 
-      name = hash["name"]
-      value = hash["value"]
-      timestamp_usec = hash["timestamp"]
+      name = hash[:name]
+      value = hash[:value]
+      timestamp_usec = hash[:timestamp]
       colname = col_name(name, timestamp_usec)
 
       key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec)
-      cf = CF_FOR_STAT_TYPES[hash["type"].to_sym]
-      raise "Unknown stat type #{hash["type"].inspect}!" unless cf
+      cf = CF_FOR_STAT_TYPES[hash[:type].to_sym]
+      raise "Unknown stat type #{hash[:type].inspect}!" unless cf
       cass_client.insert(:StatsArchive, key, { colname => json_string }, options)
       cass_client.insert(cf, key, { colname => value.to_s }, options) unless cf == :StatsArchive
     end
 
-    def get_stat(cass_client, client_uuid, stat, type, start_timestamp, end_timestamp)
+    protected
+
+    def segments_for_timestamps(start_timestamp, end_timestamp)
       start_ts = time_segment_for_timestamp(start_timestamp)
       end_ts = time_segment_for_timestamp(end_timestamp)
 
       num_ts = (end_ts - start_ts) / 1_000_000 / FIVE_MINUTES
-      if num_ts > 288
-        raise "Too many time segments (#{num_ts})!  No more than a day at once."
-      end
 
       segments = [start_ts]
       ts = start_ts
@@ -89,18 +88,38 @@ module Hastur
 
       raise "Error calculating time segments!" unless segments[-1] == end_ts
 
+      segments
+    end
+
+    def __get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp, options = {})
+      segments = segments_for_timestamps(start_timestamp, end_timestamp)
+
+      type = options[:type] || :json
+
       cf = CF_FOR_STAT_TYPES[type]
       raise "No such stat type as #{type}!" unless cf
+
+      row_keys = segments.map { |seg| "#{client_uuid}-#{seg}" }
+
+      values = cass_client.multi_get(cf, row_keys, { :count => 10_000 }.merge(options))
+
+      values
+    end
+
+    public
+
+    HOURS = 60 * 60
+
+    def get_stat(cass_client, client_uuid, stat, type, start_timestamp, end_timestamp, options = {})
+      if (end_timestamp - start_timestamp) > 72 * HOURS
+        raise "Don't query more than 3 days at once yet!"
+      end
 
       start_column = col_name(stat, start_timestamp)
       end_column = col_name(stat, end_timestamp)
 
-      start_row_key = ::Hastur::Cassandra.row_key(client_uuid, start_timestamp)
-      end_row_key = ::Hastur::Cassandra.row_key(client_uuid, end_timestamp)
-      row_keys = segments.map { |seg| "#{client_uuid}-#{seg}" }
-
-      # For now, be stupid and get back all columns from all rows
-      cass_client.multi_get(cf, row_keys, :count => 10_000)
+      __get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp,
+                      options.merge(:start => start_column, :finish => end_column, :type => type))
     end
 
   end
