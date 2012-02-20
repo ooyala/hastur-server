@@ -42,7 +42,7 @@ opts[:n].times do |i|
   "type": "#{type}",
   "name": "#{name}",
   "value": #{value},
-  "timestamp": #{time},
+  "timestamp": #{time.to_i},
   "meta": {
 #{opts[:tags].map { |s| "    \"#{s}\": 1" }.join(",\n")}
   }
