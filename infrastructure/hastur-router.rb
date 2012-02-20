@@ -25,7 +25,7 @@ EOS
   opt :router,         "Router (incoming) URI (ROUTER)", :default => "tcp://*:8126"
   opt :stat,           "Stat sink URI           (PUSH)", :default => "tcp://*:8127"
   opt :log,            "Log sink URI            (PUSH)", :default => "tcp://*:8128"
-  opt :acks,           "Ack delivery            (PULL)", :default => "tcp://*:8128"
+  opt :acks,           "Ack delivery            (PULL)", :default => "tcp://*:8129"
   opt :error,          "Error sink URI          (PUSH)", :default => "tcp://*:8130"
   opt :rawdata,        "Rawdata sink URI        (PUSH)", :default => "tcp://*:8131"
   opt :notification,   "Notification sink URI   (PUSH)", :default => "tcp://*:8132"

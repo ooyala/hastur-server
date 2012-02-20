@@ -123,9 +123,9 @@ module Hastur
     # After some timeout, all collected stats are sent to hastur
     #
     def poll_stats
+      curr_time = Time.now
       # After some timeout, send the incremental difference to Hastur
-      if Time.now - @last_stat_flush > @stats_interval
-        curr_time = Time.now
+      if curr_time - @last_stat_flush > @stats_interval
         Hastur::API.counter("client.num_msgs", @num_msgs, curr_time)
         Hastur::API.counter("client.num_notifications", @num_notifications, curr_time)
         # reset things

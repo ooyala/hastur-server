@@ -5,6 +5,7 @@ require 'uuid'
 require 'socket'
 require 'termite'
 
+require "hastur/api"
 require "hastur/message"
 require "hastur/util"
 
@@ -15,19 +16,23 @@ module Hastur
     #
     # r = Hastur::Router.new('e315debb-50ba-47a6-9fb4-461757fe1e78')
     #
-    def initialize(uuid)
+    def initialize(uuid, opts = {})
       raise ArgumentError.new "uuid (positional) is required" unless uuid 
       raise ArgumentError.new "uuid must be in 36-byte hex form" unless Hastur::Util.valid_uuid?(uuid)
 
-      @uuid       = uuid
-      @route_fds  = {} # hash of fd => [ {route}, {route}, ... ]
-      @dynamic    = {} # hash of client_uuid => [socket, [zmq parts]]
-      @timestamps = {} # hash of client_uuid => timestamp (float)
-      @handlers   = {} # hash of socket fd => blocks for integrating extra sockets into the poller
-      @logger     = Termite::Logger.new
-      @poller     = ZMQ::Poller.new
-      @stats      = { :to => 0, :from => 0, :to_from => 0, :missed => 0 }
-      @errors     = 0
+      @uuid                   = uuid
+      @route_fds              = {} # hash of fd => [ {route}, {route}, ... ]
+      @dynamic                = {} # hash of client_uuid => [socket, [zmq parts]]
+      @timestamps             = {} # hash of client_uuid => timestamp (float)
+      @handlers               = {} # hash of socket fd => blocks for integrating extra sockets into the poller
+      @logger                 = Termite::Logger.new
+      @poller                 = ZMQ::Poller.new
+      @stats                  = { :to => 0, :from => 0, :to_from => 0, :missed => 0 }
+      opts[:stats_interval] ||= 5   # default to send stats every 5 seconds
+      @errors                 = 0
+      @num_msgs               = 0
+      @stats_interval         = opts[:stats_interval]
+      @last_stat_flush        = Time.now
     end
 
     def sockfd(socket)
@@ -125,7 +130,7 @@ module Hastur
     #
     # poll all of the sockets set up via .route() for read and route messages based on those rules
     #
-    def poll(zmq_poll_timeout=0.1)
+    def poll_zmq(zmq_poll_timeout=0.1)
       rc = @poller.poll(zmq_poll_timeout)
 
       # nothing waiting or socket error, take a hit and make sure we don't spin a CPU
@@ -226,7 +231,22 @@ module Hastur
           @logger.warn "unroutable message '#{from}' -> '#{to}': #{msg.to_json}"
         end
 
-        # TODO: write out router stats
+        # update stats
+        @num_msgs += 1
+      end
+    end
+
+    #
+    # Flushes the Router's stats to Hastur and resets the counters once time expires.
+    #
+    def poll_stats
+      curr_time = Time.now
+      # After some timeout, send the incremental difference to Hastur
+      if curr_time - @last_stat_flush > @stats_interval
+        Hastur::API.counter("router.num_msgs", @num_msgs, curr_time)
+        # reset stats
+        @num_msgs = 0
+        @last_stat_flush = curr_time
       end
     end
 
@@ -253,7 +273,8 @@ module Hastur
     def run(zmq_poll_timeout=0.1)
       @running = true
       while @running == true
-        poll(zmq_poll_timeout)
+        poll_zmq(zmq_poll_timeout)
+        poll_stats
       end
       free_dynamic
     end
