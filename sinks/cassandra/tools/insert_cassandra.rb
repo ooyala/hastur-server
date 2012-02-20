@@ -35,15 +35,15 @@ opts[:n].times do |i|
   type = opts[:types].sample
   name = opts[:names].sample
   value = rand() * rand() * 1000.0
-  time = (start_time.to_f + i * time_increment) * 1_000_000.0
+  time = ((start_time.to_f + i * time_increment) * 1_000_000.0).to_i
   message = <<EOM
 {
   "uuid": "a6-a6-a6-a6-a6-a6-a6",
   "type": "#{type}",
   "name": "#{name}",
   "value": #{value},
-  "timestamp": #{time.to_i},
-  "meta": {
+  "timestamp": #{time},
+  "tags": {
 #{opts[:tags].map { |s| "    \"#{s}\": 1" }.join(",\n")}
   }
 }
