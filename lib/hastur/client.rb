@@ -5,6 +5,7 @@ require 'uuid'
 require 'socket'
 require 'termite'
 
+require "hastur/api"
 require "hastur/util"
 require "hastur/plugin/v1"
 require "hastur/input/json"
@@ -26,9 +27,10 @@ module Hastur
         raise ArgumentError.new "router '#{r}' is not a valid URI" unless Hastur::Util.valid_zmq_uri?(r)
       end
 
-      opts[:port]         ||= 8125
-      opts[:heartbeat]    ||= 30
-      opts[:ack_interval] ||= 30
+      opts[:port]           ||= 8125
+      opts[:heartbeat]      ||= 30
+      opts[:ack_interval]   ||= 30
+      opts[:stats_interval] ||= 5 
 
       raise ArgumentError.new ":port must be an integer" unless opts[:port].kind_of? Fixnum
       raise ArgumentError.new ":port must be between 1025 and 65535" unless opts[:port].between? 1025, 65535
@@ -36,19 +38,23 @@ module Hastur
       raise ArgumentError.new ":heartbeat must be a number" unless opts[:heartbeat].kind_of? Numeric
       raise ArgumentError.new ":heartbeat must be between 1.0 and 300.0" unless opts[:heartbeat].between? 1, 300
 
-      @acks            = {}
-      @plugins         = {}
-      @logger          = Termite::Logger.new
-      @ctx             = ZMQ::Context.new
-      @ack_interval    = opts[:ack_interval]
-      @uuid            = opts[:uuid]
-      @routers         = opts[:routers]
-      @port            = opts[:port]
-      @unix            = opts[:unix] # can use a unix socket for testing, should never see production
-      @heartbeat       = opts[:heartbeat]
-      @last_heartbeat  = Time.now - @heartbeat
-      @last_ack_check  = Time.now - @ack_interval
-      @last_client_reg = Time.now - 129600 # 1.5 days
+      @acks              = {}
+      @plugins           = {}
+      @logger            = Termite::Logger.new
+      @ctx               = ZMQ::Context.new
+      @ack_interval      = opts[:ack_interval]
+      @uuid              = opts[:uuid]
+      @routers           = opts[:routers]
+      @port              = opts[:port]
+      @unix              = opts[:unix] # can use a unix socket for testing, should never see production
+      @heartbeat         = opts[:heartbeat]
+      @stats_interval    = opts[:stats_interval]
+      @num_msgs          = 0
+      @num_notifications = 0
+      @last_heartbeat    = Time.now - @heartbeat
+      @last_ack_check    = Time.now - @ack_interval
+      @last_client_reg   = Time.now - 129600 # 1.5 days
+      @last_stat_flush   = Time.now
     end
 
     #
@@ -95,7 +101,11 @@ module Hastur
 
       @logger.debug "Received UDP message: #{data.inspect}"
 
+      # records stats about the message
+      @num_msgs += 1
+
       if msg = Hastur::Input::JSON.decode(data)
+        @num_notifications += 1 if msg[:_route] == "notification"
         route_json(msg)
       elsif msg = Hastur::Input::Statsd.decode(msg)
         route_json(msg)
@@ -106,6 +116,22 @@ module Hastur
         @logger.debug "Received unrecognized (not JSON or statsd) packet: #{msg.inspect}"
         error = Hastur::Message::Error.new :from => @uuid, :payload => "invalid data on UDP port #{@port}: '#{data}'"
         error.send(@router_socket)
+      end
+    end
+
+    #
+    # After some timeout, all collected stats are sent to hastur
+    #
+    def poll_stats
+      # After some timeout, send the incremental difference to Hastur
+      if Time.now - @last_stat_flush > @stats_interval
+        curr_time = Time.now
+        Hastur::API.counter("client.num_msgs", @num_msgs, curr_time)
+        Hastur::API.counter("client.num_notifications", @num_notifications, curr_time)
+        # reset things
+        @last_stat_flush = curr_time
+        @num_msgs = 0
+        @num_notifications = 0
       end
     end
 
@@ -251,6 +277,7 @@ module Hastur
         poll_heartbeat_timeout
         poll_ack_timeouts
         poll_plugin_pids
+        poll_stats
         poll_udp
         poll_zmq
 
