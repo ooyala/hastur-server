@@ -14,10 +14,12 @@
   <body>
     <h1>Graphs for Hastur Cassandra stats </h1>
 
-    <h2> Stat </h2>
+    <% @graph_values.each do |line| %>
+      <h2> <%= line.shift %> </h2>
 
-    <p>
-      <span class="sparkline"><%= @graph_values.join(",") %></span>
-    </p>
+      <p>
+        <span class="sparkline"><%= line.join(",") %></span>
+      </p>
+    <% end %>
 </body>
 </html>

@@ -11,6 +11,32 @@ end
 @client = Cassandra.new("Hastur", opts[:host])
 
 get "/" do
-  @graph_values = [ 271.4, 91.8, -2.3, 129.7, 7.1 ]
+  query = {
+    "stat1" => {
+      "123" => "271.4",
+      "456" => "91.8",
+      "789" => "-2.3",
+    },
+    "stat2" => {
+      "123" => "1",
+      "456" => "2",
+      "789" => "3",
+    },
+    "stat3" => {
+      "123" => "1",
+      "456" => "2",
+      "789" => "3",
+    },
+  }
+  @graph_values = []
+
+  query.each do |stat, values|
+    data = [ stat ]
+    values.each do |time, value|
+      data << value
+    end
+    @graph_values << data
+  end
+
   erb :demo_sparklines
 end
