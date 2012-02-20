@@ -116,7 +116,7 @@ module Hastur
     def poll_plugin_pids
       @plugins.each do |pid,plugin|
         if plugin.done?
-          msg = Hastur::Message::PluginResult.new(:from => @uuid, :data => plugin.as_hash)
+          msg = Hastur::Message::PluginResult.new(:from => @uuid, :data => plugin.to_hash)
           msg.send(@router_socket)
 
           # TODO: call plugin.stat (when it's ready) and send along a stat too
