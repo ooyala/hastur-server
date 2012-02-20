@@ -15,7 +15,6 @@ puts "Connecting to database at #{opts[:hosts][0]}:9160"
 client = Cassandra.new(opts[:keyspace], opts[:hosts].map { |h| "#{h}:9160" })
 
 client.default_write_consistency = 2  # Initial default: 1
-#client.default_read_consistency = 2
 
 socket = Hastur::ZMQUtils.connect_socket
 
