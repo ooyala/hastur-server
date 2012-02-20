@@ -53,8 +53,27 @@ else
   vals = Hastur::Cassandra.get_all_stats(client, opts[:client], start_time, end_time)
 end
 
-puts "===================================="
+puts "Debug values:"
+puts vals.inspect
+
 puts "Values:"
 puts "------"
-puts vals.inspect
-puts "===================================="
+
+vals.each do |stat, hash|
+  puts "================="
+  puts "Stat: #{stat.inspect}"
+
+  if opts[:type].to_sym == :json
+    hash.each do |time, json|
+      puts "JSON for timestamp #{time}:"
+      puts json
+      puts "------"
+    end
+  else
+    hash.each do |time, value|
+      puts "T #{time} / V #{value.inspect}"
+    end
+  end
+
+  puts "================="
+end

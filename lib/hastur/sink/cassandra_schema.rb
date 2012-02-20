@@ -24,6 +24,8 @@ module Hastur
       date + time_division
     end
 
+    protected
+
     def row_key(uuid, timestamp, granularity = FIVE_MINUTES)
       time_segment = time_segment_for_timestamp(timestamp, granularity)
 
@@ -37,6 +39,22 @@ module Hastur
     def col_name(stat, timestamp)
       colname = "#{name}-#{[timestamp].pack("Q>")}"
     end
+
+    def uuid_from_row_key(row_key)
+      row_key.split("-")[0..-2].join("-")
+    end
+
+    def col_name_to_stat_and_timestamp(col_name)
+      time_packed = col_name[-8...-1]
+      timestamp = time_packed.unpack("Q>")
+
+      # Skip col_name[-9], which is the dash between stat name and packed timestamp
+      stat = col_name[0..-10]
+
+      [ stat, timestamp ]
+    end
+
+    public
 
     CF_FOR_STAT_TYPES = {
       :json => :StatsArchive,
@@ -112,7 +130,17 @@ module Hastur
       # Delete empty rows
       values.delete_if { |_, value| value.nil? || value.empty? }
 
-      values
+      final_values = {}
+      values.each do |row_key, col_hash|
+        col_hash.each do |col_key, value|
+          stat, timestamp = col_name_to_stat_and_timestamp(col_key)
+
+          final_values[stat] ||= {}
+          final_values[stat][timestamp] = value
+        end
+      end
+
+      final_values
     end
 
     public
