@@ -164,8 +164,7 @@ module Hastur
         raise "Don't query more than 3 days at once yet!"
       end
 
-      values = __get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp,
-                               options.merge(:type => :json))
+      values = __get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp, options)
 
       # TODO(noah): Filter by timestamp
     end
