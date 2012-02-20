@@ -2,114 +2,96 @@
 
 require "test/unit"
 require_relative "./integration_test_helper"
+require 'hastur/message'
+require 'multi_json'
+require 'nodule/topology'
+require 'nodule/process'
+require 'nodule/unixsocket'
+require 'nodule/zeromq'
+require 'nodule/console'
 
 class PluginTest < Test::Unit::TestCase
-
-  FROM_SINK_URI="tcp://127.0.0.1:4323"
-  ROUTER_URI="tcp://127.0.0.1:4321"
-
-  def test_plugin
-    # let the schedule message actually get through
-    sleep 10
-    # get messages from the sink shims
-    messages = Hastur::Test::ZMQ.all_payloads_to(:stats)
-    # verify that the messages on the heartbeat shims are heartbeat messages
-    assert_equal(messages.size, messages.fuzzy_filter( {"method" => "stats"} ).size)
-    # verify that the count of messages on the heartbeat shims are accurate
-    assert_equal(1, messages.size)
-  end
-
   def setup
-    Dir.chdir HASTUR_ROOT
+    @wait = Mutex.new
+    @rsrc = ConditionVariable.new
 
-    processes = [
-                 {
-                   :name => :client1,
-                   :command => "./bin/hastur-client.rb --router #{ROUTER_URI} --port 8125 --uuid thisismyuuid",
-                   # TODO(noah): mock UDP port to catch or forward messages?
-                 },
-                 {
-                   :name => :router,
-                   :command => <<EOS ,
-    ./infrastructure/hastur-router.rb --heartbeat-uri <%= zmq[:heartbeat] %>
-                     --register-uri <%= zmq[:register] %>
-                     --notify-uri <%= zmq[:notify] %> --stats-uri <%= zmq[:stats] %>
-                     --logs-uri <%= zmq[:logs] %> --error-uri <%= zmq[:error] %>
-                     --router-uri #{ROUTER_URI} --from-sink-uri #{FROM_SINK_URI}
-EOS
-                   :resources => {
-                     :zmq => [
-#                       { :name => :router, :type => :router, :listen => 4321 },
-                       { :name => :register, :type => :push, :listen => 4330 },
-                       { :name => :notify, :type => :push, :listen => 4331 },
-                       { :name => :stats, :type => :push, :listen => 4332 },
-                       { :name => :heartbeat, :type => :push, :listen => 4333 },
-                       { :name => :logs, :type => :push, :listen => 4334 },
-                       { :name => :error, :type => :push, :listen => 4350 },
-#                       { :name => :pub, :type => :pub, :listen => 4322 },
-#                       { :name => :from_sink, :type => :pull, :listen => 4323 }
-                     ],
-                   }
-                 },
-                 {
-                   :name => :register_worker,
-                   :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [register] --uri <%= zmq[:register] %>
-EOS
-                 },
-                 {
-                   :name => :notify_worker,
-                   :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [notify] --uri <%= zmq[:notify] %>
-EOS
-                 },
-                 {
-                   :name => :stats_worker,
-                   :command => <<EOS ,
-    ./tools/zmqcli.rb --color red --precolor blue --type pull --connect --prefix [stats] --uri <%= zmq[:stats] %>
-EOS
-                 },
-                 {
-                   :name => :heartbeat_worker,
-                   :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [heartbeat] --uri <%= zmq[:heartbeat] %>
-EOS
-                 },
-                 {
-                   :name => :logs_worker,
-                   :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [logs] --uri <%= zmq[:logs] %>
-EOS
-                 },
-                 {
-                   :name => :errors_worker,
-                   :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [error] --uri <%= zmq[:error] %>
-EOS
-                 },
-                 {
-                   :name => :scheduleD,
-                   :command => <<EOS ,
-    ./infrastructure/hastur-scheduler.rb --initial-sleep 5 --router #{FROM_SINK_URI} --data test/data/json/test.txt --client thisismyuuid
-EOS
-                   # TODO(noah): mock UDP port to catch or forward messages?
-                 }
-    ]
+    ready = proc { @wait.synchronize { @rsrc.signal } }
 
-    @topology = Hastur::Test::Topology.new(processes)
-    puts "Starting up all of the topology components..."
+    @topology = Nodule::Topology.new(
+      :greenio       => Nodule::Console.new(:fg => :green),
+      :redio         => Nodule::Console.new(:fg => :red),
+      :cyanio        => Nodule::Console.new(:fg => :cyan),
+      :client1unix   => Nodule::UnixSocket.new,
+      :router        => Nodule::ZeroMQ.new(:uri => :gen),
+      :notification  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
+      :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
+      :register      => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => ready),
+      :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
+      :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
+      :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
+      :rawdata       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
+      :plugin_result => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture),
+      :plugin_exec   => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen, :thread => false),
+      :acks          => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
+      :control       => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
+      :routersvc     => Nodule::Process.new(
+        HASTUR_ROUTER_BIN,
+        '--uuid',          R1UUID,
+        '--router',        :router,
+        '--notification',  :notification,
+        '--heartbeat',     :heartbeat,
+        '--register',      :register,
+        '--stat',          :stat,
+        '--log',           :log,
+        '--error',         :error,
+        '--plugin-exec',   :plugin_exec,
+        '--plugin-result', :plugin_result,
+        '--acks',          :acks,
+        '--rawdata',       :rawdata,
+        '--control',       :control,
+        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
+      ),
+      :client1svc    => Nodule::Process.new(
+        HASTUR_CLIENT_BIN,
+        '--uuid',         C1UUID,
+        '--router',       :router,
+        '--unix',         :client1unix,
+        '--ack-timeout',  1,
+        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
+      ),
+    )
+
     @topology.start_all
-    puts "Started up all of the topology components..."
   end
 
   def teardown
-    puts "Tearing down all of the topology components..."
     @topology.stop_all
-    `pkill -f hastur-client`
-    `pkill -f hastur-router`
-    `pkill -f zmqcli`
-    @topology.reset
-    puts "Topology is torn down..."
+  end
+
+  def test_plugin
+    plugin_request = <<EOJSON
+{
+  "plugin_path": "/bin/echo",
+  "plugin_args": "29ded6db-7bd8-40af-b477-730807a8fa13",
+  "timestamp": #{Time.now.to_f * 1_000_000}
+}
+EOJSON
+    msg = Hastur::Message::PluginExec.new(:from => R2UUID, :to => C1UUID, :payload => plugin_request)
+
+    # This should probably be a built-in for Nodule.
+    puts "Going to wait for client to boot ..."
+    @wait.synchronize { @rsrc.wait(@wait) }
+    puts "Client sent registration, ready to go"
+
+    rc = msg.send @topology[:plugin_exec].socket
+    assert rc > -1, "zeromq send must return > -1"
+
+    # TODO: verify plugin result
+
+    #assert 4 <= @ack_proc_calls, "The ack receiver proc should be called at least 4 times (got #{@ack_proc_calls})."
+    # verify that the messages on the heartbeat shims are heartbeat messages
+    #assert_equal(messages.size, messages.fuzzy_filter( {"method" => "stats"} ).size)
+    # verify that the count of messages on the heartbeat shims are accurate
+    #assert_equal(1, messages.size)
   end
 end
-
