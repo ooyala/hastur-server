@@ -30,10 +30,6 @@ unless opts[:client]
   raise "Must supply a client (hex) UUID unless just querying rows!"
 end
 
-unless opts[:stat]
-  raise "Must supply a stat name unless just querying rows!"
-end
-
 if opts[:date]
   end_date = Date.parse(opts[:date]).to_time.utc + 24 * 60 * 60 - 1
 else
@@ -46,7 +42,19 @@ end_time = end_date.to_time.to_f * 1_000_000
 start_time = start_time.to_i
 end_time = end_time.to_i
 
-vals = Hastur::Cassandra.get_stat(client, opts[:client], opts[:stat], opts[:type].to_sym,
-                                  start_time, end_time)
+puts "Querying client '#{opts[:client]}', around time #{end_date}."
 
+if opts[:stat]
+  puts "Querying stat #{opts[:stat]}, of type #{opts[:type]}."
+  vals = Hastur::Cassandra.get_stat(client, opts[:client], opts[:stat], opts[:type].to_sym,
+                                    start_time, end_time)
+else
+  puts "Querying all stats."
+  vals = Hastur::Cassandra.get_all_stats(client, opts[:client], start_time, end_time)
+end
+
+puts "===================================="
+puts "Values:"
+puts "------"
 puts vals.inspect
+puts "===================================="
