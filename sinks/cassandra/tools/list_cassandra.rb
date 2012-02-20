@@ -53,9 +53,6 @@ else
   vals = Hastur::Cassandra.get_all_stats(client, opts[:client], start_time, end_time)
 end
 
-puts "Debug values:"
-puts vals.inspect
-
 puts "Values:"
 puts "------"
 
