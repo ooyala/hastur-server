@@ -12,6 +12,18 @@ require 'nodule/console'
 
 class PluginTest < Test::Unit::TestCase
   def setup
+    plugin_text = MultiJson.encode(MultiJson.encode({
+      :status  => 0,
+      :message => "OK - plugin success!"
+    }))
+    @plugin_request = <<EOJSON
+{
+  "plugin_path": "/bin/echo",
+  "plugin_args": #{plugin_text},
+  "timestamp": #{Time.now.to_f * 1_000_000}
+}
+EOJSON
+
     @wait = Mutex.new
     @rsrc = ConditionVariable.new
 
@@ -61,6 +73,9 @@ class PluginTest < Test::Unit::TestCase
       ),
     )
 
+    # block again waiting for a message on plugin_result
+    @topology[:plugin_result].add_reader ready
+
     @topology.start_all
   end
 
@@ -69,14 +84,7 @@ class PluginTest < Test::Unit::TestCase
   end
 
   def test_plugin
-    plugin_request = <<EOJSON
-{
-  "plugin_path": "/bin/echo",
-  "plugin_args": "29ded6db-7bd8-40af-b477-730807a8fa13",
-  "timestamp": #{Time.now.to_f * 1_000_000}
-}
-EOJSON
-    msg = Hastur::Message::PluginExec.new(:from => R2UUID, :to => C1UUID, :payload => plugin_request)
+    msg = Hastur::Message::PluginExec.new(:from => R2UUID, :to => C1UUID, :payload => @plugin_request)
 
     # This should probably be a built-in for Nodule.
     puts "Going to wait for client to boot ..."
@@ -86,7 +94,21 @@ EOJSON
     rc = msg.send @topology[:plugin_exec].socket
     assert rc > -1, "zeromq send must return > -1"
 
-    # TODO: verify plugin result
+    @wait.synchronize { @rsrc.wait(@wait) }
+
+    envelope = nil
+    message = nil
+    assert_nothing_raised "Must be able to parse captured ZeroMQ messages" do
+      messages = @topology[:plugin_result].output.pop
+      envelope = Hastur::Envelope.parse messages[-2]
+      message = Hastur::Message::PluginResult.new :envelope => envelope, :payload => messages[-1]
+    end
+
+    refute_nil envelope, "should have captured a valid envelope"
+    refute_nil message, "should have captured a valid message"
+
+    # TODO: fill in more tests after going back through Hastur::Message and adding standard parsing
+    puts "PAYLOAD: #{message.payload}"
 
     #assert 4 <= @ack_proc_calls, "The ack receiver proc should be called at least 4 times (got #{@ack_proc_calls})."
     # verify that the messages on the heartbeat shims are heartbeat messages
