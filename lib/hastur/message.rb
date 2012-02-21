@@ -269,6 +269,23 @@ module Hastur
     end
 
     #
+    # Like Envelope.parse but expects envelope + payload
+    #
+    # e.g.
+    #  msg = Hastur::Message.parse(envelope, payload)
+    #
+    #  rc = socket.recvmsgs msgs=[]
+    #  msg = Hastur::Message.parse(msgs[-2], msgs[-1])
+    #
+    # This is mostly intended to keep tests clean and does not do any error checking.
+    #
+    def self.parse(envelope_msg, payload_msg)
+      envelope = Envelope.parse envelope_msg
+      klass = route_class envelope.to
+      klass.new :envelope => envelope, :payload => payload_msg
+    end
+
+    #
     # base class for the various Hastur::Message types
     #
     class Base
@@ -398,8 +415,15 @@ module Hastur
       #
       # returns whether this class's payload is usually json or not
       #
-      def self.json_payload?
+      def self.json?
         true
+      end
+
+      #
+      # Return a data structure rather than raw JSON.
+      #
+      def decode
+        MultiJson.decode @payload, :symbolize_keys => true
       end
     end
 
@@ -415,10 +439,6 @@ module Hastur
         opts[:to] = ROUTES[:stat]
         super(opts)
       end
-
-      def decode
-        MultiJson.decode @payload, :symbolize_keys => true
-      end
     end
 
     #
@@ -431,7 +451,7 @@ module Hastur
         super(opts)
       end
 
-      def self.json_payload?
+      def self.json?
         false
       end
     end
@@ -477,7 +497,7 @@ module Hastur
         Hastur::Envelope.parse @payload
       end
 
-      def self.json_payload?
+      def self.json?
         false
       end
     end
@@ -518,7 +538,7 @@ module Hastur
         super(opts)
       end
 
-      def self.json_payload?
+      def self.json?
         false
       end
     end
