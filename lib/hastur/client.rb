@@ -107,11 +107,10 @@ module Hastur
       if msg = Hastur::Input::JSON.decode(data)
         @num_notifications += 1 if msg[:_route] == "notification"
         route_json(msg)
-      elsif msg = Hastur::Input::Statsd.decode(msg)
+      elsif msg = Hastur::Input::Statsd.decode(data)
         route_json(msg)
-      # not ready yet
-      #elsif msg = Hastur::Input::Collectd.decode(msg)
-      #  forward_collectd_stat(msg)
+      elsif msg = Hastur::Input::Collectd.decode(data)
+        msg.each { |m| route_json(m) }
       else
         @logger.debug "Received unrecognized (not JSON or statsd) packet: #{msg.inspect}"
         error = Hastur::Message::Error.new :from => @uuid, :payload => "invalid data on UDP port #{@port}: '#{data}'"
