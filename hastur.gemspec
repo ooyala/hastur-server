@@ -29,6 +29,7 @@ EOS
   s.add_development_dependency "mocha"
   s.add_development_dependency "erubis"
   s.add_development_dependency "rerun"
+  s.add_development_dependency "sinatra"
   s.add_runtime_dependency "yajl-ruby"
   s.add_runtime_dependency "multi_json"
   s.add_runtime_dependency "ffi-rzmq"
@@ -37,5 +38,6 @@ EOS
   s.add_runtime_dependency "termite"
   s.add_runtime_dependency "bluepill"
   s.add_runtime_dependency "cassandra"
+  s.add_runtime_dependency "thrift_client", "~>0.7.0"
   s.add_runtime_dependency "rainbow"
 end
