@@ -1,7 +1,6 @@
 package hastur.client;
 
-import hastur.client.HasturApi;
-import hastur.client.HeartbeatThread;
+import hastur.client.*;
 
 /**
  * Only do .* for tests. Do not do this in shipped code.
@@ -19,6 +18,11 @@ public class HasturApiTest {
   @Before
   public void setUp() {
     HasturApi.__isTestMode(true);
+  }
+
+  @After
+  public void tearDown() {
+    HasturApi.__clearBufferedMsgs();
   }
 
   @Test
@@ -98,14 +102,15 @@ public class HasturApiTest {
   @Test
   public void testApiHeartbeat() {
     try {
-      Thread.sleep(HasturApi.HASTUR_API_HEARTBEAT_INTERVAL*1000);
+      Thread.sleep(60*1000);    // 60 seconds
       List<JSONObject> msgs = HasturApi.__getBufferedMsgs();
+      assertTrue(msgs.size() > 0);
       JSONObject o = msgs.get(msgs.size()-1);
       assertEquals("heartbeat", o.get("_route"));
-      assertEquals(HeartbeatThread.CLIENT_HEARTBEAT, o.get("name"));
-      assertTrue(((JSONObject)o.get("labels")).has("app"));
       assertTrue(((JSONObject)o.get("labels")).has("pid"));
       assertTrue(((JSONObject)o.get("labels")).has("tid"));
+      assertTrue(((JSONObject)o.get("labels")).has("app"));
+      assertEquals(HasturClientThread.CLIENT_HEARTBEAT, ((JSONObject)o.get("labels")).get("app"));
     } catch(Exception e) {
       e.printStackTrace();
       assertTrue(false);
@@ -115,13 +120,13 @@ public class HasturApiTest {
   @Test
   public void testHeartbeat() {
     String appName = "foobar";
-    HasturApi.setAppName( appName );
-    HasturApi.heartbeat("heartbeatName", null);
+    Map<String, String> labels = new HashMap<String, String>();
+    labels.put("app", appName);
+    HasturApi.heartbeat(labels);
     List<JSONObject> msgs = HasturApi.__getBufferedMsgs();
     try {
       JSONObject o = msgs.get(msgs.size()-1);
       assertEquals("heartbeat", o.get("_route"));
-      assertEquals("heartbeatName", o.get("name"));
       assertTrue(o.has("labels"));
       assertTrue(((JSONObject)o.get("labels")).has("app"));
       assertEquals(appName, ((JSONObject)o.get("labels")).get("app"));
@@ -132,7 +137,7 @@ public class HasturApiTest {
       assertTrue(false);
     }
   }
-
+  
   @Test
   public void testNotify() {
     String message = "This is my message.";
@@ -196,6 +201,28 @@ public class HasturApiTest {
       e.printStackTrace();
       assertTrue(false);
     }  
+  }
+
+  @Test
+  public void testScheduleStat() {
+    final String s = "test_schedule_stat";
+    HasturApi.scheduleStat( new HasturJob( HasturTime.FIVE_SECS ) {
+      public void call() {
+        HasturApi.mark(s, System.currentTimeMillis(), null);
+      }
+    });
+    try {
+      Thread.sleep(5000);
+      List<JSONObject> msgs = HasturApi.__getBufferedMsgs();
+      JSONObject o = msgs.get(msgs.size()-1);
+      assertEquals("stat", o.get("_route"));
+      assertEquals("mark", o.get("type"));
+      assertTrue(o.has("labels"));
+      assertEquals(s, o.get("name"));
+    } catch(Exception e) {
+      e.printStackTrace();
+      assertTrue(false);
+    }
   }
 
 }

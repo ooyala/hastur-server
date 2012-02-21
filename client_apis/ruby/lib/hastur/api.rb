@@ -27,14 +27,13 @@ module Hastur
     # Starts a background thread that will execute blocks of code every so often.
     #
     def start_client_thread
-      start_time = Time.now
       @intervals = [:five_secs, :minute, :hour, :day]
       @interval_values = [5, 60, 60*60, 60*60*2 ]
       @last_time ||= Hash.new
       @scheduled_blocks ||= Hash.new
       # initialize all of the scheduling hashes
       @intervals.each do |interval|
-        @last_time[interval] = start_time
+        @last_time[interval] = Time.at(0)
         @scheduled_blocks[interval] = []
       end
 
@@ -166,6 +165,13 @@ module Hastur
     #
     def __test_msgs__
       @__test_msgs__ ||= []
+    end
+
+    #
+    # Clears the list of buffered messages.
+    #
+    def __clear_msgs__
+      @__test_msgs__.clear
     end
 
     #

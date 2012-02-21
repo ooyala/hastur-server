@@ -7,6 +7,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.json.JSONObject;
@@ -20,7 +21,7 @@ public class HasturApi {
   private static int udpPort = 8125;
   private static int pid;
   private static InetAddress localAddr;
-  private static HeartbeatThread heartbeatThread;
+  private static HasturClientThread bgThread;
   private static String appName = computeAppName();
 
   // Note: 
@@ -42,12 +43,19 @@ public class HasturApi {
 
   public static final int HASTUR_API_HEARTBEAT_INTERVAL = 10;
 
-  // Automatically send heartbeats whenever this library is loaded in the CL
+  // Automatically starts a background thread whenever this library is loaded in the CL
   static {
     try {
-      heartbeatThread = HeartbeatThread.getInstance();
-      heartbeatThread.setIntervalSeconds((double)HASTUR_API_HEARTBEAT_INTERVAL);
-      heartbeatThread.start();
+      bgThread = HasturClientThread.getInstance();
+      bgThread.start();
+      // schedule heartbeat jobs
+      scheduleStat( new HasturJob(HasturTime.MINUTE) {
+        public void call() {
+          Map<String, String> labels = new HashMap<String, String>();
+          labels.put("app", HasturClientThread.CLIENT_HEARTBEAT);
+          HasturApi.heartbeat(labels);
+        }
+      });
       // retrieves the pid
       pid = Integer.parseInt(ManagementFactory.getRuntimeMXBean().getName().split("@")[0]);
     } catch(Exception e) {
@@ -167,17 +175,24 @@ public class HasturApi {
   /**
    * Constructs and sends heartbeat UDP packets. Interval is given in seconds.
    */
-  public static boolean heartbeat(String heartbeatName, Map<String, String> labels) {
+  public static boolean heartbeat(Map<String, String> labels) {
     JSONObject o = new JSONObject();
     try {
       o.put("_route", "heartbeat");
-      o.put("name", heartbeatName);
       o.put("labels", generateLabelsJson(labels));
     } catch(Exception e) {
       e.printStackTrace();
       return false;
     }
     return udpSend(o);
+  }
+
+  /**
+   * Executes a job every so often, which is defined by the interval of the job.
+   * Use this method to report statistics at a fixed time interval.
+   */
+  public static boolean scheduleStat(HasturJob job) {
+    return bgThread.addJob(job);
   }
 
   /**
@@ -257,6 +272,10 @@ public class HasturApi {
 
   public static List<JSONObject> __getBufferedMsgs() {
     return bufferedMsgs;
+  }
+
+  public static void __clearBufferedMsgs() {
+    bufferedMsgs.clear();
   }
 
   /**
