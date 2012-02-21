@@ -6,9 +6,22 @@
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
     <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.js"></script>
-
+    <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.navigate.js"></script>
     <script type="text/javascript">
     </script>
+
+    <style type="text/css">
+    #placeholder .button {
+        position: absolute;
+        cursor: pointer;
+    }
+    #placeholder div.button {
+        font-size: smaller;
+        color: #999;
+        background-color: #eee;
+        padding: 2px;
+    }
+    </style>
   </head>
   <body>
     <h1>Graphs for Hastur Cassandra stats </h1>
@@ -28,7 +41,7 @@ $(function () {
       var <%= var_name %> = [ <%= line.map { |t, v| "[ #{t}, #{v} ]" }.join(", ") %> ];
     <% end %>
 
-    $.plot($("#placeholder"), [
+    var plot = $.plot($("#placeholder"), [
       <% series_names.each do |series| %>
         {
           data: <%= series %>,
@@ -46,9 +59,71 @@ $(function () {
         hoverable: true
       },
       xaxis: {
-        mode: "time"
+        mode: "time",
+        zoomRange: null,
+        panRange: null
+      },
+      yaxis: {
+        zoomRange: null,
+        panRange: null
+      },
+      zoom: {
+        interactive: true
+      },
+      pan: {
+        interactive: true
       }
     });
+
+    var previousPoint = null;
+    $("#placeholder").bind("plothover", function (event, pos, item) {
+        $("#x").text(pos.x.toFixed(2));
+        $("#y").text(pos.y.toFixed(2));
+
+        if ($("#enableTooltip:checked").length > 0) {
+            if (item) {
+                if (previousPoint != item.dataIndex) {
+                    previousPoint = item.dataIndex;
+
+                    $("#tooltip").remove();
+                    var x = new Date(item.datapoint[0]).toUTCString(),
+                        y = item.datapoint[1].toFixed(2);
+
+                    showTooltip(item.pageX, item.pageY,
+                                item.series.label + " of " + x + " = " + y);
+                }
+            }
+            else {
+                $("#tooltip").remove();
+                previousPoint = null;            
+            }
+        }
+    });
+
+    placeholder = $("#placeholder");
+
+    // add zoom out button 
+    $('<div class="button" style="right:20px;bottom:100px">zoom out</div>').appendTo(placeholder).click(function (e) {
+        e.preventDefault();
+        plot.zoomOut();
+    });
+
+    // and add panning buttons
+
+    // little helper for taking the repetitive work out of placing
+    // panning arrows
+    function addArrow(dir, right, bottom, offset) {
+        $('<img class="button" src="arrow-' + dir + '.gif" style="right:' + right + 'px;bottom:' + bottom + 'px">').appendTo(placeholder).click(function (e) {
+            e.preventDefault();
+            plot.pan(offset);
+        });
+    }
+
+    addArrow('left', 55, 60, { left: -100 });
+    addArrow('right', 25, 60, { left: 100 });
+    addArrow('up', 40, 75, { top: -100 });
+    addArrow('down', 40, 45, { top: 100 });
+
 });
 
 function showTooltip(x, y, contents) {
@@ -63,31 +138,6 @@ function showTooltip(x, y, contents) {
         opacity: 0.80
     }).appendTo("body").fadeIn(200);
 }
-
-var previousPoint = null;
-$("#placeholder").bind("plothover", function (event, pos, item) {
-    $("#x").text(pos.x.toFixed(2));
-    $("#y").text(pos.y.toFixed(2));
-
-    if ($("#enableTooltip:checked").length > 0) {
-        if (item) {
-            if (previousPoint != item.dataIndex) {
-                previousPoint = item.dataIndex;
-
-                $("#tooltip").remove();
-                var x = new Date(item.datapoint[0]).toUTCString(),
-                    y = item.datapoint[1].toFixed(2);
-
-                showTooltip(item.pageX, item.pageY,
-                            item.series.label + " of " + x + " = " + y);
-            }
-        }
-        else {
-            $("#tooltip").remove();
-            previousPoint = null;            
-        }
-    }
-});
 
 </script>
 
