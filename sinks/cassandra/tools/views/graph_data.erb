@@ -1,0 +1,11 @@
+[
+  <% @graph_data.each do |series| %>
+    {
+      label: "<%= series.shift %>",
+      data: [ <%= series.map { |t, v| "[ #{t}, #{v} ]" }.join(", ") %> ]
+    },
+  <% end %>
+    {
+      data: []  // final empty set to make commas work
+    }
+]

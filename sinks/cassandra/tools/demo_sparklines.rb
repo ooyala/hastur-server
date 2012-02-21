@@ -55,3 +55,38 @@ get "/" do
 
   erb :demo_sparklines
 end
+
+get "/data" do
+  start_time = (params[:start].to_f * 1000.0).to_i
+  end_time = (params[:end].to_f * 1000.0).to_i
+
+  STDERR.puts "Querying C*, start #{start_time.inspect}, end #{end_time.inspect}"
+  query = Hastur::Cassandra.get_all_stats(Client, opts[:uuid], start_time, end_time,
+                                           :type => opts[:type].to_sym)
+
+  @graph_data = []
+  series_num = 1
+  prev_time = nil
+
+  STDERR.puts "Query:\n#{query}"
+
+  query.each do |stat, values|
+    data = [ stat ]
+    series_num += 1
+
+    values.each do |time, value|
+      # Flot timestamps are in milliseconds, not microseconds
+      time = time.to_i / 1000
+
+      # Uniquify timestamp
+      time = time + 1 if prev_time == time
+
+      data << [ time, value.to_f ]
+
+      prev_time = time
+    end
+    @graph_data << data
+  end
+
+  erb :graph_data
+end

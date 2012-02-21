@@ -29,57 +29,104 @@
     <div id="placeholder" style="width:1000px;height:500px"></div>
 
 <script type="text/javascript">
+// Eventually we'll have various ways to mess with the
+// interval on this and/or pause it
+ajaxGetInterval = false
+
 $(function () {
-    <% series_names = @graph_values.map { |one_series| one_series[0] } %>
 
-    <% @graph_values.each do |line| %>
-      <% var_name = line.shift
-         stat_name = line.shift
-       %>
+    // Create and Plot Data
 
-      var <%= var_name %>_name = "<%= stat_name %>";
-      var <%= var_name %> = [ <%= line.map { |t, v| "[ #{t}, #{v} ]" }.join(", ") %> ];
-    <% end %>
+    function drawWithData(data) {
+      placeholder = $("#placeholder");
 
-    var plot = $.plot($("#placeholder"), [
-      <% series_names.each do |series| %>
-        {
-          data: <%= series %>,
-          label: <%= series %>_name
+      // Start with empty data, schedule an AJAX update
+      var plot = $.plot(placeholder, data, {
+        series: {
+          points: { show: true }
         },
-      <% end %>
-        {
-          data: []  // final empty set to make commas work
+        grid: {
+          hoverable: true
+        },
+        xaxis: {
+          mode: "time",
+          zoomRange: null,
+          panRange: null
+        },
+        yaxis: {
+          zoomRange: null,
+          panRange: null
+        },
+        zoom: {
+          interactive: true
+        },
+        pan: {
+          interactive: true
         }
-    ], {
-      series: {
-        points: { show: true }
-      },
-      grid: {
-        hoverable: true
-      },
-      xaxis: {
-        mode: "time",
-        zoomRange: null,
-        panRange: null
-      },
-      yaxis: {
-        zoomRange: null,
-        panRange: null
-      },
-      zoom: {
-        interactive: true
-      },
-      pan: {
-        interactive: true
-      }
-    });
+      });
 
+      // Navigation - Panning and Zooming
+
+      // add zoom out button 
+      $('<div class="button" style="right:20px;bottom:100px">zoom out</div>').appendTo(placeholder).click(function (e) {
+          e.preventDefault();
+          plot.zoomOut();
+      });
+
+      // and add panning buttons
+
+      // little helper for taking the repetitive work out of placing
+      // panning arrows
+      function addArrow(dir, right, bottom, offset) {
+          $('<img class="button" src="arrow-' + dir + '.gif" style="right:' + right + 'px;bottom:' + bottom + 'px">').appendTo(placeholder).click(function (e) {
+              e.preventDefault();
+              plot.pan(offset);
+          });
+      }
+
+      addArrow('left', 55, 60, { left: -100 });
+      addArrow('right', 25, 60, { left: 100 });
+      addArrow('up', 40, 75, { top: -100 });
+      addArrow('down', 40, 45, { top: 100 });
+    }
+
+    function updateGraphData() {
+      now = new Date();
+      now_ts = now.getTime();
+      start_ts = now_ts - 24 * 60 * 60 * 1000;
+
+      // Query for ten minutes later than now.  Normally
+      // there shouldn't be any data, but this (more than)
+      // accounts for clock skew, request delay and whatnot.
+      now_ts += 10 * 60 * 1000;
+
+      $.ajax({
+               method: 'get',
+               url : '/data?start=' + start_ts + '&end=' + now_ts,
+               dataType : 'text',
+               success: function (text) { data = eval(text); drawWithData(data); }
+              });
+    }
+
+    ajaxGetInterval = setInterval(updateGraphData, 1000)
+    updateGraphData();
+
+    // Create and Show Tooltips
+
+    function showTooltip(x, y, contents) {
+        $('<div id="tooltip">' + contents + '</div>').css( {
+            position: 'absolute',
+            display: 'none',
+            top: y + 5,
+            left: x + 5,
+            border: '1px solid #fdd',
+            padding: '2px',
+            'background-color': '#fee',
+            opacity: 0.80
+        }).appendTo("body").fadeIn(200);
+    }
     var previousPoint = null;
     $("#placeholder").bind("plothover", function (event, pos, item) {
-        $("#x").text(pos.x.toFixed(2));
-        $("#y").text(pos.y.toFixed(2));
-
         if ($("#enableTooltip:checked").length > 0) {
             if (item) {
                 if (previousPoint != item.dataIndex) {
@@ -100,44 +147,7 @@ $(function () {
         }
     });
 
-    placeholder = $("#placeholder");
-
-    // add zoom out button 
-    $('<div class="button" style="right:20px;bottom:100px">zoom out</div>').appendTo(placeholder).click(function (e) {
-        e.preventDefault();
-        plot.zoomOut();
-    });
-
-    // and add panning buttons
-
-    // little helper for taking the repetitive work out of placing
-    // panning arrows
-    function addArrow(dir, right, bottom, offset) {
-        $('<img class="button" src="arrow-' + dir + '.gif" style="right:' + right + 'px;bottom:' + bottom + 'px">').appendTo(placeholder).click(function (e) {
-            e.preventDefault();
-            plot.pan(offset);
-        });
-    }
-
-    addArrow('left', 55, 60, { left: -100 });
-    addArrow('right', 25, 60, { left: 100 });
-    addArrow('up', 40, 75, { top: -100 });
-    addArrow('down', 40, 45, { top: 100 });
-
 });
-
-function showTooltip(x, y, contents) {
-    $('<div id="tooltip">' + contents + '</div>').css( {
-        position: 'absolute',
-        display: 'none',
-        top: y + 5,
-        left: x + 5,
-        border: '1px solid #fdd',
-        padding: '2px',
-        'background-color': '#fee',
-        opacity: 0.80
-    }).appendTo("body").fadeIn(200);
-}
 
 </script>
 
