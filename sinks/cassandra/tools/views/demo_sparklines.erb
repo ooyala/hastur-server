@@ -33,17 +33,43 @@
 // interval on this and/or pause it
 var ajaxGetInterval = false;
 var plot = false;
-var first_plot = true;
+var do_replot = true;
+var old_labels = [];
 
 $(function () {
 
     // Create and Plot Data
 
+    function labelsFromData(data) {
+      labels = []
+      for(var i = 0; i < data.length; i++) {
+        labels.push(data[i].label);
+      }
+      return labels;
+    }
+
+    function labelsEqual(list1, list2) {
+      if(list1.length != list2.length) return false;
+
+      for(var i = 0; i < list1.length; i++) {
+        if(list1[i] != list2[i]) return false;
+      }
+      return true;
+    }
+
     function drawWithData(data) {
       var placeholder = $("#placeholder");
 
+      new_labels = labelsFromData(data);
+      if(!labelsEqual(new_labels, old_labels)) {
+        do_replot = true;
+	console.debug("New labels: " + new_labels);
+	console.debug("Old labels: " + old_labels);
+      }
+      old_labels = new_labels;
+
       // Start with empty data, schedule an AJAX update
-      if(first_plot) {
+      if(do_replot) {
         plot = $.plot(placeholder, data, {
           series: {
             points: { show: true }
@@ -68,7 +94,7 @@ $(function () {
           }
         });
 
-        first_plot = false;
+        do_replot = false;
       } else {
         plot.setData(data);
         plot.draw();
