@@ -46,7 +46,7 @@ module Hastur
 
     def col_name_to_stat_and_timestamp(col_name)
       time_packed = col_name[-8..-1]
-      timestamp = time_packed.unpack("Q>")
+      timestamp = time_packed.unpack("Q>")[0]
 
       # Skip col_name[-9], which is the dash between stat name and packed timestamp
       stat = col_name[0..-10]
