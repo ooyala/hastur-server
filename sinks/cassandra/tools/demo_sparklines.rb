@@ -5,7 +5,7 @@ require "trollop"
 require "hastur/sink/cassandra_schema"
 
 # Fake UUID for stat insertion
-FAKE_UUID = "a6-a6-a6-a6-a6-a6-a6"
+FAKE_UUID = "fafafafa-fafa-fafa-fafa-fafafafafafa"
 
 opts = Trollop.options do
   opt :host,     "Cassandra hostname",              :type => String,     :default => "127.0.0.1:9160"
