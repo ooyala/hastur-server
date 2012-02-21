@@ -12,14 +12,11 @@ require 'nodule/console'
 
 class PluginTest < Test::Unit::TestCase
   def setup
-    plugin_text = MultiJson.encode(MultiJson.encode({
-      :status  => 0,
-      :message => "OK - plugin success!"
-    }))
+    @plugin_text = MultiJson.encode("{\"status\": 0, \"message\": \"OK - plugin success!\"}")
     @plugin_request = <<EOJSON
 {
   "plugin_path": "/bin/echo",
-  "plugin_args": #{plugin_text},
+  "plugin_args": [#{plugin_text}],
   "timestamp": #{Time.now.to_f * 1_000_000}
 }
 EOJSON
@@ -42,8 +39,8 @@ EOJSON
       :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
       :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
       :rawdata       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
-      :plugin_result => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture),
-      :plugin_exec   => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen, :thread => false),
+      :plugin_result => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 1),
+      :plugin_exec   => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
       :acks          => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
       :control       => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
       :routersvc     => Nodule::Process.new(
@@ -87,33 +84,31 @@ EOJSON
     msg = Hastur::Message::PluginExec.new(:from => R2UUID, :to => C1UUID, :payload => @plugin_request)
 
     # This should probably be a built-in for Nodule.
-    puts "Going to wait for client to boot ..."
     @wait.synchronize { @rsrc.wait(@wait) }
-    puts "Client sent registration, ready to go"
 
     rc = msg.send @topology[:plugin_exec].socket
-    assert rc > -1, "zeromq send must return > -1"
+    assert rc > -1, "zeromq send must return > -1 (errno: #{ZMQ::Util.error_string})"
 
-    @wait.synchronize { @rsrc.wait(@wait) }
 
-    envelope = nil
-    message = nil
-    assert_nothing_raised "Must be able to parse captured ZeroMQ messages" do
-      messages = @topology[:plugin_result].output.pop
-      envelope = Hastur::Envelope.parse messages[-2]
-      message = Hastur::Message::PluginResult.new :envelope => envelope, :payload => messages[-1]
-    end
+    @topology[:plugin_result].wait
 
+    messages = @topology[:plugin_result].output.pop
+    refute_nil messages, "should have caught some zmq messages"
+    assert messages.count > 0, "should have caught some zmq messages"
+    envelope = Hastur::Envelope.parse messages[-2]
     refute_nil envelope, "should have captured a valid envelope"
+    message = Hastur::Message::PluginResult.new :envelope => envelope, :payload => messages[-1]
     refute_nil message, "should have captured a valid message"
 
-    # TODO: fill in more tests after going back through Hastur::Message and adding standard parsing
-    puts "PAYLOAD: #{message.payload}"
+    data = message.decode
+    assert_kind_of Hash, data, "message.decode must return a hash"
 
-    #assert 4 <= @ack_proc_calls, "The ack receiver proc should be called at least 4 times (got #{@ack_proc_calls})."
-    # verify that the messages on the heartbeat shims are heartbeat messages
-    #assert_equal(messages.size, messages.fuzzy_filter( {"method" => "stats"} ).size)
-    # verify that the count of messages on the heartbeat shims are accurate
-    #assert_equal(1, messages.size)
+    #PAYLOAD: {"command":"/bin/echo","args":["{\"status\": 0, \"message\": \"OK - plugin success!\"}"],"pid":659866,"status":"pid 659866 exit 0","stdout":["{\"status\": 0, \"message\": \"OK - plugin success!\"}\n"],"stderr":[]}
+
+    assert_kind_of Fixnum, data[:pid], "plugin result 'pid' should be a number"
+    assert_kind_of Fixnum, data[:exit], "plugin result 'exit' should be a number"
+    assert_equal 0, data[:exit], "plugin result should be 0"
+
+    # TODO: client plugin output isn't parsed - this is a bug that must be fixed first
   end
 end
