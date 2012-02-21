@@ -59,12 +59,11 @@ $(function () {
 
     function drawWithData(data) {
       var placeholder = $("#placeholder");
+      var doGridChange = false;
 
       new_labels = labelsFromData(data);
-      if(!labelsEqual(new_labels, old_labels)) {
-        do_replot = true;
-	console.debug("New labels: " + new_labels);
-	console.debug("Old labels: " + old_labels);
+      if(plot !== false && !labelsEqual(new_labels, old_labels)) {
+        doGridChange = true;
       }
       old_labels = new_labels;
 
@@ -99,6 +98,8 @@ $(function () {
         plot.setData(data);
         plot.draw();
       }
+
+      if(doGridChange) plot.setupGrid();
 
       // Navigation - Panning and Zooming
 
