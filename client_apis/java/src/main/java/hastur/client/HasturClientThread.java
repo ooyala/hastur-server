@@ -46,7 +46,9 @@ public class HasturClientThread extends Thread {
    * Schedules a job for a given HasturTime.
    */
   public static boolean addJob(HasturJob job) {
-    return scheduledJobs.get(job.getInterval()).add(job);
+    synchronized(scheduledJobs) {
+      return scheduledJobs.get(job.getInterval()).add(job);
+    }
   }
   
   /**

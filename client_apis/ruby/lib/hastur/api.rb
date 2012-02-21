@@ -273,7 +273,8 @@ module Hastur
     #
     def every( interval, &block )
       raise "Interval must be one of these: #{@intervals}, you gave #{interval.inspect}" unless @intervals.include?(interval)
-      @scheduled_blocks[interval] << block
+      @mutex ||= Mutex.new
+      @mutex.synchronize { @scheduled_blocks[interval] << block }
     end
 
     # Automatically start the background thread for the client.
