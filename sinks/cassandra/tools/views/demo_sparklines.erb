@@ -31,39 +31,48 @@
 <script type="text/javascript">
 // Eventually we'll have various ways to mess with the
 // interval on this and/or pause it
-ajaxGetInterval = false
+var ajaxGetInterval = false;
+var plot = false;
+var first_plot = true;
 
 $(function () {
 
     // Create and Plot Data
 
     function drawWithData(data) {
-      placeholder = $("#placeholder");
+      var placeholder = $("#placeholder");
 
       // Start with empty data, schedule an AJAX update
-      var plot = $.plot(placeholder, data, {
-        series: {
-          points: { show: true }
-        },
-        grid: {
-          hoverable: true
-        },
-        xaxis: {
-          mode: "time",
-          zoomRange: null,
-          panRange: null
-        },
-        yaxis: {
-          zoomRange: null,
-          panRange: null
-        },
-        zoom: {
-          interactive: true
-        },
-        pan: {
-          interactive: true
-        }
-      });
+      if(first_plot) {
+        plot = $.plot(placeholder, data, {
+          series: {
+            points: { show: true }
+          },
+          grid: {
+            hoverable: true
+          },
+          xaxis: {
+            mode: "time",
+            zoomRange: null,
+            panRange: null
+          },
+          yaxis: {
+            zoomRange: null,
+            panRange: null
+          },
+          zoom: {
+            interactive: true
+          },
+          pan: {
+            interactive: true
+          }
+        });
+
+        first_plot = false;
+      } else {
+        plot.setData(data);
+        plot.draw();
+      }
 
       // Navigation - Panning and Zooming
 

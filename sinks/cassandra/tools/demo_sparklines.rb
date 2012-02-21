@@ -60,15 +60,12 @@ get "/data" do
   start_time = (params[:start].to_f * 1000.0).to_i
   end_time = (params[:end].to_f * 1000.0).to_i
 
-  STDERR.puts "Querying C*, start #{start_time.inspect}, end #{end_time.inspect}"
   query = Hastur::Cassandra.get_all_stats(Client, opts[:uuid], start_time, end_time,
                                            :type => opts[:type].to_sym)
 
   @graph_data = []
   series_num = 1
   prev_time = nil
-
-  STDERR.puts "Query:\n#{query}"
 
   query.each do |stat, values|
     data = [ stat ]
