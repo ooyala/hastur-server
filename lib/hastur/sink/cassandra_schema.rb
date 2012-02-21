@@ -13,15 +13,16 @@ module Hastur
       time = Time.at(timestamp / 1_000_000)
 
       # Timestamp of start of day
-      date = time.to_date.to_time.to_i
+      date = time.to_date
+      date_secs = Time.utc(date.year, date.month, date.day).to_i
 
-      # How many seconds we are into the day
-      secs_into_day = (time - date).to_i
+      # How many seconds we are into the day in UTC
+      secs_into_day = (time - date_secs).to_i
 
       time_division = (secs_into_day / granularity).to_i * granularity
 
       # This is the time, rounded down to the nearest 'granularity' seconds from start of day
-      date + time_division
+      date_secs + time_division
     end
 
     protected
@@ -73,9 +74,9 @@ module Hastur
     #   :consistency
     # Additional options:
     #   :uuid - client UUID
-    def insert_stat(cass_client, json_string, options = { :consistency => 2 })
+    def insert_stat(cass_client, json_string, options = {})
       hash = MultiJson.decode(json_string, :symbolize_keys => true)
-      uuid = options[:uuid] || hash[:uuid]
+      uuid = options.delete(:uuid) || hash[:uuid]
 
       name = hash[:name]
       value = hash[:value]
@@ -85,8 +86,11 @@ module Hastur
       key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec)
       cf = CF_FOR_STAT_TYPES[hash[:type].to_sym]
       raise "Unknown stat type #{hash[:type].inspect}!" unless cf
-      cass_client.insert(:StatsArchive, key, { colname => json_string }, options)
-      cass_client.insert(cf, key, { colname => value.to_s }, options) unless cf == :StatsArchive
+
+      insert_options = { :consistency => 2 }
+      insert_options[:consistency] = options[:consistency] if options[:consistency]
+      cass_client.insert(:StatsArchive, key, { colname => json_string }, insert_options)
+      cass_client.insert(cf, key, { colname => value.to_s }, insert_options) unless cf == :StatsArchive
     end
 
     protected
