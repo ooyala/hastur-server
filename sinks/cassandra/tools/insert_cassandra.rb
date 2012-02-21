@@ -15,6 +15,8 @@ opts = Trollop.options do
   opt :insert,  "Write messages to C*",         :default => true,                  :type => :boolean
   opt :keyspace,"Keyspace to write",            :default => "Hastur",              :type => String
   opt :host,    "Cassandra host",               :default => "127.0.0.1:9160",      :type => String
+  opt :uuid,    "UUID to insert as",            :default => "fafafafa-fafa-fafa-fafa-fafafafafafa",
+                                                :type => String
 end
 
 client = Cassandra.new(opts[:keyspace], opts[:host])
@@ -26,7 +28,7 @@ opts[:batches].times do |batch|
     value = rand() * rand() * 1000.0
     message = <<EOM
   {
-    "uuid": "a6-a6-a6-a6-a6-a6-a6",
+    "uuid": "#{opts[:uuid]}",
     "type": "#{type}",
     "name": "#{name}",
     "value": #{value},
