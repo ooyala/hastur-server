@@ -13,7 +13,7 @@
   <body>
     <h1>Graphs for Hastur Cassandra stats </h1>
 
-    <div id="placeholder" style="width:600px;height:300px"></div>
+    <div id="placeholder" style="width:1000px;height:500px"></div>
 
 <script type="text/javascript">
 $(function () {
@@ -43,15 +43,55 @@ $(function () {
         points: { show: true }
       },
       grid: {
-        hoverable: true,
-        clickable: true
+        hoverable: true
       },
       xaxis: {
         mode: "time"
       }
     });
 });
+
+function showTooltip(x, y, contents) {
+    $('<div id="tooltip">' + contents + '</div>').css( {
+        position: 'absolute',
+        display: 'none',
+        top: y + 5,
+        left: x + 5,
+        border: '1px solid #fdd',
+        padding: '2px',
+        'background-color': '#fee',
+        opacity: 0.80
+    }).appendTo("body").fadeIn(200);
+}
+
+var previousPoint = null;
+$("#placeholder").bind("plothover", function (event, pos, item) {
+    $("#x").text(pos.x.toFixed(2));
+    $("#y").text(pos.y.toFixed(2));
+
+    if ($("#enableTooltip:checked").length > 0) {
+        if (item) {
+            if (previousPoint != item.dataIndex) {
+                previousPoint = item.dataIndex;
+
+                $("#tooltip").remove();
+                var x = new Date(item.datapoint[0]).toUTCString(),
+                    y = item.datapoint[1].toFixed(2);
+
+                showTooltip(item.pageX, item.pageY,
+                            item.series.label + " of " + x + " = " + y);
+            }
+        }
+        else {
+            $("#tooltip").remove();
+            previousPoint = null;            
+        }
+    }
+});
+
 </script>
+
+    <p><input id="enableTooltip" type="checkbox" checked="checked">Enable tooltip</p>
 
 </body>
 </html>
