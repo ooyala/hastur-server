@@ -18,7 +18,6 @@ class HasturApiTest < Test::Unit::TestCase
     curr_time = Time.now.to_i
     Hastur::API.counter("name", 1, curr_time)
     msgs = Hastur::API.__test_msgs__
-    assert_equal(1, msgs.size)
     hash = msgs[-1]
     assert_equal("name", hash[:name])
     assert_equal(curr_time*1000000, hash[:timestamp])
@@ -54,11 +53,22 @@ class HasturApiTest < Test::Unit::TestCase
   end
 
   def test_heartbeat
-    Hastur::API.heartbeat("myApp", nil, :app => "myApp")
+    Hastur::API.heartbeat(nil, :app => "myApp")
     msgs = Hastur::API.__test_msgs__
     hash = msgs[-1]
     assert_equal("myApp", hash[:labels][:app])
     assert_equal("heartbeat", hash[:_route])
+    assert hash[:labels].keys.sort == [:app, :pid, :tid],
+      "Wrong keys #{hash[:labels].keys.inspect} in default labels!"
+  end
+
+  def _test_client_heartbeat
+    sleep 61    # wait for this heartbeat to come
+    msgs = Hastur::API.__test_msgs__
+    hash = msgs[-1]
+    assert_not_nil hash
+    assert_equal("heartbeat", hash[:_route])
+    assert_equal("client_heartbeat", hash[:labels][:app])
     assert hash[:labels].keys.sort == [:app, :pid, :tid],
       "Wrong keys #{hash[:labels].keys.inspect} in default labels!"
   end
@@ -100,5 +110,17 @@ class HasturApiTest < Test::Unit::TestCase
     assert_equal("register_service", hash[:_route])
     assert hash[:labels].keys.sort == [:app, :pid, :tid],
       "Wrong keys #{hash[:labels].keys.inspect} in default labels!"
+  end
+  
+  def test_every
+    s = "every_5_second_test"
+    Hastur::API.every :five_secs do
+      Hastur::API.mark(s, Time.now)
+    end
+    sleep 6
+    msgs = Hastur::API.__test_msgs__
+    hash = msgs[-1]
+    assert_not_nil hash
+    assert_equal(s, hash[:name])
   end
 end

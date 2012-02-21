@@ -21,6 +21,53 @@ module Hastur
     MICRO_SECS_1971 = 31536000000000
     NANO_SECS_1971  = 31536000000000000
 
+    private
+
+    #
+    # Starts a background thread that will execute blocks of code every so often.
+    #
+    def start_client_thread
+      start_time = Time.now
+      @intervals = [:five_secs, :minute, :hour, :day]
+      @interval_values = [5, 60, 60*60, 60*60*2 ]
+      @last_time ||= Hash.new
+      @scheduled_blocks ||= Hash.new
+      # initialize all of the scheduling hashes
+      @intervals.each do |interval|
+        @last_time[interval] = start_time
+        @scheduled_blocks[interval] = []
+      end
+
+      # add a heartbeat background job
+      every :minute do
+        heartbeat(nil, {:app => "client_heartbeat"})
+      end
+      
+      # define a thread that will schedule and execute all of the background jobs.
+      # it is not very accurate on the scheduling, but should not be a problem
+      @bg_thread = Thread.new do
+        begin
+          loop do
+            idx = 0
+            # for each of the interval buckets
+            @intervals.each do |interval|
+              curr_time = Time.now
+              # execute the scheduled items if time is up
+              if curr_time - @last_time[ interval ] >= @interval_values[idx]
+                @last_time[ interval ] = curr_time
+                @scheduled_blocks[ interval ].each { |b| b.call }
+              end
+              idx += 1
+            end
+
+            sleep 1       # rest
+          end
+        rescue Exception => e
+          STDERR.puts e.inspect
+        end
+      end
+    end
+
     protected
 
     #
@@ -208,11 +255,22 @@ module Hastur
     #
     # Constructs and sends heartbeat UDP packets.
     #
-    def heartbeat(name = "app_heartbeat", timestamp = Time.now, labels = {})
+    def heartbeat(timestamp = Time.now, labels = {})
       send_to_udp :_route    => "heartbeat",
                   :timestamp => normalize_timestamp(timestamp),
                   :labels    => default_labels.merge(labels)
     end
 
+    #
+    # Runs a block of code every so often, which is defined by interval. 
+    # Use this method to report statistics at a fixed time interval.
+    #
+    def every( interval, &block )
+      raise "Interval must be one of these: #{@intervals}, you gave #{interval.inspect}" unless @intervals.include?(interval)
+      @scheduled_blocks[interval] << block
+    end
+
+    # Automatically start the background thread for the client.
+    start_client_thread
   end
 end
