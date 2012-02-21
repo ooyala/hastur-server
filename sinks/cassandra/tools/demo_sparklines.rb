@@ -33,11 +33,22 @@ get "/" do
                                           :type => opts[:type].to_sym)
 
   @graph_values = []
+  @num = 1
+  prev_time = nil
 
   query.each do |stat, values|
-    data = [ stat ]
+    data = [ "series#{@num}", stat ]
+    @num += 1
     values.each do |time, value|
-      data << value
+      # Flot timestamps are in milliseconds, not microseconds
+      time = time.to_i / 1000
+
+      # Uniquify timestamp
+      time = time + 1 if prev_time == time
+
+      data << [ time, value.to_f ]
+
+      prev_time = time
     end
     @graph_values << data
   end

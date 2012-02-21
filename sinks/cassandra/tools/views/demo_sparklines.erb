@@ -1,25 +1,57 @@
 <html>
   <head>
     <title>Graphs for Hastur Cassandra Stats</title>
+
+    <!-- <meta http-equiv="refresh" content="5"> -->
+
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
-    <script src="http://omnipotent.net/jquery.sparkline/1.6/jquery.sparkline.min.js"></script>
-    <meta http-equiv="refresh" content="5">
+    <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.js"></script>
 
     <script type="text/javascript">
-      $(function() {
-        $('.sparkline').sparkline('html', { type: 'bar', barColor: 'blue' } );
-      });
     </script>
   </head>
   <body>
     <h1>Graphs for Hastur Cassandra stats </h1>
 
-    <% @graph_values.each do |line| %>
-      <h2> <%= line.shift %> </h2>
+    <div id="placeholder" style="width:600px;height:300px"></div>
 
-      <p>
-        <span class="sparkline"><%= line.join(",") %></span>
-      </p>
+<script type="text/javascript">
+$(function () {
+    <% series_names = @graph_values.map { |one_series| one_series[0] } %>
+
+    <% @graph_values.each do |line| %>
+      <% var_name = line.shift
+         stat_name = line.shift
+       %>
+
+      var <%= var_name %>_name = "<%= stat_name %>";
+      var <%= var_name %> = [ <%= line.map { |t, v| "[ #{t}, #{v} ]" }.join(", ") %> ];
     <% end %>
+
+    $.plot($("#placeholder"), [
+      <% series_names.each do |series| %>
+        {
+          data: <%= series %>,
+          label: <%= series %>_name
+        },
+      <% end %>
+        {
+          data: []  // final empty set to make commas work
+        }
+    ], {
+      series: {
+        points: { show: true }
+      },
+      grid: {
+        hoverable: true,
+        clickable: true
+      },
+      xaxis: {
+        mode: "time"
+      }
+    });
+});
+</script>
+
 </body>
 </html>
