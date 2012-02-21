@@ -66,9 +66,10 @@ module Hastur
       if klass = Hastur::Message.route_class(route)
         # TODO: enable messages being able to request acks without breaking notification acks
         # TODO: this is a bit primitive, needs to be smarter for various message types
-        payload = data[:payload]
-        if klass.json_payload?
+        if klass.json?
           payload = MultiJson.encode(data)
+        else
+          payload = data[:payload]
         end
 
         begin
