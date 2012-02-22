@@ -75,7 +75,7 @@ class CassandraSchemaTest < Scope::TestCase
       Hastur::Cassandra.insert_stat(@cass_client, json, :uuid => FAKE_UUID)
     end
 
-    should "query a stat from StatsArchive" do
+    should "query a stat from StatsGauge" do
       row_key = "#{FAKE_UUID}-1329858600"
 
       cass_output = {
@@ -86,6 +86,36 @@ class CassandraSchemaTest < Scope::TestCase
                                             :finish => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
         returns(cass_output)
       out = Hastur::Cassandra.get_stat(@cass_client, FAKE_UUID, "this.is.a.gauge", :gauge,
+                                       1329858724285438, 1329858724285440)
+      assert_equal({}, out)
+    end
+
+    should "query a stat from StatsCounter" do
+      row_key = "#{FAKE_UUID}-1329858600"
+
+      cass_output = {
+      }
+      @cass_client.expects(:multi_get).with(:StatsCounter, [ "#{FAKE_UUID}-1329858600" ],
+                                            :count => 10_000,
+                                            :start => "some.counter-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :finish => "some.counter-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+        returns(cass_output)
+      out = Hastur::Cassandra.get_stat(@cass_client, FAKE_UUID, "some.counter", :counter,
+                                       1329858724285438, 1329858724285440)
+      assert_equal({}, out)
+    end
+
+    should "query a stat from StatsMark" do
+      row_key = "#{FAKE_UUID}-1329858600"
+
+      cass_output = {
+      }
+      @cass_client.expects(:multi_get).with(:StatsMark, [ "#{FAKE_UUID}-1329858600" ],
+                                            :count => 10_000,
+                                            :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+        returns(cass_output)
+      out = Hastur::Cassandra.get_stat(@cass_client, FAKE_UUID, "this.is.a.mark", :mark,
                                        1329858724285438, 1329858724285440)
       assert_equal({}, out)
     end
