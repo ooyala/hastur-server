@@ -1,12 +1,45 @@
 
 module Hastur
   module Util
-    # application boot time, intentionally not system boot time
-    BOOT_TIME = Time.new.to_f
+    SECS_2100       = 4102444800
+    MILLI_SECS_2100 = 4102444800000
+    MICRO_SECS_2100 = 4102444800000000
+    NANO_SECS_2100  = 4102444800000000000
+    SECS_1971       = 31536000
+    MILLI_SECS_1971 = 31536000000
+    MICRO_SECS_1971 = 31536000000000
+    NANO_SECS_1971  = 31536000000000000
 
-    # return the current uptime in floating point seconds
-    def self.uptime(time=Time.new)
-       time - BOOT_TIME
+    #
+    # Best effort to make all timestamps 64 bit numbers that represent the total number of
+    # microseconds since Jan 1, 1970 at midnight UTC.
+    #
+    def self.timestamp(ts=Time.now)
+      case ts
+        when Time;
+          (ts.to_f * 1_000_000).to_i
+        when SECS_1971..SECS_2100
+          ts * 1_000_000
+        when MILLI_SECS_1971..MILLI_SECS_2100
+          ts * 1_000
+        when MICRO_SECS_1971..MICRO_SECS_2100
+          ts
+        when NANO_SECS_1971..NANO_SECS_2100
+          ts / 1_000
+        else
+          raise "Unable to convert timestamp: #{ts} (class: #{ts.class})"
+      end
+    end
+
+    # application boot time in epoch microseconds, intentionally not system boot time
+    BOOT_TIME = timestamp
+
+    #
+    # return the current uptime in microseconds
+    #
+    def self.uptime(time=Time.now)
+      now = timestamp(time)
+      time - BOOT_TIME
     end
 
     #
