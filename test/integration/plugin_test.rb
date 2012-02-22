@@ -16,7 +16,7 @@ class PluginTest < Test::Unit::TestCase
     @plugin_request = <<EOJSON
 {
   "plugin_path": "/bin/echo",
-  "plugin_args": [#{plugin_text}],
+  "plugin_args": [#{@plugin_text}],
   "timestamp": #{Time.now.to_f * 1_000_000}
 }
 EOJSON
@@ -102,8 +102,6 @@ EOJSON
 
     data = message.decode
     assert_kind_of Hash, data, "message.decode must return a hash"
-
-    #PAYLOAD: {"command":"/bin/echo","args":["{\"status\": 0, \"message\": \"OK - plugin success!\"}"],"pid":659866,"status":"pid 659866 exit 0","stdout":["{\"status\": 0, \"message\": \"OK - plugin success!\"}\n"],"stderr":[]}
 
     assert_kind_of Fixnum, data[:pid], "plugin result 'pid' should be a number"
     assert_kind_of Fixnum, data[:exit], "plugin result 'exit' should be a number"

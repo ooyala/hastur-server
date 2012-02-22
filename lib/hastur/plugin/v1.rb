@@ -38,15 +38,15 @@ module Hastur
       end
 
       def done?
-        begin
-          pid, status = Process.waitpid2(@pid, Process::WNOHANG)
+        return true if @status
 
-          if pid == @pid
-            @status = status
+        begin
+          pid, @status = Process.waitpid2(@pid, Process::WNOHANG)
+
+          if @status and pid == @pid
             return true
           end
         rescue Errno::ECHILD
-          return false
         end
 
         false
@@ -66,7 +66,7 @@ module Hastur
           :command => @command,
           :args    => @args,
           :pid     => @pid,
-          :status  => @status.to_s,
+          :exit    => @status.exitstatus,
           :stdout  => stdout,
           :stderr  => stderr
         }
