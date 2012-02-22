@@ -2,6 +2,7 @@ require 'ffi-rzmq'
 require 'multi_json'
 require 'hastur/exception'
 require 'hastur/util'
+require 'openssl'
 
 module Hastur
   #
@@ -104,9 +105,9 @@ module Hastur
 
   # parsing & creating Hastur envelopes, V1
   # Format:
-  # field: version to           from         ack    sequence timestamp uptime
-  # type:  <int16> <int128>     <int128>     <int8> <int64>  <double>  <double>
-  # pack:  n       H8H4H4H4H12  H8H4H4H4H12  C      Q>       G         G
+  # field: version to           from         ack    sequence timestamp uptime   hmac     router
+  # type:  <int16> <int128>     <int128>     <int8> <int64>  <int64>   <int64>  <int256> <int128> ....
+  # pack:  n       H8H4H4H4H12  H8H4H4H4H12  C      Q>       Q>        Q>       H64      H8H4H4H4H12
   #
   # Version doesn't really have to be bumped unless one of these fields
   # changes type incompatibly.  For example, we can add an HMAC field on the
@@ -116,16 +117,31 @@ module Hastur
   # 
   class Envelope
     VERSION = 1
-    PACK =  %w[ n         H8H4H4H4H12 H8H4H4H4H12 C     Q>         G           G ].join
-    #           0         1-5         6-10        11    12         13          14
-    attr_reader :version, :to,        :from,      :ack, :sequence, :timestamp, :uptime
+    DIGEST = OpenSSL::Digest::Digest.new('sha256')
+
+    # pass the envelope around as a binary packed string - the routers should be able to parse this
+    # quickly without diving into JSON or anything not built directly into the language
+    PACK =  %w[ n         H8H4H4H4H12 H8H4H4H4H12 C     Q>         Q>          Q>       H64    a* ].join
+    #           0         1-5         6-10        11    12         13          14       15     16
+    attr_reader :version, :to,        :from,      :ack, :sequence, :timestamp, :uptime, :hmac, :routers
+
+    ROUTER_OFFSET = 1
 
     #
     # parse a Hastur routing envelope, usually in the multi part just ahead of the payload
-    # it is a binary string with a version, the route (string), an ack flag (1/0), and the UUID
     #
     def self.parse(msg)
       parts = msg.unpack(PACK)
+
+      # the router can append its UUID to the end of the envelope before sending it on so we have
+      # traceroute-like functionality (and debug-ability)
+      routers = []
+      if not parts[16].empty? and parts[16].length % 16 == 0
+        0.upto(parts[16].length / 16) do |i|
+          routers << parts[16].unpack("@#{i}H8H4H4H4H12").join('-')
+        end
+      end
+
       self.new(
         :version   => parts[0],
         :to        => parts[1..5].join('-'),
@@ -134,6 +150,8 @@ module Hastur
         :sequence  => parts[12],
         :timestamp => parts[13],
         :uptime    => parts[14],
+        :hmac      => parts[15],
+        :routers   => routers
       )
     end
 
@@ -141,7 +159,22 @@ module Hastur
     # pack an envelope into a binary string, ready to send on the wire
     #
     def pack
-      [@version, *@to.split(/-/), *@from.split(/-/), @ack, @sequence, @timestamp, @uptime].pack(PACK)
+      routers = ''
+      if @routers.any?
+        routers = @routers.map { |r| r.split('-').pack('H8H4H4H4H12') }.join('')
+      end
+
+      [
+        @version,
+        @to.split(/-/),
+        @from.split(/-/),
+        @ack,
+        @sequence,
+        @timestamp,
+        @uptime,
+        @hmac,
+        routers,
+      ].flatten.pack(PACK)
     end
 
     #
@@ -168,12 +201,14 @@ module Hastur
         raise ArgumentError.new(":from => '#{opts[:from]}' is not a valid UUID")
       end
 
-      @version   = opts[:version] || VERSION
+      @version   = opts[:version]  || VERSION
       @to        = opts[:to]
       @from      = opts[:from]
-      @sequence  = opts[:sequence]  || Hastur::Util.next_seq
-      @timestamp = opts[:timestamp] || (Time.new.to_f*1000000).to_i # convert to microseconds
-      @uptime    = opts[:uptime]    || Hastur::Util.uptime(@timestamp)
+      @sequence  = opts[:sequence] || Hastur::Util.next_seq
+      @timestamp = Hastur::Util.timestamp(opts[:timestamp])
+      @uptime    = opts[:uptime]   || Hastur::Util.uptime(@timestamp)
+      @hmac      = opts[:hmac]     || ''
+      @routers   = opts[:routers]  || []
 
       case opts[:ack]
         when true;   @ack = 1
@@ -181,6 +216,21 @@ module Hastur
         when Fixnum; @ack = opts[:ack]
         else;        @ack = 0
       end
+    end
+
+    #
+    # update the hmac field using the provided secret/data
+    #
+    def update_hmac(secret, data)
+      hmac = OpenSSL::HMAC.digest(DIGEST, secret, data)
+      @hmac = hmac.unpack('H64')[0]
+    end
+
+    #
+    # append a router's uuid to the envelope's routing history
+    #
+    def add_router(router)
+      @routers << router
     end
 
     #
@@ -312,6 +362,8 @@ module Hastur
           raise ArgumentError.new "Exactly one of :data or :payload is required."
         end
 
+        @secret = opts[:secret] || ''
+
         if opts[:zmq_parts] and opts[:zmq_parts].length > 0
           @zmq_parts = opts[:zmq_parts]
         else
@@ -338,6 +390,8 @@ module Hastur
         else
           messages = clone_zmq_parts
         end
+
+        @envelope.update_hmac(@payload, opts[:secret] || @secret)
 
         messages << ZMQ::Message.new(@envelope.pack)
         messages << ZMQ::Message.new(@payload.to_s)

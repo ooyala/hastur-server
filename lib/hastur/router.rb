@@ -25,6 +25,7 @@ module Hastur
       @dynamic                = {} # hash of client_uuid => [socket, [zmq parts]]
       @timestamps             = {} # hash of client_uuid => timestamp (float)
       @handlers               = {} # hash of socket fd => blocks for integrating extra sockets into the poller
+      @hmac_key               = opts[:hmac_key]
       @logger                 = Termite::Logger.new
       @poller                 = ZMQ::Poller.new
       @stats                  = { :to => 0, :from => 0, :to_from => 0, :missed => 0 }
@@ -152,12 +153,16 @@ module Hastur
 
         # everything else is expected to be a Hastur message
         msg = Hastur::Message.recv(socket)
+        envelope = msg.envelope
 
         # convenience variables
-        from = msg.envelope.from
-        to   = msg.envelope.to
-        time = msg.envelope.timestamp
-        
+        from = envelope.from
+        to   = envelope.to
+        time = envelope.timestamp
+
+        # append this router's identity to the message envelope
+        msg.envelope.add_router @uuid
+
         # update the list of when a UUID was last seen
         # use client timestamp to avoid problems due to clock skew
         if @timestamps.has_key? from 
