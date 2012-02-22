@@ -22,7 +22,7 @@ module Hastur
       end
 
       def self.decode_packet(data)
-        time = Time.now # get the time before any processing, statsd times are server-side
+        time = Hastur::Util.timestamp # get the time before any processing, statsd times are server-side
         stat = RE.match(data)
 
         if stat.nil?
@@ -55,7 +55,7 @@ module Hastur
             :name      => name,
             :type      => type,
             :value     => value,
-            :timestamp => time.to_f * 1_000_000,
+            :timestamp => time,
             :labels    => {
               :source      => :statsd,
               :units       => unit,
