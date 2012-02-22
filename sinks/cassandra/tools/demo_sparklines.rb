@@ -3,7 +3,7 @@
 require "trollop"
 
 # Fake UUID for stat insertion
-FAKE_UUID = "910ede70-3f2a-012f-a5f4-109addba6b5d"
+FAKE_UUID = "fafafafa-fafa-fafa-fafa-fafafafafafa"
 
 opts = Trollop.options do
   opt :host,     "Cassandra hostname",              :type => String,     :default => "127.0.0.1:9160"
