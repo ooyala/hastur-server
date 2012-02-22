@@ -16,9 +16,9 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     :name      => "foo.bar",
     :value     => 1024,
     :timestamp => 1329865874428623,
-    :tags      => { :blahblah => 456, :units => "s" }
+    :labels    => { :blahblah => 456, :units => "s" }
   }
-  STAT_JSON = '{"name":"foo.bar","value":1024,"timestamp":1329865874428623,"tags":{"blahblah":456,"units":"s"}}'
+  STAT_JSON = '{"name":"foo.bar","value":1024,"timestamp":1329865874428623,"labels":{"blahblah":456,"units":"s"}}'
   STAT_OBJECT = Hastur::Stat.new(STAT)
 
   ENVELOPE = {
