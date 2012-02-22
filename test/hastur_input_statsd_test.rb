@@ -35,32 +35,32 @@ class TestHasturInputStatsd < MiniTest::Unit::TestCase
     msg = "globs:1|c"
     stat = Hastur::Input::Statsd.decode(msg)
     refute_nil stat, "should match and return data for '#{msg}'"
-    assert_equal "globs", stat[:params][:name],  "name matches input: '#{msg}'"
-    assert_equal 1,     stat[:params][:value], "value matches input: '#{msg}'"
-    assert_equal "c",     stat[:params][:units],  "unit matches input: '#{msg}'"
+    assert_equal "globs", stat[:name],  "name matches input: '#{msg}'"
+    assert_equal 1,       stat[:value], "value matches input: '#{msg}'"
+    assert_equal "c",     stat[:labels][:units], "unit matches input: '#{msg}'"
 
-    stat = Hastur::Input::Statsd.decode("globs:1|c")
+    stat = Hastur::Input::Statsd.decode_packet("globs:1|c")
     refute_nil stat, "should match and return data for '#{msg}'"
-    assert_equal 2, stat[:params][:value], "value incremented: '#{msg}'"
+    assert_equal 2, stat[:value], "value incremented: '#{msg}'"
   end
 
   def test_statsd_counter_simple2
     msg = "gorts:1|c|@0.1"
-    stat = Hastur::Input::Statsd.decode(msg)
+    stat = Hastur::Input::Statsd.decode_packet(msg)
     refute_nil stat, "should match and return data for '#{msg}'"
-    assert_equal "gorts",  stat[:params][:name],        "name matches input: '#{msg}'"
-    assert_equal 1,        stat[:params][:value],       "value matches input: '#{msg}'"
-    assert_equal "c",      stat[:params][:units],       "units matches input: '#{msg}'"
-    assert_equal "@0.1",   stat[:params][:sample_rate], "sample rate matches input: '#{msg}'"
+    assert_equal "gorts",  stat[:name],  "name matches input: '#{msg}'"
+    assert_equal 1,        stat[:value], "value matches input: '#{msg}'"
+    assert_equal "c",      stat[:labels][:units],       "units matches input: '#{msg}'"
+    assert_equal "@0.1",   stat[:labels][:sample_rate], "sample rate matches input: '#{msg}'"
   end
 
   def test_statsd_timer
     msg = "glork:320|ms"
-    stat = Hastur::Input::Statsd.decode(msg)
+    stat = Hastur::Input::Statsd.decode_packet(msg)
     refute_nil stat, "should match and return data for '#{msg}'"
-    assert_equal "glork", stat[:params][:name],  "name matches input: '#{msg}'"
-    assert_equal 320,     stat[:params][:value], "value matches input: '#{msg}'"
-    assert_equal "ms",    stat[:params][:units],  "unit matches input: '#{msg}'"
+    assert_equal "glork", stat[:name],  "name matches input: '#{msg}'"
+    assert_equal 320,     stat[:value], "value matches input: '#{msg}'"
+    assert_equal "ms",    stat[:labels][:units], "unit matches input: '#{msg}'"
   end
 end
 
