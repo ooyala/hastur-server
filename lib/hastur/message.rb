@@ -121,9 +121,9 @@ module Hastur
 
     # pass the envelope around as a binary packed string - the routers should be able to parse this
     # quickly without diving into JSON or anything not built directly into the language
-    PACK =  %w[ n         H8H4H4H4H12 H8H4H4H4H12 C     Q>         Q>          Q>       H64    a* ].join
-    #           0         1-5         6-10        11    12         13          14       15     16
-    attr_reader :version, :to,        :from,      :ack, :sequence, :timestamp, :uptime, :hmac, :routers
+    PACK =  %w[ n         H8H4H4H4H12 H8H4H4H4H12 C     C        Q>         Q>          Q>       H64    a* ].join
+    #           0         1-5         6-10        11    12       13         14          15       16     17
+    attr_reader :version, :to,        :from,      :ack, :resend, :sequence, :timestamp, :uptime, :hmac, :routers
 
     ROUTER_OFFSET = 1
 
@@ -136,9 +136,9 @@ module Hastur
       # the router can append its UUID to the end of the envelope before sending it on so we have
       # traceroute-like functionality (and debug-ability)
       routers = []
-      if not parts[16].empty? and parts[16].length % 16 == 0
-        0.upto(parts[16].length / 16) do |i|
-          routers << parts[16].unpack("@#{i}H8H4H4H4H12").join('-')
+      if not parts[17].empty? and parts[17].length % 16 == 0
+        0.upto(parts[17].length / 16) do |i|
+          routers << parts[17].unpack("@#{i}H8H4H4H4H12").join('-')
         end
       end
 
@@ -147,10 +147,11 @@ module Hastur
         :to        => parts[1..5].join('-'),
         :from      => parts[6..10].join('-'),
         :ack       => parts[11],
-        :sequence  => parts[12],
-        :timestamp => parts[13],
-        :uptime    => parts[14],
-        :hmac      => parts[15],
+        :resend    => parts[12],
+        :sequence  => parts[13],
+        :timestamp => parts[14],
+        :uptime    => parts[15],
+        :hmac      => parts[16],
         :routers   => routers
       )
     end
@@ -169,6 +170,7 @@ module Hastur
         @to.split(/-/),
         @from.split(/-/),
         @ack,
+        @resend,
         @sequence,
         @timestamp,
         @uptime,
@@ -204,6 +206,7 @@ module Hastur
       @version   = opts[:version]  || VERSION
       @to        = opts[:to]
       @from      = opts[:from]
+      @resend    = opts[:resend]   || 0
       @sequence  = opts[:sequence] || Hastur::Util.next_seq
       @timestamp = Hastur::Util.timestamp(opts[:timestamp])
       @uptime    = opts[:uptime]   || Hastur::Util.uptime(@timestamp)
@@ -231,6 +234,13 @@ module Hastur
     #
     def add_router(router)
       @routers << router
+    end
+
+    #
+    # increment resend counter
+    #
+    def incr_resend
+      @resend += 1
     end
 
     #

@@ -75,8 +75,8 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
 
     noack = Hastur::Envelope.new :route => :stat, :from => SecureRandom.uuid, :ack => false
     assert_equal false, noack.ack?
-    assert_equal 182,   noack.to_s.length
-    assert_equal 91,    noack.pack.bytesize
+    assert_equal 184,   noack.to_s.length
+    assert_equal 92,    noack.pack.bytesize
     assert_equal '73746174-0000-0000-0000-000000000000', noack.to
   end
 
