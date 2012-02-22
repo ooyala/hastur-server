@@ -1,8 +1,6 @@
 #!/usr/bin/env ruby
 
-require "sinatra"
 require "trollop"
-require "hastur/sink/cassandra_schema"
 
 # Fake UUID for stat insertion
 FAKE_UUID = "910ede70-3f2a-012f-a5f4-109addba6b5d"
@@ -13,6 +11,9 @@ opts = Trollop.options do
   opt :uuid,     "UUID of client process to query", :type => String,     :default => FAKE_UUID
   opt :type,     "Type of stat: counter or gauge",  :type => String,     :default => "gauge"
 end
+
+require "sinatra"
+require "hastur/sink/cassandra_schema"
 
 Client = Cassandra.new("Hastur", opts[:host])
 
