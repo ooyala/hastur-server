@@ -17,7 +17,7 @@ class CassandraSchemaTest < Scope::TestCase
   "name": "this.is.a.gauge",
   "value": 37.1,
   "timestamp": 1329858724285438,
-  "tags": {
+  "labels": {
     "a": 1,
     "b": 2
   }
