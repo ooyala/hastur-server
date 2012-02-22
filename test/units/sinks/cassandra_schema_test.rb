@@ -76,6 +76,18 @@ class CassandraSchemaTest < Scope::TestCase
     end
 
     should "query a stat from StatsArchive" do
+      row_key = "#{FAKE_UUID}-1329858600"
+
+      cass_output = {
+      }
+      @cass_client.expects(:multi_get).with(:StatsGauge, [ "#{FAKE_UUID}-1329858600" ],
+                                            :count => 10_000,
+                                            :start => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :finish => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+        returns(cass_output)
+      out = Hastur::Cassandra.get_stat(@cass_client, FAKE_UUID, "this.is.a.gauge", :gauge,
+                                       1329858724285438, 1329858724285440)
+      assert_equal({}, out)
     end
 
   end
