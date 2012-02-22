@@ -7,21 +7,12 @@ module Hastur
   #
   class Stat
     attr_reader :name
-    attr_accessor :value, :units, :timestamp, :tags
+    attr_accessor :value, :timestamp, :tags
 
     def initialize(opts)
       raise ArgumentError.new(":name is required")      unless opts[:name]
       raise ArgumentError.new(":value is required")     unless opts[:value]
-      raise ArgumentError.new(":units is required")     unless opts[:units].kind_of?(String)
-
-      # automatically convert Time and Fixnum to a Float
-      if opts[:timestamp].kind_of?(Time) or opts[:timestamp].kind_of?(Fixnum)
-        opts[:timestamp] = opts[:timestamp].to_f
-      end
-
-      unless opts[:timestamp].kind_of?(Float)
-        raise ArgumentError.new(":timestamp is required")
-      end
+      raise ArgumentError.new(":timestamp is required") unless opts[:timestamp]
 
       if opts[:tags] and not opts[:tags].kind_of?(Hash)
         raise ArgumentError.new(":tags must be a hash")
@@ -29,8 +20,7 @@ module Hastur
 
       @name      = opts[:name]
       @value     = opts[:value]
-      @units     = opts[:units]
-      @timestamp = opts[:timestamp]
+      @timestamp = Hastur::Util.timestamp opts[:timestamp]
       @tags      = opts[:tags]
     end
 
@@ -38,7 +28,6 @@ module Hastur
       {
         :name      => @name,
         :value     => @value,
-        :units     => @units,
         :timestamp => @timestamp,
         :tags      => @tags.to_hash
       }
