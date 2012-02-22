@@ -7,7 +7,6 @@ UNIT TESTS:
   hastur_message_test
   hastur_plugin_v1_test - tests various sorts of plugins matching the v1 plugin API
   hastur_router_module_test
-  hastur_stats_test - stats format test (outdated)
   units/assert_test - test packet assertions
   units/monkeypatch_test - testing fuzzy_filter
   units/zmq_utils_test - testing ZMQ utils (outdated?)
