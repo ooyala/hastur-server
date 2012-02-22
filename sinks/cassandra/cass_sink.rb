@@ -9,8 +9,8 @@ require "hastur/sink/cassandra_schema"
 
 opts = Trollop::options do
   banner "Creates a Cassandra keyspace\n\nOptions:"
-  opt :hosts,    "Cassandra Hostname(s)",  :default => "127.0.0.1",        :type => String, :multi => true
-  opt :routers,  "Router URI(s)",          :default => "tcp://127.0.0.1:8127",   :type => String, :multi => true
+  opt :hosts,    "Cassandra Hostname(s)",  :default => ["127.0.0.1"],        :type => :strings, :multi => true
+  opt :routers,  "Router URI(s)",          :default => ["tcp://127.0.0.1:8127"], :type => :strings, :multi => true
   opt :keyspace, "Keyspace",               :default => "Hastur",           :type => String
   opt :hwm,      "ZMQ message queue size", :default => 1,                  :type => :int
 end
