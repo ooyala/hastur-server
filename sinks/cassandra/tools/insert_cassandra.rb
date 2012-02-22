@@ -10,7 +10,7 @@ opts = Trollop.options do
   opt :delay,   "Delay between batches",        :default => 0.1,                   :type => Float
   opt :types,   "Types to insert",              :default => ["gauge"],             :type => :strings
   opt :names,   "Names to insert",              :default => ["test-stat"],         :type => :strings
-  opt :tags,    "Tags to mark as",              :default => ["tag1"],              :type => :strings
+  opt :labels,  "Labels to mark as",            :default => ["tag1"],              :type => :strings
   opt :print,   "Print messages",               :default => false,                 :type => :boolean
   opt :insert,  "Write messages to C*",         :default => true,                  :type => :boolean
   opt :keyspace,"Keyspace to write",            :default => "Hastur",              :type => String
@@ -33,8 +33,8 @@ opts[:batches].times do |batch|
     "name": "#{name}",
     "value": #{value},
     "timestamp": #{(Time.now.to_f * 1_000_000.0).to_i},
-    "tags": {
-  #{opts[:tags].map { |s| "    \"#{s}\": 1" }.join(",\n")}
+    "labels": {
+  #{opts[:labels].map { |s| "    \"#{s}\": 1" }.join(",\n")}
     }
   }
 EOM
