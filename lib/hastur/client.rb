@@ -250,8 +250,13 @@ module Hastur
       if Time.now - @last_heartbeat > @heartbeat
         @logger.debug "Sending heartbeat"
 
-        msg = Hastur::Message::HeartbeatClient.new :from => @uuid,
-          :data => { :last_heartbeat => @last_heartbeat, :heartbeat => @heartbeat }
+        msg = Hastur::Message::HeartbeatClient.new(
+          :from => @uuid,
+          :data => {
+            :last_heartbeat => Hastur::Util.timestamp(@last_heartbeat),
+            :heartbeat      => @heartbeat
+          }
+        )
         msg.send(@router_socket)
 
         @last_heartbeat = Time.now
