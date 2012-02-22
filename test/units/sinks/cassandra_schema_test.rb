@@ -108,5 +108,31 @@ class CassandraSchemaTest < Scope::TestCase
       assert_equal({}, out)
     end
 
+    should "filter a stat from StatsMark" do
+      coded_ts = [1329858724285439].pack("Q>")
+      @cass_client.expects(:multi_get).with(:StatsMark, [ "#{FAKE_UUID}-1329858600" ],
+                                            :count => 10_000,
+                                            :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+        returns({
+                  "uuid1-1234567890" => { },   # Delete row with empty hash
+                  "uuid2-0987654321" => nil,   # Delete row with nil
+                  "uuid3-1234500000" => {
+                    "stat1-#{coded_ts}" => "",
+                    "stat2-#{coded_ts}" => "",
+                    "stat3-#{coded_ts}" => "",
+                    "stat4-#{coded_ts}" => "",
+                  }
+                })
+      out = Hastur::Cassandra.get_stat(@cass_client, FAKE_UUID, "this.is.a.mark", :mark,
+                                       1329858724285438, 1329858724285440)
+      assert_equal({
+                     "stat1" => { 1329858724285439 => "" },
+                     "stat2" => { 1329858724285439 => "" },
+                     "stat3" => { 1329858724285439 => "" },
+                     "stat4" => { 1329858724285439 => "" },
+                   }, out)
+    end
+
   end
 end
