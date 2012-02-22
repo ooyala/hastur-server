@@ -106,11 +106,18 @@ module Hastur
       if opts[:bind]
         status = socket.bind uri
       elsif opts[:connect]
-        status = socket.connect uri
+        if uri.respond_to?(:each)
+          uri.each do |single_uri|
+            status = socket.connect single_uri
+            break if status < 0
+          end
+        else
+          status = socket.connect uri
+        end
       else
         raise "Must provide either bind or connect option to bind_or_connect_socket!"
       end
-      STDERR.puts "New socket #{status >= 0 ? "successfully " : "unable"} #{opts[:bind] ? "listening" : "connecting"} on '#{uri}'."
+      STDERR.puts "New socket #{status >= 0 ? "successfully " : "unable"} #{opts[:bind] ? "listening" : "connecting"} on #{uri.inspect}."
       socket
     end
   end

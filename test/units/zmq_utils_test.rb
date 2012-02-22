@@ -37,5 +37,23 @@ class ZmqUtilsTest < Scope::TestCase
     end
 
     # TODO(noah): make sure we allow localhost with ZMQ version 3.X
+
+    should "allow multiple connect on a new socket" do
+      ctx = mock("ZMQ context")
+      socket = mock("ZMQ socket")
+      ctx.expects(:socket).returns(socket)
+
+      url1 = "http://host1:1234"
+      url2 = "http://host2:5678"
+      url3 = "http://host3.com"
+
+      socket.stubs(:setsockopt)
+      socket.expects(:connect).with(url1).returns(0)
+      socket.expects(:connect).with(url2).returns(0)
+      socket.expects(:connect).with(url3).returns(0)
+
+      connect_socket(ctx, :pull, [ url1, url2, url3 ])
+    end
+
   end
 end
