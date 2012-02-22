@@ -77,15 +77,27 @@ module Hastur
     def insert_stat(cass_client, json_string, options = {})
       hash = MultiJson.decode(json_string, :symbolize_keys => true)
       uuid = options.delete(:uuid) || hash[:uuid]
-
-      name = hash[:name]
-      value = hash[:value]
-      timestamp_usec = hash[:timestamp]
-      colname = col_name(name, timestamp_usec)
-
-      key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec)
-      cf = CF_FOR_STAT_TYPES[hash[:type].to_sym]
+      
+      type = hash[:type].to_sym
+      cf = CF_FOR_STAT_TYPES[type]
       raise "Unknown stat type #{hash[:type].inspect}!" unless cf
+     
+      # retrieve the value depending on the type of stat
+      case type
+      when :counter
+        value = hash[:increment]
+      when :gauge
+        value = hash[:value]
+      when :mark
+        value = ""   # (viet): I think this is okay
+      else
+        raise "Unknown stat type #{cf}"
+      end
+      name = hash[:name]
+      timestamp_usec = hash[:timestamp]
+      
+      colname = col_name(name, timestamp_usec)
+      key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec)
 
       insert_options = { :consistency => 2 }
       insert_options[:consistency] = options[:consistency] if options[:consistency]
