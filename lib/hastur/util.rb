@@ -16,6 +16,8 @@ module Hastur
     #
     def self.timestamp(ts=Time.now)
       case ts
+        when nil, ""
+          (Time.now.to_f * 1_000_000).to_i
         when Time;
           (ts.to_f * 1_000_000).to_i
         when SECS_1971..SECS_2100
