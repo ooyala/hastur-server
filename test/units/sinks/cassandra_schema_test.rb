@@ -108,6 +108,17 @@ class CassandraSchemaTest < Scope::TestCase
       assert_equal({}, out)
     end
 
+    should "query a stat from StatsArchive" do
+      @cass_client.expects(:multi_get).with(:StatsArchive, [ "#{FAKE_UUID}-1329858600" ],
+                                            :count => 10_000,
+                                            :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+        returns({})
+      out = Hastur::Cassandra.get_stat(@cass_client, FAKE_UUID, "this.is.a.mark", nil,
+                                       1329858724285438, 1329858724285440)
+      assert_equal({}, out)
+    end
+
     context "Filtering stats from Cassandra representation" do
       setup do
         @coded_ts_37 = [1329858724285437].pack("Q>")
@@ -136,14 +147,11 @@ class CassandraSchemaTest < Scope::TestCase
         out = Hastur::Cassandra.get_stat(@cass_client, FAKE_UUID, "this.is.a.mark", :mark,
                                          1329858724285438, 1329858724285440)
 
-        # get_stat relies on Cassandra to filter, so it returns all rows
         assert_equal({
                        "this.is.a.mark" => {
-                         1329858724285437 => "",
                          1329858724285438 => "",
                          1329858724285439 => "",
                          1329858724285440 => "",
-                         1329858724285441 => "",
                        }
                      }, out)
       end

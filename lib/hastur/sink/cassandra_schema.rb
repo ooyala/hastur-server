@@ -160,20 +160,29 @@ module Hastur
       cass_client.insert(cf, key, { colname => value.to_msgpack }, insert_options) if subdivide
     end
 
-    def get(cass_client, client_uuid, route, options = {})
-      
-    end
-
-    def get_stat(cass_client, client_uuid, stat, type, start_timestamp, end_timestamp, options = {})
+    def get(cass_client, client_uuid, route, start_timestamp, end_timestamp, options = {})
       if (end_timestamp - start_timestamp) > 72 * HOURS
         raise "Don't query more than 3 days at once yet!"
       end
 
-      start_column = col_name(stat, start_timestamp)
-      end_column = col_name(stat, end_timestamp)
+      raw_get_all(cass_client, client_uuid, route, start_timestamp, end_timestamp, options)
+    end
 
-      __get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp,
-                      options.merge(:start => start_column, :finish => end_column, :type => type))
+    # Get a stat on a given client UUID over a given block of time, up to about a day.
+    # If a :type option is given, pull the values from that type's storage area.  Otherwise,
+    # pull raw JSON information from the all-stats archive area.
+    #
+    # Options:
+    #   :consistency - Cassandra read consistency
+    #   :count - maximum number of entries to return, default 10000
+    #
+    def get_stat(cass_client, client_uuid, stat_name, type, start_timestamp, end_timestamp, options = {})
+      if (end_timestamp - start_timestamp) > 72 * HOURS
+        raise "Don't query more than 3 days at once yet!"
+      end
+
+      raw_get_all(cass_client, client_uuid, "stat", start_timestamp, end_timestamp,
+                  options.merge(:name => stat_name, :subtype => type))
     end
 
     # Get all stats on a given client UUID over a given block of time, up to about a day.
@@ -181,7 +190,7 @@ module Hastur
     # pull raw JSON information from the all-stats archive area.
     #
     # Options:
-    #   :type - :gauge, :mark, :counter or :json (for raw)
+    #   :type - :gauge, :mark, :counter (nil for raw)
     #   :consistency - Cassandra read consistency
     #   :count - maximum number of entries to return, default 10000
     #
@@ -190,13 +199,13 @@ module Hastur
         raise "Don't query more than 3 days at once yet!"
       end
 
-      values = __get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp, options)
-
-      values.each do |stat, hash|
-        hash.delete_if { |time, _| time < start_timestamp || time > end_timestamp }
+      if [ :gauge, :mark, :counter ].include?(options[:type])
+        options[:subtype] = options[:type]
+      elsif options[:type]
+        raise "Unknown type #{options[:type]} passed to get_all_stats!"
       end
 
-      values
+      raw_get_all(cass_client, client_uuid, "stat", start_timestamp, end_timestamp, options)
     end
 
     protected
@@ -244,19 +253,11 @@ module Hastur
       time_packed = col_name[-8..-1]
       timestamp = time_packed.unpack("Q>")[0]
 
-      # Skip col_name[-9], which is the dash between stat name and packed timestamp
-      stat = col_name[0..-10]
+      # Skip col_name[-9], which is the dash between name and packed timestamp
+      name = col_name[0..-10]
 
-      [ stat, timestamp ]
+      [ name, timestamp ]
     end
-
-    CF_FOR_STAT_TYPES = {
-      :json => :StatsArchive,
-      :counter => :StatsCounter,
-      :gauge => :StatsGauge,
-      :timer => :StatsTimer,
-      :mark => :StatsMark,
-    }
 
     def segments_for_timestamps(start_timestamp, end_timestamp, granularity = FIVE_MINUTES)
       start_ts = time_segment_for_timestamp(start_timestamp)
@@ -276,32 +277,83 @@ module Hastur
       segments
     end
 
-    def __get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp, options = {})
-      segments = segments_for_timestamps(start_timestamp, end_timestamp, FIVE_MINUTES)
+    # This is the basic getter for messages.  By default it gets all messages with a given
+    # route and client UUID across the given timestamps.  It can be modified in several
+    # other ways by options:
+    #
+    # Hastur Options:
+    #   :name - the message name such as stat name, heartbeat name or plugin name
+    #   :subtype - message subtype such as :counter for stats (nil for none)
+    #
+    # Cassandra Options:
+    #   :count - maximum number of messages, default 10,000
+    #   :consistency - read consistency
+    #   :start - starting column name in each row
+    #   :finish - final column name in each row
+    #   :reversed - return results in reverse order
+    #
+    # You can specify :name or :start/:finish, but not both.
+    # If you specify :name, it will be implemented by changing the
+    # :start and :finish options to Cassandra.
+    #
+    def raw_get_all(cass_client, client_uuid, route, start_timestamp, end_timestamp, options = {})
+      if options[:name] && (options[:start] || options[:finish])
+        raise "Error: you can't specify the :name option with :start or :finish in raw_get_all!"
+      end
 
-      type = options[:type] || :json
+      schema = SCHEMA[route]
+      raise "No schema for route #{route}!" unless schema
 
-      cf = CF_FOR_STAT_TYPES[type]
-      raise "No such stat type as #{type}!" unless cf
+      name_field = schema[:name]
+      cf = schema[:cf]
+      granularity = schema[:granularity]
 
+      subdivide = false
+      if schema[:subtype] && options[:subtype]
+        subdivide = true
+        sub_key = schema[:subtype].keys[0]     # Example: :type
+
+        subtype = schema[:subtype][sub_key]
+
+        cf = subtype[:cf][options[:subtype]]   # Example: :StatsGauge
+        raise "No such subtype as #{options[:subtype]}!" unless cf
+        value_name = subtype[:value][options[:subtype]] # Example: :value
+        # value_name may be nil, so don't raise on nil
+      end
+
+      segments = segments_for_timestamps(start_timestamp, end_timestamp, granularity)
       row_keys = segments.map { |seg| "#{client_uuid}-#{seg}" }
 
       cass_options = { :count => 10_000 }
       CASS_GET_OPTIONS.each do |opt|
         cass_options[opt] = options[opt] if options.has_key?(opt)
       end
+
+      if name_field && options[:name]
+        # For a named schema like stats or heartbeats, tell Cassandra what column range to query.
+        cass_options[:start] = col_name(options[:name], start_timestamp)
+        cass_options[:finish] = col_name(options[:name], end_timestamp)
+      elsif !name_field
+        # For an unnamed schema like errors, tell Cassandra what column range to query
+        cass_options[:start] = col_name(nil, start_timestamp) unless options[:start]
+        cass_options[:finish] = col_name(nil, end_timestamp) unless options[:finish]
+      end
+
+      # Now, actually do the query
       values = cass_client.multi_get(cf, row_keys, cass_options)
 
-      # Delete empty rows
+      # Delete empty rows in result
       values.delete_if { |_, value| value.nil? || value.empty? }
 
       final_values = {}
       values.each do |row_key, col_hash|
         col_hash.each do |col_key, value|
-          stat, timestamp = col_name_to_name_and_timestamp(col_key)
+          name, timestamp = col_name_to_name_and_timestamp(col_key)
 
-          final_values[stat] ||= {}
-          final_values[stat][timestamp] = MessagePack.unpack(value)
+          if timestamp <= end_timestamp && timestamp >= start_timestamp
+            final_values[name] ||= {}
+            final_values[name][timestamp] = subdivide ? MessagePack.unpack(value) : value
+          end
         end
       end
 
