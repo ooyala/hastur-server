@@ -158,16 +158,16 @@ module Hastur
       CF_FOR_STAT_TYPES[type]
     end
 
-    def segments_for_timestamps(start_timestamp, end_timestamp)
+    def segments_for_timestamps(start_timestamp, end_timestamp, granularity = FIVE_MINUTES)
       start_ts = time_segment_for_timestamp(start_timestamp)
       end_ts = time_segment_for_timestamp(end_timestamp)
 
-      num_ts = (end_ts - start_ts) / 1_000_000 / FIVE_MINUTES
+      num_ts = (end_ts - start_ts) / 1_000_000 / granularity
 
       segments = [start_ts]
       ts = start_ts
       while ts < end_ts
-        ts += FIVE_MINUTES
+        ts += granularity
         segments << ts
       end
 
@@ -177,7 +177,7 @@ module Hastur
     end
 
     def __get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp, options = {})
-      segments = segments_for_timestamps(start_timestamp, end_timestamp)
+      segments = segments_for_timestamps(start_timestamp, end_timestamp, FIVE_MINUTES)
 
       type = options[:type] || :json
 
