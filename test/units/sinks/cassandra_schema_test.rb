@@ -147,6 +147,40 @@ class CassandraSchemaTest < Scope::TestCase
                        }
                      }, out)
       end
+
+      should "prepare stats from Cassandra representation with get_all_stats" do
+        @cass_client.expects(:multi_get).with(:StatsMark, [ "#{FAKE_UUID}-1329858600" ], :count => 10_000).
+          returns({
+                    "uuid1-1234567890" => { },   # Delete row with empty hash
+                    "uuid2-0987654321" => nil,   # Delete row with nil
+                    "uuid3-1234500000" => {
+                      "this.is.a.mark-#{@coded_ts_37}" => "",
+                      "this.is.a.mark-#{@coded_ts_38}" => "",
+                      "this.is.a.mark-#{@coded_ts_39}" => "",
+                      "this.is.a.mark-#{@coded_ts_40}" => "",
+                      "this.is.a.mark-#{@coded_ts_41}" => "",
+                      "this.mark-#{@coded_ts_37}" => "",
+                      "this.mark-#{@coded_ts_38}" => "",
+                      "this.mark-#{@coded_ts_40}" => "",
+                      "this.mark-#{@coded_ts_41}" => "",
+                    }
+                  })
+        out = Hastur::Cassandra.get_all_stats(@cass_client, FAKE_UUID,
+                                              1329858724285438, 1329858724285440, :type => :mark)
+
+        # get_all_stats filters rows by date
+        assert_equal({
+                       "this.is.a.mark" => {
+                         1329858724285438 => "",
+                         1329858724285439 => "",
+                         1329858724285440 => "",
+                       },
+                       "this.mark" => {
+                         1329858724285438 => "",
+                         1329858724285440 => "",
+                       }
+                     }, out)
+      end
     end
 
   end
