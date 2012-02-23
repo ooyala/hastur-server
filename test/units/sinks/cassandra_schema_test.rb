@@ -141,6 +141,16 @@ class CassandraSchemaTest < Scope::TestCase
       assert_equal({}, out)
     end
 
+    should "query a notification from NotificationsArchive" do
+      @cass_client.expects(:multi_get).with(:NotificationsArchive, [ "#{FAKE_UUID}-1329782400" ],
+                                            :count => 10_000,
+                                            :start => "\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :finish => "\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+        returns({})
+      out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "notification", 1329858724285438, 1329858724285440)
+      assert_equal({}, out)
+    end
+
     context "Filtering stats from Cassandra representation" do
       setup do
         @coded_ts_37 = [1329858724285437].pack("Q>")

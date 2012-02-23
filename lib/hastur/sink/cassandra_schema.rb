@@ -210,7 +210,7 @@ module Hastur
 
     protected
 
-    def time_segment_for_timestamp(timestamp, granularity = FIVE_MINUTES)
+    def time_segment_for_timestamp(timestamp, granularity)
       # :name, :value, :timestamp
       time = Time.at(timestamp / 1_000_000)
 
@@ -227,7 +227,7 @@ module Hastur
       date_secs + time_division
     end
 
-    def row_key(uuid, timestamp, granularity = FIVE_MINUTES)
+    def row_key(uuid, timestamp, granularity)
       time_segment = time_segment_for_timestamp(timestamp, granularity)
 
       # The row key uses the client ID spelled out in hex, not compressed to 128 bits.
@@ -259,9 +259,9 @@ module Hastur
       [ name, timestamp ]
     end
 
-    def segments_for_timestamps(start_timestamp, end_timestamp, granularity = FIVE_MINUTES)
-      start_ts = time_segment_for_timestamp(start_timestamp)
-      end_ts = time_segment_for_timestamp(end_timestamp)
+    def segments_for_timestamps(start_timestamp, end_timestamp, granularity)
+      start_ts = time_segment_for_timestamp(start_timestamp, granularity)
+      end_ts = time_segment_for_timestamp(end_timestamp, granularity)
 
       num_ts = (end_ts - start_ts) / 1_000_000 / granularity
 
