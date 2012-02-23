@@ -5,7 +5,7 @@ require 'uuid'
 require 'socket'
 require 'termite'
 
-require "hastur/api"
+require "hastur"
 require "hastur/util"
 require "hastur/plugin/v1"
 require "hastur/input/json"
@@ -128,15 +128,15 @@ module Hastur
       if curr_time - @last_stat_flush > @stats_interval
         t = Process.times
         # amount of user cpu time in seconds
-        Hastur::API.gauge("client.utime", t.utime, curr_time)
+        Hastur.gauge("client.utime", t.utime, curr_time)
         # amount of system cpu time in seconds
-        Hastur::API.gauge("client.stime", t.stime, curr_time)
+        Hastur.gauge("client.stime", t.stime, curr_time)
         # completed child processes' user cpu time in seconds (always 0 on Windows NT)
-        Hastur::API.gauge("client.cutime", t.cutime, curr_time)
+        Hastur.gauge("client.cutime", t.cutime, curr_time)
         # completed child processes' system cpu time in seconds (always 0 on Windows NT)
-        Hastur::API.gauge("client.cstime", t.cstime, curr_time)
-        Hastur::API.counter("client.num_msgs", @num_msgs, curr_time)
-        Hastur::API.counter("client.num_notifications", @num_notifications, curr_time)
+        Hastur.gauge("client.cstime", t.cstime, curr_time)
+        Hastur.counter("client.num_msgs", @num_msgs, curr_time)
+        Hastur.counter("client.num_notifications", @num_notifications, curr_time)
         # reset things
         @last_stat_flush = curr_time
         @num_msgs = 0

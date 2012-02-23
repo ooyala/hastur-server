@@ -1,10 +1,11 @@
 PATH
   remote: .
   specs:
-    hastur (0.0.1)
+    hastur-server (0.0.1)
       bluepill
       cassandra
       ffi-rzmq
+      hastur
       msgpack
       multi_json
       rainbow
@@ -39,6 +40,8 @@ GEM
     ffi (1.0.11)
     ffi-rzmq (0.9.3)
       ffi
+    hastur (1.0.0)
+      multi_json
     i18n (0.6.0)
     json (1.6.5)
     macaddr (1.5.0)
@@ -81,7 +84,7 @@ PLATFORMS
 
 DEPENDENCIES
   erubis
-  hastur!
+  hastur-server!
   mocha
   rerun
   scope

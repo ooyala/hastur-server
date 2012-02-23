@@ -5,7 +5,7 @@ require 'uuid'
 require 'socket'
 require 'termite'
 
-require "hastur/api"
+require "hastur"
 require "hastur/message"
 require "hastur/util"
 
@@ -248,7 +248,7 @@ module Hastur
       curr_time = Time.now
       # After some timeout, send the incremental difference to Hastur
       if curr_time - @last_stat_flush > @stats_interval
-        Hastur::API.counter("router.num_msgs", @num_msgs, curr_time)
+        Hastur.counter("router.num_msgs", @num_msgs, curr_time)
         # reset stats
         @num_msgs = 0
         @last_stat_flush = curr_time
