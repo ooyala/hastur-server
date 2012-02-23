@@ -175,6 +175,15 @@ module Hastur
                       options.merge(:start => start_column, :finish => end_column, :type => type))
     end
 
+    # Get all stats on a given client UUID over a given block of time, up to about a day.
+    # If a :type option is given, pull the values from that type's storage area.  Otherwise,
+    # pull raw JSON information from the all-stats archive area.
+    #
+    # Options:
+    #   :type - :gauge, :mark, :counter or :json (for raw)
+    #   :consistency - Cassandra read consistency
+    #   :count - maximum number of entries to return, default 10000
+    #
     def get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp, options = {})
       if (end_timestamp - start_timestamp) / 1_000_000.0 > 72 * HOURS
         raise "Don't query more than 3 days at once yet!"
@@ -182,7 +191,11 @@ module Hastur
 
       values = __get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp, options)
 
-      # TODO(noah): Filter by timestamp
+      values.each do |stat, hash|
+        hash.delete_if { |time, _| time < start_timestamp || time > end_timestamp }
+      end
+
+      values
     end
   end
 end
