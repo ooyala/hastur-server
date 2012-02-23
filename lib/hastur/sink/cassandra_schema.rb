@@ -51,47 +51,58 @@ module Hastur
           }
         },
         :granularity => FIVE_MINUTES,
+        :name => :name,
       },
       "log" => {
         :cf => :LogsArchive,
         :granularity => FIVE_MINUTES,
+        :name => nil,
       },
       "error" => {
         :cf => :ErrorsArchive,
         :granularity => ONE_DAY,
+        :name => nil,
       },
       "rawdata" => {
         :cf => :RawdataArchive,
         :granularity => ONE_DAY,  # Yes?  No?
+        :name => nil,
       },
       "notification" => {
         :cf => :NotificationsArchive,
         :granularity => ONE_DAY,
+        :name => nil,
       },
       "heartbeat_client" => {
         :cf => :HeartbeatClientsArchive,
         :granularity => FIVE_MINUTES,
+        :name => :name,
       },
       "heartbeat_service" => {
         :cf => :HeartbeatServicesArchive,
         :granularity => FIVE_MINUTES,
+        :name => :name,
       },
       # No plugin_exec - not for sinks
       "plugin_result" => {
         :cf => :PluginResultsArchive,
         :granularity => FIVE_MINUTES,
+        :name => :name,    # Is "name" what we call the plugin name?
       },
       "register_client" => {
         :cf => :RegisterClientsArchive,
         :granularity => ONE_DAY,
+        :name => nil,
       },
       "register_plugin" => {
         :cf => :RegisterPluginsArchive,
         :granularity => ONE_DAY,
+        :name => nil,
       },
       "register_service" => {
         :cf => :RegisterServicesArchive,
         :granularity => ONE_DAY,
+        :name => nil,
       },
     }
 
@@ -150,6 +161,7 @@ module Hastur
     end
 
     def get(cass_client, client_uuid, route, options = {})
+      
     end
 
     def get_stat(cass_client, client_uuid, stat, type, start_timestamp, end_timestamp, options = {})
@@ -216,15 +228,19 @@ module Hastur
       "#{uuid}-#{time_segment}"
     end
 
-    def col_name(stat, timestamp)
-      colname = "#{stat}-#{[timestamp].pack("Q>")}"
+    def col_name(name, timestamp)
+      if name
+        colname = "#{name}-#{[timestamp].pack("Q>")}"
+      else
+        colname = [timestamp].pack("Q>")
+      end
     end
 
     def uuid_from_row_key(row_key)
       row_key.split("-")[0..-2].join("-")
     end
 
-    def col_name_to_stat_and_timestamp(col_name)
+    def col_name_to_name_and_timestamp(col_name)
       time_packed = col_name[-8..-1]
       timestamp = time_packed.unpack("Q>")[0]
 
@@ -282,7 +298,7 @@ module Hastur
       final_values = {}
       values.each do |row_key, col_hash|
         col_hash.each do |col_key, value|
-          stat, timestamp = col_name_to_stat_and_timestamp(col_key)
+          stat, timestamp = col_name_to_name_and_timestamp(col_key)
 
           final_values[stat] ||= {}
           final_values[stat][timestamp] = MessagePack.unpack(value)
