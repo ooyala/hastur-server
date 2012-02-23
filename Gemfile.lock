@@ -5,6 +5,7 @@ PATH
       bluepill
       cassandra
       ffi-rzmq
+      msgpack
       multi_json
       rainbow
       termite
@@ -46,6 +47,7 @@ GEM
     minitest (2.11.1)
     mocha (0.10.4)
       metaclass (~> 0.0.1)
+    msgpack (0.4.6)
     multi_json (1.1.0)
     rack (1.4.1)
     rack-protection (1.2.0)

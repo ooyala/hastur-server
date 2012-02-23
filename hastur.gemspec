@@ -40,4 +40,5 @@ EOS
   s.add_runtime_dependency "cassandra"
   s.add_runtime_dependency "thrift_client", "~>0.7.0"
   s.add_runtime_dependency "rainbow"
+  s.add_runtime_dependency "msgpack"
 end
