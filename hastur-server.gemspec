@@ -1,9 +1,9 @@
 # -*- encoding: utf-8 -*-
 $:.push File.expand_path("../lib", __FILE__)
-require "hastur/version"
+require "hastur-server/version"
 
 Gem::Specification.new do |s|
-  s.name        = "hastur"
+  s.name        = "hastur-server"
   s.version     = Hastur::VERSION
   s.authors     = ["Noah Gibbs"]
   s.email       = ["noah@ooyala.com"]
@@ -41,4 +41,5 @@ EOS
   s.add_runtime_dependency "thrift_client", "~>0.7.0"
   s.add_runtime_dependency "rainbow"
   s.add_runtime_dependency "msgpack"
+  s.add_runtime_dependency "hastur"
 end
