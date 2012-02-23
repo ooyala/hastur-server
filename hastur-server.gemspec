@@ -17,7 +17,7 @@ your systems.  Hastur tracks registrations, statistics and metrics,
 notifications and errors, log entries and plugins.
 EOS
 
-  s.rubyforge_project = "hastur"
+  s.rubyforge_project = "hastur-server"
 
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
