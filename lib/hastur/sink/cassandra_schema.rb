@@ -36,7 +36,7 @@ module Hastur
     SCHEMA = {
       "stat" => {
         :cf => :StatsArchive,
-        :subdivide => {
+        :subtype => {
           :type => {
             :cf => {
               :gauge => :StatsGauge,
@@ -134,12 +134,12 @@ module Hastur
       raise "No schema defined for route #{route}!" unless schema
 
       subdivide = false
-      if schema[:subdivide]
+      if schema[:subtype]
         subdivide = true
-        sub_key = schema[:subdivide].keys[0]   # Example: :type
+        sub_key = schema[:subtype].keys[0]   # Example: :type
         type = hash[sub_key].to_sym            # Example: :gauge
 
-        subtype = schema[:subdivide][sub_key]
+        subtype = schema[:subtype][sub_key]
         raise "Unknown #{route} #{sub_key}: #{type.inspect}!" unless subtype
 
         cf = subtype[:cf][type]                # Example: :StatsGauge
