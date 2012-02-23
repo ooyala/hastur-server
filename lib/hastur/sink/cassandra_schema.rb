@@ -1,5 +1,7 @@
 require "cassandra"
+require "msgpack"
 require "multi_json"
+
 require "date"
 
 # Data types we will eventually want to support:
@@ -61,7 +63,7 @@ module Hastur
       insert_options = { :consistency => 2 }
       insert_options[:consistency] = options[:consistency] if options[:consistency]
       cass_client.insert(:StatsArchive, key, { colname => json_string }, insert_options)
-      cass_client.insert(cf, key, { colname => value.to_s }, insert_options) unless cf == :StatsArchive
+      cass_client.insert(cf, key, { colname => value.to_msgpack }, insert_options) unless cf == :StatsArchive
     end
 
     def get_stat(cass_client, client_uuid, stat, type, start_timestamp, end_timestamp, options = {})
@@ -201,7 +203,7 @@ module Hastur
           stat, timestamp = col_name_to_stat_and_timestamp(col_key)
 
           final_values[stat] ||= {}
-          final_values[stat][timestamp] = value
+          final_values[stat][timestamp] = MessagePack.unpack(value)
         end
       end
 

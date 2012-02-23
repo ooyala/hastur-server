@@ -53,7 +53,7 @@ class CassandraSchemaTest < Scope::TestCase
       row_key = "#{FAKE_UUID}-1329858600"
       colname = "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
       @cass_client.expects(:insert).with(:StatsArchive, row_key, { colname => json }, { :consistency => 2 })
-      @cass_client.expects(:insert).with(:StatsGauge, row_key, { colname => "37.1" }, { :consistency => 2 })
+      @cass_client.expects(:insert).with(:StatsGauge, row_key, { colname => (37.1).to_msgpack }, { :consistency => 2 })
       Hastur::Cassandra.insert_stat(@cass_client, json, :uuid => FAKE_UUID)
     end
 
@@ -62,7 +62,7 @@ class CassandraSchemaTest < Scope::TestCase
       row_key = "#{FAKE_UUID}-1329858600"
       colname = "totally.a.counter-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
       @cass_client.expects(:insert).with(:StatsArchive, row_key, { colname => json }, { :consistency => 2 })
-      @cass_client.expects(:insert).with(:StatsCounter, row_key, { colname => "5" }, { :consistency => 2 })
+      @cass_client.expects(:insert).with(:StatsCounter, row_key, { colname => 5.to_msgpack }, { :consistency => 2 })
       Hastur::Cassandra.insert_stat(@cass_client, json, :uuid => FAKE_UUID)
     end
 
@@ -71,7 +71,7 @@ class CassandraSchemaTest < Scope::TestCase
       row_key = "#{FAKE_UUID}-1329858600"
       colname = "marky.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
       @cass_client.expects(:insert).with(:StatsArchive, row_key, { colname => json }, { :consistency => 2 })
-      @cass_client.expects(:insert).with(:StatsMark, row_key, { colname => "" }, { :consistency => 2 })
+      @cass_client.expects(:insert).with(:StatsMark, row_key, { colname => "".to_msgpack }, { :consistency => 2 })
       Hastur::Cassandra.insert_stat(@cass_client, json, :uuid => FAKE_UUID)
     end
 
@@ -126,11 +126,11 @@ class CassandraSchemaTest < Scope::TestCase
                     "uuid1-1234567890" => { },   # Delete row with empty hash
                     "uuid2-0987654321" => nil,   # Delete row with nil
                     "uuid3-1234500000" => {
-                      "this.is.a.mark-#{@coded_ts_37}" => "",
-                      "this.is.a.mark-#{@coded_ts_38}" => "",
-                      "this.is.a.mark-#{@coded_ts_39}" => "",
-                      "this.is.a.mark-#{@coded_ts_40}" => "",
-                      "this.is.a.mark-#{@coded_ts_41}" => "",
+                      "this.is.a.mark-#{@coded_ts_37}" => "".to_msgpack,
+                      "this.is.a.mark-#{@coded_ts_38}" => "".to_msgpack,
+                      "this.is.a.mark-#{@coded_ts_39}" => "".to_msgpack,
+                      "this.is.a.mark-#{@coded_ts_40}" => "".to_msgpack,
+                      "this.is.a.mark-#{@coded_ts_41}" => "".to_msgpack,
                     }
                   })
         out = Hastur::Cassandra.get_stat(@cass_client, FAKE_UUID, "this.is.a.mark", :mark,
@@ -154,15 +154,15 @@ class CassandraSchemaTest < Scope::TestCase
                     "uuid1-1234567890" => { },   # Delete row with empty hash
                     "uuid2-0987654321" => nil,   # Delete row with nil
                     "uuid3-1234500000" => {
-                      "this.is.a.mark-#{@coded_ts_37}" => "",
-                      "this.is.a.mark-#{@coded_ts_38}" => "",
-                      "this.is.a.mark-#{@coded_ts_39}" => "",
-                      "this.is.a.mark-#{@coded_ts_40}" => "",
-                      "this.is.a.mark-#{@coded_ts_41}" => "",
-                      "this.mark-#{@coded_ts_37}" => "",
-                      "this.mark-#{@coded_ts_38}" => "",
-                      "this.mark-#{@coded_ts_40}" => "",
-                      "this.mark-#{@coded_ts_41}" => "",
+                      "this.is.a.mark-#{@coded_ts_37}" => "".to_msgpack,
+                      "this.is.a.mark-#{@coded_ts_38}" => "".to_msgpack,
+                      "this.is.a.mark-#{@coded_ts_39}" => "".to_msgpack,
+                      "this.is.a.mark-#{@coded_ts_40}" => "".to_msgpack,
+                      "this.is.a.mark-#{@coded_ts_41}" => "".to_msgpack,
+                      "this.mark-#{@coded_ts_37}" => "".to_msgpack,
+                      "this.mark-#{@coded_ts_38}" => "".to_msgpack,
+                      "this.mark-#{@coded_ts_40}" => "".to_msgpack,
+                      "this.mark-#{@coded_ts_41}" => "".to_msgpack,
                     }
                   })
         out = Hastur::Cassandra.get_all_stats(@cass_client, FAKE_UUID,
