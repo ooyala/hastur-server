@@ -9,11 +9,15 @@ require "base_sink"
 # store to disk.
 #
 class NotificationSink < Hastur::Sink
+  
+  #
+  # Starts the receiving the processing of data on the connected URIs.
+  #
   def start
     while @running do
       message = Hastur::Message.recv(@socket)
       uuid = message.envelope.from
-      if Hastur::Cassandra.insert_notification(@client, message.payload, :uuid => uuid)
+      if Hastur::Cassandra.insert(@client, message.payload, :uuid => uuid, :route => "notification")
         # TODO(viet): send a notification ack
       else
         # TODO(viet); log an error complaining that the notification was not successfully persisted
