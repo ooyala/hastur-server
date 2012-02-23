@@ -39,6 +39,20 @@ MARK_JSON = <<JSON
 }
 JSON
 
+NOTIFICATION_JSON = <<JSON
+{
+  "severity": "bogus",
+  "timestamp": 1329858724285438,
+  "tags": [
+    "backlot-oncall",
+    "noah@ooyala.com",
+    "big Jimmy"
+  ],
+  "labels": {
+  }
+}
+JSON
+
 FAKE_UUID = "fafafafa-fafa-fafa-fafa-fafafafafafa"
 
 class CassandraSchemaTest < Scope::TestCase
@@ -73,6 +87,14 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with(:StatsArchive, row_key, { colname => json }, {})
       @cass_client.expects(:insert).with(:StatsMark, row_key, { colname => nil.to_msgpack }, {})
       Hastur::Cassandra.insert_stat(@cass_client, json, :uuid => FAKE_UUID)
+    end
+
+    should "insert a notification into NotificationsArchive" do
+      json = NOTIFICATION_JSON
+      row_key = "#{FAKE_UUID}-1329782400"  # Time rounded down to day
+      colname = "\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"  # Just time, no name
+      @cass_client.expects(:insert).with(:NotificationsArchive, row_key, { colname => json }, {})
+      Hastur::Cassandra.insert(@cass_client, json, :route => "notification", :uuid => FAKE_UUID)
     end
 
     should "query a stat from StatsGauge" do
