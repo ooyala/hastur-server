@@ -52,8 +52,8 @@ class CassandraSchemaTest < Scope::TestCase
       json = GAUGE_JSON
       row_key = "#{FAKE_UUID}-1329858600"
       colname = "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
-      @cass_client.expects(:insert).with(:StatsArchive, row_key, { colname => json }, { :consistency => 2 })
-      @cass_client.expects(:insert).with(:StatsGauge, row_key, { colname => (37.1).to_msgpack }, { :consistency => 2 })
+      @cass_client.expects(:insert).with(:StatsArchive, row_key, { colname => json }, {})
+      @cass_client.expects(:insert).with(:StatsGauge, row_key, { colname => (37.1).to_msgpack }, {})
       Hastur::Cassandra.insert_stat(@cass_client, json, :uuid => FAKE_UUID)
     end
 
@@ -61,8 +61,8 @@ class CassandraSchemaTest < Scope::TestCase
       json = COUNTER_JSON
       row_key = "#{FAKE_UUID}-1329858600"
       colname = "totally.a.counter-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
-      @cass_client.expects(:insert).with(:StatsArchive, row_key, { colname => json }, { :consistency => 2 })
-      @cass_client.expects(:insert).with(:StatsCounter, row_key, { colname => 5.to_msgpack }, { :consistency => 2 })
+      @cass_client.expects(:insert).with(:StatsArchive, row_key, { colname => json }, {})
+      @cass_client.expects(:insert).with(:StatsCounter, row_key, { colname => 5.to_msgpack }, {})
       Hastur::Cassandra.insert_stat(@cass_client, json, :uuid => FAKE_UUID)
     end
 
@@ -70,8 +70,8 @@ class CassandraSchemaTest < Scope::TestCase
       json = MARK_JSON
       row_key = "#{FAKE_UUID}-1329858600"
       colname = "marky.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
-      @cass_client.expects(:insert).with(:StatsArchive, row_key, { colname => json }, { :consistency => 2 })
-      @cass_client.expects(:insert).with(:StatsMark, row_key, { colname => "".to_msgpack }, { :consistency => 2 })
+      @cass_client.expects(:insert).with(:StatsArchive, row_key, { colname => json }, {})
+      @cass_client.expects(:insert).with(:StatsMark, row_key, { colname => nil.to_msgpack }, {})
       Hastur::Cassandra.insert_stat(@cass_client, json, :uuid => FAKE_UUID)
     end
 

@@ -18,7 +18,6 @@ require "date"
 # Needs more study:
 # Plugin results - subdivision?, high resolution, high traffic - like stats?
 
-
 module Hastur
   module Cassandra
     extend self
@@ -29,6 +28,72 @@ module Hastur
     FIVE_MINUTES = 5 * 60
     CASS_GET_OPTIONS = [ :consistency, :count, :start, :finish, :reversed ]
     HOURS = 60 * 60
+    ONE_DAY = 24 * HOURS
+
+    # TODO(noah): support 'nameless' services like errors and logs.
+    # Also maybe support not-stored-by-UUID services (registration?)
+
+    SCHEMA = {
+      "stat" => {
+        :cf => :StatsArchive,
+        :subdivide => {
+          :type => {
+            :cf => {
+              :gauge => :StatsGauge,
+              :counter => :StatsCounter,
+              :mark => :StatsMark,
+            },
+            :value => {
+              :gauge => :value,
+              :counter => :increment,
+              :mark => nil,
+            }
+          }
+        },
+        :granularity => FIVE_MINUTES,
+      },
+      "log" => {
+        :cf => :LogsArchive,
+        :granularity => FIVE_MINUTES,
+      },
+      "error" => {
+        :cf => :ErrorsArchive,
+        :granularity => ONE_DAY,
+      },
+      "rawdata" => {
+        :cf => :RawdataArchive,
+        :granularity => ONE_DAY,  # Yes?  No?
+      },
+      "notification" => {
+        :cf => :NotificationsArchive,
+        :granularity => ONE_DAY,
+      },
+      "heartbeat_client" => {
+        :cf => :HeartbeatClientsArchive,
+        :granularity => FIVE_MINUTES,
+      },
+      "heartbeat_service" => {
+        :cf => :HeartbeatServicesArchive,
+        :granularity => FIVE_MINUTES,
+      },
+      # No plugin_exec - not for sinks
+      "plugin_result" => {
+        :cf => :PluginResultsArchive,
+        :granularity => FIVE_MINUTES,
+      },
+      "register_client" => {
+        :cf => :RegisterClientsArchive,
+        :granularity => ONE_DAY,
+      },
+      "register_plugin" => {
+        :cf => :RegisterPluginsArchive,
+        :granularity => ONE_DAY,
+      },
+      "register_service" => {
+        :cf => :RegisterServicesArchive,
+        :granularity => ONE_DAY,
+      },
+    }
 
     # Options from Twitter Cassandra gem:
     #   :ttl
@@ -36,34 +101,55 @@ module Hastur
     # Additional options:
     #   :uuid - client UUID
     def insert_stat(cass_client, json_string, options = {})
+      insert(cass_client, json_string, options.merge(:route => "stat"))
+    end
+
+    # Options from Twitter Cassandra gem:
+    #   :ttl
+    #   :consistency
+    # Additional options:
+    #   :uuid - client UUID
+    #   :route - sink sent to (required)
+    def insert(cass_client, json_string, options = {})
+      route = options[:route]
+      raise "No :route given!" unless route
+
       hash = MultiJson.decode(json_string, :symbolize_keys => true)
+      raise "Cannot deserialize JSON string!" unless hash
       uuid = options.delete(:uuid) || hash[:uuid]
-      
-      type = hash[:type].to_sym
-      cf = CF_FOR_STAT_TYPES[type]
-      raise "Unknown stat type #{hash[:type].inspect}!" unless cf
-     
-      # retrieve the value depending on the type of stat
-      case type
-      when :counter
-        value = hash[:increment]
-      when :gauge
-        value = hash[:value]
-      when :mark
-        value = ""   # (viet): I think this is okay
-      else
-        raise "Unknown stat type #{cf}"
+      raise "No UUID given!" unless uuid
+
+      schema = SCHEMA[route]
+      raise "No schema defined for route #{route}!" unless schema
+
+      subdivide = false
+      if schema[:subdivide]
+        subdivide = true
+        sub_key = schema[:subdivide].keys[0]   # Example: :type
+        type = hash[sub_key].to_sym            # Example: :gauge
+
+        subtype = schema[:subdivide][sub_key]
+        raise "Unknown #{route} #{sub_key}: #{type.inspect}!" unless subtype
+
+        cf = subtype[:cf][type]                # Example: :StatsGauge
+
+        value_name = subtype[:value][type]     # Example: :value
+        value = hash[value_name]               # Example: 37.914
       end
+
       name = hash[:name]
       timestamp_usec = hash[:timestamp]
-      
-      colname = col_name(name, timestamp_usec)
-      key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec)
 
-      insert_options = { :consistency => 2 }
+      colname = col_name(name, timestamp_usec)
+      key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec, schema[:granularity] || ONE_DAY)
+
+      insert_options = { }  # TODO(noah): Other cassandra options?
       insert_options[:consistency] = options[:consistency] if options[:consistency]
-      cass_client.insert(:StatsArchive, key, { colname => json_string }, insert_options)
-      cass_client.insert(cf, key, { colname => value.to_msgpack }, insert_options) unless cf == :StatsArchive
+      cass_client.insert(schema[:cf], key, { colname => json_string }, insert_options)
+      cass_client.insert(cf, key, { colname => value.to_msgpack }, insert_options) if subdivide
+    end
+
+    def get(cass_client, client_uuid, route, options = {})
     end
 
     def get_stat(cass_client, client_uuid, stat, type, start_timestamp, end_timestamp, options = {})
@@ -155,10 +241,6 @@ module Hastur
       :timer => :StatsTimer,
       :mark => :StatsMark,
     }
-
-    def column_family_for_stat_type(type)
-      CF_FOR_STAT_TYPES[type]
-    end
 
     def segments_for_timestamps(start_timestamp, end_timestamp, granularity = FIVE_MINUTES)
       start_ts = time_segment_for_timestamp(start_timestamp)
