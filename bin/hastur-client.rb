@@ -9,11 +9,11 @@ require 'uuid'
 require 'socket'
 require 'termite'
 
-require "hastur/zmq_utils"
-require "hastur/client/uuid"
-require "hastur/plugin/v1"
-require "hastur/client"
-require "hastur/util"
+require "hastur-server/zmq_utils"
+require "hastur-server/client/uuid"
+require "hastur-server/plugin/v1"
+require "hastur-server/client"
+require "hastur-server/util"
 
 MultiJson.engine = :yajl
 NOTIFICATION_INTERVAL = 5   # Hardcode for now

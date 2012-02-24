@@ -6,7 +6,7 @@ require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'nodule/console'
 
-require 'hastur/message'
+require 'hastur-server/message'
 require 'multi_json'
 require 'rainbow'
 

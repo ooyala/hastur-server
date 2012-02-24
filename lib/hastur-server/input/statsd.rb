@@ -1,5 +1,5 @@
-require 'hastur/util'
-require 'hastur/exception'
+require 'hastur-server/util'
+require 'hastur-server/exception'
 
 module Hastur
   module Input

@@ -6,7 +6,7 @@ require 'yajl'
 require 'multi_json'
 require 'trollop'
 
-require_relative "../lib/hastur/zmq_utils"
+require_relative "../lib/hastur-server/zmq_utils"
 
 MultiJson.engine = :yajl
 

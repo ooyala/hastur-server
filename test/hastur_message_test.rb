@@ -5,8 +5,7 @@ require 'rubygems'
 require 'minitest/autorun'
 require 'ffi-rzmq'
 require 'securerandom'
-require 'hastur/stat'
-require 'hastur/message'
+require 'hastur-server/message'
 
 class TestClassHasturMessage < MiniTest::Unit::TestCase
   UUID = "01234567-89ab-cdef-deaf-cafedeadbeef"
@@ -19,7 +18,6 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     :labels    => { :blahblah => 456, :units => "s" }
   }
   STAT_JSON = '{"name":"foo.bar","value":1024,"timestamp":1329865874428623,"labels":{"blahblah":456,"units":"s"}}'
-  STAT_OBJECT = Hastur::Stat.new(STAT)
 
   ENVELOPE = {
     :from      => "be7f4980-6a1f-4120-b0ce-26de709afcf6",

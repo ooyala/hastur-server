@@ -1,6 +1,6 @@
 require_relative "../../test_helper"
 
-require "hastur/sink/cassandra_schema"
+require "hastur-server/sink/cassandra_schema"
 
 GAUGE_JSON = <<JSON
 {

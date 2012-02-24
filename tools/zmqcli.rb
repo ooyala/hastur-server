@@ -9,7 +9,7 @@ require 'trollop'
 require 'rainbow'
 require 'uuid'
 
-require_relative "../lib/hastur/zmq_utils"
+require "hastur-server/zmq_utils"
 
 ZMQ_TYPELIST = ZMQ::SocketTypeNameMap.values.join(", ")
 

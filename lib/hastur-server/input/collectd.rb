@@ -10,7 +10,7 @@
 # http://ruby-doc.org/core-1.9.3/String.html#method-i-unpack
 # perldoc -f pack # (the perl pack docs are more thorough)
 
-require 'hastur/exception'
+require 'hastur-server/exception'
 require 'multi_json'
 
 module Hastur

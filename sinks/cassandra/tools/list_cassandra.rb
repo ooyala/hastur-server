@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-require "hastur/sink/cassandra_schema"
+require "hastur-server/sink/cassandra_schema"
 require "cassandra"
 require "trollop"
 require "date"

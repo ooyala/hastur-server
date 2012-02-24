@@ -2,7 +2,7 @@
 
 require "test/unit"
 require_relative "./integration_test_helper"
-require 'hastur/message'
+require 'hastur-server/message'
 require 'multi_json'
 require 'nodule/topology'
 require 'nodule/process'

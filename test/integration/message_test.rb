@@ -5,8 +5,8 @@ require 'rubygems'
 require 'minitest/autorun'
 require 'ffi-rzmq'
 require 'securerandom'
-require 'hastur/stat'
-require 'hastur/message'
+require 'hastur-server/stat'
+require 'hastur-server/message'
 
 # This test is complicated on purpose. The idea is to over-parallelize with minimal locking
 # shake out concurrency bugs. It has already exposed a few interesting bugs that are now fixed.

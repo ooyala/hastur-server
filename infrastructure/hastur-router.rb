@@ -8,8 +8,8 @@ require 'multi_json'
 require 'trollop'
 require 'termite'
 
-require "hastur/message"
-require "hastur/router"
+require "hastur-server/message"
+require "hastur-server/router"
 
 Ecology.read("hastur-router.ecology")
 MultiJson.engine = :yajl

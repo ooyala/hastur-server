@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require "trollop"
-require "hastur/sink/cassandra_schema"
+require "hastur-server/sink/cassandra_schema"
 require "time"
 
 opts = Trollop.options do

@@ -1,5 +1,6 @@
+require_relative "../test_helper"
 require "test/unit"
-require_relative "../../lib/hastur/monkeypatch"
+require "hastur-server/monkeypatch"
 
 class ArrayTest < Test::Unit::TestCase
   def test_fuzzy_filter_1

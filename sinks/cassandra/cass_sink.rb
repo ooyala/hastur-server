@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 
 require "trollop"
-require "hastur/zmq_utils"
-require "hastur/message"
-require "hastur/sink/cassandra_schema"
+require "hastur-server/zmq_utils"
+require "hastur-server/message"
+require "hastur-server/sink/cassandra_schema"
 
 opts = Trollop::options do
   banner "Creates a Cassandra keyspace\n\nOptions:"

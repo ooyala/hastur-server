@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require "test/unit"
-require 'hastur/message'
+require 'hastur-server/message'
 require 'nodule/topology'
 require 'nodule/process'
 require 'nodule/unixsocket'

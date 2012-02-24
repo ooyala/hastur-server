@@ -7,9 +7,9 @@ require 'ffi-rzmq'
 require 'securerandom'
 require 'socket'
 
-require 'hastur/client'
-require 'hastur/router'
-require 'hastur/message'
+require 'hastur-server/client'
+require 'hastur-server/router'
+require 'hastur-server/message'
 
 class TestClassHasturRouterModule < MiniTest::Unit::TestCase
   ROUTER_UUID = SecureRandom.uuid

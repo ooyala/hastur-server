@@ -7,8 +7,8 @@ require 'ffi-rzmq'
 require 'securerandom'
 require 'socket'
 
-require 'hastur/client'
-require 'hastur/message'
+require 'hastur-server/client'
+require 'hastur-server/message'
 
 class TestClassHasturClientModule < MiniTest::Unit::TestCase
   ROUTER_URI = "ipc://router-#{self.class.to_s}"

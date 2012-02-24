@@ -5,13 +5,13 @@ require 'uuid'
 require 'socket'
 require 'termite'
 
-require "hastur"
-require "hastur/util"
-require "hastur/plugin/v1"
-require "hastur/input/json"
-require "hastur/input/statsd"
-require "hastur/input/collectd"
-require "hastur/message"
+require "hastur-server"
+require "hastur-server/util"
+require "hastur-server/plugin/v1"
+require "hastur-server/input/json"
+require "hastur-server/input/statsd"
+require "hastur-server/input/collectd"
+require "hastur-server/message"
 
 module Hastur
   class Client

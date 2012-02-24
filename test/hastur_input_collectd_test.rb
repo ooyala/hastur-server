@@ -5,7 +5,7 @@ require 'minitest/autorun'
 
 $:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
 
-require 'hastur/input/collectd'
+require 'hastur-server/input/collectd'
 
 PACKET_DIR = File.join(File.dirname(__FILE__), 'data', 'collectd-raw-packets')
 

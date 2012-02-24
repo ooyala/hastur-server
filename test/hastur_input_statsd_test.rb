@@ -3,7 +3,7 @@ $:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
 
 require 'rubygems'
 require 'minitest/autorun'
-require 'hastur/input/statsd'
+require 'hastur-server/input/statsd'
 
 class TestHasturInputStatsd < MiniTest::Unit::TestCase
   def test_binary_garbage

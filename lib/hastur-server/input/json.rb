@@ -1,6 +1,6 @@
 require 'multi_json'
 require 'yajl'
-require 'hastur/exception'
+require 'hastur-server/exception'
 
 MultiJson.engine = :yajl
 

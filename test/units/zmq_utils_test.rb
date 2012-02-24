@@ -1,5 +1,5 @@
 require "test_helper"
-require "hastur/zmq_utils"
+require "hastur-server/zmq_utils"
 
 class ZmqUtilsTest < Scope::TestCase
   include Hastur::ZMQUtils

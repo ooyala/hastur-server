@@ -5,9 +5,9 @@ require 'uuid'
 require 'socket'
 require 'termite'
 
-require "hastur"
-require "hastur/message"
-require "hastur/util"
+require "hastur-server"
+require "hastur-server/message"
+require "hastur-server/util"
 
 module Hastur
   class Router

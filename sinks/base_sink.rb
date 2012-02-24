@@ -1,7 +1,7 @@
 require "trollop"
-require "hastur/message"
-require "hastur/zmq_utils"
-require "hastur/sink/cassandra_schema"
+require "hastur-server/message"
+require "hastur-server/zmq_utils"
+require "hastur-server/sink/cassandra_schema"
 
 module Hastur
   class Sink

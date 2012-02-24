@@ -13,7 +13,7 @@ opts = Trollop.options do
 end
 
 require "sinatra"
-require "hastur/sink/cassandra_schema"
+require "hastur-server/sink/cassandra_schema"
 
 Client = Cassandra.new("Hastur", opts[:host])
 

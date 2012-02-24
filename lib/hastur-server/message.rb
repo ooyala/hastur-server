@@ -1,7 +1,7 @@
 require 'ffi-rzmq'
 require 'multi_json'
-require 'hastur/exception'
-require 'hastur/util'
+require 'hastur-server/exception'
+require 'hastur-server/util'
 require 'openssl'
 
 module Hastur
