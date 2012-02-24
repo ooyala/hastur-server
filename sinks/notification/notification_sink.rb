@@ -6,7 +6,7 @@ require "base_sink"
 # Notification sink will drain several routers' sockets and push the notification
 # messages into Cassandra. Upon a successful Cassandra write, it will send a 
 # notification ack message acknowledging that the notification was successfully
-# store to disk.
+# stored to disk.
 #
 class NotificationSink < Hastur::Sink
   
