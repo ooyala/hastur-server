@@ -5,7 +5,7 @@ require 'uuid'
 require 'socket'
 require 'termite'
 
-require "hastur-server"
+require "hastur"
 require "hastur-server/util"
 require "hastur-server/plugin/v1"
 require "hastur-server/input/json"
