@@ -1,111 +1,68 @@
 #!/usr/bin/env ruby
 
+$LOAD_PATH.unshift File.dirname(__FILE__)
+
 require "test/unit"
-require_relative "./integration_test_helper"
+require "integration_test_helper"
+
+require "nodule/topology"
+require "nodule/process"
+require "nodule/console"
+require "nodule/unixsocket"
+require "nodule/zeromq"
+require "multi_json"
 
 class RegisterTest < Test::Unit::TestCase
 
   def test_register
-    # wait for 5 second for registration to happen
-    sleep 5
-    # get messages from the register shims
-    sec_1_messages = Hastur::Test::ZMQ.all_payloads_to(:register)
-    # verify that the messages on the register shims are registration messages
-    sec_1_messages.each do |m|
-      assert_equal("register_client", m['method'])
-    end
-    # verify that the count of messages on the notify shims are accurate
-    assert_equal(2, sec_1_messages.size)
+    sleep 1
+
+    messages = @topology[:register].output
+    payloads = messages.map { |m| MultiJson.decode(m[-1]) }
+
+    assert_equal(1, payloads.count)
+    assert_equal("register_client", payloads[0]["_route"])
   end
 
   def setup
-    Dir.chdir HASTUR_ROOT
-    processes = [
-                 {
-                   :name => :client1,
-                   :command => "./bin/hastur-client.rb --router <%= zmq[:router] %> --port 8125",
-                   # TODO(noah): mock UDP port to catch or forward messages?
-                 },
-                 {
-                   :name => :client2,
-                   :command => "./bin/hastur-client.rb --router <%= zmq[:router] %> --port 8126",
-                   # TODO(noah): mock UDP port to catch or forward messages?
-                 },
-                 {
-                   :name => :router,
-                   :command => <<EOS ,
-    ./infrastructure/hastur-router.rb --heartbeat-uri <%= zmq[:heartbeat] %>
-                     --register-uri <%= zmq[:register] %>
-                     --notify-uri <%= zmq[:notify] %> --stats-uri <%= zmq[:stats] %>
-                     --logs-uri <%= zmq[:logs] %> --error-uri <%= zmq[:error] %>
-                     --router-uri <%= zmq[:router] %> --from-sink-uri <%= zmq[:from_sink] %>
-EOS
-                   :resources => {
-                     :zmq => [
-                       { :name => :router, :type => :router, :listen => 4321 },
-                       { :name => :register, :type => :push, :listen => 4330 },
-                       { :name => :notify, :type => :push, :listen => 4331 },
-                       { :name => :stats, :type => :push, :listen => 4332 },
-                       { :name => :heartbeat, :type => :push, :listen => 4333 },
-                       { :name => :logs, :type => :push, :listen => 4334 },
-                       { :name => :error, :type => :push, :listen => 4350 },
-#                       { :name => :pub, :type => :pub, :listen => 4322 },
-                       { :name => :from_sink, :type => :pull, :listen => 4323 }
-                     ],
-                   }
-                 },
-                 {
-                   :name => :register_worker,
-                   :command => <<EOS ,
-    ./tools/zmqcli.rb --color yellow --precolor blue --type pull --connect --prefix [register] --uri <%= zmq[:register] %>
-EOS
-                 },
-                 {
-                   :name => :notify_worker,
-                   :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [notify] --uri <%= zmq[:notify] %>
-EOS
-                 },
-                 {
-                   :name => :stats_worker,
-                   :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [stats] --uri <%= zmq[:stats] %>
-EOS
-                 },
-                 {
-                   :name => :heartbeat_worker,
-                   :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [heartbeat] --uri <%= zmq[:heartbeat] %>
-EOS
-                 },
-                 {
-                   :name => :logs_worker,
-                   :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [logs] --uri <%= zmq[:logs] %>
-EOS
-                 },
-                 {
-                   :name => :errors_worker,
-                   :command => <<EOS ,
-    ./tools/zmqcli.rb --type pull --connect --prefix [error] --uri <%= zmq[:error] %>
-EOS
-                 },
-    ]
+    @topology = Nodule::Topology.new(
+      :greenio      => Nodule::Console.new(:fg => :green),
+      :redio        => Nodule::Console.new(:fg => :red),
+      :client1unix  => Nodule::UnixSocket.new,
+      :router       => Nodule::ZeroMQ.new(:uri => :gen),
+      :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :register     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 1),
+      :notification => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :stat         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :log          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :control      => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :plugin_exec  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
 
-    @topology = Hastur::Test::Topology.new(processes)
-    puts "Starting up all of the topology components..."
+      :client1svc   => Nodule::Process.new(
+        HASTUR_CLIENT_BIN, "--uuid", C1UUID, "--router", :router, :stdout => :greenio, :stderr => :redio
+      ),
+
+      :routersvc    => Nodule::Process.new(
+        HASTUR_ROUTER_BIN,
+        "--uuid",         R1UUID,
+        "--heartbeat",    :heartbeat,
+        "--register",     :register,
+        "--notification", :notification,
+        "--stat",         :stat,
+        "--log",          :log,
+        "--error",        :error,
+        "--router",       :router,
+        "--plugin-exec",  :plugin_exec,
+        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
+      ),
+    )
+
     @topology.start_all
-    puts "Started up all of the topology components..."
   end
 
   def teardown
-    puts "Tearing down all of the topology components..."
     @topology.stop_all
-    `pkill -f hastur-cient`
-    `pkill -f hastur-router`
-    `pkill -f zmqcli`
-    @topology.reset
-    puts "Topology is torn down..."
   end
 end
 
