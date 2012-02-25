@@ -8,3 +8,15 @@ CREATE COLUMN FAMILY StatsCounter;
 CREATE COLUMN FAMILY StatsGauge;
 CREATE COLUMN FAMILY StatsTimer;
 CREATE COLUMN FAMILY StatsMark;
+
+CREATE COLUMN FAMILY LogsArchive;
+CREATE COLUMN FAMILY ErrorsArchive;
+CREATE COLUMN FAMILY RawdataArchive;
+CREATE COLUMN FAMILY NotificationsArchive;
+CREATE COLUMN FAMILY HeartbeatClientsArchive;
+CREATE COLUMN FAMILY HeartbeatServicesArchive;
+CREATE COLUMN FAMILY PluginResultsArchive;
+CREATE COLUMN FAMILY RegisterClientsArchive;
+CREATE COLUMN FAMILY RegisterPluginsArchive;
+CREATE COLUMN FAMILY RegisterServicesArchive;
+
