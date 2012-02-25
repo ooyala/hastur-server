@@ -355,6 +355,8 @@ module Hastur
       # this should only really ever get called via super() in the
       # subclasses below
       def initialize(opts)
+        raise ArgumentError.new "Only hash arguments are supported." unless opts.kind_of? Hash
+
         if opts[:envelope].kind_of? Hastur::Envelope
           @envelope = opts[:envelope]
         # automatically construct an envelope if :from & :route are provided (all flags passed through)

@@ -159,7 +159,11 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   def test_base
     assert_raises ArgumentError do
       Hastur::Message::Base.new()
+    end
+    assert_raises ArgumentError do
       Hastur::Message::Base.new(1)
+    end
+    assert_raises ArgumentError do
       Hastur::Message::Base.new(1, 2)
     end
   end
