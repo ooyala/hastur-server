@@ -36,6 +36,10 @@ module Hastur
       DS_TYPE_DERIVE       = 2
       DS_TYPE_ABSOLUTE     = 3
 
+      # Collectd time is in 2^-30 increments
+      # http://collectd.org/wiki/index.php/High_resolution_time_format
+      CTIME_TO_US          = 1073.741824
+
       # a small selection of collectd types from types.db so we can generate sensible names
       MULTIVALUE_TYPES = {
         :compression            => [:uncompressed, :compressed],
@@ -155,13 +159,13 @@ module Hastur
             value = self.unpack_uint64(data, offset, len)
           when TYPE_TIME_HR
             key = :time_hr
-            value = self.unpack_uint64(data, offset, len)
+            value = (self.unpack_uint64(data, offset, len) / 1073.741824).to_i
           when TYPE_INTERVAL
             key = :interval
             value = self.unpack_uint64(data, offset, len)
           when TYPE_INTERVAL_HR
             key = :interval_hr
-            value = self.unpack_uint64(data, offset, len)
+            value = (self.unpack_uint64(data, offset, len) / 1073.741824).to_i
           when TYPE_SEVERITY
             key = :severity
             value = self.unpack_uint64(data, offset, len)
@@ -207,7 +211,11 @@ module Hastur
       def self.unpack_uint64(data, offset, len)
         offset += 4
         len    -= 4
-        data.unpack('@' + offset.to_s + 'Q')[0]
+
+        bin = data.unpack('@' + offset.to_s + 'a8')
+        # Ruby < 1.9.3 doesn't really support uint64_t (Q) in unpack
+        vbin = bin[0].unpack('NN')
+        ((vbin[0] << 32) + vbin[1]).to_i
       end
 
       # Decode a values part. These are a bit different from the other parts since they
