@@ -1,11 +1,10 @@
 #!/usr/bin/env ruby
-$:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
+$:.unshift File.join(File.dirname(__FILE__), '..', '..', 'lib')
 
 require 'rubygems'
 require 'minitest/autorun'
 require 'ffi-rzmq'
 require 'securerandom'
-require 'hastur-server/stat'
 require 'hastur-server/message'
 
 # This test is complicated on purpose. The idea is to over-parallelize with minimal locking
