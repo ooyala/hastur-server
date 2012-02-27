@@ -111,6 +111,8 @@ class TestClassHasturRouterModule < MiniTest::Unit::TestCase
 
     count = 0
     while @router_running
+      # TODO: Fix me: undefined method `poll' for Hastur::Router. This error also
+      #       causes the test to hang. Need to fix that too.
       router.poll(1)
       break if count > 20
     end

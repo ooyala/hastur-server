@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+# TODO: This is not a proper test. Need to wrap this up with proper assertions.
+
 require "rubygems"
 require 'hastur-server/plugin/v1'
 
