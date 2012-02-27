@@ -26,7 +26,3 @@ class NotificationSink < Hastur::Sink
   end
 end
 
-sink = NotificationSink.new
-sink.start
-
-
