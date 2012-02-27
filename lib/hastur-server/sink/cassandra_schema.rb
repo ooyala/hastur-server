@@ -30,9 +30,6 @@ module Hastur
     HOURS = 60 * 60
     ONE_DAY = 24 * HOURS
 
-    # TODO(noah): support 'nameless' services like errors and logs.
-    # Also maybe support not-stored-by-UUID services (registration?)
-
     SCHEMA = {
       "stat" => {
         :cf => :StatsArchive,
@@ -79,18 +76,8 @@ module Hastur
         :name => :name,
       },
       # No plugin_exec - not for sinks
-      "register_client" => {
-        :cf => :RegisterClientsArchive,
-        :granularity => ONE_DAY,
-        :name => nil,
-      },
-      "register_plugin" => {
-        :cf => :RegisterPluginsArchive,
-        :granularity => ONE_DAY,
-        :name => nil,
-      },
-      "register_service" => {
-        :cf => :RegisterServicesArchive,
+      "registration" => {
+        :cf => :RegistrationsArchive,
         :granularity => ONE_DAY,
         :name => nil,
       },
@@ -144,10 +131,15 @@ module Hastur
       colname = col_name(name, timestamp_usec)
       key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec, schema[:granularity] || ONE_DAY)
 
-      insert_options = { }  # TODO(noah): Other cassandra options?
+      insert_options = { }
       insert_options[:consistency] = options[:consistency] if options[:consistency]
-      cass_client.insert(schema[:cf], key, { colname => json_string }, insert_options)
-      cass_client.insert(cf, key, { colname => value.to_msgpack }, insert_options) if subdivide
+      now_ts = Hastur.normalize_timestamp
+      cass_client.batch do |client|
+        client.insert(schema[:cf], key, { colname => json_string,
+                        "last_write" => now_ts, "last_access" => now_ts }, insert_options)
+        client.insert(cf, key, { colname => value.to_msgpack, "last_write" => now_ts,
+                        "last_access" => now_ts }, insert_options) if subdivide
+      end
     end
 
     def get(cass_client, client_uuid, route, start_timestamp, end_timestamp, options = {})
@@ -331,6 +323,14 @@ module Hastur
 
       # Now, actually do the query
       values = cass_client.multi_get(cf, row_keys, cass_options)
+
+      # Mark rows as accessed
+      now_ts = Hastur.normalize_timestamp(nil)
+      cass_client.batch do |client|
+        row_keys.each do |key|
+          client.insert(cf, key, "last_access" => now_ts)
+        end
+      end
 
       # Delete empty rows in result
       values.delete_if { |_, value| value.nil? || value.empty? }
