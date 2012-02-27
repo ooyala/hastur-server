@@ -46,7 +46,6 @@ class TestClassHasturClientModule < MiniTest::Unit::TestCase
 
     loop do
       msg = Hastur::Message.recv(router)
-      puts "MSG: #{msg.to_json}"
       case msg
         when Hastur::Message::Stat
           seen[msg.class.to_s] = msg.decode
