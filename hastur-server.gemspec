@@ -31,6 +31,8 @@ EOS
   s.add_development_dependency "rerun"
   s.add_development_dependency "sinatra"
   s.add_development_dependency "nodule"
+  s.add_development_dependency "yard"
+  s.add_development_dependency "redcarpet"
   s.add_runtime_dependency "yajl-ruby"
   s.add_runtime_dependency "multi_json"
   s.add_runtime_dependency "ffi-rzmq"
