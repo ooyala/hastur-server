@@ -11,8 +11,10 @@ module Hastur
     NANO_SECS_1971  = 31536000000000000
 
     #
-    # Best effort to make all timestamps 64 bit numbers that represent the total number of
-    # microseconds since Jan 1, 1970 at midnight UTC.
+    # Best effort to make all timestamps be Hastur timestamps, 64 bit
+    # numbers that represent the total number of microseconds since Jan
+    # 1, 1970 at midnight UTC.  Default to giving Time.now as a Hastur
+    # timestamp.
     #
     def self.timestamp(ts=Time.now)
       case ts
