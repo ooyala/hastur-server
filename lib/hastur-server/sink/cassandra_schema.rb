@@ -68,27 +68,17 @@ module Hastur
         :granularity => ONE_DAY,  # Yes?  No?
         :name => nil,
       },
-      "notification" => {
-        :cf => :NotificationsArchive,
+      "event" => {
+        :cf => :EventsArchive,
         :granularity => ONE_DAY,
         :name => nil,
       },
-      "heartbeat_client" => {
-        :cf => :HeartbeatClientsArchive,
-        :granularity => FIVE_MINUTES,
-        :name => :name,
-      },
-      "heartbeat_service" => {
-        :cf => :HeartbeatServicesArchive,
+      "heartbeat" => {
+        :cf => :HeartbeatsArchive,
         :granularity => FIVE_MINUTES,
         :name => :name,
       },
       # No plugin_exec - not for sinks
-      "plugin_result" => {
-        :cf => :PluginResultsArchive,
-        :granularity => FIVE_MINUTES,
-        :name => :name,    # Is "name" what we call the plugin name?
-      },
       "register_client" => {
         :cf => :RegisterClientsArchive,
         :granularity => ONE_DAY,

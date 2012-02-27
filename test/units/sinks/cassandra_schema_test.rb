@@ -39,7 +39,7 @@ MARK_JSON = <<JSON
 }
 JSON
 
-NOTIFICATION_JSON = <<JSON
+EVENT_JSON = <<JSON
 {
   "severity": "bogus",
   "timestamp": 1329858724285438,
@@ -89,12 +89,12 @@ class CassandraSchemaTest < Scope::TestCase
       Hastur::Cassandra.insert_stat(@cass_client, json, :uuid => FAKE_UUID)
     end
 
-    should "insert a notification into NotificationsArchive" do
-      json = NOTIFICATION_JSON
+    should "insert a event into EventsArchive" do
+      json = EVENT_JSON
       row_key = "#{FAKE_UUID}-1329782400"  # Time rounded down to day
       colname = "\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"  # Just time, no name
-      @cass_client.expects(:insert).with(:NotificationsArchive, row_key, { colname => json }, {})
-      Hastur::Cassandra.insert(@cass_client, json, :route => "notification", :uuid => FAKE_UUID)
+      @cass_client.expects(:insert).with(:EventsArchive, row_key, { colname => json }, {})
+      Hastur::Cassandra.insert(@cass_client, json, :route => "event", :uuid => FAKE_UUID)
     end
 
     should "query a stat from StatsGauge" do
@@ -141,13 +141,13 @@ class CassandraSchemaTest < Scope::TestCase
       assert_equal({}, out)
     end
 
-    should "query a notification from NotificationsArchive" do
-      @cass_client.expects(:multi_get).with(:NotificationsArchive, [ "#{FAKE_UUID}-1329782400" ],
+    should "query a event from EventsArchive" do
+      @cass_client.expects(:multi_get).with(:EventsArchive, [ "#{FAKE_UUID}-1329782400" ],
                                             :count => 10_000,
                                             :start => "\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :finish => "\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
         returns({})
-      out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "notification", 1329858724285438, 1329858724285440)
+      out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "event", 1329858724285438, 1329858724285440)
       assert_equal({}, out)
     end
 
