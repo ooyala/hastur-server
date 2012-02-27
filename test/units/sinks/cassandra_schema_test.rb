@@ -59,7 +59,7 @@ class CassandraSchemaTest < Scope::TestCase
   setup do
     @cass_client = mock("Cassandra client")
     @cass_client.stubs(:batch).yields(@cass_client)
-    Hastur.stubs(:normalize_timestamp).with(nil).returns(NOWISH_TIMESTAMP)
+    Hastur::Util.stubs(:timestamp).with(nil).returns(NOWISH_TIMESTAMP)
     @cass_client.stubs(:insert).with(anything, anything, { "last_access" => NOWISH_TIMESTAMP })
   end
 

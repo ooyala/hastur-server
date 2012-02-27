@@ -133,7 +133,7 @@ module Hastur
 
       insert_options = { }
       insert_options[:consistency] = options[:consistency] if options[:consistency]
-      now_ts = Hastur.normalize_timestamp
+      now_ts = Hastur::Util.timestamp
       cass_client.batch do |client|
         client.insert(schema[:cf], key, { colname => json_string,
                         "last_write" => now_ts, "last_access" => now_ts }, insert_options)
@@ -325,7 +325,7 @@ module Hastur
       values = cass_client.multi_get(cf, row_keys, cass_options)
 
       # Mark rows as accessed
-      now_ts = Hastur.normalize_timestamp(nil)
+      now_ts = Hastur::Util.timestamp(nil)
       cass_client.batch do |client|
         row_keys.each do |key|
           client.insert(cf, key, "last_access" => now_ts)
