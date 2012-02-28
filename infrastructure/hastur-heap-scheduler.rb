@@ -67,7 +67,7 @@ module Hastur
     # at the scheduled time.
     #
     def schedule(job) 
-      raise "Must be of type ::Hastur::Job not #{job.class}" if job.is_a? ::Hastur::Job
+      raise "Must be of type ::Hastur::Job not #{job.class}" unless job.is_a? ::Hastur::Job
      
       # compute the next time this job should run
       job.time_to_execute += job.interval
@@ -99,11 +99,12 @@ module Hastur
   # at which the job should be executed
   #
   class Job
-    attr_accessor :json, :time_to_execute
+    attr_accessor :json, :time_to_execute, :interval
 
     def initialize(json, time_to_execute)
       @json = json
       @time_to_execute = Hastur::Util.timestamp( time_to_execute )
+      @interval = MultiJson.decode(@json)["interval"]
     end
   end
 end
