@@ -96,6 +96,11 @@ EOJSON
     @topology[:client1unix].send notification
     @topology[:client1unix].send notification
 
+    messages = @topology[:notification].output
+    payloads = messages.map { |m| MultiJson.decode(m[-1]) }
+    assert_equal 4, payloads.size
+    assert_equal 604800, payloads[0]["sla"]
+    assert_equal 4, messages.size
     @topology[:notification].wait(5)
 
     assert 4 <= @ack_proc_calls, "The ack receiver proc should be called at least 4 times (got #{@ack_proc_calls})."
