@@ -3,6 +3,7 @@ require 'multi_json'
 require 'hastur-server/exception'
 require 'hastur-server/util'
 require 'openssl'
+require 'base64'
 
 module Hastur
   #
@@ -13,37 +14,30 @@ module Hastur
   #
   module Message
     # pre-declare the class structure to make introspection work
-    class Base;                    end
-    class Stat             < Base; end
-    class Log              < Base; end
-    class Error            < Base; end
-    class Rawdata          < Base; end
-    class Notification     < Base; end
-    class HeartbeatClient  < Base; end
-    class HeartbeatService < Base; end
-    class PluginExec       < Base; end
-    class PluginResult     < Base; end
-    class RegisterClient   < Base; end
-    class RegisterPlugin   < Base; end
-    class RegisterService  < Base; end
+    class Base;                end
+    class Rawdata      < Base; end
+    class Ack          < Base; end
+    class Stat         < Base; end
+    class Event        < Base; end
+    class Log          < Base; end
+    class Error        < Base; end
+    class Heartbeat    < Base; end
+    class PluginExec   < Base; end
+    class Registration < Base; end
   end
 
   # map human-readable route names to their 128-bit "UUID", in this case, it's not actually a GUID
   # but instead the strings encoded with:
   # ["string"].pack('Z16').unpack('H8H4H4H4H12').join('-')
+  # Acks are strictly point-to-point, so they don't make an appearance here.
   ROUTES = {
-    :stat              => '73746174-0000-0000-0000-000000000000',
-    :log               => '6c6f6700-0000-0000-0000-000000000000',
-    :error             => '6572726f-7200-0000-0000-000000000000',
-    :rawdata           => '72617764-6174-6100-0000-000000000000',
-    :notification      => '6e6f7469-6669-6361-7469-6f6e00000000',
-    :heartbeat_client  => '68656172-7462-6561-745f-636c69656e74',
-    :heartbeat_service => '68656172-7462-6561-745f-736572766963',
-    :plugin_exec       => '706c7567-696e-5f65-7865-630000000000',
-    :plugin_result     => '706c7567-696e-5f72-6573-756c74000000',
-    :register_client   => '72656769-7374-6572-5f63-6c69656e7400',
-    :register_plugin   => '72656769-7374-6572-5f70-6c7567696e00',
-    :register_service  => '72656769-7374-6572-5f73-657276696365',
+    :stat         => '73746174-0000-0000-0000-000000000000',
+    :event        => '6576656e-7400-0000-0000-000000000000',
+    :log          => '6c6f6700-0000-0000-0000-000000000000',
+    :error        => '6572726f-7200-0000-0000-000000000000',
+    :rawdata      => '72617764-6174-6100-0000-000000000000',
+    :heartbeat    => '68656172-7462-6561-7400-000000000000',
+    :registration => '72656769-7374-7261-7469-6f6e00000000',
   }
 
   ROUTE_NAME = ROUTES.invert
@@ -51,17 +45,12 @@ module Hastur
   # easy mapping of route id's to handler classes
   ROUTE_KLASS = {
     '73746174-0000-0000-0000-000000000000' => Hastur::Message::Stat,
+    '6576656e-7400-0000-0000-000000000000' => Hastur::Message::Event,
     '6c6f6700-0000-0000-0000-000000000000' => Hastur::Message::Log,
     '6572726f-7200-0000-0000-000000000000' => Hastur::Message::Error,
     '72617764-6174-6100-0000-000000000000' => Hastur::Message::Rawdata,
-    '6e6f7469-6669-6361-7469-6f6e00000000' => Hastur::Message::Notification,
-    '68656172-7462-6561-745f-636c69656e74' => Hastur::Message::HeartbeatClient,
-    '68656172-7462-6561-745f-736572766963' => Hastur::Message::HeartbeatService,
-    '706c7567-696e-5f65-7865-630000000000' => Hastur::Message::PluginExec,
-    '706c7567-696e-5f72-6573-756c74000000' => Hastur::Message::PluginResult,
-    '72656769-7374-6572-5f63-6c69656e7400' => Hastur::Message::RegisterClient,
-    '72656769-7374-6572-5f70-6c7567696e00' => Hastur::Message::RegisterPlugin,
-    '72656769-7374-6572-5f73-657276696365' => Hastur::Message::RegisterService,
+    '68656172-7462-6561-7400-000000000000' => Hastur::Message::Heartbeat,
+    '72656769-7374-7261-7469-6f6e00000000' => Hastur::Message::Registration,
   }
 
   #
@@ -248,6 +237,14 @@ module Hastur
     #
     def ack?
       (@ack and @ack > 0) ? true : false
+    end
+
+    def to_ack(from=@envelope.to)
+      Hastur::Message::Ack.new(
+        :to   => @envelope.from,
+        :from => from,
+        :data => @envelope
+      )
     end
 
     #
@@ -479,13 +476,6 @@ module Hastur
       end
 
       #
-      # returns whether this class's payload is usually json or not
-      #
-      def self.json?
-        true
-      end
-
-      #
       # Return a data structure rather than raw JSON.
       #
       def decode
@@ -508,28 +498,24 @@ module Hastur
     end
 
     #
+    # a general event
+    #
+    class Event
+      def initialize(opts)
+        return super(opts) if opts.has_key? :envelope
+        opts[:to] = ROUTES[:event]
+        opts[:ack] = true
+        super(opts)
+      end
+    end
+
+    #
     # m = Hastur::Message::Log.new :from => from, :payload => string
     #
     class Log
       def initialize(opts)
         return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:log]
-        super(opts)
-      end
-
-      def self.json?
-        false
-      end
-    end
-
-    #
-    # a notification, acks are enabled by default
-    #
-    class Notification
-      def initialize(opts)
-        return super(opts) if opts.has_key? :envelope
-        opts[:to] = ROUTES[:notification]
-        opts[:ack] = true unless opts.has_key?(:ack)
         super(opts)
       end
     end
@@ -548,10 +534,10 @@ module Hastur
           raise ArgumentError.new "acks can only be created from Hastur::Envelope objects"
         end
 
-        opts[:to] = opts[:data].from
-        opts[:payload] = opts[:data].pack
-        opts[:ack] = false
-        opts[:reversed] = true # data flows from core -> client
+        opts[:to]      = opts[:from] || opts[:data].from
+        opts[:from]    = opts[:to]   || opts[:data].to
+        opts[:payload] = opts[:data].to_json
+        opts[:ack]     = false
 
         super(opts)
       end
@@ -561,10 +547,6 @@ module Hastur
       #
       def acked
         Hastur::Envelope.parse @payload
-      end
-
-      def self.json?
-        false
       end
     end
 
@@ -604,24 +586,15 @@ module Hastur
         super(opts)
       end
 
-      def self.json?
-        false
+      def encode(data)
+        # FIXME: do it
       end
     end
 
-    class HeartbeatClient
+    class Heartbeat
       def initialize(opts)
         return super(opts) if opts.has_key? :envelope
-        opts[:to] = ROUTES[:heartbeat_client]
-        super(opts)
-      end
-    end
-
-    # TODO: what do we want in these?
-    class HeartbeatService
-      def initialize(opts)
-        return super(opts) if opts.has_key? :envelope
-        opts[:to] = ROUTES[:heartbeat_service]
+        opts[:to] = ROUTES[:heartbeat]
         super(opts)
       end
     end
@@ -630,10 +603,12 @@ module Hastur
       def initialize(opts)
         return super(opts) if opts.has_key? :envelope
 
-        opts[:from] = ROUTES[:plugin_exec]
-
         unless Hastur::Util.valid_uuid?(opts[:to])
-          raise ArgumentError.new("'#{opts[:to]}' is not a valid UUID")
+          raise ArgumentError.new("'to' field, '#{opts[:to]}', is not a valid UUID")
+        end
+
+        unless Hastur::Util.valid_uuid?(opts[:from])
+          raise ArgumentError.new("'from' field, '#{opts[:from]}', is not a valid UUID")
         end
 
         super(opts)
@@ -644,41 +619,10 @@ module Hastur
       end
     end
 
-    class PluginResult
+    class Registration
       def initialize(opts)
         return super(opts) if opts.has_key? :envelope
-        opts[:to] = ROUTES[:plugin_result]
-        super(opts)
-      end
-    end
-
-    class RegisterClient
-      def initialize(opts)
-        return super(opts) if opts.has_key? :envelope
-        opts[:to] = ROUTES[:register_client]
-        opts[:data] = {
-          :_route => 'register_client',
-          :uuid     => opts[:from],
-          :hostname => Socket.gethostname,
-          :ipv4     => IPSocket.getaddress(Socket.gethostname),
-        }
-
-        super(opts)
-      end
-    end
-
-    class RegisterService
-      def initialize(opts)
-        return super(opts) if opts.has_key? :envelope
-        opts[:to] = ROUTES[:register_service]
-        super(opts)
-      end
-    end
-
-    class RegisterPlugin
-      def initialize(opts)
-        return super(opts) if opts.has_key? :envelope
-        opts[:to] = ROUTES[:register_plugin]
+        opts[:to] = ROUTES[:registration]
         super(opts)
       end
     end
