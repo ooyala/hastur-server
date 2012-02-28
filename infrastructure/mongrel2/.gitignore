@@ -1,5 +1,1 @@
 config.sqlite
-run/*.pid
-logs/*.log
-profiles/*.log
-procer.pid
