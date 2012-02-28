@@ -30,7 +30,9 @@ handler_thread = Thread.new do
       stopped = true
     else
       # Request comes in as "UUID ID PATH SIZE:HEADERS,SIZE:BODY,"
-      sender_uuid, client_id, request_path, request_message = receive_queue.recv_string.split(' ', 4)
+      rc = receive_queue.recv_string(data = "")
+      raise "Error receiving from queue!" if rc < 0
+      sender_uuid, client_id, request_path, request_message = data.split(' ', 4)
       len, rest = request_message.split(':', 2)
       headers = MultiJson.decode(rest[0...len.to_i])
       len, rest = rest[(len.to_i+1)..-1].split(':', 2)
