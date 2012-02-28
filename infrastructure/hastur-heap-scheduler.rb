@@ -38,7 +38,7 @@ module Hastur
               @mutex.synchronize do
                 job = heap.pop
               end
-              schedule(job)
+              execute_n_reschedule(job)
             end
             sleep 0.1
           end
@@ -66,7 +66,7 @@ module Hastur
     # Schedules a Hastur::Job for its next run, and sends the plugin information to the router
     # at the scheduled time.
     #
-    def schedule(job) 
+    def execute_n_reschedule(job) 
       raise "Must be of type ::Hastur::Job not #{job.class}" unless job.is_a? ::Hastur::Job
      
       # compute the next time this job should run
