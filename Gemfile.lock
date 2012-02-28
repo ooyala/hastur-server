@@ -22,6 +22,7 @@ GEM
     activesupport (3.2.1)
       i18n (~> 0.6)
       multi_json (~> 1.0)
+    algorithms (0.3.0)
     bluepill (0.0.58)
       activesupport (>= 3.0.0)
       daemons (~> 1.1.4, <= 1.1.6)
@@ -86,6 +87,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  algorithms
   erubis
   hastur-server!
   mocha
