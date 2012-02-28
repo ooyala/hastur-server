@@ -1,1 +1,1 @@
-sudo procer $PWD/profiles $PWD/procer.pid
+sudo ./procer $PWD/profiles $PWD/procer.pid
