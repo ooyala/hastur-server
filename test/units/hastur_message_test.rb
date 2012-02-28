@@ -206,17 +206,8 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   def test_plugin_exec
     Hastur::Message::PluginExec
   end
-  def test_plugin_result
-    Hastur::Message::PluginResult
-  end
-  def test_register_client
-    Hastur::Message::RegisterClient
-  end
-  def test_register_service
-    Hastur::Message::RegisterService
-  end
-  def test_register_plugin
-    Hastur::Message::RegisterPlugin
+  def test_registration
+    Hastur::Message::Registration
   end
 end
 
