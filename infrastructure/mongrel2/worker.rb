@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 require 'ffi-rzmq'
 require 'multi_json'
 
@@ -15,17 +16,21 @@ handler_thread = Thread.new do
   stop_queue.connect("ipc://shutdown_queue")
 
   stopped = false
+  poller = ZMQ::Poller.new
+  poller.register_readable(receive_queue)
+  poller.register_readable(stop_queue)
+
   until stopped do
-    selected_queue = ZMQ.select([receive_queue, stop_queue])
-    if selected_queue[0][0] == stop_queue # Anything on the stop_queue ends processing
+    poller.poll
+    if poller.readables.include?(stop_queue)
       stop_queue.close
       receive_queue.close
       response_publisher.close
-      handler_ctx.close
+      handler_ctx.terminate
       stopped = true
     else
       # Request comes in as "UUID ID PATH SIZE:HEADERS,SIZE:BODY,"
-      sender_uuid, client_id, request_path, request_message = receive_queue.recv(0).split(' ', 4)
+      sender_uuid, client_id, request_path, request_message = receive_queue.recv_string.split(' ', 4)
       len, rest = request_message.split(':', 2)
       headers = MultiJson.decode(rest[0...len.to_i])
       len, rest = rest[(len.to_i+1)..-1].split(':', 2)
@@ -38,7 +43,7 @@ handler_thread = Thread.new do
       # Response goes out as "UUID SIZE:ID ID ID, BODY"
       content_body = "Hello world!"
       response_value = "#{sender_uuid} 1:#{client_id}, HTTP/1.1 200 OK\r\nContent-Length: #{content_body.size}\r\n\r\n#{content_body}"
-      response_publisher.send(response_value, 0)
+      response_publisher.send_string(response_value)
     end
   end
 end
@@ -47,7 +52,7 @@ ctx = ZMQ::Context.new(1)
 stop_push_queue = ctx.socket(ZMQ::PUSH)
 trap('INT') do # Send a message to shutdown on SIGINT
   stop_push_queue.bind("ipc://shutdown_queue")
-  stop_push_queue.send("shutdown")
+  stop_push_queue.send_string("shutdown")
 end
 
 handler_thread.join
