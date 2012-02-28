@@ -13,7 +13,7 @@ echo "cd $PWD" >> profiles/mongrel2/run
 echo "m2sh start -db config.sqlite -host localhost" >> profiles/mongrel2/run
 
 # Set up Worker run script with absolute paths
-echo <<EOF > profiles/worker/run
+cat <<EOF >profiles/worker/run
 #!/bin/sh
 set -e
 
