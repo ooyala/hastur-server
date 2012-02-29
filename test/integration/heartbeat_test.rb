@@ -20,13 +20,13 @@ class HeartbeatTest < Test::Unit::TestCase
       :client2unix  => Nodule::UnixSocket.new,
       :router       => Nodule::ZeroMQ.new(:uri => :gen),
       :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 4),
-      :register     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :notification => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :registration => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :stat         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :event        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :log          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
-      :plugin_exec  => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
+      :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
 
       :client1svc   => Nodule::Process.new(
         HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--unix', :client1unix,
@@ -42,13 +42,13 @@ class HeartbeatTest < Test::Unit::TestCase
         HASTUR_ROUTER_BIN,
         '--uuid',         R1UUID,
         '--heartbeat',    :heartbeat,
-        '--register',     :register,
-        '--notification', :notification,
+        '--registration', :registration,
+        '--event',        :event,
         '--stat',         :stat,
         '--log',          :log,
         '--error',        :error,
         '--router',       :router,
-        '--plugin-exec',  :plugin_exec,
+        '--direct',       :direct,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
       ),
     )

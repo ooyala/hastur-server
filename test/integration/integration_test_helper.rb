@@ -1,6 +1,7 @@
 require "rubygems"
 require "bundler"
 require "multi_json"
+require "hastur-server/libc_ffi"
 #Bundler.require(:default, :development)
 
 # For testing Hastur components, use the local version *first*.
@@ -32,4 +33,17 @@ MESSAGES = {
   :log              => "{}",
   :error            => "{}",
 }
+
+def set_test_alarm(timeout=30)
+  Signal.trap("ALRM") do
+    assert false, "Timed out."
+    Thread.list.each { |t| t.kill unless t == Thread.current }
+    exit
+  end
+  LibC.alarm(timeout)
+end
+
+def cancel_test_alarm
+  LibC.alarm(0)
+end
 

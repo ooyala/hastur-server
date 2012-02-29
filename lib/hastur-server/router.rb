@@ -128,6 +128,18 @@ module Hastur
       @handlers[sockfd(socket)] = block
     end
 
+    def forward(socket, *list)
+      out = list.flatten.map do |part|
+        unless part.kind_of? ZMQ::Message
+          part = ZMQ::Message.new(part)
+        end
+        part
+      end
+      rc = socket.sendmsgs out
+      out.each { |part| part.close }
+      rc
+    end
+
     #
     # poll all of the sockets set up via .route() for read and route messages based on those rules
     #
@@ -152,8 +164,12 @@ module Hastur
         end
 
         # everything else is expected to be a Hastur message
-        msg = Hastur::Message.recv(socket)
-        envelope = msg.envelope
+        rc = socket.recvmsgs zmq_messages=[]
+        hastur_message = zmq_messages.pop
+        hastur_message_str = hastur_message.copy_out_string
+        hastur_envelope = zmq_messages.pop
+        envelope = Hastur::Envelope.parse(hastur_envelope.copy_out_string)
+        hastur_envelope.close
 
         # convenience variables
         from = envelope.from
@@ -161,7 +177,7 @@ module Hastur
         time = envelope.timestamp
 
         # append this router's identity to the message envelope
-        msg.envelope.add_router @uuid
+        envelope.add_router @uuid
 
         # update the list of when a UUID was last seen
         # use client timestamp to avoid problems due to clock skew
@@ -178,11 +194,10 @@ module Hastur
         # make a copy of the ZeroMQ routing headers and story by source UUID
         # this is what makes it possible to deliver messages to clients
         if @dynamic[from]
-          msg.close_zmq_parts
+          zmq_messages.each { |part| part.close }
         else
-          @dynamic[from] = [socket, msg.zmq_parts]
+          @dynamic[from] = [socket, zmq_messages]
         end
-        msg.zmq_parts = []
 
         times_routed = 0
         @route_fds[fd].each do |r|
@@ -190,7 +205,7 @@ module Hastur
           # simple :to routes without :from matching should be well over 90% of cases, e.g.
           # r.route :to => :stat, :src => client_router_sock, :dest => stat_sink_sock
           if r.has_key? :to and not r.has_key? :from and r[:to] == to
-            msg.send(r[:dest])
+            forward r[:dest], envelope.pack, hastur_message
             @stats[:to] += 1
             times_routed += 1
 
@@ -198,14 +213,14 @@ module Hastur
           # mostly useful for tapping a specific stream from a specific source, e.g.
           # r.route :to => :stat, :from => client_uuid, :src => client_router_sock, :dest => stat_tap_sock
           elsif r.has_key? :to and r.has_key? :from and r[:to] == to and r[:from] == from
-            msg.send(r[:dest])
+            forward r[:dest], envelope.pack, hastur_message
             @stats[:to_from] += 1
             times_routed += 1
 
           # only match on from, generally expected to be used for client debugging/test replaying, e.g.
           # r.route :from => client_uuid, :src => client_router_sock, :dest => client_tap_sock
           elsif r.has_key? :from and not r.has_key? :to and r[:from] == from
-            msg.send(r[:dest])
+            forward r[:dest], envelope.pack, hastur_message
             @stats[:from] += 1
             times_routed += 1
 
@@ -222,18 +237,19 @@ module Hastur
         # Future: We may eventually want a router broadcast channel for an arp-like "who has" pattern.
         if @dynamic.has_key? to
           # messages are not reusable: copy each message (usually 1) from the cache
-          msg.zmq_parts = @dynamic[to][1].map do |original|
+          zmq_envelope = @dynamic[to][1].map do |original|
             new = ZMQ::Message.new
             new.copy original.pointer
             new
           end
-          msg.send(@dynamic[to][0], :final => true)
+
+          forward @dynamic[to][0], zmq_envelope, envelope.pack, hastur_message
         end
 
         # no route match, should not happen really except in integration tests that don't wire everything up
         if times_routed < 1
           # TODO: add a sensible way to set up the error channel
-          @logger.warn "unroutable message '#{from}' -> '#{to}': #{msg.to_json}"
+          @logger.warn "unroutable message | #{envelope.to_json} | #{hastur_message_str} |"
         end
 
         # update stats

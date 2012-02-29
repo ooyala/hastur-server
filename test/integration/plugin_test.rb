@@ -12,6 +12,8 @@ require 'nodule/console'
 
 class PluginTest < Test::Unit::TestCase
   def setup
+    set_test_alarm(30) # helper
+
     @plugin_text = MultiJson.encode("{\"status\": 0, \"message\": \"OK - plugin success!\"}")
     @plugin_request = <<EOJSON
 {
@@ -23,7 +25,6 @@ EOJSON
 
     @wait = Mutex.new
     @rsrc = ConditionVariable.new
-
     ready = proc { @wait.synchronize { @rsrc.signal } }
 
     @topology = Nodule::Topology.new(
@@ -32,30 +33,26 @@ EOJSON
       :cyanio        => Nodule::Console.new(:fg => :cyan),
       :client1unix   => Nodule::UnixSocket.new,
       :router        => Nodule::ZeroMQ.new(:uri => :gen),
-      :notification  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
-      :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
-      :register      => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => ready),
-      :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
-      :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
+      :event         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture),
+      :registration  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => ready),
+      :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
-      :rawdata       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :stderr),
-      :plugin_result => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 1),
-      :plugin_exec   => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
-      :acks          => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
+      :rawdata       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :direct        => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
       :control       => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
       :routersvc     => Nodule::Process.new(
         HASTUR_ROUTER_BIN,
         '--uuid',          R1UUID,
         '--router',        :router,
-        '--notification',  :notification,
+        '--event',         :event,
         '--heartbeat',     :heartbeat,
-        '--register',      :register,
+        '--registration',  :registration,
         '--stat',          :stat,
         '--log',           :log,
         '--error',         :error,
-        '--plugin-exec',   :plugin_exec,
-        '--plugin-result', :plugin_result,
-        '--acks',          :acks,
+        '--direct',        :direct,
         '--rawdata',       :rawdata,
         '--control',       :control,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
@@ -66,41 +63,46 @@ EOJSON
         '--router',       :router,
         '--unix',         :client1unix,
         '--ack-timeout',  1,
+        '--heartbeat',    300,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
     )
 
-    # block again waiting for a message on plugin_result
-    @topology[:plugin_result].add_reader ready
+    @topology[:heartbeat].add_reader ready
 
     @topology.start_all
   end
 
   def teardown
+    set_test_alarm(3) # helper
     @topology.stop_all
+    cancel_test_alarm
   end
 
   def test_plugin
-    msg = Hastur::Message::PluginExec.new(:from => R2UUID, :to => C1UUID, :payload => @plugin_request)
+    msg = Hastur::Message::PluginExec.new(:to => C1UUID, :from => C2UUID, :payload => @plugin_request)
 
     # This should probably be a built-in for Nodule.
     @wait.synchronize { @rsrc.wait(@wait) }
 
-    rc = msg.send @topology[:plugin_exec].socket
+    rc = msg.send @topology[:direct].socket
     assert rc > -1, "zeromq send must return > -1 (errno: #{ZMQ::Util.error_string})"
 
+    @wait.synchronize { @rsrc.wait(@wait) }
+    sleep 1 # TODO: make this GO AWAY
 
-    @topology[:plugin_result].wait
+    @topology[:heartbeat].wait
 
-    messages = @topology[:plugin_result].output.pop
+    messages = @topology[:heartbeat].output.pop
     refute_nil messages, "should have caught some zmq messages"
     assert messages.count > 0, "should have caught some zmq messages"
     envelope = Hastur::Envelope.parse messages[-2]
     refute_nil envelope, "should have captured a valid envelope"
-    message = Hastur::Message::PluginResult.new :envelope => envelope, :payload => messages[-1]
+    message = Hastur::Message::Heartbeat.new :envelope => envelope, :payload => messages[-1]
     refute_nil message, "should have captured a valid message"
 
     data = message.decode
+    puts "Data: #{data}"
     assert_kind_of Hash, data, "message.decode must return a hash"
 
     assert_kind_of Fixnum, data[:pid], "plugin result 'pid' should be a number"

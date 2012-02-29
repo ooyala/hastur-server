@@ -38,6 +38,7 @@ module Hastur
     :rawdata      => '72617764-6174-6100-0000-000000000000',
     :heartbeat    => '68656172-7462-6561-7400-000000000000',
     :registration => '72656769-7374-7261-7469-6f6e00000000',
+    :plugin_exec  => '706c7567-696e-5f65-7865-630000000000',
   }
 
   ROUTE_NAME = ROUTES.invert
@@ -51,6 +52,7 @@ module Hastur
     '72617764-6174-6100-0000-000000000000' => Hastur::Message::Rawdata,
     '68656172-7462-6561-7400-000000000000' => Hastur::Message::Heartbeat,
     '72656769-7374-7261-7469-6f6e00000000' => Hastur::Message::Registration,
+    '706c7567-696e-5f65-7865-630000000000' => Hastur::Message::PluginExec,
   }
 
   #
@@ -673,11 +675,16 @@ module Hastur
           raise ArgumentError.new("'to' field, '#{opts[:to]}', is not a valid UUID")
         end
 
-        unless Hastur::Util.valid_uuid?(opts[:from])
+        if opts.has_key?(:from) and not Hastur::Util.valid_uuid?(opts[:from])
           raise ArgumentError.new("'from' field, '#{opts[:from]}', is not a valid UUID")
         end
 
+        from = opts.delete :from
+        opts[:from] = ROUTES[:plugin_exec]
+
         super(opts)
+
+        @envelope.add_router from
       end
 
       def decode
