@@ -213,7 +213,7 @@ module Hastur
         len    -= 4
 
         bin = data.unpack('@' + offset.to_s + 'a8')
-        # Ruby < 1.9.3 doesn't really support uint64_t (Q) in unpack
+        # Ruby < 1.9.3 doesn't support uint64_t big endian/network order (Q) in unpack
         vbin = bin[0].unpack('NN')
         ((vbin[0] << 32) + vbin[1]).to_i
       end
