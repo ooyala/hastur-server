@@ -259,6 +259,7 @@ module Hastur
           :source   => self.class.to_s,
           :hostname => Socket.gethostname,
           :ipv4     => IPSocket.getaddress(Socket.gethostname),
+          :type     => "client"
         }
 
         msg = Hastur::Message::Registration.new :from => @uuid, :data => reg_info

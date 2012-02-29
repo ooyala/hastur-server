@@ -15,13 +15,13 @@ require "multi_json"
 class RegistrationTest < Test::Unit::TestCase
 
   def test_registration
-    sleep 1
+    sleep 2
 
     messages = @topology[:registration].output
     payloads = messages.map { |m| MultiJson.decode(m[-1]) }
 
     assert_equal(1, payloads.count)
-    assert_equal("registration", payloads[0]["_route"])
+    assert_equal("client", payloads[0]["type"])
   end
 
   def setup
@@ -30,14 +30,15 @@ class RegistrationTest < Test::Unit::TestCase
       :redio        => Nodule::Console.new(:fg => :red),
       :client1unix  => Nodule::UnixSocket.new,
       :router       => Nodule::ZeroMQ.new(:uri => :gen),
+      :registration => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture,
+                                          :limit => 5, :stdout => :greenio),
       :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :registration => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 1),
       :event        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :stat         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :log          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen, :reader => :drain),
 
       :client1svc   => Nodule::Process.new(
         HASTUR_CLIENT_BIN, "--uuid", C1UUID, "--router", :router, :stdout => :greenio, :stderr => :redio
