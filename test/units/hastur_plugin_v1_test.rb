@@ -7,6 +7,8 @@ require 'hastur-server/plugin/v1'
 require 'hastur-server/libc_ffi'
 
 class TestHasturPluginV1Module < MiniTest::Unit::TestCase
+  PLUGIN_PATH = File.join(File.dirname(__FILE__), "plugins")
+
   def setup
     Signal.trap("ALRM") do
       assert false, "Timed out running tests."
@@ -22,8 +24,7 @@ class TestHasturPluginV1Module < MiniTest::Unit::TestCase
   def run_plugin(name, args=[], should_succeed=true)
     STDERR.puts "Plugin: #{name} #{args.join(' ')}"
 
-    plugin_path = File.join(File.dirname($0), "plugins")
-    p = Hastur::Plugin::V1.new(File.join(plugin_path, name), args)
+    p = Hastur::Plugin::V1.new(File.join(PLUGIN_PATH, name), args)
 
     pid = p.run 
     assert pid > 1, "p.run should return a pid"
