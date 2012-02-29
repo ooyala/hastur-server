@@ -62,7 +62,7 @@ if (opts[:bind].nil? and opts[:connect].nil?) or (opts[:bind] == opts[:connect])
   Trollop::die "Exactly one of --bind or --connect is required."
 end
 
-if opts[:uri].nil? or opts[:uri] !~ /\w+:\/\/[^:]+:\d+/
+if opts[:uri].nil? or opts[:uri] !~ /\w+:\/\/[^:]+:?\d*/
   Trollop::die :uri, "--uri is required and must be in protocol://hostname:port form"
 end
 
@@ -110,15 +110,15 @@ sock.setsockopt(ZMQ::IDENTITY,  opts[:id])     # useful for ROUTER, REQ and SUB,
 sock.setsockopt(ZMQ::SUBSCRIBE, opts[:subscribe]) if socktype == ZMQ::SUB  # Subscribe to everything
 
 # set up input/output from/to files or STDIN/STDOUT as directed by CLI
-infile = STDIN
+@infile = STDIN
 if not opts[:infile].nil?
-  infile = File.new(opts[:infile], 'r')
+  @infile = File.new(opts[:infile], 'r')
   verbose "Data will be read from '#{opts[:infile]}' and sent."
 end
 
-outfile = STDOUT
+@outfile = STDOUT
 if not opts[:outfile].nil?
-  outfile = File.new(opts[:outfile], 'w+')
+  @outfile = File.new(opts[:outfile], 'w+')
   verbose "Received data will be appended to '#{opts[:outfile]}'."
 end
 
@@ -132,14 +132,14 @@ end
 
 def savemsg(msg)
   verbose :save, msg
-  outfile.puts msg.to_json
+  @outfile.puts msg.to_json
 end
 
 def loadmsg
   if opts[:spam]
-    infile.seek(0, IO::SEEK_SET)
+    @infile.seek(0, IO::SEEK_SET)
   end
-  json = infile.gets.chomp
+  json = @infile.gets.chomp
   verbose :load, json
   Hastur::Message.from_json json
 end
@@ -179,13 +179,13 @@ elsif socktype == ZMQ::DEALER or socktype == ZMQ::ROUTER
       savemsg(msg)
     end
 
-    select_in, _ = IO.select([infile], nil, nil, 0.1)
+    select_in, _ = IO.select([@infile], nil, nil, 0.1)
 
     if select_in && select_in[0]
       json = select_in[0].gets
       msg = Hastur::Message.from_json(json)
       msg.send(sock)
-      infile.seek(0, IO::SEEK_SET) if opts[:spam]
+      @infile.seek(0, IO::SEEK_SET) if opts[:spam]
     end
   end
 end
