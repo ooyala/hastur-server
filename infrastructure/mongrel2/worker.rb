@@ -1,6 +1,33 @@
 #!/usr/bin/env ruby
 require 'ffi-rzmq'
 require 'multi_json'
+require_relative './request.rb'
+
+require "net/http"
+
+def respond_with(socket, sender_uuid, client_id, status, new_headers, content_body)
+  headers = { "Content-Type" => "text/html" }
+
+  klass = Net::HTTPResponse::CODE_TO_OBJ[status.to_s]
+  if klass
+    klass = klass.name.gsub /^HTTP/, ""
+    klass.gsub! /[a-z][A-Z]/, "\1 \2"
+    http_status = "HTTP/1.1 #{status} #{klass.upcase}"
+  else
+    http_status = "HTTP/1.1 #{status} UNKNOWN"
+  end
+
+  http_status = "HTTP/1.1 200 OK"
+  headers = headers.merge(new_headers).merge( 'Content-Length' => content_body.size.to_s )
+  headers_string = headers.keys.map { |key| "#{key}: #{headers[key]}" }.join("\r\n")
+  content_string = "#{http_status}\r\n#{headers_string}\r\n\r\n#{content_body}"
+
+  # Response goes out as "UUID SIZE:ID ID ID, BODY"
+  response_value = "#{sender_uuid} #{client_id.size}:#{client_id}, #{content_string}"
+  puts "Sending response: #{response_value.inspect}"
+  rc = socket.send_string(response_value)
+  raise "Error writing pub socket!" if rc < 0
+end
 
 handler_thread = Thread.new do
   handler_ctx = ZMQ::Context.new(1)
@@ -45,11 +72,9 @@ handler_thread = Thread.new do
           next # A client has disconnected, might want to do something here...
         end
 
-        # Response goes out as "UUID SIZE:ID ID ID, BODY"
-        content_body = "Hello world!"
-        response_value = "#{sender_uuid} #{client_id.size}:#{client_id}, HTTP/1.1 200 OK\r\nContent-Length: #{content_body.size}\r\n\r\n#{content_body}"
-        rc = response_publisher.send_string(response_value)
-        raise "Error writing pub socket!" if rc < 0
+        status, new_headers, content_body = Request.handle(headers, request_path, body)
+
+        respond_with(response_publisher, sender_uuid, client_id, status, new_headers, content_body)
       else
         #puts "Empty message body, continuing."
       end
