@@ -684,7 +684,11 @@ module Hastur
 
         super(opts)
 
-        @envelope.add_router from
+        # If the 'from' passed in wasn't the plugin_exec route, it's probably a sink UUID so for the
+        # purposes of clean routing, just move it to the "handled this" list at the end of the envelope.
+        if from != opts[:from]
+          @envelope.add_router from
+        end
       end
 
       def decode
