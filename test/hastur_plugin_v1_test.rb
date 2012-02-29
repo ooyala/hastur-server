@@ -1,52 +1,72 @@
 #!/usr/bin/env ruby
 
-# TODO: This is not a proper test. Need to wrap this up with proper assertions.
-
 require "rubygems"
+require 'minitest/autorun'
 require 'hastur-server/plugin/v1'
+require 'hastur-server/libc_ffi'
 
-def plugin(name, args)
-  plugin_path = File.join(File.dirname($0), "plugins")
-  p = Hastur::Plugin::V1.new(File.join(plugin_path, name), args)
-  p.run
-  p
-end
+class TestHasturPluginV1Module < MiniTest::Unit::TestCase
+  def setup
+    Signal.trap("ALRM") do
+      assert false, "Timed out running tests."
+    end
 
-def test_plugin(name, args)
-  puts "Testing #{name} ..."
-  p = plugin(name, args)
+    LibC.alarm(30)
+  end
 
-  loop do
-    if p.done?
-      stdout, stderr = p.slurp
-      puts "#{name} exited with #{p.status} and output: #{stdout}"
-      break
+  def teardown
+    LibC.alarm(0)
+  end
+
+  def run_plugin(name, args=[], should_succeed=true)
+    STDERR.puts "Plugin: #{name} #{args.join(' ')}"
+
+    plugin_path = File.join(File.dirname($0), "plugins")
+    p = Hastur::Plugin::V1.new(File.join(plugin_path, name), args)
+
+    pid = p.run 
+    assert pid > 1, "p.run should return a pid"
+
+    loop do
+      if p.done?
+        stdout, stderr = p.slurp
+        break
+      else
+        sleep 0.1
+      end
     end
   end
+
+  def test_minimal_plugins
+    # an empty plugin that just returns 0 with no output
+    # perfectly valid, though not very useful
+    run_plugin("minimal_plugin.sh")
+    run_plugin("minimal_plugin.rb")
+
+    # send a nonsense list of options to the script, just verify it executes
+    run_plugin("minimal_plugin.sh", %w[--foo bar --baz boo -x -c -w 50 -p asdf the long frog did sing a song])
+  end
+
+  def test_basic_plugins
+    # basically the same plugin in the ruby, perl, bash, and python
+    run_plugin("basic_nagios_plugin.rb")
+    run_plugin("basic_nagios_plugin.pl")
+    run_plugin("basic_nagios_plugin.sh")
+    run_plugin("basic_nagios_plugin.py")
+  end
+
+  def test_extended_plugins
+    # extended hastur in ruby, perl, and shell
+    run_plugin("extended_hastur_plugin.rb")
+    run_plugin("extended_hastur_plugin.pl")
+    run_plugin("extended_hastur_plugin.sh")
+  end
+
+  def test_pathological_plugins
+    run_plugin("pathological_sleep.rb", [], false)
+    run_plugin("pathological_cpu.rb", [], false)
+    run_plugin("pathological_ram.rb", [], false)
+    run_plugin("pathological_stdout.rb", [], false)
+    run_plugin("pathological_stderr.rb", [], false)
+  end
 end
-
-# an empty plugin that just returns 0 with no output
-# perfectly valid, though not very useful
-test_plugin("minimal_plugin.sh", [])
-test_plugin("minimal_plugin.rb", [])
-
-# basically the same plugin in the ruby, perl, bash, and python
-test_plugin("basic_nagios_plugin.rb", [])
-test_plugin("basic_nagios_plugin.pl", [])
-test_plugin("basic_nagios_plugin.sh", [])
-test_plugin("basic_nagios_plugin.py", [])
-
-# extended hastur in ruby, perl, and shell
-test_plugin("extended_hastur_plugin.rb", [])
-test_plugin("extended_hastur_plugin.pl", [])
-test_plugin("extended_hastur_plugin.sh", [])
-
-test_plugin("pathological_sleep.rb", [])
-test_plugin("pathological_cpu.rb", [])
-test_plugin("pathological_ram.rb", [])
-test_plugin("pathological_stdout.rb", [])
-test_plugin("pathological_stderr.rb", [])
-
-# send a nonsense list of options to the script, just verify it executes
-test_plugin("minimal_plugin.sh", %w[--foo bar --baz boo -x -c -w 50 -p asdf the long frog did sing a song])
-
