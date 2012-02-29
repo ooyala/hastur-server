@@ -9,6 +9,8 @@ require 'hastur-server/input/collectd'
 PACKET_DIR = File.join(File.dirname(__FILE__), '..', 'data', 'collectd-raw-packets')
 
 class TestHasturInputCollectd < MiniTest::Unit::TestCase
+  CD_UNIT = 1073.741824
+
   # ruby hastur_collectd_test.rb --name test_custom_full_packet
   def test_custom_full_packet
     # test for Q> support (1.9.3 is required)
@@ -33,14 +35,14 @@ class TestHasturInputCollectd < MiniTest::Unit::TestCase
 
     data = [
       Hastur::Input::Collectd::TYPE_HOST,            11, "abcdef",        # nnZ7 (4 + strlen + 1)
-      Hastur::Input::Collectd::TYPE_TIME,            12, 123,             # nnQ> uint64_t
-      Hastur::Input::Collectd::TYPE_TIME_HR,         12, 321,             # nnQ> uint64_t
+      Hastur::Input::Collectd::TYPE_TIME,            12, 1000000000,      # nnQ> uint64_t
+      Hastur::Input::Collectd::TYPE_TIME_HR,         12, 1230 * CD_UNIT,  # nnQ> uint64_t
       Hastur::Input::Collectd::TYPE_PLUGIN,          11, "foobar",        # nnZ7  (4 + strlen + 1)
       Hastur::Input::Collectd::TYPE_PLUGIN_INSTANCE, 8,  "b z",           # nnZ4  (4 + strlen + 1)
       Hastur::Input::Collectd::TYPE_TYPE,            6,  "1",             # nnZ2  (4 + strlen + 1)
       Hastur::Input::Collectd::TYPE_TYPE_INSTANCE,   12, "abcdefg",       # nnZ8  (4 + strlen + 1)
       Hastur::Input::Collectd::TYPE_INTERVAL,        12, 456,             # nnQ> uint64_t
-      Hastur::Input::Collectd::TYPE_INTERVAL_HR,     12, 654,             # nnQ> uint64_t
+      Hastur::Input::Collectd::TYPE_INTERVAL_HR,     12, 654 * CD_UNIT,   # nnQ> uint64_t
       Hastur::Input::Collectd::TYPE_MESSAGE,         10, "help!",         # nnZ6  (4 + strlen + 1)
       Hastur::Input::Collectd::TYPE_SEVERITY,        12, 789,             # nnQ> uint64_t
       Hastur::Input::Collectd::TYPE_VALUES,       vals.bytesize + 4, vals # nna*
@@ -54,13 +56,13 @@ class TestHasturInputCollectd < MiniTest::Unit::TestCase
     refute_nil stat
     assert_equal data[2],  stat[:host],           "check host value"
     assert_equal data[5],  stat[:time],           "check time value"
-    assert_equal data[8],  stat[:time_hr],        "check hires time value"
+    assert_equal 1230,     stat[:time_hr],        "check hires time value"
     assert_equal data[11], stat[:plugin],         "check plugin value"
     assert_equal data[14], stat[:plugin_instance],"check plugin instance value"
     assert_equal data[17], stat[:type],           "check type value"
     assert_equal data[20], stat[:type_instance],  "check type instance value"
     assert_equal data[23], stat[:interval],       "check interval value"
-    assert_equal data[26], stat[:interval_hr],    "check hires interval value"
+    assert_equal 654,      stat[:interval_hr],    "check hires interval value"
     assert_equal data[29], stat[:message],        "check message value"
     assert_equal data[32], stat[:severity],       "check severity value"
   end
