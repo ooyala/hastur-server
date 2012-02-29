@@ -1,3 +1,5 @@
+# Import alarm() and getrusage() from libc.
+
 require "ffi"
 
 module LibC
@@ -15,6 +17,8 @@ module LibC
            :tv_usec, :long
   end
 
+  # See: /usr/include/bits/resource.h on Linux
+  # or: /usr/include/sys/resource.h on Darwin
   class RUsage < FFI::Struct
     layout :ru_utime, Timeval,
            :ru_stime, Timeval,
@@ -40,6 +44,7 @@ module LibC
   # e.g.
   # usertime = rusage[:ru_utime][:tv_sec] + (rusage[:ru_utime][:tv_usec] / 1000000.0)
   # systime = rusage[:ru_stime][:tv_sec] + (rusage[:ru_stime][:tv_usec] / 1000000.0)
+  # rss = rusage[:ru_maxrss] # kilobytes
   def self.getrusage(who=RUSAGE_SELF)
     rusage = RUsage.new
     ret = sys_getrusage(who, rusage)
