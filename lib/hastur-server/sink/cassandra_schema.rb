@@ -98,10 +98,7 @@ module Hastur
     # Additional options:
     #   :uuid - client UUID
     #   :route - sink sent to (required)
-    def insert(cass_client, json_string, options = {})
-      route = options[:route]
-      raise "No :route given!" unless route
-
+    def insert(cass_client, json_string, route, options = {})
       hash = MultiJson.decode(json_string, :symbolize_keys => true)
       raise "Cannot deserialize JSON string!" unless hash
       uuid = options.delete(:uuid) || hash[:uuid]

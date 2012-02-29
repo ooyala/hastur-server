@@ -35,7 +35,7 @@ while @running do
   message = Hastur::Message.recv(socket)
   uuid = message.envelope.from
   route = Hastur::ROUTE_NAME[message.envelope.to]
-  Hastur::Cassandra.insert(client, message.payload, :uuid => uuid, :route => route)
+  Hastur::Cassandra.insert(client, message.payload, route, :uuid => uuid)
 end
 
 STDERR.puts "Exited!"
