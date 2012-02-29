@@ -1,3 +1,0 @@
-#!/bin/sh
-cd /Users/noah/repos/hastur-server/infrastructure/mongrel2
-m2sh start -db config.sqlite -host localhost

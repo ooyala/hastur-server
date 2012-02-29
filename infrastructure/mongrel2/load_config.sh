@@ -21,5 +21,5 @@ cd $PWD
 # WARNING: on some systems the nohup doesn't work, like OSX
 # so we're doing without
 ./worker.rb > profiles/worker.log &
-echo $! > ./profiles/chat/chat.pid
+echo $! > ./profiles/worker/worker.pid
 EOF
