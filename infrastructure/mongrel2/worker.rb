@@ -32,20 +32,27 @@ handler_thread = Thread.new do
       # Request comes in as "UUID ID PATH SIZE:HEADERS,SIZE:BODY,"
       rc = receive_queue.recv_string(data = "")
       raise "Error receiving from queue!" if rc < 0
-      sender_uuid, client_id, request_path, request_message = data.split(' ', 4)
-      len, rest = request_message.split(':', 2)
-      headers = MultiJson.decode(rest[0...len.to_i])
-      len, rest = rest[(len.to_i+1)..-1].split(':', 2)
-      body = rest[0...len.to_i]
 
-      if headers['METHOD'] == 'JSON' and MultiJson.decode(body)['type'] == 'disconnect'
-        next # A client has disconnected, might want to do something here...
+      if data.strip != ""
+        sender_uuid, client_id, request_path, request_message = data.split(' ', 4)
+        len, rest = request_message.split(':', 2)
+        headers = MultiJson.decode(rest[0...len.to_i])
+        len, rest = rest[(len.to_i+1)..-1].split(':', 2)
+        body = rest[0...len.to_i]
+
+        if headers['METHOD'] == 'JSON' and MultiJson.decode(body)['type'] == 'disconnect'
+          puts "Client disconnected...  Continuing."
+          next # A client has disconnected, might want to do something here...
+        end
+
+        # Response goes out as "UUID SIZE:ID ID ID, BODY"
+        content_body = "Hello world!"
+        response_value = "#{sender_uuid} #{client_id.size}:#{client_id}, HTTP/1.1 200 OK\r\nContent-Length: #{content_body.size}\r\n\r\n#{content_body}"
+        rc = response_publisher.send_string(response_value)
+        raise "Error writing pub socket!" if rc < 0
+      else
+        #puts "Empty message body, continuing."
       end
-
-      # Response goes out as "UUID SIZE:ID ID ID, BODY"
-      content_body = "Hello world!"
-      response_value = "#{sender_uuid} 1:#{client_id}, HTTP/1.1 200 OK\r\nContent-Length: #{content_body.size}\r\n\r\n#{content_body}"
-      response_publisher.send_string(response_value)
     end
   end
 end

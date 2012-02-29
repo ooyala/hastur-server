@@ -1,1 +1,2 @@
 config.sqlite
+logs/*.log
