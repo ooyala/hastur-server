@@ -37,6 +37,6 @@ end
 scheduler.add_jobs jobs
 
 # don't die
-schedule.schedule_thread.join
+scheduler.schedule_thread.join
 
 STDERR.puts "Exiting the Hastur Scheduler..."

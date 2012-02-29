@@ -1,6 +1,7 @@
 require "algorithms"
 require "thread"
 require "hastur-server/util"
+require "hastur-server/message"
 
 module Hastur
 
@@ -33,17 +34,19 @@ module Hastur
       @schedule_thread = Thread.new do
         begin
           # Continuously loop through the heap for the next scheduled job
+          job = nil
           loop do
-            unless heap.empty?
+            unless @heap.empty?
               @mutex.synchronize do
-                job = heap.pop
+                job = @heap.pop
+                execute_n_reschedule(job) unless job.nil?
               end
-              execute_n_reschedule(job)
             end
             sleep 0.1
           end
         rescue Exception => e
-          STDERR.puts e.inspect
+          STDERR.puts e.message
+          STDERR.puts e.backtrace
         end
       end
     end
@@ -54,13 +57,18 @@ module Hastur
     #
     def add_jobs(jobs)
       @mutex.synchronize do
-        jobs.each do |job|
-          @heap.push(job, ::Hastur::MAX_TIME - job.time_to_execute)
-        end
+        _add_jobs jobs
       end
     end
 
     private
+
+    def _add_jobs(jobs)
+      jobs.each do |job|
+        priority = ::Hastur::MAX_TIME - job.time_to_execute
+        @heap.push(job, priority)
+      end
+    end
 
     #
     # Schedules a Hastur::Job for its next run, and sends the plugin information to the router
@@ -69,14 +77,15 @@ module Hastur
     def execute_n_reschedule(job) 
       raise "Must be of type ::Hastur::Job not #{job.class}" unless job.is_a? ::Hastur::Job
      
-      # compute the next time this job should run
-      job.time_to_execute += job.interval
-      add_jobs([ job ])
-      
       # wait until the time is right
-      time_diff = job.time_to_execute - Hastur::Util.timestamp(Time.now)
+      time_diff = (job.time_to_execute - Hastur::Util.timestamp(Time.now)) / 10.0**6
+      
+      # compute the next time this job should run
+      job.time_to_execute += job.interval * 10**6
+      _add_jobs([ job ])
+      
       sleep time_diff if time_diff >= 0
-
+      
       # execute
       send_to_router(job.json)
     end

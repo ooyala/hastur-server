@@ -1,0 +1,2 @@
+{ "type":"plugin", "plugin_path":"echo", "plugin_args":"A OK", "interval":1, "plugin":"myPlugin", "uuid":"84f5aea0-449b-012f-e937-109addba6b5d", "labels": {} }
+{ "type":"plugin", "plugin_path":"echo", "plugin_args":"OK", "interval":5, "plugin":"myPlugin", "uuid":"84f5aea0-449b-012f-e937-109addba6b5d", "labels": {} }
