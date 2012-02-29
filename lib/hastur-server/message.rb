@@ -617,7 +617,7 @@ module Hastur
 
         @payload = MultiJson.encode({
           :error => error,
-          :data  => Base64.encode(data)
+          :data  => Base64.encode64(data)
         })
       end
 
@@ -628,7 +628,7 @@ module Hastur
       #
       def decode
         hash = super
-        hash[:data] = Base64.decode(hash[:data])
+        hash[:data] = Base64.decode64(hash[:data])
         hash
       end
     end
@@ -637,7 +637,7 @@ module Hastur
       def initialize(opts)
         return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:rawdata]
-        opts[:payload] = Base64.encode(opts.delete(:payload))
+        opts[:payload] = Base64.encode64(opts.delete(:payload))
         raise ArgumentError.new "Rawdata only supports raw payloads, e.g. :payload => 'stuff'" if opts[:data]
         super(opts)
       end
@@ -646,14 +646,14 @@ module Hastur
       # Update payload value with the base64 encoding of the provided string.
       #
       def encode(data)
-        @payload = Base64.encode(data)
+        @payload = Base64.encode64(data)
       end
 
       #
       # Decode the payload from base64 to a string.
       #
       def decode
-        Base64.decode(@payload)
+        Base64.decode64(@payload)
       end
     end
 
