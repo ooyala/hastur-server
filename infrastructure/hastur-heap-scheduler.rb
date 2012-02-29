@@ -13,17 +13,19 @@ module Hastur
   # with the recomputed priority.
   #
   class Scheduler
-    attr_accessor :heap, :schedule_thread, :mutex
+    attr_accessor :heap, :schedule_thread, :mutex, :test_mode, :msg_buffer
 
     public
 
     #
     # socket should be a ZMQ socket that understands how to route Hastur::Messages
     #
-    def initialize(socket)
+    def initialize(socket, test_mode=false)
       @heap = Containers::PriorityQueue.new
       @mutex = Mutex.new
       @socket = socket    # socket to send messages on
+      @test_mode = test_mode
+      @msg_buffer = []
     end
 
     #
@@ -49,6 +51,10 @@ module Hastur
           STDERR.puts e.backtrace
         end
       end
+    end
+
+    def stop
+      @schedule_thread.kill
     end
 
     #
@@ -94,12 +100,16 @@ module Hastur
     # Notifies the appropriate client that it should execute a plugin
     #
     def send_to_router(payload)
-      opts = Hash.new
-      opts[:payload] = payload
-      # TODO(viet): Figure out the proper format of a plugin payload
-      opts[:to] = MultiJson.decode(payload)["uuid"]
-      msg = Hastur::Message::PluginExec.new(opts)
-      msg.send(@socket)
+      if @test_mode
+        @msg_buffer << payload
+      else
+        opts = Hash.new
+        opts[:payload] = payload
+        # TODO(viet): Figure out the proper format of a plugin payload
+        opts[:to] = MultiJson.decode(payload)["uuid"]
+        msg = Hastur::Message::PluginExec.new(opts)
+        msg.send(@socket)
+      end
     end
   end
 
