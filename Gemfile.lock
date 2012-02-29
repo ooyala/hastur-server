@@ -2,6 +2,7 @@ PATH
   remote: .
   specs:
     hastur-server (0.0.1)
+      algorithms
       bluepill
       cassandra
       ffi-rzmq
@@ -87,7 +88,6 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  algorithms
   erubis
   hastur-server!
   mocha
