@@ -49,98 +49,114 @@ module Hastur
       @unix              = opts[:unix] # can use a unix socket for testing, should never see production
       @heartbeat         = opts[:heartbeat]
       @stats_interval    = opts[:stats_interval]
-      @num_msgs          = 0
-      @num_notifications = 0
       @last_heartbeat    = Time.now - @heartbeat
       @last_ack_check    = Time.now - @ack_interval
       @last_client_reg   = Time.now - 129600 # 1.5 days
       @last_stat_flush   = Time.now
+
+      @counters = {
+        :udp_packets => 0,
+        :zmq_send    => 0,
+        :zmq_recv    => 0,
+        :errors      => 0,
+        :events      => 0,
+      }
+    end
+
+    def _fail(message, e)
+      @logger.debug "#{message}: #{e.inspect}"
+      error = Hastur::Message::Error.new :from => @uuid, :payload => e
+      error.send(@router_socket)
+      @counters[:zmq_send] += 1
+      @counters[:errors] += 1
+    end
+
+    def _send(message)
+      message.send(@router_socket)
+      @counters[:zmq_send] += 1
     end
 
     #
-    # use the '_route' field in a JSON hash to choose a Hastur route
-    # and send the JSON along as the payload in a routed Hastur message
+    # use the '_route' field in a JSON hash to choose a Hastur class via
+    # Hastur::Message's route_class message (which uses a table of route => class)
     #
-    def route_json(data)
+    def hash_to_message(data)
       route = data.delete :_route
+
       if klass = Hastur::Message.route_class(route)
-        # TODO: enable messages being able to request acks without breaking notification acks
-        # TODO: this is a bit primitive, needs to be smarter for various message types
-        if klass.json?
-          payload = MultiJson.encode(data)
-        else
-          payload = data[:payload]
-        end
+        payload = MultiJson.encode(data)
+      else
+        payload = data[:payload]
+      end
 
-        begin
-          msg = klass.new :from => @uuid, :payload => payload
-          msg.send @router_socket
+      klass.new :from => @uuid, :payload => payload
+    end
 
-          # invalid messages that cause exceptions and have acks won't make it this far
-          # TODO: what to do here?
-          if ack or msg.envelope.ack?
-            @acks[msg.envelope.to_s] = msg
-          end
-        rescue
-          # TODO: send an error, log, etc.
+    #
+    # Processes a raw network message that was sent to hastur client. The Hastur::Input::*
+    # classes all return the same hash structure, suitable for hash_to_message().
+    #
+    def raw_to_hastur_message(data)
+      if jmsg = Hastur::Input::JSON.decode(data)
+        _send hash_to_message(jmsg)
+      elsif smsg = Hastur::Input::Statsd.decode(data)
+        _send hash_to_message(smsg)
+      elsif cmsg = Hastur::Input::Collectd.decode(data)
+        cmsg.each do |msg|
+          _send hash_to_message(msg)
         end
       else
-        e = Hastur::UnsupportedError.new "Cannot route JSON: #{json}"
-        Hastur::Message::Error.new(:from => @uuid, :payload => e.to_s).send(@router_socket)
-        throw e
+        raise Hastur::UnsupportedError.new "Cannot route raw message: '#{data}'"
       end
     end
 
     #
-    # Processes a random UDP message that was sent to the client. For now,
-    # the message simply gets forwarded on to the message bus.
+    # Read one message from the UDP socket and route it to the message bus. If
+    # there are any problems, # a Hastur::Message::Error is created and sent.
     #
     def poll_udp
       # process UDP input from localhost
-      data, sender = @udp_socket.recvfrom_nonblock(65536) rescue nil
-      return if data.nil? or data.length == 0
+      begin
+        data, sender = @udp_socket.recvfrom_nonblock(65536) rescue nil
+        return if data.nil? or data.length == 0
+        @counters[:udp_packets] += 1
+      rescue Exception => e
+        _fail "error reading from UDP socket", e
+      end
 
       @logger.debug "Received UDP message: #{data.inspect}"
 
-      # records stats about the message
-      @num_msgs += 1
-
-      if msg = Hastur::Input::JSON.decode(data)
-        @num_notifications += 1 if msg[:_route] == "notification"
-        route_json(msg)
-      elsif msg = Hastur::Input::Statsd.decode(data)
-        route_json(msg)
-      elsif msg = Hastur::Input::Collectd.decode(data)
-        msg.each { |m| route_json(m) }
-      else
-        @logger.debug "Received unrecognized (not JSON or statsd) packet: #{msg.inspect}"
-        error = Hastur::Message::Error.new :from => @uuid, :payload => "invalid data on UDP port #{@port}: '#{data}'"
-        error.send(@router_socket)
+      begin
+        raw_to_hastur_message(data)
+      rescue
+        _fail "Received unrecognized UDP message", data
       end
     end
 
     #
     # After some timeout, all collected stats are sent to hastur
     #
-    def poll_stats
+    def send_client_stats
       curr_time = Time.now
-      # After some timeout, send the incremental difference to Hastur
+
       if curr_time - @last_stat_flush > @stats_interval
         t = Process.times
-        # amount of user cpu time in seconds
-        Hastur.gauge("client.utime", t.utime, curr_time)
-        # amount of system cpu time in seconds
-        Hastur.gauge("client.stime", t.stime, curr_time)
-        # completed child processes' user cpu time in seconds (always 0 on Windows NT)
-        Hastur.gauge("client.cutime", t.cutime, curr_time)
-        # completed child processes' system cpu time in seconds (always 0 on Windows NT)
-        Hastur.gauge("client.cstime", t.cstime, curr_time)
-        Hastur.counter("client.num_msgs", @num_msgs, curr_time)
-        Hastur.counter("client.num_notifications", @num_notifications, curr_time)
+        # amount of user/system cpu time in seconds
+        Hastur.gauge("hastur.client.utime", t.utime, curr_time)
+        Hastur.gauge("hastur.client.stime", t.stime, curr_time)
+        # completed child processes' (plugins) user/system cpu time in seconds (always 0 on Windows NT)
+        Hastur.gauge("hastur.client.cutime", t.cutime, curr_time)
+        Hastur.gauge("hastur.client.cstime", t.cstime, curr_time)
+
+        @counters.each do |name,count|
+          if count > 0
+            Hastur.counter("hastur.client.#{name}", count, curr_time)
+            @counters[name] = 0
+          end
+        end
+
         # reset things
         @last_stat_flush = curr_time
-        @num_msgs = 0
-        @num_notifications = 0
       end
     end
 
@@ -151,8 +167,9 @@ module Hastur
     def poll_plugin_pids
       @plugins.each do |pid,plugin|
         if plugin.done?
-          msg = Hastur::Message::PluginResult.new(:from => @uuid, :data => plugin.to_hash)
+          msg = Hastur::Message::Heartbeat.new(:from => @uuid, :data => plugin.to_hash)
           msg.send(@router_socket)
+          @counters[:zmq_send] += 1
 
           # TODO: call plugin.stat (when it's ready) and send along a stat too
 
@@ -194,7 +211,7 @@ module Hastur
       @poller = ZMQ::Poller.new
       if @router_socket
         @poller.register_readable @router_socket
-        @poller.register_writable @router_socket
+        #@poller.register_writable @router_socket
       end
     end
 
@@ -208,6 +225,7 @@ module Hastur
       # read messages from Hastur (router)
       if @poller.readables.include?(@router_socket)
         msg = Hastur::Message.recv(@router_socket)
+        @counters[:zmq_recv] += 1
         case msg
         when Hastur::Message::Ack
           ack_key = msg.acked.to_s
@@ -218,6 +236,7 @@ module Hastur
               :payload => "Received an unexpected ack with ID: '#{ack_key}'"
           end
         when Hastur::Message::PluginExec
+          # TODO: add hmac authentication of plugin exec messages
           config = msg.decode
           plugin = Hastur::Plugin::V1.new(config[:plugin_path], config[:plugin_args])
           pid = plugin.run
@@ -235,9 +254,18 @@ module Hastur
     def poll_registration_timeout
       # re-register the client once a day
       if Time.now - @last_client_reg > 86400
-        msg = Hastur::Message::RegisterClient.new :from => @uuid
+        reg_info = {
+          :from     => @uuid,
+          :source   => self.class.to_s,
+          :hostname => Socket.gethostname,
+          :ipv4     => IPSocket.getaddress(Socket.gethostname),
+        }
+
+        msg = Hastur::Message::Registration.new :from => @uuid, :data => reg_info
+
         @logger.debug "Attempting to register client #{@uuid}: #{msg.to_json}"
         msg.send @router_socket
+        @counters[:zmq_send] += 1
         @last_client_reg = Time.now
       end
     end
@@ -250,7 +278,7 @@ module Hastur
       if Time.now - @last_heartbeat > @heartbeat
         @logger.debug "Sending heartbeat"
 
-        msg = Hastur::Message::HeartbeatClient.new(
+        msg = Hastur::Message::Heartbeat.new(
           :from => @uuid,
           :data => {
             :last_heartbeat => Hastur::Util.timestamp(@last_heartbeat),
@@ -271,6 +299,7 @@ module Hastur
       if not @acks.empty? and Time.now - @last_ack_check > @ack_interval
         @logger.debug "Checking unacked messages #{@acks.inspect}"
         @acks.each_pair do |key, msg|
+          msg.envelope.incr_resend # record the fact that this is a resend
           msg.send(@router_socket)
         end
         @last_ack_check = Time.now
@@ -291,15 +320,16 @@ module Hastur
         poll_heartbeat_timeout
         poll_ack_timeouts
         poll_plugin_pids
-        poll_stats
         poll_udp
         poll_zmq
+        send_client_stats
 
         sleep 0.1 # prevent tight loops from using too much CPU
       end
 
       msg = Hastur::Message::Log.new :from => @uuid, :payload => "Client #{@uuid} exiting."
       msg.send(@router_socket)
+      @counters[:zmq_send] += 1
 
       @router_socket.close
     end

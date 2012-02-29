@@ -65,6 +65,7 @@ module Hastur
         {
           :command => @command,
           :args    => @args,
+          :source  => self.class.to_s,
           :pid     => @pid,
           :exit    => @status.exitstatus,
           :stdout  => stdout,
