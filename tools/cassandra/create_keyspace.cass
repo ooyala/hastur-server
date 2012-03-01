@@ -1,14 +1,12 @@
-CONNECT localhost/9160;
+# To run: "cassandra-cli -h localhost < create_keyspace.cass"
 
 CREATE KEYSPACE Hastur;
 USE Hastur;
 
+# Per-UUID Archives for various Hastur messages as JSON
+# Row key: UUID-timestamp (rounded to granularity)
+# Col key: name-timestamp or timestamp
 CREATE COLUMN FAMILY StatsArchive;
-CREATE COLUMN FAMILY StatsCounter;
-CREATE COLUMN FAMILY StatsGauge;
-CREATE COLUMN FAMILY StatsTimer;
-CREATE COLUMN FAMILY StatsMark;
-
 CREATE COLUMN FAMILY LogsArchive;
 CREATE COLUMN FAMILY ErrorsArchive;
 CREATE COLUMN FAMILY RawdataArchive;
@@ -16,3 +14,62 @@ CREATE COLUMN FAMILY EventsArchive;
 CREATE COLUMN FAMILY HeartbeatsArchive;
 CREATE COLUMN FAMILY PluginResultsArchive;
 CREATE COLUMN FAMILY RegistrationsArchive;
+
+# Per-UUID Full-granularity Hastur stats messages
+# Row key: UUID-timestamp (rounded to granularity)
+# Col key: name-timestamp
+CREATE COLUMN FAMILY StatsCounter;
+CREATE COLUMN FAMILY StatsGauge;
+CREATE COLUMN FAMILY StatsMark;
+
+# Per-UUID Stats Rollups
+# Row key: UUID-timestamp
+# Col key: labelspec-statname
+#                and
+#          labelspec-statname-TIME
+#                and
+#          labelspec-statname-COLS
+#
+# The first column key contains an index of that statistic for that
+# label spec.  The additional two columns (TIME, COLS) are the time
+# that rollup was calculated and the number of columns that were in
+# the table when it was calculated.
+#
+CREATE COLUMN FAMILY StatsCounterFiveMinute
+CREATE COLUMN FAMILY StatsCounterHour
+CREATE COLUMN FAMILY StatsCounterDay
+CREATE COLUMN FAMILY StatsCounterWeek
+CREATE COLUMN FAMILY StatsCounterMonth
+CREATE COLUMN FAMILY StatsCounterYear
+CREATE COLUMN FAMILY StatsGaugeFiveMinute
+CREATE COLUMN FAMILY StatsGaugeHour
+CREATE COLUMN FAMILY StatsGaugeDay
+CREATE COLUMN FAMILY StatsGaugeWeek
+CREATE COLUMN FAMILY StatsGaugeMonth
+CREATE COLUMN FAMILY StatsGaugeYear
+CREATE COLUMN FAMILY StatsMarkFiveMinute
+CREATE COLUMN FAMILY StatsMarkHour
+CREATE COLUMN FAMILY StatsMarkDay
+CREATE COLUMN FAMILY StatsMarkWeek
+CREATE COLUMN FAMILY StatsMarkMonth
+CREATE COLUMN FAMILY StatsMarkYear
+
+# Seen UUIDs per time period
+# Row key: timestamp (rounded to granularity)
+# Col key: UUID
+CREATE COLUMN FAMILY UUIDFiveMinute
+CREATE COLUMN FAMILY UUIDHour
+CREATE COLUMN FAMILY UUIDDay
+CREATE COLUMN FAMILY UUIDWeek
+CREATE COLUMN FAMILY UUIDMonth
+CREATE COLUMN FAMILY UUIDYear
+
+# Seen stat names per time period
+# Row key: timestamp (rounded to granularity)
+# Col key: statname
+CREATE COLUMN FAMILY StatNamesFiveMinute
+CREATE COLUMN FAMILY StatNamesHour
+CREATE COLUMN FAMILY StatNamesDay
+CREATE COLUMN FAMILY StatNamesWeek
+CREATE COLUMN FAMILY StatNamesMonth
+CREATE COLUMN FAMILY StatNamesYear

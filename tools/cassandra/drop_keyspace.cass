@@ -1,3 +1,3 @@
-CONNECT localhost/9160;
+# To run: "cassandra-cli -h localhost < drop_keyspace.cass"
 
 DROP KEYSPACE Hastur;
