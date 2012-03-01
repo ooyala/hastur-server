@@ -117,7 +117,6 @@ module Hastur
       else
         raise "Must provide either bind or connect option to bind_or_connect_socket!"
       end
-      STDERR.puts "New socket #{status >= 0 ? "successfully " : "unable"} #{opts[:bind] ? "listening" : "connecting"} on #{uri.inspect}."
       socket
     end
   end
