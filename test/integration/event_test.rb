@@ -53,14 +53,14 @@ class NotificationTest < Test::Unit::TestCase
       ),
     )
 
-    @ack_proc_calls = 0
+    @events_seen = 0
 
     @topology[:event].add_reader do |messages|
       e = Hastur::Envelope.parse(messages[-2])
       refute_nil e, "Hastur::Envelope.parse on messages[-2] must return an envelope."
-      assert e.ack?, "Notifications must always have the ack flag enabled (got: #{e.ack})."
-      @ack_proc_calls += 1
-      STDERR.puts "Received event in test proc! (#{@ack_proc_calls})"
+      assert e.ack?, "Events must always have the ack flag enabled (got: #{e.ack})."
+      @events_seen += 1
+      STDERR.puts "Received event in test proc! (#{@events_seen})"
     end
 
     @topology.start_all
@@ -101,6 +101,6 @@ EOJSON
     assert_equal 604800, payloads[0]["sla"]
     assert_equal 4, messages.size
 
-    assert 4 <= @ack_proc_calls, "The ack receiver proc should be called at least 4 times (got #{@ack_proc_calls})."
+    assert 4 <= @events_seen, "The ack receiver proc should be called at least 4 times (got #{@events_seen})."
   end
 end
