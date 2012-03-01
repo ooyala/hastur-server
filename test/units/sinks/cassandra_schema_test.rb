@@ -111,7 +111,7 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with(:EventsArchive, row_key, { colname => json,
                                            "last_access" => NOWISH_TIMESTAMP,
                                            "last_write" => NOWISH_TIMESTAMP }, {})
-      Hastur::Cassandra.insert(@cass_client, json, :route => "event", :uuid => FAKE_UUID)
+      Hastur::Cassandra.insert(@cass_client, json, "event", :uuid => FAKE_UUID)
     end
 
     should "query a stat from StatsGauge" do

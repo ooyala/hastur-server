@@ -89,7 +89,7 @@ module Hastur
     # Additional options:
     #   :uuid - client UUID
     def insert_stat(cass_client, json_string, options = {})
-      insert(cass_client, json_string, options.merge(:route => "stat"))
+      insert(cass_client, json_string, "stat", options)
     end
 
     # Options from Twitter Cassandra gem:
