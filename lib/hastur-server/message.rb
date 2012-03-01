@@ -575,7 +575,7 @@ module Hastur
     class Error
       def initialize(opts)
         return super(opts) if opts.has_key? :envelope
-        opts[:to] = ROUTES[:rawdata]
+        opts[:to] = ROUTES[:error]
 
         if opts[:data]
           opts[:payload] = encode(opts.delete(:data))
