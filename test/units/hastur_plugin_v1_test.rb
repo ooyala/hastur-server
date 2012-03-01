@@ -22,8 +22,6 @@ class TestHasturPluginV1Module < MiniTest::Unit::TestCase
   end
 
   def run_plugin(name, args=[], should_succeed=true)
-    STDERR.puts "Plugin: #{name} #{args.join(' ')}"
-
     p = Hastur::Plugin::V1.new(File.join(PLUGIN_PATH, name), args)
 
     pid = p.run 
