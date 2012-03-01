@@ -23,10 +23,6 @@ class PluginTest < Test::Unit::TestCase
 }
 EOJSON
 
-    @wait = Mutex.new
-    @rsrc = ConditionVariable.new
-    ready = proc { @wait.synchronize { @rsrc.signal } }
-
     @topology = Nodule::Topology.new(
       :greenio       => Nodule::Console.new(:fg => :green),
       :redio         => Nodule::Console.new(:fg => :red),
@@ -34,8 +30,8 @@ EOJSON
       :client1unix   => Nodule::UnixSocket.new,
       :router        => Nodule::ZeroMQ.new(:uri => :gen),
       :event         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture),
-      :registration  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => ready),
+      :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 2),
+      :registration  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain,   :limit => 1),
       :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
@@ -68,8 +64,6 @@ EOJSON
       ),
     )
 
-    @topology[:heartbeat].add_reader ready
-
     @topology.start_all
   end
 
@@ -82,16 +76,12 @@ EOJSON
   def test_plugin
     msg = Hastur::Message::PluginExec.new(:to => C1UUID, :from => C2UUID, :payload => @plugin_request)
 
-    # This should probably be a built-in for Nodule.
-    @wait.synchronize { @rsrc.wait(@wait) }
+    @topology.wait :registration, 1
 
     rc = msg.send @topology[:direct].socket
     assert rc > -1, "zeromq send must return > -1 (errno: #{ZMQ::Util.error_string})"
 
-    @wait.synchronize { @rsrc.wait(@wait) }
-    sleep 1 # TODO: make this GO AWAY
-
-    @topology[:heartbeat].wait
+    @topology.wait :heartbeat, 2
 
     messages = @topology[:heartbeat].output.pop
     refute_nil messages, "should have caught some zmq messages"
@@ -102,7 +92,6 @@ EOJSON
     refute_nil message, "should have captured a valid message"
 
     data = message.decode
-    puts "Data: #{data}"
     assert_kind_of Hash, data, "message.decode must return a hash"
 
     assert_kind_of Fixnum, data[:pid], "plugin result 'pid' should be a number"

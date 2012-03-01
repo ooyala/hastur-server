@@ -15,13 +15,17 @@ require "multi_json"
 class RegistrationTest < Test::Unit::TestCase
 
   def test_registration
-    sleep 2
+    @topology.wait :registration, 1
 
     messages = @topology[:registration].output
-    payloads = messages.map { |m| MultiJson.decode(m[-1]) }
+    assert_equal 1, messages.count
 
-    assert_equal(1, payloads.count)
-    assert_equal("client", payloads[0]["type"])
+    payload = MultiJson.decode messages[0][-1] rescue nil
+    refute_nil payload
+    assert_kind_of Hash, payload
+
+    assert_equal payload["from"], "11111111-2222-3333-4444-555555555555"
+    assert_equal payload["source"], "Hastur::Client"
   end
 
   def setup
@@ -30,15 +34,14 @@ class RegistrationTest < Test::Unit::TestCase
       :redio        => Nodule::Console.new(:fg => :red),
       :client1unix  => Nodule::UnixSocket.new,
       :router       => Nodule::ZeroMQ.new(:uri => :gen),
-      :registration => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture,
-                                          :limit => 5, :stdout => :greenio),
+      :registration => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 1),
       :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :event        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :stat         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :log          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :control      => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen, :reader => :drain),
+      :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
+      :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
 
       :client1svc   => Nodule::Process.new(
         HASTUR_CLIENT_BIN, "--uuid", C1UUID, "--router", :router, :stdout => :greenio, :stderr => :redio
