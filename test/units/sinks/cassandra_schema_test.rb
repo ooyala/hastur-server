@@ -68,8 +68,8 @@ class CassandraSchemaTest < Scope::TestCase
 
     should "insert a gauge into StatsArchive and StatsGauge" do
       json = GAUGE_JSON
-      row_key = "#{FAKE_UUID}-1329858600"
-      five_min_ts = "1329858600"
+      row_key = "#{FAKE_UUID}-1329858600000000"
+      five_min_ts = "1329858600000000"
       colname = "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
       @cass_client.expects(:insert).with(:StatsArchive, row_key, { colname => json,
                                            "last_access" => NOWISH_TIMESTAMP,
@@ -83,8 +83,8 @@ class CassandraSchemaTest < Scope::TestCase
 
     should "insert a counter into StatsArchive and StatsCounter" do
       json = COUNTER_JSON
-      row_key = "#{FAKE_UUID}-1329858600"
-      five_min_ts = "1329858600"
+      row_key = "#{FAKE_UUID}-1329858600000000"
+      five_min_ts = "1329858600000000"
       colname = "totally.a.counter-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
       @cass_client.expects(:insert).with(:StatsArchive, row_key, { colname => json,
                                            "last_access" => NOWISH_TIMESTAMP,
@@ -98,8 +98,8 @@ class CassandraSchemaTest < Scope::TestCase
 
     should "insert a mark into StatsArchive and StatsMark" do
       json = MARK_JSON
-      row_key = "#{FAKE_UUID}-1329858600"
-      five_min_ts = "1329858600"
+      row_key = "#{FAKE_UUID}-1329858600000000"
+      five_min_ts = "1329858600000000"
       colname = "marky.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
       @cass_client.expects(:insert).with(:StatsArchive, row_key, { colname => json,
                                            "last_access" => NOWISH_TIMESTAMP,
@@ -113,7 +113,7 @@ class CassandraSchemaTest < Scope::TestCase
 
     should "insert an event into EventsArchive" do
       json = EVENT_JSON
-      row_key = "#{FAKE_UUID}-1329782400"  # Time rounded down to day
+      row_key = "#{FAKE_UUID}-1329782400000000"  # Time rounded down to day
       colname = "\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"  # Just time, no name
       @cass_client.expects(:insert).with(:EventsArchive, row_key, { colname => json,
                                            "last_access" => NOWISH_TIMESTAMP,
@@ -122,7 +122,7 @@ class CassandraSchemaTest < Scope::TestCase
     end
 
     should "query a stat from StatsGauge" do
-      @cass_client.expects(:multi_get).with(:StatsGauge, [ "#{FAKE_UUID}-1329858600" ],
+      @cass_client.expects(:multi_get).with(:StatsGauge, [ "#{FAKE_UUID}-1329858600000000" ],
                                             :count => 10_000,
                                             :start => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :finish => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
@@ -133,7 +133,7 @@ class CassandraSchemaTest < Scope::TestCase
     end
 
     should "query a stat from StatsCounter" do
-      @cass_client.expects(:multi_get).with(:StatsCounter, [ "#{FAKE_UUID}-1329858600" ],
+      @cass_client.expects(:multi_get).with(:StatsCounter, [ "#{FAKE_UUID}-1329858600000000" ],
                                             :count => 10_000,
                                             :start => "some.counter-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :finish => "some.counter-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
@@ -144,7 +144,7 @@ class CassandraSchemaTest < Scope::TestCase
     end
 
     should "query a stat from StatsMark" do
-      @cass_client.expects(:multi_get).with(:StatsMark, [ "#{FAKE_UUID}-1329858600" ],
+      @cass_client.expects(:multi_get).with(:StatsMark, [ "#{FAKE_UUID}-1329858600000000" ],
                                             :count => 10_000,
                                             :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
@@ -155,7 +155,7 @@ class CassandraSchemaTest < Scope::TestCase
     end
 
     should "query a stat from StatsArchive" do
-      @cass_client.expects(:multi_get).with(:StatsArchive, [ "#{FAKE_UUID}-1329858600" ],
+      @cass_client.expects(:multi_get).with(:StatsArchive, [ "#{FAKE_UUID}-1329858600000000" ],
                                             :count => 10_000,
                                             :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
@@ -166,7 +166,7 @@ class CassandraSchemaTest < Scope::TestCase
     end
 
     should "query an event from EventsArchive" do
-      @cass_client.expects(:multi_get).with(:EventsArchive, [ "#{FAKE_UUID}-1329782400" ],
+      @cass_client.expects(:multi_get).with(:EventsArchive, [ "#{FAKE_UUID}-1329782400000000" ],
                                             :count => 10_000,
                                             :start => "\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :finish => "\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
@@ -185,7 +185,7 @@ class CassandraSchemaTest < Scope::TestCase
       end
 
       should "prepare a stat from Cassandra representation with get_stat" do
-        @cass_client.expects(:multi_get).with(:StatsMark, [ "#{FAKE_UUID}-1329858600" ],
+        @cass_client.expects(:multi_get).with(:StatsMark, [ "#{FAKE_UUID}-1329858600000000" ],
                                               :count => 10_000,
                                               :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                               :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
@@ -213,7 +213,7 @@ class CassandraSchemaTest < Scope::TestCase
       end
 
       should "prepare stats from Cassandra representation with get_all_stats" do
-        @cass_client.expects(:multi_get).with(:StatsMark, [ "#{FAKE_UUID}-1329858600" ], :count => 10_000).
+        @cass_client.expects(:multi_get).with(:StatsMark, [ "#{FAKE_UUID}-1329858600000000" ], :count => 10_000).
           returns({
                     "uuid1-1234567890" => { },   # Delete row with empty hash
                     "uuid2-0987654321" => nil,   # Delete row with nil

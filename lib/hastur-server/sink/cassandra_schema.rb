@@ -4,8 +4,7 @@ require "multi_json"
 
 require "date"
 
-# Data types we will eventually want to support:
-#
+# Data types we support:
 #
 # Stats - column families by subtype, five-minute resolution, high traffic
 # Logs - subdivision?  High resolution.  High traffic.
@@ -27,8 +26,10 @@ module Hastur
 
     FIVE_MINUTES = 5 * 60
     CASS_GET_OPTIONS = [ :consistency, :count, :start, :finish, :reversed ]
+    ONE_HOUR = 60 * 60
     HOURS = 60 * 60
     ONE_DAY = 24 * HOURS
+    ONE_WEEK = 7 * ONE_DAY
 
     SCHEMA = {
       "stat" => {
@@ -211,7 +212,7 @@ module Hastur
       time_division = (secs_into_day / granularity).to_i * granularity
 
       # This is the time, rounded down to the nearest 'granularity' seconds from start of day
-      date_secs + time_division
+      (date_secs + time_division) * 1_000_000
     end
 
     def row_key(uuid, timestamp, granularity)
@@ -246,11 +247,15 @@ module Hastur
       [ name, timestamp ]
     end
 
+    #
+    # This calculates the set of time segments of the given granularity that
+    # overlap the given range of timestamps.  Commonly the given timestamps
+    # won't be on segment boundaries which will result in the segments
+    # covering a larger range of timestamps.  This is expected behavior.
+    #
     def segments_for_timestamps(start_timestamp, end_timestamp, granularity)
       start_ts = time_segment_for_timestamp(start_timestamp, granularity)
       end_ts = time_segment_for_timestamp(end_timestamp, granularity)
-
-      num_ts = (end_ts - start_ts) / 1_000_000 / granularity
 
       segments = [start_ts]
       ts = start_ts
@@ -258,8 +263,6 @@ module Hastur
         ts += granularity
         segments << ts
       end
-
-      raise "Error calculating time segments!" unless segments[-1] == end_ts
 
       segments
     end
