@@ -213,8 +213,14 @@ module Hastur
       # :name, :value, :timestamp
       time = Time.at(timestamp / 1_000_000)
 
-      # Timestamp of start of day
       date = time.to_date
+
+      if granularity == ONE_WEEK
+        start_of_week = date - date.wday * ONE_DAY
+        return Time.utc(start_of_week.year, start_of_week.month, start_of_week.day).to_i * 1_000_000
+      end
+
+      # Timestamp of start of day
       date_secs = Time.utc(date.year, date.month, date.day).to_i
 
       # How many seconds we are into the day in UTC
