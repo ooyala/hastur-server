@@ -353,7 +353,7 @@ module Hastur
       now_ts = Hastur::Util.timestamp(nil)
       cass_client.batch do |client|
         row_keys.each do |key|
-          client.insert(cf, key, "last_access" => now_ts)
+          client.insert(cf, key, "last_access" => now_ts.to_s)
         end
       end
 
