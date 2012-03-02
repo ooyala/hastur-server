@@ -61,6 +61,10 @@ class NotificationTest < Test::Unit::TestCase
       assert e.ack?, "Events must always have the ack flag enabled (got: #{e.ack})."
       @events_seen += 1
       STDERR.puts "Received event in test proc! (#{@events_seen})"
+
+      # send an ack, since it's the right thing to do
+      rc = e.to_ack.send @topology[:direct].socket
+      assert rc > -1, "sending an ack created from the envelope of the message"
     end
 
     @topology.start_all

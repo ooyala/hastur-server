@@ -241,12 +241,8 @@ module Hastur
       (@ack and @ack > 0) ? true : false
     end
 
-    def to_ack(from=@envelope.to)
-      Hastur::Message::Ack.new(
-        :to   => @envelope.from,
-        :from => from,
-        :data => @envelope
-      )
+    def to_ack
+      Hastur::Message::Ack.new(:data => self)
     end
 
     #
