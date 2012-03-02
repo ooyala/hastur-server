@@ -49,6 +49,11 @@ module Hastur
               :gauge => :value,
               :counter => :increment,
               :mark => nil,
+            },
+            :rollup_cf_prefix => {
+              :gauge => "StatsGauge",
+              :counter => "StatsCounter",
+              :mark => "StatsMark",
             }
           }
         },
@@ -80,6 +85,7 @@ module Hastur
         :cf => :HeartbeatsArchive,
         :granularity => FIVE_MINUTES,
         :name => :name,
+        :rollup_cf_prefix => "Heartbeats",
       },
       # No plugin_exec - not for sinks
       "registration" => {
