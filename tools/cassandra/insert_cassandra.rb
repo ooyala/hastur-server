@@ -1,8 +1,10 @@
 #!/usr/bin/env ruby
+$LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..", "..", "lib")
 
 require "trollop"
-require "hastur-server/sink/cassandra_schema"
 require "time"
+
+require "hastur-server/sink/cassandra_schema"
 
 opts = Trollop.options do
   opt :n,       "Number to insert per batch",   :default => 1,                     :type => :int
