@@ -54,7 +54,7 @@ GEM
       metaclass (~> 0.0.1)
     msgpack (0.4.6)
     multi_json (1.1.0)
-    nodule (0.0.2)
+    nodule (0.0.3)
     rack (1.4.1)
     rack-protection (1.2.0)
       rack
