@@ -1,10 +1,14 @@
 require "cassandra"
 require "msgpack"
 require "multi_json"
-
 require "date"
 
+require "hastur-server/util"
+
 # Data types we support:
+
+# Data types we will eventually want to support:
+#
 #
 # Stats - column families by subtype, five-minute resolution, high traffic
 # Logs - subdivision?  High resolution.  High traffic.
@@ -114,6 +118,7 @@ module Hastur
         subdivide = true
         sub_key = schema[:subtype].keys[0]   # Example: :type
         type = hash[sub_key].to_sym            # Example: :gauge
+        raise "No '#{sub_key}' specified in the payload" unless type
 
         subtype = schema[:subtype][sub_key]
         raise "Unknown #{route} #{sub_key}: #{type.inspect}!" unless subtype
@@ -133,7 +138,7 @@ module Hastur
 
       insert_options = { }
       insert_options[:consistency] = options[:consistency] if options[:consistency]
-      now_ts = Hastur::Util.timestamp
+      now_ts = ::Hastur::Util.timestamp.to_s
       cass_client.batch do |client|
         client.insert(schema[:cf], key, { colname => json_string,
                         "last_write" => now_ts, "last_access" => now_ts }, insert_options)

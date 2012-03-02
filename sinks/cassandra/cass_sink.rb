@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+$LOAD_PATH.unshift File.join(File.dirname(__FILE__), '..', '..', 'lib')
 
 require "trollop"
 require "hastur-server/zmq_utils"
@@ -15,15 +16,14 @@ opts = Trollop::options do
   opt :hwm,      "ZMQ message queue size", :default => 1,                         :type => :int
 end
 
+ctx = ZMQ::Context.new
+socket = Hastur::ZMQUtils.connect_socket(ctx, ZMQ::PULL, opts[:routers].flatten)
+
 puts "Connecting to database at #{opts[:hosts][0]}:9160"
 client = Cassandra.new(opts[:keyspace], opts[:hosts].map { |h| "#{h}:9160" })
-
 client.default_write_consistency = 2  # Initial default: 1
 
-socket = Hastur::ZMQUtils.connect_socket(ZMQ::Context.new, ZMQ::PULL, opts[:routers])
-
 @running = true
-
 %w(INT TERM KILL).each do | sig |
   Signal.trap(sig) do
     @running = false
@@ -34,7 +34,8 @@ end
 while @running do
   message = Hastur::Message.recv(socket)
   uuid = message.envelope.from
-  route = Hastur::ROUTE_NAME[message.envelope.to]
+  route = Hastur::ROUTE_NAME[message.envelope.to].to_s
+  puts "[#{route}] - #{message.payload}"
   Hastur::Cassandra.insert(client, message.payload, route, :uuid => uuid)
 end
 
