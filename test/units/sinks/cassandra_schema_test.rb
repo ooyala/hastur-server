@@ -54,7 +54,7 @@ EVENT_JSON = <<JSON
 JSON
 
 FAKE_UUID = "fafafafa-fafa-fafa-fafa-fafafafafafa"
-NOWISH_TIMESTAMP = 1330000400
+NOWISH_TIMESTAMP = 1330000400.to_s
 class CassandraSchemaTest < Scope::TestCase
   setup do
     @cass_client = mock("Cassandra client")
