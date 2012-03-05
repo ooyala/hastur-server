@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 $LOAD_PATH.unshift File.dirname(__FILE__)
 
-require "notification_sink"
+require "event_sink"
 
-sink = NotificationSink.new
+sink = EventSink.new
 sink.start
