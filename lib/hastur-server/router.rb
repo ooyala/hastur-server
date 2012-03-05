@@ -192,7 +192,7 @@ module Hastur
         end
 
         # make a copy of the ZeroMQ routing headers and story by source UUID
-        # this is what makes it possible to deliver messages to clients
+        # this is what makes it possible to deliver messages to clients by UUID
         if @dynamic[from]
           zmq_messages.each { |part| part.close }
         else
@@ -226,7 +226,6 @@ module Hastur
 
           else
             @stats[:missed] += 1
-            times_routed += 1
           end
         end
         
