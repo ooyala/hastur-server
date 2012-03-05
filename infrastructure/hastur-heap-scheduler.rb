@@ -93,20 +93,19 @@ module Hastur
       sleep time_diff if time_diff >= 0
       
       # execute
-      send_to_router(job.json)
+      send_to_router(job.json, job.uuid)
     end
 
     #
     # Notifies the appropriate client that it should execute a plugin
     #
-    def send_to_router(payload)
+    def send_to_router(payload, uuid)
       if @test_mode
         @msg_buffer << payload
       else
         opts = Hash.new
         opts[:payload] = payload
-        # TODO(viet): Figure out the proper format of a plugin payload
-        opts[:to] = MultiJson.decode(payload)["uuid"]
+        opts[:to] = uuid
         msg = Hastur::Message::PluginExec.new(opts)
         msg.send(@socket)
       end
@@ -118,9 +117,10 @@ module Hastur
   # at which the job should be executed
   #
   class Job
-    attr_accessor :json, :time_to_execute, :interval
+    attr_accessor :json, :time_to_execute, :interval, :uuid
 
-    def initialize(json, time_to_execute)
+    def initialize(json, time_to_execute, uuid)
+      @uuid = uuid
       @json = json
       @time_to_execute = Hastur::Util.timestamp( time_to_execute )
       @interval = MultiJson.decode(@json)["interval"]
