@@ -10,12 +10,14 @@ class HasturHeapSchedulerTest < Test::Unit::TestCase
     job1 = '{ "type":"plugin", "plugin_path":"echo", "plugin_args":"A OK", "interval":0.2, "plugin":"myPlugin", "uuid":"84f5aea0-449b-012f-e937-109addba6b5d", "labels": {} }'
     job2 = '{ "type":"plugin", "plugin_path":"echo", "plugin_args":"OK", "interval":1, "plugin":"myPlugin", "uuid":"84f5aea0-449b-012f-e937-109addba6b5d", "labels": {} }'
 
+    uuid = "thisismyfakeuuid"
+
     scheduler = Hastur::Scheduler.new(nil, true)
     scheduler.start
 
     # schedule the jobs
     curr_time = Time.now
-    jobs = [::Hastur::Job.new(job1, curr_time), ::Hastur::Job.new(job2, curr_time)]
+    jobs = [::Hastur::Job.new(job1, curr_time, uuid), ::Hastur::Job.new(job2, curr_time, uuid)]
     scheduler.add_jobs jobs
 
     # wait for the jobs to execute
