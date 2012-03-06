@@ -110,10 +110,10 @@ module Hastur
     # Additional options:
     #   :uuid - client UUID
     #   :route - sink sent to (required)
-    def insert(cass_client, json_string, route, options = {})
+    def insert(cass_client, json_string, route, timestamp=::Hastur::Utils.timestamp, options = {})
       hash = MultiJson.decode(json_string, :symbolize_keys => true)
       raise "Cannot deserialize JSON string!" unless hash
-      uuid = options.delete(:uuid) || hash[:uuid]
+      uuid = options.delete(:uuid) || hash[:uuid] || hash[:from]
       raise "No UUID given!" unless uuid
 
       schema = SCHEMA[route]
@@ -136,7 +136,7 @@ module Hastur
       end
 
       name = hash[:name]
-      timestamp_usec = hash[:timestamp]
+      timestamp_usec = timestamp
 
       colname = col_name(name, timestamp_usec)
       key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec, schema[:granularity] || ONE_DAY)
@@ -160,7 +160,7 @@ module Hastur
     end
 
     def get(cass_client, client_uuid, route, start_timestamp, end_timestamp, options = {})
-      if (end_timestamp - start_timestamp) > 72 * HOURS
+      if (end_timestamp - start_timestamp) / 1_000_000.0 > 72 * HOURS
         raise "Don't query more than 3 days at once yet!"
       end
 

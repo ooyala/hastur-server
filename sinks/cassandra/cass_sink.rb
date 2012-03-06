@@ -36,7 +36,7 @@ while @running do
   uuid = message.envelope.from
   route = Hastur::ROUTE_NAME[message.envelope.to].to_s
   puts "[#{route}] - #{message.payload}"
-  Hastur::Cassandra.insert(client, message.payload, route, :uuid => uuid)
+  Hastur::Cassandra.insert(client, message.payload, route, message.envelope.timestamp, :uuid => uuid)
 end
 
 STDERR.puts "Exited!"

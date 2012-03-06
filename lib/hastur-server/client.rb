@@ -339,7 +339,7 @@ module Hastur
     # Sets a variable so run()'s loop will exit on its next iteration.
     #
     def shutdown
-      puts "Setting running to false."
+      @logger.debug "Setting running to false."
       @running = false
     end
   end
