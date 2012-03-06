@@ -10,6 +10,7 @@ require 'termite'
 
 require "hastur-server/message"
 require "hastur-server/router"
+require "hastur-server/client/uuid"
 
 Ecology.read("hastur-router.ecology")
 MultiJson.engine = :yajl
@@ -21,7 +22,7 @@ hastur-router.rb - route to/from Hastur clients
 
   Options:
 EOS
-  opt :uuid,           "Router UUID (for logging)",      :required => true, :type => String
+  opt :uuid,           "Router UUID (for logging)",      :type => String
   opt :hwm,            "ZeroMQ message queue depth",     :default => 1
   opt :router,         "Router (incoming) URI (ROUTER)", :default => "tcp://*:8126"
   opt :stat,           "Stat sink URI           (PUSH)", :default => "tcp://*:8127"
@@ -55,6 +56,12 @@ sockets.each do |key,sock|
   sock.setsockopt(ZMQ::HWM,     opts[:hwm])
   rc = sock.bind(opts[key])
   abort "Error binding #{key} socket: #{ZMQ::Util.error_string}" unless rc > -1
+end
+
+unless opts[:uuid]
+  # attempt to retrieve UUID from disk; UUID gets created on the fly if it doesn't exist
+  opts[:uuid] = Hastur::ClientUtil::UUID.get_uuid
+  puts opts[:uuid]
 end
 
 R = Hastur::Router.new(opts[:uuid], :error_socket => sockets[:error])
