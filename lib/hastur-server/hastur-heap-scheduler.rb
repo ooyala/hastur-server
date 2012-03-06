@@ -1,5 +1,6 @@
 require "algorithms"
 require "thread"
+
 require "hastur-server/util"
 require "hastur-server/message"
 
@@ -117,13 +118,30 @@ module Hastur
   # at which the job should be executed
   #
   class Job
-    attr_accessor :json, :time_to_execute, :interval, :uuid
+    attr_accessor :json,            # payload to send across the wire
+                  :time_to_execute, # Hastur time to send request
+                  :interval,        # Interval between requests in seconds
+                  :uuid             # client UUID
 
     def initialize(json, time_to_execute, uuid)
       @uuid = uuid
       @json = json
       @time_to_execute = Hastur::Util.timestamp( time_to_execute )
-      @interval = MultiJson.decode(@json)["interval"]
+      interval = MultiJson.decode(@json)["interval"].to_sym
+      case interval
+      when :five_minutes
+        @interval = 5*60
+      when :thirty_minutes
+        @interval = 30*60
+      when :hourly
+        @interval = 60*60
+      when :daily
+        @interval = 60*60*24
+      when :monthly
+        @interval = 60*60*24*30
+      else
+        raise "Unable to determine the interval of the plugin: #{interval.inspect}"
+      end
     end
   end
 end
