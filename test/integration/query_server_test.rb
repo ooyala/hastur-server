@@ -80,8 +80,8 @@ class QueryServerTest < Test::Unit::TestCase
     start_ts = Hastur.timestamp(Time.now.to_i - 600)
     end_ts = Hastur.timestamp(Time.now.to_i + 600)
 
-    c1_messages = MultiJson.decode `curl http://localhost:4177/data/heartbeat/json?uuid=#{C1UUID}\&start=#{start_ts}\&end=#{end_ts}`
-    c2_messages = MultiJson.decode `curl http://localhost:4177/data/heartbeat/values?uuid=#{C2UUID}\&start=#{start_ts}\&end=#{end_ts}`
+    c1_messages = MultiJson.decode `curl http://localhost:4177/data/heartbeat/json?uuid=#{C1UUID}\\\&start=#{start_ts}\\\&end=#{end_ts}`
+    c2_messages = MultiJson.decode `curl http://localhost:4177/data/heartbeat/values?uuid=#{C2UUID}\\\&start=#{start_ts}\\\&end=#{end_ts}`
 
     STDERR.puts "Client 1 messages: #{c1_messages.inspect}"
     STDERR.puts "Client 2 messages: #{c2_messages.inspect}"
