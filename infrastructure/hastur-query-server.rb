@@ -3,6 +3,7 @@
 require "multi_json"
 require "cassandra"
 require "trollop"
+require "hastur"
 
 MultiJson.engine = :yajl
 
@@ -53,14 +54,16 @@ end
 # The hash is serialized as JSON which means that each internal JSON
 # chunk must be individually deserialized as well.
 #
-# TODO(noah): Fix these return types
+# TODO(noah): Fix these return types to avoid double-decode
 #
 get "/data/:route/json" do
   [ :start, :end, :uuid ].each { |p| check_present p }
 
+  start_ts = Hastur.timestamp(params[:start].to_i)
+  end_ts = Hastur.timestamp(params[:end].to_i)
+
   # Get with no subtype gives JSON
-  values = Hastur::Cassandra.get(cass_client, params[:uuid], params[:route],
-                                 params[:start].to_i, params[:end].to_i)
+  values = Hastur::Cassandra.get(cass_client, params[:uuid], params[:route], start_ts, end_ts)
 
   [ 200, MultiJson.encode(values) ]
 end
@@ -96,10 +99,12 @@ EOJSON
     subtype_list = [ :gauge, :counter, :mark ]
   end
 
+  start_ts = Hastur.timestamp(params[:start].to_i)
+  end_ts = Hastur.timestamp(params[:end].to_i)
+
   values = {}
   subtype_list.each do |subtype|
-    values.merge!(Hastur::Cassandra.get(cass_client, params[:uuid], params[:route],
-                                        params[:start].to_i, params[:end].to_i))
+    values.merge!(Hastur::Cassandra.get(cass_client, params[:uuid], params[:route], start_ts, end_ts))
   end
 
   [ 200, MultiJson.encode(values) ]
@@ -113,6 +118,12 @@ end
 
 get "/uuids" do
   [ :start, :end ].each { |p| check_present p }
+
+  start_ts = Hastur.timestamp(params[:start].to_i)
+  end_ts = Hastur.timestamp(params[:end].to_i)
+
+  q = Hastur::Cassandra.get_uuid_cass_queries_over_time(start_ts, end_ts)
+  data = Hastur::Cassanda.cass_queries_to_data(cass_client, q, :consistency => 1, :count => 10_000)
 
   [ 200, "" ]
 end
