@@ -65,7 +65,8 @@ module Hastur
     elsif ROUTES.has_key? route.to_sym
       ROUTES[route.to_sym]
     else
-      raise ArgumentError.new "'#{route}' is not a valid route symbol or uuid"
+      # redirect all unknown traffic to :error
+      ROUTES[:error]
     end
   end
 
@@ -288,7 +289,7 @@ module Hastur
   #
   module Message
     # return the class for a given route string/symbol
-    # e.g. klass = Hastur::Message.route_class("notification")
+    # e.g. klass = Hastur::Message.route_class("registration")
     def self.route_class(route)
       route_id = Hastur.route_id(route)
       ROUTE_KLASS[route_id]
