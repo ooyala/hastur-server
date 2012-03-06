@@ -255,11 +255,12 @@ module Hastur
       # re-register the client once a day
       if Time.now - @last_client_reg > 86400
         reg_info = {
-          :from     => @uuid,
-          :source   => self.class.to_s,
-          :hostname => Socket.gethostname,
-          :ipv4     => IPSocket.getaddress(Socket.gethostname),
-          :type     => "client"
+          :from      => @uuid,
+          :source    => self.class.to_s,
+          :hostname  => Socket.gethostname,
+          :ipv4      => IPSocket.getaddress(Socket.gethostname),
+          :type      => "client",
+          :timestamp => ::Hastur::Util.timestamp
         }
 
         msg = Hastur::Message::Registration.new :from => @uuid, :data => reg_info

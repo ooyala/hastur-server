@@ -134,7 +134,7 @@ module Hastur
       end
 
       name = hash[:name]
-      timestamp_usec = hash[:timestamp] || ::Hastur::Util.timestamp
+      timestamp_usec = hash[:timestamp]
 
       colname = col_name(name, timestamp_usec)
       key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec, schema[:granularity] || ONE_DAY)
