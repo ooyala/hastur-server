@@ -1,4 +1,4 @@
-# To run: "cassandra-cli -h localhost < create_keyspace.cass"
+# To run: "cat create_keyspace.cass | grep -v \# | cassandra-cli -h localhost"
 
 CREATE KEYSPACE Hastur;
 USE Hastur;
