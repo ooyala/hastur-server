@@ -57,7 +57,7 @@ sockets.each do |key,sock|
   abort "Error binding #{key} socket: #{ZMQ::Util.error_string}" unless rc > -1
 end
 
-R = Hastur::Router.new(opts[:uuid])
+R = Hastur::Router.new(opts[:uuid], :error_socket => sockets[:error])
 
 # set up signal handlers and hope to be able to get a clean shutdown
 %w(INT TERM KILL).each do |sig|

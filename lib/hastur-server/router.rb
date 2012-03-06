@@ -33,6 +33,7 @@ module Hastur
       @errors                 = 0
       @num_msgs               = 0
       @stats_interval         = opts[:stats_interval]
+      @error_socket           = opts[:error_socket]
       @last_stat_flush        = Time.now
     end
 
@@ -243,12 +244,24 @@ module Hastur
           end
 
           forward @dynamic[to][0], zmq_envelope, envelope.pack, hastur_message
+          times_routed += 1
         end
 
         # no route match, should not happen really except in integration tests that don't wire everything up
         if times_routed < 1
-          # TODO: add a sensible way to set up the error channel
           @logger.warn "unroutable message | #{envelope.to_json} | #{hastur_message_str} |"
+
+          # forward to the error socket if it's set up
+          if @error_socket.kind_of? ZMQ::Socket
+            error = Hastur::Message::Error.new(:from  => @uuid, :data => {
+              :error => :unroutable,
+              :data  => {
+                :envelope => envelope.to_hash,
+                :message => hastur_message
+              }
+            })
+            error.send @error_socket
+          end
         end
 
         # update stats

@@ -112,7 +112,7 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     zmq_part = "00670243f680d448deae3f2ca4513bb1e8"
     e = Hastur::Message::Rawdata.new(ENVELOPE.merge(:payload => "a b c d e f g"))
 
-    json1= "{\"klass\":\"Hastur::Message::Rawdata\",\"envelope\":{\"version\":1,\"to\":\"72617764-6174-6100-0000-000000000000\",\"from\":\"be7f4980-6a1f-4120-b0ce-26de709afcf6\",\"ack\":0,\"sequence\":88888,\"timestamp\":1329865874428623,\"uptime\":12.4},\"payload\":\"YSBiIGMgZCBlIGYgZw==\\n\",\"zmq_parts\":[]}"
+    json1= "{\"klass\":\"Hastur::Message::Rawdata\",\"envelope\":{\"version\":1,\"to\":\"72617764-6174-6100-0000-000000000000\",\"from\":\"be7f4980-6a1f-4120-b0ce-26de709afcf6\",\"ack\":0,\"sequence\":88888,\"timestamp\":1329865874428623,\"uptime\":12.4},\"payload\":\"a b c d e f g\",\"zmq_parts\":[]}"
     json2 = "{\"klass\":\"Hastur::Message::Log\",\"envelope\":{\"version\":1,\"to\":\"72617764-6174-6100-0000-000000000000\",\"from\":\"ac8084af-955f-4a48-ac8d-6d2c73f33a75\",\"ack\":1,\"sequence\":1234,\"timestamp\":1328301436000000,\"uptime\":15.9},\"payload\":\" 90ea9aa814354df5a4e82921c63a42cb \",\"zmq_parts\":[\"#{zmq_part}\"]}"
 
     assert_equal json1, e.to_json, "converting envelope to json matches static data"

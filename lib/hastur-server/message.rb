@@ -3,7 +3,6 @@ require 'multi_json'
 require 'hastur-server/exception'
 require 'hastur-server/util'
 require 'openssl'
-require 'base64'
 
 module Hastur
   #
@@ -582,12 +581,12 @@ module Hastur
       end
 
       #
-      # Always base64 encode any data in an Error, because it may be malformed
+      # Always JSON encode any data in an Error, because it may be malformed
       # or even (accidentally) malicious data.  The transmitted JSON should always
-      # have two keys, :error and :data, where the :data value is always base64
-      # encoded.
+      # have two keys, :error and :data. :data could contain anything, including
+      # more JSON.
       # 
-      # A couple automatic conversions are executed:
+      # A few automatic conversions are executed:
       #   Hastur::Message::Base -> to_json -> base64
       #   Exception -> .inspect -> base64
       #   Array / Hash -> JSON encoded -> base64
@@ -598,14 +597,14 @@ module Hastur
         case data
           when Hastur::Message::Base
             error = :message
-            data = opts.delete(:data).to_json
+            data = data.to_hash
           when Exception
             error = :exception
-            data = opts.delete(:data).inspect
+            data = data.inspect
           when Hash
+            error = data.has_key?(:error) ? data.delete(:error) : :structured
           when Array
             error = :structured
-            data = MultiJson.encode(opts.delete(:data))
           when String
             error = :raw
             data = opts.delete(:data)
@@ -614,21 +613,7 @@ module Hastur
             data = opts.delete(:data).inspect
         end
 
-        @payload = MultiJson.encode({
-          :error => error,
-          :data  => Base64.encode64(data)
-        })
-      end
-
-      #
-      # Convert the JSON payload described above into a hash and decode the Mime64
-      # part. Does not decode any further, so data structures, etc. that were encoded
-      # by e.encode (e.g. hash -> JSON), are left in whatever that encoding is.
-      #
-      def decode
-        hash = super
-        hash[:data] = Base64.decode64(hash[:data])
-        hash
+        @payload = MultiJson.encode({:error => error, :data  => data})
       end
     end
 
@@ -636,23 +621,23 @@ module Hastur
       def initialize(opts)
         return super(opts) if opts.has_key? :envelope
         opts[:to] = ROUTES[:rawdata]
-        opts[:payload] = Base64.encode64(opts.delete(:payload))
+        raise ArgumentError.new "Rawdata only supports Strings" unless opts[:payload].kind_of? String
         raise ArgumentError.new "Rawdata only supports raw payloads, e.g. :payload => 'stuff'" if opts[:data]
         super(opts)
       end
 
       #
-      # Update payload value with the base64 encoding of the provided string.
+      # Update payload. Rawdata never modifies the payload, even if (especially if) it's binary.
       #
       def encode(data)
-        @payload = Base64.encode64(data)
+        @payload = data
       end
 
       #
-      # Decode the payload from base64 to a string.
+      # Stub. Does nothing but return the payload.
       #
       def decode
-        Base64.decode64(@payload)
+        @payload
       end
     end
 
