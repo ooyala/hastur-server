@@ -54,6 +54,8 @@ EVENT_JSON = <<JSON
 JSON
 
 FAKE_UUID = "fafafafa-fafa-fafa-fafa-fafafafafafa"
+FAKE_UUID2 = "fafafafa-fafa-fafa-fafa-fafafafafaf2"
+FAKE_UUID3 = "fafafafa-fafa-fafa-fafa-fafafafafaf3"
 NOWISH_TIMESTAMP = 1330000400.to_s
 class CassandraSchemaTest < Scope::TestCase
   setup do
@@ -172,6 +174,20 @@ class CassandraSchemaTest < Scope::TestCase
                                             :finish => "\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
         returns({})
       out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "event", 1329858724285438, 1329858724285440)
+      assert_equal({}, out)
+    end
+
+    should "query an event from EventsArchive with multiple client UUIDs" do
+      @cass_client.expects(:multi_get).with(:EventsArchive,
+                                            [ "#{FAKE_UUID}-1329782400000000",
+                                              "#{FAKE_UUID2}-1329782400000000",
+                                              "#{FAKE_UUID3}-1329782400000000" ],
+                                            :count => 10_000,
+                                            :start => "\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :finish => "\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+        returns({})
+      out = Hastur::Cassandra.get(@cass_client, [ FAKE_UUID, FAKE_UUID2, FAKE_UUID3 ], "event",
+                                  1329858724285438, 1329858724285440)
       assert_equal({}, out)
     end
 

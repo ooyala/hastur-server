@@ -330,7 +330,14 @@ module Hastur
       end
 
       segments = segments_for_timestamps(start_timestamp, end_timestamp, granularity)
-      row_keys = segments.map { |seg| "#{client_uuid}-#{seg}" }
+
+      if client_uuid.kind_of?(Array)
+        row_keys = client_uuid.map do |uuid|
+          segments.map { |seg| "#{uuid}-#{seg}" }
+        end.flatten
+      else
+        row_keys = segments.map { |seg| "#{client_uuid}-#{seg}" }
+      end
 
       cass_options = { :count => 10_000 }
       CASS_GET_OPTIONS.each do |opt|
