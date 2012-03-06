@@ -282,6 +282,7 @@ module Hastur
       segments
     end
 
+    #
     # This is the basic getter for messages.  By default it gets all messages with a given
     # route and client UUID across the given timestamps.  It can be modified in several
     # other ways by options:

@@ -29,8 +29,7 @@ module Hastur
     # @param [Array] granularities The list of granularities to break the interval into
     #
     def get_granular_segments_from_timestamps(start_ts, end_ts, granularities = GRANULARITIES)
-      return [] if granularities.empty?
-      return [] if (end_ts - start_ts) > granularities[0]
+      return [] if granularities.empty? || (end_ts - start_ts) > granularities[0]
 
       # Start with the largest granularity - a week, at the top level
       granularity = granularities[0]
