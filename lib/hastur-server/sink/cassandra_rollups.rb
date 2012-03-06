@@ -66,7 +66,9 @@ module Hastur
       # buckets.
 
       # Make sure we return all relevant UUIDs - for now, just expand five minutes in either direction
-      segments = get_granular_segments_from_timestamps(start_ts - FIVE_MINUTES, end_ts + FIVE_MINUTES)
+      #segments = get_granular_segments_from_timestamps(start_ts - FIVE_MINUTES, end_ts + FIVE_MINUTES)
+      first_segment = time_segment_for_timestamp(start_ts - FIVE_MINUTES, FIVE_MINUTES)
+      segments = time_segments_for_timestamps(first_segment, end_ts + FIVE_MINUTES, FIVE_MINUTES)
 
       cass_queries = segments.map do |seg_start_ts, seg_end_ts|
         granularity = seg_end_ts - seg_start_ts + 1
