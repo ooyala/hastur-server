@@ -16,7 +16,7 @@ HASTUR_ROOT = File.join(File.dirname(__FILE__), "..", "..")
 HASTUR_ROUTER_BIN="#{HASTUR_ROOT}/infrastructure/hastur-router.rb"
 HASTUR_CLIENT_BIN="#{HASTUR_ROOT}/bin/hastur-client.rb"
 HASTUR_MSGTOOL_BIN="#{HASTUR_ROOT}/tools/msgtool.rb"
-HASTUR_QUERY_SERVER_BIN="#{HASTUR_ROOT}/infrastructure/hastur-query-server.rb"
+HASTUR_QUERY_SERVER_BIN="#{HASTUR_ROOT}/bin/hastur-query-server.rb"
 HASTUR_CASS_SINK_BIN="#{HASTUR_ROOT}/bin/cass_sink.rb"
 
 # easy to spot fake UUID's
