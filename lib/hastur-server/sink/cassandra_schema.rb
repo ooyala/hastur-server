@@ -5,8 +5,6 @@ require "date"
 
 require "hastur-server/util"
 
-# Data types we support:
-
 # Data types we will eventually want to support:
 #
 #
@@ -110,7 +108,7 @@ module Hastur
     # Additional options:
     #   :uuid - client UUID
     #   :route - sink sent to (required)
-    def insert(cass_client, json_string, route, timestamp=::Hastur::Utils.timestamp, options = {})
+    def insert(cass_client, json_string, route, options = {})
       hash = MultiJson.decode(json_string, :symbolize_keys => true)
       raise "Cannot deserialize JSON string!" unless hash
       uuid = options.delete(:uuid) || hash[:uuid] || hash[:from]
@@ -136,7 +134,7 @@ module Hastur
       end
 
       name = hash[:name]
-      timestamp_usec = timestamp
+      timestamp_usec = hash[:timestamp] || ::Hastur::Util.timestamp
 
       colname = col_name(name, timestamp_usec)
       key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec, schema[:granularity] || ONE_DAY)
