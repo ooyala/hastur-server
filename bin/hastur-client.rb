@@ -19,7 +19,7 @@ MultiJson.engine = :yajl
 NOTIFICATION_INTERVAL = 5   # Hardcode for now
 
 opts = Trollop::options do
-  opt :router,      "Router URI",         :type => String, :required => true, :multi => true
+  opt :router,      "Router URI",         :type => String, :default => "tcp://*:8126", :multi => true
   opt :uuid,        "System UUID",        :type => String
   opt :port,        "Local socket port",  :default => 8125
   opt :unix,        "UNIX domain socket", :type => String
