@@ -44,6 +44,17 @@ end
 # This route returns JSON message objects for the specified route at the
 # given timestamps.
 #
+# Data is returned in a JSON object of the form:
+#   {
+#     "name" => { "ts1" => json, "ts2" => json2, ... },
+#     "name2" => { "ts5" => json5, "ts6" => json6}
+#   }
+#
+# The hash is serialized as JSON which means that each internal JSON
+# chunk must be individually deserialized as well.
+#
+# TODO(noah): Fix these return types
+#
 get "/data/:route/json" do
   [ :start, :end, :uuid ].each { |p| check_present p }
 
@@ -54,6 +65,16 @@ get "/data/:route/json" do
   [ 200, MultiJson.encode(values) ]
 end
 
+#
+# This route returns values for the given route at the given
+# timestamps.
+#
+# Data is returned in a JSON object of the form:
+#   {
+#     "name" => { "ts1" => value, "ts2" => value2, ... },
+#     "name2" => { "ts5" => value5, "ts6" => value6}
+#   }
+#
 get "/data/:route/values" do
   [ :start, :end, :uuid ].each { |p| check_present p }
 
