@@ -9,10 +9,15 @@ MultiJson.engine = :yajl
 
 opts = Trollop::options do
   opt :cassandra,    "Cassandra hostname(s)",     :default => ["127.0.0.1:9160"], :type => :strings, :multi => true
+  opt :port,         "Port to run server",        :default => 4177,               :type => :integer
 end
 
 require "sinatra"
 require "hastur-server/sink/cassandra_rollups"
+
+configure do
+  set :port, opts[:port]
+end
 
 cass_client = Cassandra.new "Hastur", opts[:cassandra].flatten
 
