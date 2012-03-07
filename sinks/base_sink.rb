@@ -5,6 +5,8 @@ require "hastur-server/sink/cassandra_schema"
 
 module Hastur
   class Sink
+    attr_accessor :context
+
     def initialize
       # parse command line
       @opts = opts
@@ -13,7 +15,8 @@ module Hastur
       @client = ::Cassandra.new(@opts[:keyspace], @opts[:hosts].map {|h| "#{h}:9160" })
       @client.default_write_consistency = 2    # Initial default: 1
       # connect to Hastur router(s)
-      @socket = Hastur::ZMQUtils.connect_socket(::ZMQ::Context.new, ::ZMQ::PULL, @opts[:routers].flatten)
+      @context = ::ZMQ::Context.new
+      @socket = Hastur::ZMQUtils.connect_socket(@context, ::ZMQ::PULL, @opts[:routers].flatten)
       # properly set up signal trapping
       %w(INT TERM KILL).each do |sig|
         ::Signal.trap(sig) do
