@@ -8,7 +8,7 @@ namespace "test" do
     t.test_files = Dir["test/units/**/*_test.rb"]
     t.verbose = true
   end
-
+  
   desc "Run all integration tests"
   task :integrations do
     puts "(Integration tests!)"
@@ -27,6 +27,20 @@ namespace "test" do
       end
     end
   end
+  
+  namespace "units" do
+    desc "Long running unit tests with timeouts"
+    Rake::TestTask.new(:long) do |t|
+      t.libs += ["test"]
+      t.test_files = Dir["test/long/units/**/*_test.rb"]
+      t.verbose = true
+    end
+
+    desc "Runs all of the unit tests"
+    task :full => ["test:units", "test:units:long"] do
+      puts "All unit tests completed..."
+    end
+  end
 
   # TODO: remove this hack when we fix our tests
   integration_tests.delete("message")
@@ -38,3 +52,5 @@ end
 task :test => ["test:units", "test:integrations"] do
   puts "All tests completed..."
 end
+
+
