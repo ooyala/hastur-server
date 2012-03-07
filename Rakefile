@@ -8,7 +8,7 @@ namespace "test" do
     t.test_files = Dir["test/units/**/*_test.rb"]
     t.verbose = true
   end
-  
+
   desc "Run all integration tests"
   task :integrations do
     puts "(Integration tests!)"
@@ -27,7 +27,7 @@ namespace "test" do
       end
     end
   end
-  
+
   namespace "units" do
     desc "Long running unit tests with timeouts"
     Rake::TestTask.new(:long) do |t|
@@ -52,5 +52,3 @@ end
 task :test => ["test:units", "test:integrations"] do
   puts "All tests completed..."
 end
-
-
