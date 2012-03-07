@@ -4,9 +4,10 @@ module Hastur
     class V1
       attr_accessor :command, :args, :out_fd, :err_fd, :pid, :status
 
-      def initialize(command, args=[])
+      def initialize(command, args=[], env={})
         @command = command
         @args    = args
+        @env     = env
         @out_fd, @out_w = IO.pipe
         @err_fd, @err_w = IO.pipe
       end
@@ -15,7 +16,7 @@ module Hastur
         opts[:rlimit_cpu] ||= 10
         opts[:rlimit_as]  ||= 2**26 # 64MB of memory
 
-        @pid = Kernel.spawn(@command, *@args,
+        @pid = Kernel.spawn(@env, @command, *@args,
           :out => @out_w,
           :err => @err_w,
           :rlimit_cpu => opts[:rlimit_cpu],
