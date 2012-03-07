@@ -104,13 +104,13 @@ module Hastur
       raise ArgumentError.new(":type is required") unless opts[:type]
 
       if opts[:type].kind_of? Symbol
-          msg_class = Hastur::Message.symbol_to_class(opts[:type])
-          opts[:type] = msg_class.type_id
+        msg_class = Hastur::Message.symbol_to_class(opts[:type])
+        opts[:type] = msg_class.type_id
       end
 
       unless opts[:to]
-          msg_class = Hastur::Message.type_id_to_class(opts[:type])
-          opts[:to] ||= msg_class.route_uuid
+        msg_class = Hastur::Message.type_id_to_class(opts[:type])
+        opts[:to] = msg_class.route_uuid
       end
 
       # make sure :to/:from are proper UUID's in 36-byte hex, but don't be
