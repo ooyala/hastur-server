@@ -21,19 +21,6 @@ router_socket = Hastur::ZMQUtils.connect_socket(ctx, ZMQ::PUSH, opts[:routers])
 scheduler = Hastur::Scheduler.new(router_socket)
 scheduler.start
 
-# read scheduled jobs
-jobs = []
-=begin
-f = File.new(TEMP_JOB_FILE, "r")
-curr_time = Time.new
-while line = f.gets
-  jobs << Hastur::Job.new(line, curr_time)
-end
-=end
-
-# push all scheduled jobs through the scheduler
-scheduler.add_jobs jobs
-
 # TODO(viet): Use previous 5-minute rollup
 # TODO(viet): Do not add items to the heap if it is already in there
 # TODO(viet): Deregister plugins
@@ -47,6 +34,7 @@ scraper = Thread.new do
     client = Cassandra.new("Hastur", opts[:hosts].map { |h| "#{h}:9160" })
     loop do
       begin
+        jobs = []
         end_time = ::Hastur::Util.timestamp
         start_time = end_time.to_i - 60*5*1_000_000  # 5 minutes before
         uuids = Set.new
