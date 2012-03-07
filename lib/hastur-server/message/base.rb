@@ -58,8 +58,8 @@ module Hastur
       # Return the symbol that should be used for the class.
       # The symbols are defined in the Hastur::Message module.
       #
-      def self.to_sym() CLASS_SYMBOLS[self] end
-      def to_sym() CLASS_SYMBOLS[self.class] end
+      def self.type_symbol() CLASS_SYMBOLS[self] end
+      def type_symbol() CLASS_SYMBOLS[self.class] end
 
       #
       # WARNING: send() is going to be renamed to "transmit" soon! (al, 2012-03-06)
