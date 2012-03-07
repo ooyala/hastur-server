@@ -57,7 +57,7 @@ module Hastur
         },
         :granularity => FIVE_MINUTES,
         :name => :name,
-        :name_cf => :StatNamesFiveMinute,
+        :name_cf => :StatNamesDay,
       },
       "log" => {
         :cf => :LogsArchive,
@@ -138,7 +138,7 @@ module Hastur
 
       colname = col_name(name, timestamp_usec)
       key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec, schema[:granularity] || ONE_DAY)
-      five_minute_ts = time_segment_for_timestamp(timestamp_usec, FIVE_MINUTES)
+      one_day_ts = time_segment_for_timestamp(timestamp_usec, ONE_DAY)
 
       insert_options = { }
       insert_options[:consistency] = options[:consistency] if options[:consistency]
@@ -150,9 +150,9 @@ module Hastur
                         "last_access" => now_ts }, insert_options) if subdivide
 
         # Insert into "saw this in this time period" rows
-        client.insert(:UUIDFiveMinute, five_minute_ts.to_s, { uuid => "" })
+        client.insert(:UUIDDay, one_day_ts.to_s, { uuid => "" })
         if schema[:name_cf]
-          client.insert(schema[:name_cf], five_minute_ts.to_s, { name => "" })
+          client.insert(schema[:name_cf], one_day_ts.to_s, { name => "" })
         end
       end
     end
