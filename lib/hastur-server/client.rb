@@ -6,6 +6,7 @@ require 'socket'
 require 'termite'
 
 require "hastur"
+require "hastur-server/version"
 require "hastur-server/util"
 require "hastur-server/plugin/v1"
 require "hastur-server/input/json"
@@ -47,9 +48,9 @@ module Hastur
       @routers           = opts[:routers]
       @port              = opts[:port]
       @unix              = opts[:unix] # can use a unix socket for testing, should never see production
-      @heartbeat         = opts[:heartbeat]
+      @heartbeat         = opts[:heartbeat] * 1_000_000 # microseconds
       @stats_interval    = opts[:stats_interval]
-      @last_heartbeat    = Time.now - @heartbeat
+      @last_heartbeat    = Hastur::Util.timestamp - @heartbeat
       @last_ack_check    = Time.now - @ack_interval
       @last_client_reg   = Time.now - 129600 # 1.5 days
       @last_stat_flush   = Time.now
@@ -276,20 +277,28 @@ module Hastur
     # Check to see if it's time to send a heartbeat.
     #
     def poll_heartbeat_timeout
+      now = Hastur::Util.timestamp
+      delta = now - @last_heartbeat
+
       # perform heartbeat check
-      if Time.now - @last_heartbeat > @heartbeat
+      if delta > @heartbeat
         @logger.debug "Sending heartbeat"
 
         msg = Hastur::Message::Heartbeat.new(
           :from => @uuid,
           :data => {
-            :last_heartbeat => Hastur::Util.timestamp(@last_heartbeat),
-            :heartbeat      => @heartbeat
+            :name           => "hastur.client.heartbeat",
+            :value          => delta,
+            :timestamp      => now,
+            :labels         => {
+              :version => Hastur::VERSION,
+              :period  => @heartbeat,
+            }
           }
         )
         msg.send(@router_socket)
 
-        @last_heartbeat = Time.now
+        @last_heartbeat = now
       end
     end
 
