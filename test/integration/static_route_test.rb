@@ -58,7 +58,8 @@ class NotificationTest < Test::Unit::TestCase
         @count += 1 
         e = Hastur::Envelope.parse(messages[-2])
         refute_nil e
-        rid = Hastur.route_id(route)
+        klass = Hastur::Message.symbol_to_class(route.to_sym)
+        rid = klass.route_uuid
         assert_equal rid, e.to, "routed to #{route}"
       end
     end
@@ -72,7 +73,7 @@ class NotificationTest < Test::Unit::TestCase
 
   def test_routes
     @routes_to_test.each do |route|
-      klass = Hastur::Message.route_class(route)
+      klass = Hastur::Message.symbol_to_class(route.to_sym)
       msg = klass.new(:payload => "{}", :from => C1UUID)
       rc = msg.send @topology[:client].socket
       assert rc > -1, "msg.send() must succeed to have a useful test"

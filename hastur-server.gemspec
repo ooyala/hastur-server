@@ -30,7 +30,7 @@ EOS
   s.add_development_dependency "erubis"
   s.add_development_dependency "rerun"
   s.add_development_dependency "sinatra"
-  s.add_development_dependency "nodule", "~>0.0.3"
+  s.add_development_dependency "nodule", "~>0.0.5"
   s.add_development_dependency "yard"
   s.add_development_dependency "redcarpet"
   s.add_runtime_dependency "yajl-ruby"

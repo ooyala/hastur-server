@@ -64,7 +64,7 @@ module Hastur
     end
 
     def _fail(message, e)
-      @logger.debug "#{message}: #{e.inspect}"
+      @logger.debug "FAIL: #{message}: #{e.inspect}"
       error = Hastur::Message::Error.new :from => @uuid, :payload => e
       error.send(@router_socket)
       @counters[:zmq_send] += 1
@@ -81,9 +81,9 @@ module Hastur
     # Hastur::Message's route_class message (which uses a table of route => class)
     #
     def hash_to_message(data)
-      route = data.delete :_route
+      route = data.delete(:_route).to_sym
 
-      if klass = Hastur::Message.route_class(route)
+      if klass = Hastur::Message.symbol_to_class(route)
         payload = MultiJson.encode(data)
       else
         payload = data[:payload]

@@ -53,15 +53,10 @@ sockets = {
 
 sockets.each do |key,sock|
   sock.setsockopt(ZMQ::LINGER, -1)
-  sock.setsockopt(ZMQ::HWM,     opts[:hwm])
+  sock.setsockopt(ZMQ::HWM, opts[:hwm])
+  sock.setsockopt(ZMQ::IDENTITY, "#{opts[:uuid]}:#{key}")
   rc = sock.bind(opts[key])
   abort "Error binding #{key} socket: #{ZMQ::Util.error_string}" unless rc > -1
-end
-
-unless opts[:uuid]
-  # attempt to retrieve UUID from disk; UUID gets created on the fly if it doesn't exist
-  opts[:uuid] = Hastur::ClientUtil::UUID.get_uuid
-  puts opts[:uuid]
 end
 
 R = Hastur::Router.new(opts[:uuid], :error_socket => sockets[:error])

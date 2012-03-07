@@ -21,7 +21,7 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
 
   ENVELOPE = {
     :from      => "be7f4980-6a1f-4120-b0ce-26de709afcf6",
-    :route     => :rawdata,
+    :type      => :rawdata,
     :timestamp => 1329865874428623,
     :uptime    => 12.400000000000000,
     :sequence  => 88888
@@ -31,89 +31,12 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   HMAC_HEX = "8861a1a7e8e826df5bee09da489f1c129c9b8b9c3ad96fee75f9ee1cc096fe99"
   INPROC_URI = "inproc://test1"
 
-  def test_envelope
-    e = Hastur::Envelope.new(
-      :route     => :rawdata,
-      :from      => UUID,
-      :timestamp => 1328301436948527,
-      :uptime    => 12.401439189910889,
-      :sequence  => 1234
-    )
-    assert_equal false, e.ack? # should default to false
-    assert_equal '72617764-6174-6100-0000-000000000000', e.to
-
-    ehex = e.to_s # returns envelope in hex
-    assert_equal "0001",               ehex[0,  4 ], "check version"
-    assert_equal "72617764617461",     ehex[4,  14], "check route"
-    assert_equal UUID.split(/-/).join, ehex[36, 32], "check uuid"
-
-    assert_raises ArgumentError do
-      Hastur::Envelope.new
-      Hastur::Envelope.new :foobar
-    end
-
-    # :route and :uuid are both required
-    assert_raises ArgumentError do
-      Hastur::Envelope.new :from  => SecureRandom.uuid
-      Hastur::Envelope.new :route => :error
-    end
-
-    # test mispeled ruotes
-    assert_raises ArgumentError do
-      Hastur::Envelope.new :route => :stats, :from => SecureRandom.uuid
-      Hastur::Envelope.new :route => :sta,   :from => SecureRandom.uuid
-      Hastur::Envelope.new :ruote => :stat,  :from => SecureRandom.uuid
-      Hastur::Envelope.new :ruote => :data,  :from => SecureRandom.uuid
-      Hastur::Envelope.new :route => :dat,   :from => SecureRandom.uuid
-    end
-
-    acked = Hastur::Envelope.new :route => :stat, :from => SecureRandom.uuid.split(/-/).join, :ack => true
-    assert_equal true, acked.ack?
-    assert_equal '73746174-0000-0000-0000-000000000000', acked.to
-
-    noack = Hastur::Envelope.new :route => :stat, :from => SecureRandom.uuid, :ack => false
-    assert_equal false, noack.ack?
-    assert_equal 184,   noack.to_s.length
-    assert_equal 92,    noack.pack.bytesize
-    assert_equal '73746174-0000-0000-0000-000000000000', noack.to
-  end
-
-  def test_router_trace
-    r1uuid = SecureRandom.uuid
-    r2uuid = SecureRandom.uuid
-
-    e = Hastur::Envelope.new(ENVELOPE)
-
-    # do the first check to make sure its sane, further checks should grow by 32 bytes
-    len = e.to_s.length
-    assert_equal len, e.to_s.length, "adding a router should grow the hex representation by exactly 32 bytes"
-
-    e.add_router r1uuid
-    assert_equal (len + 32), (e.to_s.length), "adding a router should grow the hex representation by exactly 32 bytes"
-
-    e.add_router r2uuid
-    assert_equal (len + 64), (e.to_s.length), "adding a router should grow the hex representation by exactly 32 bytes"
-  end
-
-  def test_hmac
-    secret = "abc123"
-    data = "abcdefghijklmnopqrstuvwxyz0123456789"
-    hmac = 'e373cf87ca888d48230c1a2dc0bd58a5c6167f8c668dcbf7983e6fcbd9a67e6d'
-
-    e = Hastur::Envelope.new(ENVELOPE)
-
-    assert_equal '', e.hmac, "hmac should be empty on a newly-created envelope"
-
-    hmhex = e.update_hmac(data, secret)
-    assert_equal hmac, hmhex, "hmac should match static data"
-  end
-
   def test_serialize
     zmq_part = "00670243f680d448deae3f2ca4513bb1e8"
     e = Hastur::Message::Rawdata.new(ENVELOPE.merge(:payload => "a b c d e f g"))
 
-    json1= "{\"klass\":\"Hastur::Message::Rawdata\",\"envelope\":{\"version\":1,\"to\":\"72617764-6174-6100-0000-000000000000\",\"from\":\"be7f4980-6a1f-4120-b0ce-26de709afcf6\",\"ack\":0,\"sequence\":88888,\"timestamp\":1329865874428623,\"uptime\":12.4},\"payload\":\"a b c d e f g\",\"zmq_parts\":[]}"
-    json2 = "{\"klass\":\"Hastur::Message::Log\",\"envelope\":{\"version\":1,\"to\":\"72617764-6174-6100-0000-000000000000\",\"from\":\"ac8084af-955f-4a48-ac8d-6d2c73f33a75\",\"ack\":1,\"sequence\":1234,\"timestamp\":1328301436000000,\"uptime\":15.9},\"payload\":\" 90ea9aa814354df5a4e82921c63a42cb \",\"zmq_parts\":[\"#{zmq_part}\"]}"
+    json1= "{\"klass\":\"Hastur::Message::Rawdata\",\"envelope\":{\"version\":1,\"type\":6,\"to\":\"72617764-6174-6100-0000-000000000000\",\"from\":\"be7f4980-6a1f-4120-b0ce-26de709afcf6\",\"ack\":0,\"resend\":0,\"sequence\":88888,\"timestamp\":1329865874428623,\"uptime\":12.4,\"hmac\":\"\",\"routers\":[]},\"payload\":\"a b c d e f g\",\"zmq_parts\":[]}"
+    json2 = "{\"klass\":\"Hastur::Message::Log\",\"envelope\":{\"version\":1,\"type\":3,\"to\":\"72617764-6174-6100-0000-000000000000\",\"from\":\"ac8084af-955f-4a48-ac8d-6d2c73f33a75\",\"ack\":1,\"resend\":0,\"sequence\":1234,\"timestamp\":1328301436000000,\"uptime\":15.9,\"hmac\":\"\",\"routers\":[]},\"payload\":\" 90ea9aa814354df5a4e82921c63a42cb \",\"zmq_parts\":[\"#{zmq_part}\"]}"
 
     assert_equal json1, e.to_json, "converting envelope to json matches static data"
 
@@ -131,29 +54,28 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   end
 
   def test_over_zmq
-    ctx = ZMQ::Context.new
+    @ctx = ZMQ::Context.new
+    @rsock = @ctx.socket(ZMQ::PAIR)
+    @ssock = @ctx.socket(ZMQ::PAIR)
+    @rsock.bind(INPROC_URI)
+    @ssock.connect(INPROC_URI)
 
     thr = Thread.new do
-      ssock = ctx.socket(ZMQ::PAIR)
-      ssock.connect(INPROC_URI)
-
+      Thread.current.abort_on_exception=true
       e = Hastur::Envelope.new(ENVELOPE)
-      m = Hastur::Message::Rawdata.new(:envelope => e, :payload => "a b c d e f g")
+      m = Hastur::Message::Rawdata.new(ENVELOPE.merge(:payload => "a b c d e f g"))
 
-      m.send(ssock, :secret => SECRET)
-      ssock.close
+      m.send(@ssock, :secret => SECRET)
+      @ssock.close
     end
 
-    rsock = ctx.socket(ZMQ::PAIR)
-    rsock.bind(INPROC_URI)
-
-    msg = Hastur::Message.recv(rsock)
+    msg = Hastur::Message.recv(@rsock)
     assert_kind_of Hastur::Message::Rawdata, msg
     assert_equal HMAC_HEX, msg.envelope.hmac, "hmac generated and matches static data"
 
+    @rsock.close
     thr.join
-    rsock.close
-    ctx.terminate
+    @ctx.terminate
   end
 
   def test_base
@@ -169,7 +91,7 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   end
 
   def test_stat
-    e = Hastur::Envelope.new :route => :stat, :from => SecureRandom.uuid
+    e = Hastur::Envelope.new :type => :stat, :from => SecureRandom.uuid
     hmsg = Hastur::Message::Stat.new :envelope => e, :data => STAT
     refute_nil hmsg
     assert_kind_of Hastur::Message::Base, hmsg
@@ -179,18 +101,24 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     assert_equal STAT_JSON, hmsg.payload
   end
 
-  def test_route_id
-    refute_nil Hastur.route_id(:stat)
-    refute_nil Hastur.route_id('73746174-0000-0000-0000-000000000000')
-    assert_equal '73746174-0000-0000-0000-000000000000', Hastur.route_id(:stat)
-    assert_equal '73746174-0000-0000-0000-000000000000', Hastur.route_id('73746174-0000-0000-0000-000000000000')
-  end
+  def test_const_methods
+    stat_uuid = '73746174-0000-0000-0000-000000000000'
+    log_uuid  = '6c6f6700-0000-0000-0000-000000000000'
+    assert Hastur::Message.symbol?(:stat)
+    assert Hastur::Message.symbol?(:log)
+    assert Hastur::Message.symbol?(:error)
+    assert Hastur::Message.symbol?(:registration)
+    assert Hastur::Message.route_uuid?(stat_uuid)
+    assert Hastur::Message.route_uuid?(log_uuid)
+    assert Hastur::Message.type_id?(1)
+    assert Hastur::Message.type_id?(9)
 
-  def test_route_symbol
-    refute_nil Hastur.route_symbol(:stat)
-    refute_nil Hastur.route_symbol('73746174-0000-0000-0000-000000000000')
-    assert_equal :stat, Hastur.route_symbol(:stat)
-    assert_equal :stat, Hastur.route_symbol('73746174-0000-0000-0000-000000000000')
+    assert_equal Hastur::Message::Stat, Hastur::Message.symbol_to_class(:stat)
+    assert_equal Hastur::Message::Stat, Hastur::Message.route_uuid_to_class(stat_uuid)
+    assert_equal Hastur::Message::Stat, Hastur::Message.type_id_to_class(1)
+    refute_equal Hastur::Message::Stat, Hastur::Message.symbol_to_class(:error)
+    refute_equal Hastur::Message::Stat, Hastur::Message.route_uuid_to_class(log_uuid)
+    refute_equal Hastur::Message::Stat, Hastur::Message.type_id_to_class(9)
   end
 
   def test_error

@@ -11,6 +11,8 @@ require 'nodule/zeromq'
 require 'nodule/console'
 
 class NotificationTest < Test::Unit::TestCase
+  ITERATIONS = 4
+
   def setup
     @topology = Nodule::Topology.new(
       :greenio       => Nodule::Console.new(:fg => :green),
@@ -18,13 +20,13 @@ class NotificationTest < Test::Unit::TestCase
       :cyanio        => Nodule::Console.new(:fg => :cyan),
       :client1unix   => Nodule::UnixSocket.new,
       :router        => Nodule::ZeroMQ.new(:uri => :gen),
-      :event         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 4),
-      :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain,   :limit => 1),
-      :registration  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :rawdata       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :event         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => ITERATIONS),
+      :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
+      :registration  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
+      :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
+      :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
+      :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
+      :rawdata       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
       :direct        => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
       :control       => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
       :routersvc     => Nodule::Process.new(
@@ -55,7 +57,8 @@ class NotificationTest < Test::Unit::TestCase
 
     @events_seen = 0
 
-    @topology[:event].add_reader do |messages|
+    STDERR.puts "adding event PROC!"
+    @topology[:event].add_reader proc { |messages|
       e = Hastur::Envelope.parse(messages[-2])
       refute_nil e, "Hastur::Envelope.parse on messages[-2] must return an envelope."
       assert e.ack?, "Events must always have the ack flag enabled (got: #{e.ack})."
@@ -65,7 +68,8 @@ class NotificationTest < Test::Unit::TestCase
       # send an ack, since it's the right thing to do
       rc = e.to_ack.send @topology[:direct].socket
       assert rc > -1, "sending an ack created from the envelope of the message"
-    end
+    }
+    STDERR.puts "added event PROC!"
 
     @topology.start_all
   end
@@ -89,22 +93,23 @@ class NotificationTest < Test::Unit::TestCase
 }
 EOJSON
 
-    @topology[:heartbeat].wait 1
+    @topology[:heartbeat].require_read_count 1
 
-    @topology[:client1unix].send event
-    @topology[:client1unix].send event
-    @topology[:client1unix].send event
-    @topology[:client1unix].send event
+    ITERATIONS.times do
+      @topology[:client1unix].send event
+    end
 
-    @topology[:event].wait 10
+    @topology[:event].require_read_count ITERATIONS, 3 do
+      flunk "timeout waiting for #{ITERATIONS} events (had #{@topology[:event].read_count})"
+    end
 
     messages = @topology[:event].output
     payloads = messages.map { |m| MultiJson.decode(m[-1]) }
 
-    assert_equal 4, payloads.size
+    assert_equal ITERATIONS, payloads.size
     assert_equal 604800, payloads[0]["sla"]
-    assert_equal 4, messages.size
+    assert_equal ITERATIONS, messages.size
 
-    assert 4 <= @events_seen, "The ack receiver proc should be called at least 4 times (got #{@events_seen})."
+    assert ITERATIONS <= @events_seen, "The ack receiver proc should be called at least #{ITERATIONS} times (got #{@events_seen})."
   end
 end

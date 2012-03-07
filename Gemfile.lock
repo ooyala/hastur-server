@@ -6,7 +6,7 @@ PATH
       bluepill
       cassandra
       ffi-rzmq
-      hastur
+      hastur (~> 1.0.1)
       msgpack
       multi_json
       rainbow
@@ -20,11 +20,11 @@ GEM
   remote: http://rubygems.org/
   remote: http://gems.sv2/
   specs:
-    activesupport (3.2.1)
+    activesupport (3.2.2)
       i18n (~> 0.6)
       multi_json (~> 1.0)
     algorithms (0.3.0)
-    bluepill (0.0.58)
+    bluepill (0.0.60)
       activesupport (>= 3.0.0)
       daemons (~> 1.1.4, <= 1.1.6)
       i18n (>= 0.5.0)
@@ -34,6 +34,7 @@ GEM
       rake
       simple_uuid (>= 0.2.0)
       thrift_client (>= 0.7.0)
+    chronic (0.6.7)
     daemons (1.1.6)
     ecology (0.0.17)
       erubis
@@ -42,7 +43,8 @@ GEM
     ffi (1.0.11)
     ffi-rzmq (0.9.3)
       ffi
-    hastur (1.0.0)
+    hastur (1.0.1)
+      chronic
       multi_json
     i18n (0.6.0)
     json (1.6.5)
@@ -54,7 +56,7 @@ GEM
       metaclass (~> 0.0.1)
     msgpack (0.4.6)
     multi_json (1.1.0)
-    nodule (0.0.4)
+    nodule (0.0.5)
     rack (1.4.1)
     rack-protection (1.2.0)
       rack
@@ -91,7 +93,7 @@ DEPENDENCIES
   erubis
   hastur-server!
   mocha
-  nodule (~> 0.0.4)
+  nodule (~> 0.0.5)
   redcarpet
   rerun
   scope

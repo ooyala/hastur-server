@@ -21,10 +21,10 @@ module Hastur
       raise ArgumentError.new "uuid must be in 36-byte hex form" unless Hastur::Util.valid_uuid?(uuid)
 
       @uuid                   = uuid
-      @route_fds              = {} # hash of fd => [ {route}, {route}, ... ]
+      @route_ids              = {} # hash of id => [ {route}, {route}, ... ]
       @dynamic                = {} # hash of client_uuid => [socket, [zmq parts]]
       @timestamps             = {} # hash of client_uuid => timestamp (float)
-      @handlers               = {} # hash of socket fd => blocks for integrating extra sockets into the poller
+      @handlers               = {} # hash of socket id => blocks for integrating extra sockets into the poller
       @hmac_key               = opts[:hmac_key]
       @logger                 = Termite::Logger.new
       @poller                 = ZMQ::Poller.new
@@ -35,11 +35,27 @@ module Hastur
       @stats_interval         = opts[:stats_interval]
       @error_socket           = opts[:error_socket]
       @last_stat_flush        = Time.now
+      @last_expiry_check      = Time.now
+      @dynamic_route_expire   = opts[:dynamic_route_expire] || 86400
     end
 
-    def sockfd(socket)
-      rc = socket.getsockopt(ZMQ::FD, val=[])
-      val[0]
+    #
+    # return a useful socket identity, falling back to the memory address of the socket
+    # if it no identity was assigned with setsockopt(ZMQ::IDENTITY, "").
+    #
+    def sockid(socket)
+      if socket.kind_of? ZMQ::Socket
+        rc = socket.getsockopt(ZMQ::IDENTITY, id=[])
+        if ZMQ::Util.resultcode_ok?(rc) and id[0]
+          id[0]
+        else
+          socket.socket.address
+        end
+      elsif socket.kind_of? FFI::Pointer
+        socket.address
+      else
+        raise ArgumentError.new "Cannot generate a useful identity for the socket."
+      end
     end
 
     #
@@ -92,10 +108,11 @@ module Hastur
       }
 
       if opts[:to] 
-        if Hastur.route?(opts[:to])
-          route[:to] = Hastur.route_id(opts[:to])
-        elsif Hastur::Util.valid_uuid?(opts[:to])
+        if Hastur::Util.valid_uuid?(opts[:to])
           route[:to] = opts[:to]
+        elsif Hastur::Message.symbol?(opts[:to].to_sym)
+          klass = Hastur::Message.symbol_to_class(opts[:to].to_sym)
+          route[:to] = klass.route_uuid
         else
           raise ArgumentError.new ":to must be a valid Hastur route (id or symbol) or a 36-byte hex UUID (#{opts[:to]})"
         end
@@ -106,18 +123,16 @@ module Hastur
         route[:from] = opts[:from]
       end
 
-      # socket fd's are unique inside a process and can be looked up
-      # inside the poll loop to get the routes for that socket
-      src_fd = sockfd(route[:src])
-      @route_fds[src_fd] ||= []
-      @route_fds[src_fd] << route
+      src_id = sockid(route[:src])
+      @route_ids[src_id] ||= []
+      @route_ids[src_id] << route
     end
 
     #
     # return all of the routes, mostly for dumping to console at the moment
     #
     def routes
-      { :static => @route_fds, :dynamic => @dynamic }
+      { :static => @route_ids, :dynamic => @dynamic }
     end
 
     #
@@ -126,16 +141,21 @@ module Hastur
     #
     def handle(socket, &block)
       @poller.register_readable socket
-      @handlers[sockfd(socket)] = block
+      @handlers[sockid(socket)] = block
     end
 
     def forward(socket, *list)
       out = list.flatten.map do |part|
-        unless part.kind_of? ZMQ::Message
-          part = ZMQ::Message.new(part)
+        # messages are not reusable: copy each message (usually 1) from the cache
+        if part.kind_of? ZMQ::Message
+          new = ZMQ::Message.new
+          new.copy part.pointer
+          new
+        else
+          ZMQ::Message.new(part)
         end
-        part
       end
+
       rc = socket.sendmsgs out
       out.each { |part| part.close }
       rc
@@ -155,19 +175,18 @@ module Hastur
       end
 
       @poller.readables.each do |socket|
-        # use the fd to map back to a route list
-        fd = sockfd(socket)
+        # use the "id" to map back to a route list
+        id = sockid(socket)
 
         # additional socket handlers can be registered for things like control or route advertisement
-        if @handlers[fd]
-          @handlers[fd].call(socket)
+        if @handlers[id]
+          @handlers[id].call(socket)
           next
         end
 
         # everything else is expected to be a Hastur message
         rc = socket.recvmsgs zmq_messages=[]
         hastur_message = zmq_messages.pop
-        hastur_message_str = hastur_message.copy_out_string
         hastur_envelope = zmq_messages.pop
         envelope = Hastur::Envelope.parse(hastur_envelope.copy_out_string)
         hastur_envelope.close
@@ -175,33 +194,25 @@ module Hastur
         # convenience variables
         from = envelope.from
         to   = envelope.to
-        time = envelope.timestamp
 
         # append this router's identity to the message envelope
         envelope.add_router @uuid
 
-        # update the list of when a UUID was last seen
-        # use client timestamp to avoid problems due to clock skew
-        if @timestamps.has_key? from 
-          # expire cached zmq_parts every 10 minutes
-          if @dynamic.has_key? from and @timestamps[from] < (time - 600)
-            dynsock, zmq_parts = @dynamic.delete(from)
-            zmq_parts.each { |part| part.close }
-          end
-        else
-          @timestamps[from] = time
+        # Write the zmq headers into the dynamic route cache on every message from a ZMQ::ROUTER socket.
+        # This cache is used to route message from a pull/sub socket to the correct client on the
+        # router socket.
+        # The dynamic route cache is only useful on ROUTER (and maybe DEALER?) sockets.
+        socket.getsockopt(ZMQ::TYPE, socktype=[])
+        if socktype.member? ZMQ::ROUTER
+          # cache a copy of the binary string rather than the ZMQ::Message to avoid free() headaches
+          headers = zmq_messages.map { |m| m.copy_out_string }
+          @dynamic[from] = [socket, headers]
+          @timestamps[from] = Time.now
         end
 
-        # make a copy of the ZeroMQ routing headers and story by source UUID
-        # this is what makes it possible to deliver messages to clients by UUID
-        if @dynamic[from]
-          zmq_messages.each { |part| part.close }
-        else
-          @dynamic[from] = [socket, zmq_messages]
-        end
-
+        # keep track of how many times a message is routed so we can easily tell when a message is unroutable
         times_routed = 0
-        @route_fds[fd].each do |r|
+        @route_ids[id].each do |r|
           # test in the order of popularity
           # simple :to routes without :from matching should be well over 90% of cases, e.g.
           # r.route :to => :stat, :src => client_router_sock, :dest => stat_sink_sock
@@ -230,26 +241,21 @@ module Hastur
           end
         end
         
-        # Messages destined to clients on the ZMQ::ROUTER socket can only be
-        # reached via their zeromq-assigned identities.
-        # Swap whatever zeromq envelope came with the message for a copy of an envelope
-        # captured from inbound clients. It's a bit like ARP.
+        # Messages destined to clients on the ROUTER socket can only be reached via their random identity.
+        # For every message we receive from a client, we cache its identity in @dynamic as a binary string
+        # that can be converted back to the ZMQ envelope part before sending on the router socket. This will
+        # allow ZeroMQ to route the message to the right client.
+        # This is a lot like ARP on IPv4 ethernet networks.
         # Future: We may eventually want a router broadcast channel for an arp-like "who has" pattern.
         if @dynamic.has_key? to
-          # messages are not reusable: copy each message (usually 1) from the cache
-          zmq_envelope = @dynamic[to][1].map do |original|
-            new = ZMQ::Message.new
-            new.copy original.pointer
-            new
-          end
-
-          forward @dynamic[to][0], zmq_envelope, envelope.pack, hastur_message
+          forward @dynamic[to][0], @dynamic[to][1], envelope.pack, hastur_message
           times_routed += 1
         end
 
         # no route match, should not happen really except in integration tests that don't wire everything up
         if times_routed < 1
-          @logger.warn "unroutable message | #{envelope.to_json} | #{hastur_message_str} |"
+          body_str = hastur_message.copy_out_string
+          @logger.warn "unroutable message | #{envelope.to_json} | #{body_str} |"
 
           # forward to the error socket if it's set up
           if @error_socket.kind_of? ZMQ::Socket
@@ -257,15 +263,29 @@ module Hastur
               :error => :unroutable,
               :data  => {
                 :envelope => envelope.to_hash,
-                :message => hastur_message
+                :message => body_str
               }
             })
             error.send @error_socket
           end
         end
 
+        hastur_message.close if hastur_message
+
         # update stats
         @num_msgs += 1
+      end
+
+      # Expire really old dynamic routes we haven't heard from for more than a day.
+      now = Time.now
+      if now - @last_expiry_check > 300 # every 5 minutes
+        @timestamps.each do |key,timestamp|
+          if now - timestamp > @dynamic_route_expire
+            @dynamic.delete(key) if @dynamic.has_key?(key)
+            @timestamps.delete key
+          end
+        end
+        @last_expiry_check = now
       end
     end
 
@@ -280,16 +300,6 @@ module Hastur
         # reset stats
         @num_msgs = 0
         @last_stat_flush = curr_time
-      end
-    end
-
-    #
-    # Free ZMQ::Message parts cached in @dynamic hash.
-    #
-    def free_dynamic
-      @dynamic.keys do |uuid|
-        sock, zmq_parts = @dynamic.delete uuid
-        zmq_parts.each { |part| part.close }
       end
     end
 
@@ -309,7 +319,6 @@ module Hastur
         poll_zmq(zmq_poll_timeout)
         poll_stats
       end
-      free_dynamic
     end
   end
 end
