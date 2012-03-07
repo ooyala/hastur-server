@@ -66,16 +66,11 @@ module Hastur
       # buckets.
 
       # Make sure we return all relevant UUIDs - for now, just expand five minutes in either direction
-      #segments = get_granular_segments_from_timestamps(start_ts - FIVE_MINUTES, end_ts + FIVE_MINUTES)
-      first_segment = time_segment_for_timestamp(start_ts - FIVE_MINUTES, FIVE_MINUTES)
-      segments = time_segments_for_timestamps(first_segment, end_ts + FIVE_MINUTES, FIVE_MINUTES)
+      first_segment = time_segment_for_timestamp(start_ts - FIVE_MINUTES, ONE_DAY)
+      segments = time_segments_for_timestamps(first_segment, end_ts + FIVE_MINUTES, ONE_DAY)
 
-      cass_queries = segments.map do |seg_start_ts, seg_end_ts|
-        granularity = seg_end_ts - seg_start_ts + 1
-        gran_name = NAME_BY_GRANULARITY[granularity]
-        raise "Unknown granularity #{granularity}!" unless gran_name
-
-        [ "UUID#{gran_name}".to_sym, start_ts.to_s ]
+      cass_queries = segments.map do |seg_start_ts|
+        [ :UUIDDay, seg_start_ts.to_s ]
       end
     end
 
@@ -84,14 +79,11 @@ module Hastur
     #
     def get_stat_name_cass_queries_over_time(start_ts, end_ts, options = {})
       # Make sure we return all relevant stat names - for now, just expand five minutes in either direction
-      segments = get_granular_segments_from_timestamps(start_ts - FIVE_MINUTES, end_ts + FIVE_MINUTES)
 
-      cass_queries = segments.map do |seg_start_ts, seg_end_ts|
-        granularity = seg_end_ts - seg_start_ts + 1
-        gran_name = NAME_BY_GRANULARITY[granularity]
-        raise "Unknown granularity #{granularity}!" unless gran_name
-
-        [ "StatNames#{gran_name}".to_sym, start_ts.to_s ]
+      first_segment = time_segment_for_timestamp(start_ts - FIVE_MINUTES, ONE_DAY)
+      segments = time_segments_for_timestamps(first_segment, end_ts + FIVE_MINUTES, ONE_DAY)
+      cass_queries = segments.map do |seg_start_ts|
+        [ :StatNamesDay, seg_start_ts.to_s ]
       end
     end
 
