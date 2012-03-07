@@ -2,8 +2,6 @@
   <head>
     <title>Graphs for Hastur Cassandra Stats</title>
 
-    <!-- <meta http-equiv="refresh" content="5"> -->
-
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
     <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.js"></script>
     <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.navigate.js"></script>
@@ -34,42 +32,81 @@
 var ajaxGetInterval = false;
 var plot = false;
 var do_replot = true;
+var do_grid_change = true;
+var last_ts = false;
+
+// Plot data is a hash of the data we've seen
+var plot_data = {};
+
+// This is the plot_data in flot format
+var flot_data = {};
+
+// This is the most recent list of labels
 var old_labels = [];
 
 $(function () {
 
     // Create and Plot Data
 
-    function labelsFromData(data) {
-      labels = []
-      for(var i = 0; i < data.length; i++) {
-        labels.push(data[i].label);
-      }
-      return labels;
+    function clearPlotData() {
+      plot_data = {};
+      flot_data = {};
+      do_grid_change = true;
     }
 
-    function labelsEqual(list1, list2) {
-      if(list1.length != list2.length) return false;
+    // Add data to plot_data, update as new samples come in.
+    // Flot data is in format:
+    // [
+    //    { "label": "series1", "data": [[ t1, data1], [t2, data2]...] },
+    //    { "label": "series2", "data": [[ t1, data1], [t2, data2]...] }
+    // ]
+    //
+    // plot_data is simpler:
+    // {
+    //   "series1": { "t1": data1, "t2": data2 },
+    //   "series2": { "t1": data1, "t2": data2 }
+    // }
+    //
+    function mergePlotData(newData) {
+      // For each data series
+      for(var i_new = 0; i_new < newData.length; i_new++) {
+        label = newData[i_new].label;
+        if(!label) { continue };
 
-      for(var i = 0; i < list1.length; i++) {
-        if(list1[i] != list2[i]) return false;
+        // Add new series to plot_data if it isn't there
+        if(!plot_data[label]) {
+          plot_data[label] = {};
+          flot_data_series = { "label": label, "data": [] };
+          flot_data += [ flot_data_series ];
+          plot_data[label].flot_data = flot_data_series.data;
+
+          // The labels changed, redraw
+          do_grid_change = true;
+        }
+
+        var oldSeries = plot_data[label];
+        var flotData = plot_data[label].flot_data;
+        var newSeries = newData[i_new];
+        for(var i_series = 0; i_series < newSeries.length; i_series++) {
+          var ts = newSeries[i_series][0];
+          var point = newSeries[i_series][1];
+
+          if(!oldSeries[ts]) {
+            flotData += [ [ ts, point ] ]
+            oldSeries[ts] = point;
+          }
+
+          if(!last_ts || ts > last_ts) { last_ts = ts; }
+        }
       }
-      return true;
     }
 
-    function drawWithData(data) {
+    function drawWithData(theData) {
       var placeholder = $("#placeholder");
-      var doGridChange = false;
-
-      new_labels = labelsFromData(data);
-      if(plot !== false && !labelsEqual(new_labels, old_labels)) {
-        doGridChange = true;
-      }
-      old_labels = new_labels;
 
       // Start with empty data, schedule an AJAX update
       if(do_replot) {
-        plot = $.plot(placeholder, data, {
+        plot = $.plot(placeholder, theData, {
           series: {
             points: { show: true }
           },
@@ -95,11 +132,14 @@ $(function () {
 
         do_replot = false;
       } else {
-        plot.setData(data);
+        plot.setData(theData);
         plot.draw();
       }
 
-      if(doGridChange) plot.setupGrid();
+      if(do_grid_change) {
+        plot.setupGrid();
+        do_grid_change = false;
+      }
 
       // Navigation - Panning and Zooming
 
@@ -126,10 +166,16 @@ $(function () {
       addArrow('down', 40, 45, { top: 100 });
     }
 
-    function updateGraphData() {
-      now = new Date();
-      now_ts = now.getTime();
-      start_ts = now_ts - 24 * 60 * 60 * 1000;
+    function updateGraphData(fullUpdate) {
+      var now = new Date();
+      var now_ts = now.getTime();
+      var start_ts;
+
+      if(!last_ts || fullUpdate) {
+        start_ts = now_ts - 24 * 60 * 60 * 1000;
+      } else {
+        start_ts = last_ts - 10 * 1000;  // Re-get last 10 seconds of data
+      }
 
       // Query for ten minutes later than now.  Normally
       // there shouldn't be any data, but this (more than)
@@ -138,11 +184,22 @@ $(function () {
 
       $.ajax({
                method: 'get',
-               url : '/data?start=' + start_ts + '&end=' + now_ts,
+               url : '/proxy?start=' + start_ts + '&end=' + now_ts,
                dataType : 'text',
-               success: function (text) { data = eval(text); drawWithData(data); }
+               success: function (text) {
+                 var theData = eval(text);
+                 if(!fullUpdate) {
+                   var point;
+                   for(point in theData) {
+                   }
+                 }
+                 drawWithData(theData);
+                }
               });
     }
+
+    // Every 2 minutes do a full refresh
+    setInterval(function() { updateGraphData(true); }, 10 * 1000)
 
     ajaxGetInterval = setInterval(updateGraphData, 1000)
     updateGraphData();
