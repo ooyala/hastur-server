@@ -1,4 +1,6 @@
 require "algorithms"
+require "digest/sha1"
+require "set"
 require "thread"
 
 require "hastur-server/util"
@@ -14,7 +16,7 @@ module Hastur
   # with the recomputed priority.
   #
   class Scheduler
-    attr_accessor :heap, :schedule_thread, :mutex, :test_mode, :msg_buffer
+    attr_accessor :heap, :schedule_thread, :mutex, :test_mode, :msg_buffer, :job_set
 
     public
 
@@ -27,6 +29,7 @@ module Hastur
       @socket = socket    # socket to send messages on
       @test_mode = test_mode
       @msg_buffer = []
+      @job_set = Set.new
     end
 
     #
@@ -42,6 +45,7 @@ module Hastur
             unless @heap.empty?
               @mutex.synchronize do
                 job = @heap.pop
+                @job_set.delete(Digest::SHA1.hexdigest(job.json))
                 execute_n_reschedule(job) unless job.nil?
               end
             end
@@ -72,8 +76,13 @@ module Hastur
 
     def _add_jobs(jobs)
       jobs.each do |job|
-        priority = ::Hastur::MAX_TIME - job.time_to_execute
-        @heap.push(job, priority)
+        sha = Digest::SHA1.hexdigest(job.json)
+        # only add the job if it is not already in the heap
+        unless @job_set.include?(sha)
+          @job_set.add( sha )
+          priority = ::Hastur::MAX_TIME - job.time_to_execute
+          @heap.push(job, priority)
+        end
       end
     end
 
@@ -109,6 +118,7 @@ module Hastur
         opts[:to] = uuid
         msg = Hastur::Message::PluginExec.new(opts)
         msg.send(@socket)
+        puts "Scheduling plugin => #{payload}"
       end
     end
   end

@@ -32,11 +32,17 @@ client.default_write_consistency = 2  # Initial default: 1
 end
 
 while @running do
-  message = Hastur::Message.recv(socket)
-  uuid = message.envelope.from
-  route = message.type_symbol.to_s
-  puts "[#{route}] - #{message.payload}"
-  Hastur::Cassandra.insert(client, message.payload, route, :uuid => uuid)
+  begin
+    puts "Receiving..."
+    message = Hastur::Message.recv(socket)
+    uuid = message.envelope.from
+    route = message.type_symbol.to_s
+    puts "[#{route}] - #{message.payload}"
+    Hastur::Cassandra.insert(client, message.payload, route, :uuid => uuid)
+  rescue Exception => e
+    puts e.message
+    puts e.backtrace
+  end
 end
 
 STDERR.puts "Exited!"
