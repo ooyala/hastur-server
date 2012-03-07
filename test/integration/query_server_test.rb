@@ -25,7 +25,7 @@ class QueryServerTest < Test::Unit::TestCase
       :client1unix  => Nodule::UnixSocket.new,
       :client2unix  => Nodule::UnixSocket.new,
       :router       => Nodule::ZeroMQ.new(:uri => :gen),
-      :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 1),
+      :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture),
       :registration => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :stat         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen),
       :event        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
@@ -33,7 +33,6 @@ class QueryServerTest < Test::Unit::TestCase
       :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
-
       :statsvc      => Nodule::Process.new(HASTUR_CASS_SINK_BIN, "--routers", :stat, :stderr => :redio),
       :cassandra    => Nodule::Process.new(CASSANDRA_BIN, "-f"),
       :query_server => Nodule::Process.new(HASTUR_QUERY_SERVER_BIN, "--", "-p", "4177"),
@@ -72,8 +71,9 @@ class QueryServerTest < Test::Unit::TestCase
   end
 
   def test_query_server
-    # wait for heartbeats to flow through and get into Cassandra
-    @topology.wait :heartbeat
+    # TODO: some of the tests below may have to change, since the clients will continue to send heartbeats
+    # with this method of sync.
+    @topology[:heartbeat].require_read_count 4, 5
 
     messages = @topology[:heartbeat].output
     # First, check messages
