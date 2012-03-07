@@ -13,6 +13,10 @@ require 'multi_json'
 
 require 'hastur'
 
+CASSANDRA_BIN = "#{ENV['HOME']}/apache-cassandra-1.0.7/bin/cassandra"
+
+exit 0 unless File.exist?(CASSANDRA_BIN)
+
 class QueryServerTest < Test::Unit::TestCase
   def setup
     @topology = Nodule::Topology.new(
@@ -21,16 +25,17 @@ class QueryServerTest < Test::Unit::TestCase
       :client1unix  => Nodule::UnixSocket.new,
       :client2unix  => Nodule::UnixSocket.new,
       :router       => Nodule::ZeroMQ.new(:uri => :gen),
-      :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 4),
+      :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 1),
       :registration => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :stat         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :stat         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen),
       :event        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :log          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
 
-      :cassandra    => Nodule::Process.new("#{ENV['HOME']}/apache-cassandra-1.0.7/bin/cassandra", "-f"),
+      :statsvc      => Nodule::Process.new(HASTUR_CASS_SINK_BIN, "--routers", :stat, :stderr => :redio),
+      :cassandra    => Nodule::Process.new(CASSANDRA_BIN, "-f"),
       :query_server => Nodule::Process.new(HASTUR_QUERY_SERVER_BIN, "--", "-p", "4177"),
 
       :client1svc   => Nodule::Process.new(
@@ -54,6 +59,7 @@ class QueryServerTest < Test::Unit::TestCase
         '--error',        :error,
         '--router',       :router,
         '--direct',       :direct,
+        '--hwm',          10,   # Set HWM so this doesn't 'clog'
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
       ),
     )
@@ -67,14 +73,14 @@ class QueryServerTest < Test::Unit::TestCase
 
   def test_query_server
     # wait for heartbeats to flow through and get into Cassandra
-    sleep 3
+    @topology.wait :heartbeat
 
     messages = @topology[:heartbeat].output
     # First, check messages
     payloads  = messages.map { |m| MultiJson.decode(m[-1]) }
     envelopes = messages.map { |m| m[-2].unpack("H*") }
 
-    assert_equal 4, messages.count, "Should have exactly two captured messages"
+    STDERR.puts "Heartbeat message(s): #{messages.inspect}"
 
     # Query from 10 minutes ago to 10 minutes from now, just to grab everything
     start_ts = Hastur.timestamp(Time.now.to_i - 600)
