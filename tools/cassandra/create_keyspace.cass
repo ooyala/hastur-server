@@ -64,17 +64,11 @@ CREATE COLUMN FAMILY HeartbeatsWeek;
 # TODO: logs rollups?  What do we do for logs?
 
 # Seen UUIDs per time period
-# Row key: timestamp (rounded to granularity)
+# Row key: timestamp (rounded down to day)
 # Col key: UUID
-CREATE COLUMN FAMILY UUIDFiveMinute;
-CREATE COLUMN FAMILY UUIDHour;
 CREATE COLUMN FAMILY UUIDDay;
-CREATE COLUMN FAMILY UUIDWeek;
 
 # Seen stat names per time period
-# Row key: timestamp (rounded to granularity)
+# Row key: timestamp (rounded down to day)
 # Col key: statname
-CREATE COLUMN FAMILY StatNamesFiveMinute;
-CREATE COLUMN FAMILY StatNamesHour;
 CREATE COLUMN FAMILY StatNamesDay;
-CREATE COLUMN FAMILY StatNamesWeek;
