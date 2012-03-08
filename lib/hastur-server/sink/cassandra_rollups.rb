@@ -67,7 +67,7 @@ module Hastur
 
       # Make sure we return all relevant UUIDs - for now, just expand five minutes in either direction
       first_segment = time_segment_for_timestamp(start_ts - FIVE_MINUTES, ONE_DAY)
-      segments = time_segments_for_timestamps(first_segment, end_ts + FIVE_MINUTES, ONE_DAY)
+      segments = segments_for_timestamps(first_segment, end_ts + FIVE_MINUTES, ONE_DAY)
 
       cass_queries = segments.map do |seg_start_ts|
         [ :UUIDDay, seg_start_ts.to_s ]
@@ -81,9 +81,9 @@ module Hastur
       # Make sure we return all relevant stat names - for now, just expand five minutes in either direction
 
       first_segment = time_segment_for_timestamp(start_ts - FIVE_MINUTES, ONE_DAY)
-      segments = time_segments_for_timestamps(first_segment, end_ts + FIVE_MINUTES, ONE_DAY)
+      segments = segments_for_timestamps(first_segment, end_ts + FIVE_MINUTES, ONE_DAY)
       cass_queries = segments.map do |seg_start_ts|
-        [ :StatNamesDay, seg_start_ts.to_s ]
+        [ :StatNameDay, seg_start_ts.to_s ]
       end
     end
 

@@ -128,9 +128,9 @@ get "/uuids" do
   end_ts = Hastur.timestamp(params[:end].to_i)
 
   q = Hastur::Cassandra.get_uuid_cass_queries_over_time(start_ts, end_ts)
-  data = Hastur::Cassanda.cass_queries_to_data(cass_client, q, :consistency => 1, :count => 10_000)
+  data = Hastur::Cassandra.cass_queries_to_data(cass_client, q, :consistency => 1, :count => 10_000)
 
-  [ 200, "" ]
+  [ 200, MultiJson.encode(data.values.map(&:keys).flatten) ]
 end
 
 get "/names/:route" do
@@ -140,8 +140,15 @@ get "/names/:route" do
 end
 
 get "/healthz" do
-  # TODO(noah): query Cassandra
+  # Do a trivial no-op query to see if it 500s
+  Hastur::Cassandra.get(cass_client, "nouuid", "stat", 1, 2)
+
+  [ 200, "OK" ]
 end
 
 get "/statusz" do
+  # Do a trivial no-op query to see if it 500s
+  Hastur::Cassandra.get(cass_client, "nouuid", "stat", 1, 2)
+
+  [ 200, "OK" ]
 end
