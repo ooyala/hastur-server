@@ -93,13 +93,19 @@ EOJSON
   end
 
   subtype_list = []
-  if params[:subtype] && params[:route] == "stat"
+  if params[:route] != "stat" && !params[:subtype]
+    subtype_list = [ "" ]  # Subtype is harmless when unsupported
+  elsif params[:subtype] && params[:route] == "stat"
     unless [ "gauge", "counter", "mark" ].include?(params[:subtype])
       halt 404, <<EOJSON
 { "msg": "Subtype must be one of: gauge, counter, mark" }
 EOJSON
     end
-    subtype_list = params[:subtype].to_sym
+    subtype_list = [ params[:subtype].to_sym ]
+  elsif params[:subtype]
+    halt 404, <<EOJSON
+{ "msg": "Subtype is only for stats" }
+EOJSON
   else
     subtype_list = [ :gauge, :counter, :mark ]
   end
@@ -109,7 +115,9 @@ EOJSON
 
   values = {}
   subtype_list.each do |subtype|
-    values.merge!(Hastur::Cassandra.get(cass_client, params[:uuid], params[:route], start_ts, end_ts))
+    value = Hastur::Cassandra.get(cass_client, params[:uuid], params[:route],
+                                  start_ts, end_ts, :subtype => subtype)
+    values.merge!(value)
   end
 
   [ 200, MultiJson.encode(values) ]
