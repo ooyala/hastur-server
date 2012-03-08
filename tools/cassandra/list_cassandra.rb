@@ -19,7 +19,7 @@ client = Cassandra.new(opts[:keyspace], opts[:server])
 
 if opts[:rows]
   # Calculate the archive row.  This is a hack because list_cassandra is breaking encapsulation by existing.
-  cf = "#{opts[:route].capitalize}sArchive".to_sym
+  cf = "#{opts[:route].capitalize}Archive".to_sym
 
   client.each_key(cf.to_sym) do |key|
     puts key.inspect
