@@ -6,23 +6,23 @@ USE Hastur;
 # Per-UUID Archives for various Hastur messages as JSON
 # Row key: UUID-timestamp (rounded to granularity)
 # Col key: name-timestamp or timestamp
-CREATE COLUMN FAMILY StatsArchive;
-CREATE COLUMN FAMILY LogsArchive;
-CREATE COLUMN FAMILY ErrorsArchive;
+CREATE COLUMN FAMILY StatArchive;
+CREATE COLUMN FAMILY LogArchive;
+CREATE COLUMN FAMILY ErrorArchive;
 CREATE COLUMN FAMILY RawdataArchive;
-CREATE COLUMN FAMILY EventsArchive;
-CREATE COLUMN FAMILY HeartbeatsArchive;
-CREATE COLUMN FAMILY PluginResultsArchive;
-CREATE COLUMN FAMILY RegistrationsArchive;
+CREATE COLUMN FAMILY EventArchive;
+CREATE COLUMN FAMILY HeartbeatArchive;
+CREATE COLUMN FAMILY PluginResultArchive;
+CREATE COLUMN FAMILY RegistrationArchive;
 
-# Per-UUID Full-granularity Hastur stats messages
+# Per-UUID Full-granularity Hastur stat messages
 # Row key: UUID-timestamp (rounded to granularity)
 # Col key: name-timestamp
-CREATE COLUMN FAMILY StatsCounter;
-CREATE COLUMN FAMILY StatsGauge;
-CREATE COLUMN FAMILY StatsMark;
+CREATE COLUMN FAMILY StatCounter;
+CREATE COLUMN FAMILY StatGauge;
+CREATE COLUMN FAMILY StatMark;
 
-# Per-UUID Stats Rollups
+# Per-UUID Stat Rollups
 # Row key: UUID-timestamp
 # Col key: labelspec-statname
 #                and
@@ -35,20 +35,20 @@ CREATE COLUMN FAMILY StatsMark;
 # that rollup was calculated and the number of columns that were in
 # the table when it was calculated.
 #
-CREATE COLUMN FAMILY StatsCounterFiveMinute;
-CREATE COLUMN FAMILY StatsCounterHour;
-CREATE COLUMN FAMILY StatsCounterDay;
-CREATE COLUMN FAMILY StatsCounterWeek;
-CREATE COLUMN FAMILY StatsGaugeFiveMinute;
-CREATE COLUMN FAMILY StatsGaugeHour;
-CREATE COLUMN FAMILY StatsGaugeDay;
-CREATE COLUMN FAMILY StatsGaugeWeek;
-CREATE COLUMN FAMILY StatsMarkFiveMinute;
-CREATE COLUMN FAMILY StatsMarkHour;
-CREATE COLUMN FAMILY StatsMarkDay;
-CREATE COLUMN FAMILY StatsMarkWeek;
+CREATE COLUMN FAMILY StatCounterFiveMinute;
+CREATE COLUMN FAMILY StatCounterHour;
+CREATE COLUMN FAMILY StatCounterDay;
+CREATE COLUMN FAMILY StatCounterWeek;
+CREATE COLUMN FAMILY StatGaugeFiveMinute;
+CREATE COLUMN FAMILY StatGaugeHour;
+CREATE COLUMN FAMILY StatGaugeDay;
+CREATE COLUMN FAMILY StatGaugeWeek;
+CREATE COLUMN FAMILY StatMarkFiveMinute;
+CREATE COLUMN FAMILY StatMarkHour;
+CREATE COLUMN FAMILY StatMarkDay;
+CREATE COLUMN FAMILY StatMarkWeek;
 
-# Per-UUID Heartbeats Rollups
+# Per-UUID Heartbeat Rollups
 # Row key: UUID-timestamp
 # Col key: labelspec-hbname
 #                and
@@ -56,10 +56,10 @@ CREATE COLUMN FAMILY StatsMarkWeek;
 #                and
 #          labelspec-hbname-COLS
 #
-CREATE COLUMN FAMILY HeartbeatsFiveMinute;
-CREATE COLUMN FAMILY HeartbeatsHour;
-CREATE COLUMN FAMILY HeartbeatsDay;
-CREATE COLUMN FAMILY HeartbeatsWeek;
+CREATE COLUMN FAMILY HeartbeatFiveMinute;
+CREATE COLUMN FAMILY HeartbeatHour;
+CREATE COLUMN FAMILY HeartbeatDay;
+CREATE COLUMN FAMILY HeartbeatWeek;
 
 # TODO: logs rollups?  What do we do for logs?
 
@@ -71,4 +71,4 @@ CREATE COLUMN FAMILY UUIDDay;
 # Seen stat names per time period
 # Row key: timestamp (rounded down to day)
 # Col key: statname
-CREATE COLUMN FAMILY StatNamesDay;
+CREATE COLUMN FAMILY StatNameDay;
