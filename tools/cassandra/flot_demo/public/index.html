@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>Graphs for Hastur Cassandra Stats</title>
+    <title>Hastur Stats</title>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
     <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.js"></script>
@@ -22,7 +22,7 @@
     </style>
   </head>
   <body>
-    <h1>Graphs for Hastur Cassandra stats </h1>
+    <h1>Hastur Stats <span id="hostname_span"></span> </h1>
 
     <div id="placeholder" style="width:1000px;height:500px"></div>
 
@@ -61,6 +61,7 @@ $(function () {
     })();
 
     uuid = urlParams["uuid"];
+    $("#hostname_span").html("for " + uuid);
 
     function hash_size(obj) {
         var size = 0, key;
