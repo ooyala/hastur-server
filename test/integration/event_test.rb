@@ -57,19 +57,16 @@ class NotificationTest < Test::Unit::TestCase
 
     @events_seen = 0
 
-    STDERR.puts "adding event PROC!"
     @topology[:event].add_reader proc { |messages|
       e = Hastur::Envelope.parse(messages[-2])
       refute_nil e, "Hastur::Envelope.parse on messages[-2] must return an envelope."
       assert e.ack?, "Events must always have the ack flag enabled (got: #{e.ack})."
       @events_seen += 1
-      STDERR.puts "Received event in test proc! (#{@events_seen})"
 
       # send an ack, since it's the right thing to do
       rc = e.to_ack.send @topology[:direct].socket
       assert rc > -1, "sending an ack created from the envelope of the message"
     }
-    STDERR.puts "added event PROC!"
 
     @topology.start_all
   end
