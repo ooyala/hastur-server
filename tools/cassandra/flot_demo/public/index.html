@@ -35,22 +35,46 @@ var do_replot = true;
 var do_grid_change = true;
 var last_ts = false;
 
+var urlParams = {};
+var uuid = '';
+
 // Plot data is a hash of the data we've seen
 var plot_data = {};
 
 // This is the plot_data in flot format
-var flot_data = {};
+var flot_data = [];
 
 // This is the most recent list of labels
 var old_labels = [];
 
 $(function () {
 
+    (function () {
+        var e,
+            a = /\+/g,  // Regex for replacing addition symbol with a space
+            r = /([^&=]+)=?([^&]*)/g,
+            d = function (s) { return decodeURIComponent(s.replace(a, " ")); },
+            q = window.location.search.substring(1);
+
+        while (e = r.exec(q))
+           urlParams[d(e[1])] = d(e[2]);
+    })();
+
+    uuid = urlParams["uuid"];
+
+    function hash_size(obj) {
+        var size = 0, key;
+        for (key in obj) {
+            if (obj.hasOwnProperty(key)) size++;
+        }
+        return size;
+    };
+
     // Create and Plot Data
 
     function clearPlotData() {
       plot_data = {};
-      flot_data = {};
+      flot_data = [];
       do_grid_change = true;
     }
 
@@ -68,31 +92,37 @@ $(function () {
     // }
     //
     function mergePlotData(newData) {
-      // For each data series
-      for(var i_new = 0; i_new < newData.length; i_new++) {
-        label = newData[i_new].label;
-        if(!label) { continue };
+      var statName;
 
+      // For each stat name
+      for(statName in newData) {
+        if(!newData.hasOwnProperty(statName)) { next; }
+
+        console.debug("Stat name " + statName + ", points: " + hash_size(newData[statName]));
         // Add new series to plot_data if it isn't there
-        if(!plot_data[label]) {
-          plot_data[label] = {};
-          flot_data_series = { "label": label, "data": [] };
-          flot_data += [ flot_data_series ];
-          plot_data[label].flot_data = flot_data_series.data;
+        if(!plot_data[statName]) {
+          plot_data[statName] = {};
+          flot_data_series = { "label": statName, "data": [] };
+          flot_data.push(flot_data_series);
+          plot_data[statName].flot_data = flot_data_series.data;
 
           // The labels changed, redraw
           do_grid_change = true;
         }
 
-        var oldSeries = plot_data[label];
-        var flotData = plot_data[label].flot_data;
-        var newSeries = newData[i_new];
-        for(var i_series = 0; i_series < newSeries.length; i_series++) {
-          var ts = newSeries[i_series][0];
-          var point = newSeries[i_series][1];
+        var oldSeries = plot_data[statName];
+        var flotData = plot_data[statName].flot_data;
+        var newPoints = newData[statName];
+        var ts;
+
+        for(ts in newPoints) {
+          if(!newPoints.hasOwnProperty(ts)) { next; }
+
+          var point = newPoints[ts];
 
           if(!oldSeries[ts]) {
-            flotData += [ [ ts, point ] ]
+            console.debug("New Point: " + ts + ", " + point);
+            flotData.push([ Math.round(ts / 1000.0), point ])
             oldSeries[ts] = point;
           }
 
@@ -188,19 +218,20 @@ $(function () {
       now_ts += 10 * 60 * 1000;
 
       url = '/data_proxy/stat/values?start=' + start_ts + '&end=' + now_ts;
+      url += '&uuid=' + uuid
 
       var q = $.ajax({
                method: 'get',
                url : url,
                dataType : 'json',
-               data: ''
-              }).done(function (data, status) {
-                 console.debug("Got data...");
+               success: function(data, status) {
                  mergePlotData(data);
                  drawWithData(flot_data);
-              }).fail(function (xhr, error, exception) {
+              },
+              error: function (xhr, error, exception) {
                  console.debug("AJAX failed on " + url + ": " + exception);
-              });
+              }
+            });
     }
 
     // Every 2 minutes do a full refresh
