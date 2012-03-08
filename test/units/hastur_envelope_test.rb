@@ -6,6 +6,7 @@ require 'minitest/autorun'
 require 'ffi-rzmq'
 require 'securerandom'
 require 'hastur-server/envelope'
+require 'hastur-server/message'
 
 class TestClassHasturEnvelope < MiniTest::Unit::TestCase
   UUID = "01234567-89ab-cdef-deaf-cafedeadbeef"
@@ -33,14 +34,19 @@ class TestClassHasturEnvelope < MiniTest::Unit::TestCase
     assert_equal "72617764617461",     ehex[6,  14], "check route"
     assert_equal UUID.split(/-/).join, ehex[38, 32], "check uuid"
 
-    assert_raises ArgumentError do
+    assert_raises ArgumentError, "empty args should raise an exception" do
       Hastur::Envelope.new
+    end
+
+    assert_raises TypeError, "invalid args should raise an exception" do
       Hastur::Envelope.new :foobar
     end
 
     # :to and :from are both required
-    assert_raises ArgumentError, "missing :to or :from should throw an exception" do
+    assert_raises ArgumentError, "missing :from should throw an exception" do
       Hastur::Envelope.new :from => SecureRandom.uuid
+    end
+    assert_raises ArgumentError, "missing :to should throw an exception" do
       Hastur::Envelope.new :to   => SecureRandom.uuid
     end
 
