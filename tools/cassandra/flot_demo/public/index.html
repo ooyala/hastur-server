@@ -121,7 +121,6 @@ $(function () {
           var point = newPoints[ts];
 
           if(!oldSeries[ts]) {
-            console.debug("New Point: " + ts + ", " + point);
             flotData.push([ Math.round(ts / 1000.0), point ])
             oldSeries[ts] = point;
           }
