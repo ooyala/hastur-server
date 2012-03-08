@@ -1,0 +1,37 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html> <head>
+<title>Please choose a UUID or Host</title>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+  <script>
+$(function() {
+  var now = new Date();
+  var now_ts = now.getTime();
+
+  // Query for ten minutes later than now.  Normally
+  // there shouldn't be any data, but this (more than)
+  // accounts for clock skew, request delay and whatnot.
+  var end_ts = now_ts + 10 * 60 * 1000;
+
+  var start_ts = now_ts - 24 * 60 * 60 * 1000;
+
+  $.get("/uuids_proxy?start=" + start_ts + "&end=" + end_ts).done(function(data) {
+    var uuids = "";
+
+    uuid_list = eval(data);
+    for(var i = 0; i < uuid_list.length; i++) {
+      uuids += "<li>" + uuid_list[i] + "</li>\n";
+    }
+
+    $("#host_list").html(uuids);
+  });
+});
+  </script>
+</head>
+<body>
+<h1>Please Choose a Host</h1>
+
+<ul id="host_list">
+</ul>
+
+</body> </html>
