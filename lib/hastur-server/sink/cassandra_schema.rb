@@ -26,11 +26,11 @@ module Hastur
     # These constants aren't so much "public" as they are useful
     # in-module and we don't care about securing them.
 
-    FIVE_MINUTES = 5 * 60 * 1_000_000
+    ONE_SECOND = 1_000_000
+    FIVE_MINUTES = 5 * 60 * ONE_SECOND
     CASS_GET_OPTIONS = [ :consistency, :count, :start, :finish, :reversed ]
     ONE_HOUR = 12 * FIVE_MINUTES
-    HOURS = ONE_HOUR
-    ONE_DAY = 24 * HOURS
+    ONE_DAY = 24 * ONE_HOUR
     ONE_WEEK = 7 * ONE_DAY
 
     SCHEMA = {
@@ -158,7 +158,7 @@ module Hastur
     end
 
     def get(cass_client, client_uuid, route, start_timestamp, end_timestamp, options = {})
-      if (end_timestamp - start_timestamp) / 1_000_000.0 > 72 * HOURS
+      if end_timestamp - start_timestamp > 72 * ONE_HOUR
         raise "Don't query more than 3 days at once yet!"
       end
 
@@ -174,7 +174,7 @@ module Hastur
     #   :count - maximum number of entries to return, default 10000
     #
     def get_stat(cass_client, client_uuid, stat_name, type, start_timestamp, end_timestamp, options = {})
-      if (end_timestamp - start_timestamp) > 72 * HOURS
+      if end_timestamp - start_timestamp > 72 * ONE_HOUR
         raise "Don't query more than 3 days at once yet!"
       end
 
@@ -192,7 +192,7 @@ module Hastur
     #   :count - maximum number of entries to return, default 10000
     #
     def get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp, options = {})
-      if (end_timestamp - start_timestamp) / 1_000_000.0 > 72 * HOURS
+      if end_timestamp - start_timestamp > 72 * ONE_HOUR
         raise "Don't query more than 3 days at once yet!"
       end
 
@@ -209,27 +209,27 @@ module Hastur
 
     def time_segment_for_timestamp(timestamp, granularity)
       # :name, :value, :timestamp
-      time = Time.at(timestamp / 1_000_000)
+      time = Time.at(timestamp / ONE_SECOND)
 
       date = time.to_date
 
       if granularity == ONE_WEEK
         one_day_seconds = 24 * 60 * 60
         start_of_week = date - date.wday * one_day_seconds   # In sec, not usec
-        return Time.utc(start_of_week.year, start_of_week.month, start_of_week.day).to_i * 1_000_000
+        return Time.utc(start_of_week.year, start_of_week.month, start_of_week.day).to_i * ONE_SECOND
       end
 
       # Timestamp in seconds of start of day
       date_secs = Time.utc(date.year, date.month, date.day).to_i
 
       # How many seconds we are into the day in UTC
-      usecs_into_day = (time - date_secs).to_i * 1_000_000
+      usecs_into_day = (time - date_secs).to_i * ONE_SECOND
 
       chunks_into_day = (usecs_into_day / granularity).to_i
       time_division = chunks_into_day * granularity
 
       # This is the time, rounded down to the nearest 'granularity' seconds from start of day
-      date_secs * 1_000_000 + time_division
+      date_secs * ONE_SECOND + time_division
     end
 
     def row_key(uuid, timestamp, granularity)
