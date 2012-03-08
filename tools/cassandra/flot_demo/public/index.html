@@ -76,6 +76,7 @@ $(function () {
     function clearPlotData() {
       plot_data = {};
       flot_data = [];
+      last_ts = false;
       do_grid_change = true;
     }
 
@@ -194,6 +195,9 @@ $(function () {
       addArrow('right', 25, 60, { left: 100 });
       addArrow('up', 40, 75, { top: -100 });
       addArrow('down', 40, 45, { top: 100 });
+
+      $("#full_refresh").click(function() { updateGraphData(true); });
+      $("#replot").click(function() { do_replot = true; updateGraphData(false); });
     }
 
     function updateGraphData(fullUpdate) {
@@ -212,10 +216,10 @@ $(function () {
         start_ts = last_ts - 10 * 1000;  // Re-get last 10 seconds of data
       }
 
-      // Query for ten minutes later than now.  Normally
+      // Query for two minutes later than now.  Normally
       // there shouldn't be any data, but this (more than)
       // accounts for clock skew, request delay and whatnot.
-      now_ts += 10 * 60 * 1000;
+      now_ts += 2 * 60 * 1000;
 
       url = '/data_proxy/stat/values?start=' + start_ts + '&end=' + now_ts;
       url += '&uuid=' + uuid
@@ -234,10 +238,11 @@ $(function () {
             });
     }
 
-    // Every 2 minutes do a full refresh
-    setInterval(function() { updateGraphData(true); }, 2 * 60 * 1000)
+    // Every 10 minutes do a full refresh
+    setInterval(function() { updateGraphData(true); }, 10 * 60 * 1000)
 
-    ajaxGetInterval = setInterval(function() { updateGraphData(false); }, 10 * 1000)
+    // Every 2 seconds do a get-recent
+    ajaxGetInterval = setInterval(function() { updateGraphData(false); }, 2 * 1000)
     updateGraphData(true);
 
     // Create and Show Tooltips
@@ -281,6 +286,11 @@ $(function () {
 </script>
 
     <p><input id="enableTooltip" type="checkbox" checked="checked">Enable tooltip</p>
+
+  <div>
+    <button id="full_refresh">Full Refresh</button>
+    <button id="replot">Re-plot</button>
+  </div>
 
 </body>
 </html>
