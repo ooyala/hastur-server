@@ -1,15 +1,12 @@
-require "rubygems"
-require "bundler"
+#!/usr/bin/env ruby
+
 require "multi_json"
 require "hastur-server/libc_ffi"
-#Bundler.require(:default, :development)
 
 # For testing Hastur components, use the local version *first*.
 $LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..", "..", "lib")
 
-require "nodule/monkeypatch"
-require "nodule/topology"
-require "nodule/process"
+require "nodule"
 
 HASTUR_ROOT = File.join(File.dirname(__FILE__), "..", "..")
 

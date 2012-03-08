@@ -1,12 +1,8 @@
 #!/usr/bin/env ruby
 
-require "rubygems"
-require "test/unit"
 require_relative "./integration_test_helper"
-
-require 'nodule/topology'
-require 'nodule/process'
-require 'nodule/console'
+require "test/unit"
+require 'nodule'
 require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'multi_json'

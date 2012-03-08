@@ -1,14 +1,12 @@
 #!/usr/bin/env ruby
 
-require "test/unit"
 require_relative "./integration_test_helper"
-require 'hastur-server/message'
+require "test/unit"
 require 'multi_json'
-require 'nodule/topology'
-require 'nodule/process'
+require 'nodule'
 require 'nodule/unixsocket'
 require 'nodule/zeromq'
-require 'nodule/console'
+require 'hastur-server/message'
 
 class PluginTest < Test::Unit::TestCase
   def setup

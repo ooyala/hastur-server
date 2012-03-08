@@ -1,15 +1,11 @@
 #!/usr/bin/env ruby
 
-$LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..", "..", "lib")
-
+require_relative "./integration_test_helper"
 require "test/unit"
-require 'hastur-server/message'
-require 'nodule/topology'
-require 'nodule/process'
+require 'nodule'
 require 'nodule/unixsocket'
 require 'nodule/zeromq'
-require 'nodule/console'
-require_relative "./integration_test_helper"
+require 'hastur-server/message'
 
 class NotificationTest < Test::Unit::TestCase
   def setup

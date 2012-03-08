@@ -1,13 +1,8 @@
 #!/usr/bin/env ruby
 
-$LOAD_PATH.unshift File.dirname(__FILE__)
-
+require_relative "./integration_test_helper"
 require "test/unit"
-require "integration_test_helper"
-
-require "nodule/topology"
-require "nodule/process"
-require "nodule/console"
+require "nodule"
 require "nodule/unixsocket"
 require "nodule/zeromq"
 require "multi_json"

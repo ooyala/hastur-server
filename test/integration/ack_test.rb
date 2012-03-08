@@ -1,13 +1,11 @@
 #!/usr/bin/env ruby
 
-require "test/unit"
 require_relative "./integration_test_helper"
-require 'hastur-server/message'
-require 'multi_json'
-require 'nodule/topology'
-require 'nodule/process'
+require "test/unit"
+require 'nodule'
 require 'nodule/zeromq'
-require 'nodule/console'
+require 'multi_json'
+require 'hastur-server/message'
 
 class NotificationTest < Test::Unit::TestCase
   EVENT_REPLAYS = 3
