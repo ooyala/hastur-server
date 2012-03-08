@@ -35,13 +35,13 @@ module Hastur
 
     SCHEMA = {
       "stat" => {
-        :cf => :StatsArchive,
+        :cf => :StatArchive,
         :subtype => {
           :type => {
             :cf => {
-              :gauge => :StatsGauge,
-              :counter => :StatsCounter,
-              :mark => :StatsMark,
+              :gauge => :StatGauge,
+              :counter => :StatCounter,
+              :mark => :StatMark,
             },
             :value => {
               :gauge => :value,
@@ -49,23 +49,23 @@ module Hastur
               :mark => nil,
             },
             :rollup_cf_prefix => {
-              :gauge => "StatsGauge",
-              :counter => "StatsCounter",
-              :mark => "StatsMark",
+              :gauge => "StatGauge",
+              :counter => "StatCounter",
+              :mark => "StatMark",
             }
           }
         },
         :granularity => FIVE_MINUTES,
         :name => :name,
-        :name_cf => :StatNamesDay,
+        :name_cf => :StatNameDay,
       },
       "log" => {
-        :cf => :LogsArchive,
+        :cf => :LogArchive,
         :granularity => FIVE_MINUTES,
         :name => nil,
       },
       "error" => {
-        :cf => :ErrorsArchive,
+        :cf => :ErrorArchive,
         :granularity => ONE_DAY,
         :name => nil,
       },
@@ -75,19 +75,19 @@ module Hastur
         :name => nil,
       },
       "event" => {
-        :cf => :EventsArchive,
+        :cf => :EventArchive,
         :granularity => ONE_DAY,
         :name => nil,
       },
       "heartbeat" => {
-        :cf => :HeartbeatsArchive,
+        :cf => :HeartbeatArchive,
         :granularity => FIVE_MINUTES,
         :name => :name,
-        :rollup_cf_prefix => "Heartbeats",
+        :rollup_cf_prefix => "Heartbeat",
       },
       # No plugin_exec - not for sinks
       "registration" => {
-        :cf => :RegistrationsArchive,
+        :cf => :RegistrationArchive,
         :granularity => ONE_DAY,
         :name => nil,
       },
@@ -127,7 +127,7 @@ module Hastur
         subtype = schema[:subtype][sub_key]
         raise "Unknown #{route} #{sub_key}: #{type.inspect}!" unless subtype
 
-        cf = subtype[:cf][type]                # Example: :StatsGauge
+        cf = subtype[:cf][type]                # Example: :StatGauge
 
         value_name = subtype[:value][type]     # Example: :value
         value = hash[value_name]               # Example: 37.914
@@ -323,7 +323,7 @@ module Hastur
 
         subtype = schema[:subtype][sub_key]
 
-        cf = subtype[:cf][options[:subtype]]   # Example: :StatsGauge
+        cf = subtype[:cf][options[:subtype]]   # Example: :StatGauge
         raise "No such subtype as #{options[:subtype]}!" unless cf
         value_name = subtype[:value][options[:subtype]] # Example: :value
         # value_name may be nil, so don't raise on nil
