@@ -182,27 +182,25 @@ $(function () {
       // accounts for clock skew, request delay and whatnot.
       now_ts += 10 * 60 * 1000;
 
-      $.ajax({
+      url = '/data_proxy/stat/values?start=' + start_ts + '&end=' + now_ts;
+
+      var q = $.ajax({
                method: 'get',
-               url : '/proxy?start=' + start_ts + '&end=' + now_ts,
-               dataType : 'text',
-               success: function (text) {
-                 var theData = eval(text);
-                 if(!fullUpdate) {
-                   var point;
-                   for(point in theData) {
-                   }
-                 }
-                 drawWithData(theData);
-                }
+               url : url,
+               dataType : 'json',
+               data: ''
+              }).done(function (data, status) {
+                 console.debug("Got data: ", data);
+              }).fail(function (xhr, error, exception) {
+                 console.debug("AJAX failed on " + url + ": " + exception);
               });
     }
 
     // Every 2 minutes do a full refresh
-    setInterval(function() { updateGraphData(true); }, 10 * 1000)
+    setInterval(function() { updateGraphData(true); }, 2 * 60 * 1000)
 
-    ajaxGetInterval = setInterval(updateGraphData, 1000)
-    updateGraphData();
+    ajaxGetInterval = setInterval(function() { updateGraphData(false); }, 10 * 1000)
+    updateGraphData(true);
 
     // Create and Show Tooltips
 
