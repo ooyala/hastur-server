@@ -20,7 +20,7 @@ $(function() {
 
     uuid_list = eval(data);
     for(var i = 0; i < uuid_list.length; i++) {
-      uuids += "<li>" + uuid_list[i] + "</li>\n";
+      uuids += '<li> <a href="/index.html?uuid=' + uuid_list[i] + '">' + uuid_list[i] + "</a></li>\n";
     }
 
     $("#host_list").html(uuids);
