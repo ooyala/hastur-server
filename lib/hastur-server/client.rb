@@ -169,7 +169,6 @@ module Hastur
       @plugins.each do |pid,plugin|
         if plugin.done?
           msg = Hastur::Message::Heartbeat.new(:from => @uuid, :data => plugin.to_hash)
-          puts msg.inspect
           msg.send(@router_socket)
           @counters[:zmq_send] += 1
 
