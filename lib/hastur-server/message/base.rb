@@ -25,7 +25,8 @@ module Hastur
           raise ArgumentError.new ":envelope or :from/:to arguments are required."
         end
 
-        if opts[:data].respond_to? :to_hash and not opts[:payload]
+        if opts[:data]
+          raise ArgumentError.new ":data must respond to :to_hash" unless opts[:data].respond_to?(:to_hash)
           @payload = MultiJson.encode opts[:data].to_hash
         elsif opts[:payload]
           @payload = opts[:payload]
