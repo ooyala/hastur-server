@@ -61,6 +61,15 @@ CREATE COLUMN FAMILY HeartbeatHour;
 CREATE COLUMN FAMILY HeartbeatDay;
 CREATE COLUMN FAMILY HeartbeatWeek;
 
+# Per-UUID Registration Rollups
+# Row key: UUID-timestamp
+# Col key: labelspec-registration-name
+#                and
+#          labelspec-registration-TIME
+#                and
+#          labelspec-registration-COLS
+CREATE COLUMN FAMILY RegistrationDay;
+
 # TODO: logs rollups?  What do we do for logs?
 
 # Seen UUIDs per time period
