@@ -12,9 +12,6 @@ opts = Trollop::options do
   opt :hosts, "Cassandra Hostname(s)",    :default => ["127.0.0.1"],            :type => :strings, :multi => true
 end
 
-## TODO(viet): For now, test the scheduler with just a flat file
-#TEMP_JOB_FILE=File.join(File.dirname(__FILE__), "..", "test", "data", "plugin.json")
-
 ctx = ZMQ::Context.new(1)
 router_socket = Hastur::ZMQUtils.connect_socket(ctx, ZMQ::PUSH, opts[:routers])
 
@@ -22,7 +19,6 @@ scheduler = Hastur::Scheduler.new(router_socket)
 scheduler.start
 
 # TODO(viet): Use previous 5-minute rollup
-# TODO(viet): Do not add items to the heap if it is already in there
 # TODO(viet): Deregister plugins
 
 # scrapes Cassandra for any new jobs
@@ -68,7 +64,7 @@ scraper = Thread.new do
         puts "#{jobs.size} more jobs scheduled" 
         
         # wait another 5 minutes
-        sleep 60*5
+        sleep 5
       rescue Exception => e
         puts e.message
         puts.backtrace
