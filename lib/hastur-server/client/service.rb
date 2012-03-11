@@ -127,7 +127,6 @@ module Hastur
         end
 
         @logger.debug "Received UDP message: #{data.inspect}"
-        puts "Received UDP message: #{data.inspect}"
 
         begin
           raw_to_hastur_message(data)
