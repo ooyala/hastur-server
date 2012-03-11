@@ -20,7 +20,7 @@ class RegistrationTest < Test::Unit::TestCase
     assert_kind_of Hash, payload
 
     assert_equal payload["from"], "11111111-2222-3333-4444-555555555555"
-    assert_equal payload["source"], "Hastur::Client"
+    assert_equal payload["source"], "Hastur::Client::Service"
   end
 
   def setup
@@ -38,8 +38,11 @@ class RegistrationTest < Test::Unit::TestCase
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
 
-      :client1svc   => Nodule::Process.new(
-        HASTUR_CLIENT_BIN, "--uuid", C1UUID, "--router", :router, :stdout => :greenio, :stderr => :redio
+      :client1svc   => Nodule::Process.new(HASTUR_CLIENT_BIN,
+        "--uuid", C1UUID,
+        "--router", :router,
+        "--unix",   :client1unix,
+        :stdout => :greenio, :stderr => :redio
       ),
 
       :routersvc    => Nodule::Process.new(
