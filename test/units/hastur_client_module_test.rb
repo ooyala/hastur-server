@@ -7,7 +7,7 @@ require 'ffi-rzmq'
 require 'securerandom'
 require 'socket'
 
-require 'hastur-server/client'
+require 'hastur-server/client/service'
 require 'hastur-server/message'
 
 class TestClassHasturClientModule < MiniTest::Unit::TestCase
@@ -17,7 +17,7 @@ class TestClassHasturClientModule < MiniTest::Unit::TestCase
 
   def test_client_module
     client = begin
-      Hastur::Client.new(
+      Hastur::Client::Service.new(
         :uuid         => UUID1,
         :routers      => [ ROUTER_URI ],
         :port         => 20005,
