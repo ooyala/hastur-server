@@ -10,7 +10,6 @@ require 'termite'
 
 require "hastur-server/message"
 require "hastur-server/router"
-require "hastur-server/client/uuid"
 
 Ecology.read("hastur-router.ecology")
 MultiJson.engine = :yajl
