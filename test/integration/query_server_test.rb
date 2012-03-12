@@ -60,7 +60,6 @@ class QueryServerTest < Test::Unit::TestCase
     )
 
     @topology.start_all
-
     create_all_column_families(@topology[:cassandra].client) # helper
   end
 

@@ -45,7 +45,7 @@ GEM
     ffi (1.0.11)
     ffi-rzmq (0.9.3)
       ffi
-    hastur (1.0.1)
+    hastur (1.0.2)
       chronic
       multi_json
     httparty (0.8.1)
@@ -56,12 +56,12 @@ GEM
     macaddr (1.5.0)
       systemu (>= 2.4.0)
     metaclass (0.0.1)
-    minitest (2.11.1)
-    mocha (0.10.4)
+    minitest (2.11.3)
+    mocha (0.10.5)
       metaclass (~> 0.0.1)
     msgpack (0.4.6)
     multi_json (1.1.0)
-    multi_xml (0.4.1)
+    multi_xml (0.4.2)
     nodule (0.0.8)
     rack (1.4.1)
     rack-protection (1.2.0)
