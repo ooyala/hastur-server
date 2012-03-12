@@ -34,6 +34,8 @@ EOS
   s.add_development_dependency "nodule", "~>0.0.9"
   s.add_development_dependency "yard"
   s.add_development_dependency "redcarpet"
+  s.add_development_dependency "simplecov"
+  s.add_development_dependency "test-unit", "~>2.4.3"
   s.add_runtime_dependency "sinatra"
   s.add_runtime_dependency "httparty"
   s.add_runtime_dependency "yajl-ruby"
