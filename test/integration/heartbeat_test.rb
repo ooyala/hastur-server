@@ -66,7 +66,7 @@ class HeartbeatTest < Test::Unit::TestCase
     envelopes = messages.map { |m| m[-2].unpack("H*") }
     #puts messages.flatten.map { |i| i.unpack("H*") }
 
-    assert_equal 4, messages.count, "Should have exactly two captured messages"
+    assert_equal 4, messages.count, "Should have exactly four captured messages"
     assert_kind_of Array, messages[0], "messages should be 2-level arrays"
     assert_kind_of Array, messages[1], "messages should be 2-level arrays"
     assert_kind_of Array, messages[2], "messages should be 2-level arrays"
