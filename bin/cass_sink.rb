@@ -1,6 +1,4 @@
 #!/usr/bin/env ruby
-$LOAD_PATH.unshift File.join(File.dirname(__FILE__), '..', '..', 'lib')
-
 require "trollop"
 require "hastur-server/zmq_utils"
 require "hastur-server/message"
