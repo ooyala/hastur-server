@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set +e
 
 : ${REPO_ROOT:="$WORKSPACE"}
 source $HOME/.rvm/scripts/rvm
@@ -12,4 +12,4 @@ bundle install
 gem build hastur-server.gemspec
 gem install hastur-server-*.gem
 
-rake --trace test:integrations
+bundle exec rake --trace test:integrations
