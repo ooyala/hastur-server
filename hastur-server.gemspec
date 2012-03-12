@@ -18,6 +18,7 @@ notifications and errors, log entries and plugins.
 EOS
 
   s.rubyforge_project = "hastur-server"
+  s.required_ruby_version = ">= 1.9.3"
 
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
