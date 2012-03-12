@@ -30,7 +30,7 @@ EOS
   s.add_development_dependency "mocha"
   s.add_development_dependency "erubis"
   s.add_development_dependency "rerun"
-  s.add_development_dependency "nodule", "~>0.0.7"
+  s.add_development_dependency "nodule", "~>0.0.8"
   s.add_development_dependency "yard"
   s.add_development_dependency "redcarpet"
   s.add_runtime_dependency "sinatra"
