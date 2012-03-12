@@ -5,12 +5,9 @@ require "test/unit"
 require 'nodule'
 require 'nodule/unixsocket'
 require 'nodule/zeromq'
+require 'nodule/cassandra'
 require 'multi_json'
 require 'hastur'
-
-CASSANDRA_BIN = "#{ENV['HOME']}/apache-cassandra-1.0.7/bin/cassandra"
-
-exit 0 unless File.exist?(CASSANDRA_BIN)
 
 class QueryServerTest < Test::Unit::TestCase
   def setup
@@ -29,8 +26,12 @@ class QueryServerTest < Test::Unit::TestCase
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
       :statsvc      => Nodule::Process.new(HASTUR_CASS_SINK_BIN, "--routers", :stat, :stderr => :redio),
-      :cassandra    => Nodule::Process.new(CASSANDRA_BIN, "-f"),
-      :query_server => Nodule::Process.new(HASTUR_QUERY_SERVER_BIN, "--", "-p", "4177"),
+      :cassandra    => Nodule::Cassandra.new(:keyspace => "Hastur"),
+      :query_server => Nodule::Process.new(HASTUR_QUERY_SERVER_BIN,
+        '--cassandra', :cassandra,
+        '--', '-p', '4177',
+        :stdout => :greenio, :stderr => :redio,
+      ),
 
       :client1svc   => Nodule::Process.new(
         HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--unix', :client1unix,
@@ -59,6 +60,8 @@ class QueryServerTest < Test::Unit::TestCase
     )
 
     @topology.start_all
+
+    create_all_column_families(@topology[:cassandra].client) # helper
   end
 
   def teardown

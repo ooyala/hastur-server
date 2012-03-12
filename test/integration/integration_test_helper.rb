@@ -2,6 +2,7 @@
 
 require "multi_json"
 require "hastur-server/libc_ffi"
+require 'hastur-server/sink/cassandra_schema'
 
 # For testing Hastur components, use the local version *first*.
 $LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..", "..", "lib")
@@ -46,3 +47,9 @@ def cancel_test_alarm
   LibC.alarm(0)
 end
 
+def create_all_column_families(client, keyspace="Hastur")
+  cfs = Hastur::Cassandra.cfdefs(keyspace)
+  cfs.each do |cfdef|
+    client.add_column_family cfdef
+  end
+end

@@ -62,7 +62,7 @@ GEM
     msgpack (0.4.6)
     multi_json (1.1.0)
     multi_xml (0.4.1)
-    nodule (0.0.5)
+    nodule (0.0.7)
     rack (1.4.1)
     rack-protection (1.2.0)
       rack

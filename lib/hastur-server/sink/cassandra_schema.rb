@@ -93,6 +93,18 @@ module Hastur
       },
     }
 
+    #
+    # Return a list of CassandraThrift::CfDef objects that can be used for setup.
+    # @param [String] keyspace the cfdefs will be instantiated in.
+    # @param [Hash]  additional options for CassandraThrift::CfDef.new
+    # @return [Array<CassandraThrift::CfDef>]
+    #
+    def cfdefs(keyspace, opts={})
+      SCHEMA.values.map do |data|
+        CassandraThrift::CfDef.new *opts, :name => data[:cf].to_s, :keyspace => keyspace
+      end
+    end
+
     # Options from Twitter Cassandra gem:
     #   :ttl
     #   :consistency
