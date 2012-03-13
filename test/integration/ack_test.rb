@@ -47,7 +47,7 @@ class AckTest < Test::Unit::TestCase
     # set a proc on event messages that always acks on receipt
     @topology[:event].add_reader do |messages|
       e = Hastur::Envelope.parse(messages[-2])
-      refute_nil e
+      assert_not_nil e
       ack = e.to_ack
       STDERR.puts "Sending ack: #{ack.to_hash}"
       rc = ack.send @topology[:direct].socket
