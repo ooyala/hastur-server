@@ -18,24 +18,51 @@ opts = Trollop::options do
 end
 
 GRANULARITY = Hastur::Cassandra::ONE_DAY
-
+REGISTRATION = "registration"
 client = Cassandra.new("Hastur", opts[:hosts])
+curr_time = Hastur::Utils.timestamp
 
-loop do
-  # query previous day's rollup
-  Hastur::Cassandra.get_previous_rollup( client, uuid, "registration", GRANULARITY )
-  # query everything that has happened today
-  curr_time = Hastur::Utils.timestamp
-  start_ts = Hastur::Cassandra.last_time_for_timestamp( curr_time, GRANULARITY )
-  end_ts = Hastur::Cassandra.next_time_for_timestamp( curr_time, GRANULARITY )
-  Hastur::Cassandra.get( client, uuid, "registration", start_ts, end_ts )
-  # TODO(viet): filter out expired plugins
-  
-  # TODO(viet): combine previous rollup with today's stuff
-
-  # TODO(viet): write today's rollup to cassandra
-
-  sleep 60*60*24 # perform one day rollups
+#
+# Retrieves the list of client UUIDs
+#
+def get_client_uuids
+  uuids = Set.new
+  client.each_key(:RegistrationArchive) do |key|
+    uuids.add( key[0..35] )
+  end
 end
 
+#
+# TODO(viet): Filters out expired plugins. Not sure how this is going to look like yet.
+# This needs to be done, otherwise a "rollup" will essentially be the cummulative registrations
+# from the beginning of time.
+#
+def registration_filter(ordered_hash)
+  ordered_hash
+end
+
+# query everything that has happened today
+start_ts = Hastur::Cassandra.last_time_for_timestamp( curr_time, GRANULARITY )
+end_ts = Hastur::Cassandra.next_time_for_timestamp( curr_time, GRANULARITY )
+uuids = get_client_uuids    # get the list of all client UUIDs
+uuids.each do |uuid|        # for each client, calculate the registration rollup
+  today = Hastur::Cassandra.get( client, uuid, REGISTRATION, start_ts, end_ts )
+  today.each do |k|
+    k.each do |v|
+      if v.respond_to?("each")
+        v.each do |timestamp, payload|
+          # write today's rollup to cassandra
+          Hastur::Cassandra.write_rollup( client, REGISTRATION, curr_time, GRANULARITY, uuid, payload )
+        end
+      end
+    end
+  end
+end
+
+# query previous day's rollup
+yesterday = Hastur::Cassandra.get_previous_rollup( client, REGISTRATION, curr_time, GRANULARITY )
+yesterday_filtered = filter_registrations(yesterday)
+
+# TODO(viet): write today's rollup to cassandra
+Hastur::Cassandra.write_next_rollup( client, REGISTRATION, curr_time, GRANULARITY, yesterday_filtered )
 

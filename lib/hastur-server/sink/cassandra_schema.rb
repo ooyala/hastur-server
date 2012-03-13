@@ -90,6 +90,7 @@ module Hastur
         :cf => :RegistrationArchive,
         :granularity => ONE_DAY,
         :name => nil,
+        :rollup_cf => :RegistrationDay
       },
     }
 

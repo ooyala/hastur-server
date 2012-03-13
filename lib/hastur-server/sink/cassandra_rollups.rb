@@ -50,9 +50,40 @@ module Hastur
     #
     # Retrieves an OrderedHash for a particular rollup
     #
-    def get_previous_rollup(cass_client, uuid, route, timestamp, granularity)
+    def get_previous_rollup(cass_client, route, timestamp, granularity)
       rollup_timestamp = last_time_segment_for_timestamp(timestamp, granularity)
-      get(cass_client, uuid, route, rollup_timestamp, rollup_timestamp + 1)
+      # get the CF from route
+      raise "Unable to determine find schema for #{route}" unless SCHEMA[route]
+      rollup_cf = SCHEMA[route][:rollup_cf]
+      raise "Unable to determine the rollup column family for #{route}" unless rollup_cf
+      # get the rollup
+      cass_client.get(rollup_cf, rollup_timestamp)
+    end
+
+    #
+    # Writes a value in the next rollup for a route
+    #
+    def write_rollup(cass_client, route, timestamp, granularity, col, value)
+      rollup_timestamp = next_time_segment_for_timestamp(timestamp, granularity)
+      # get the CF from route
+      raise "Unable to determine find schema for #{route}" unless SCHEMA[route]
+      rollup_cf = SCHEMA[route][:rollup_cf]
+      raise "Unable to determine the rollup column family for #{route}" unless rollup_cf
+      cass_client.insert(rollup_cf, rollup_timestamp, {col => value })
+    end
+
+    #
+    # Writes a rolled-over rollup from the previous segment to the next.
+    #
+    # @params [Cassandra] cass_client Cassandra client
+    # @params [String] route Hastur ZMQ route used to know which CF to write to
+    # @params [Fixnum] timestamp Hastur time in usecs. Used to know which time segment to write to
+    # @params [Fixnum] granularity Number of usecs for a time segment. Must be a valid granularity from 
+    #                              Hastur::Cassandra::GRANULARITIES
+    # @params [OrderedHash] ordered_hash The data is that rolling over from the period segment.
+    #
+    def write_ordered_hash_rollup(cass_client, route, timestamp, granularity, ordered_hash)
+      # TODO(viet): implement me
     end
 
     #
