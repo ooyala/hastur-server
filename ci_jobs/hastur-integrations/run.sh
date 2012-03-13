@@ -2,6 +2,8 @@
 
 set +e
 
+unset CASSANDRA_HOME
+
 : ${REPO_ROOT:="$WORKSPACE"}
 source $HOME/.rvm/scripts/rvm
 
