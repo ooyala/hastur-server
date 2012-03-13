@@ -11,6 +11,7 @@ require 'hastur'
 
 class QueryServerTest < Test::Unit::TestCase
   def setup
+    sinatra_ready = false
     @topology = Nodule::Topology.new(
       :greenio      => Nodule::Console.new(:fg => :green),
       :redio        => Nodule::Console.new(:fg => :red),
@@ -30,7 +31,9 @@ class QueryServerTest < Test::Unit::TestCase
       :query_server => Nodule::Process.new(HASTUR_QUERY_SERVER_BIN,
         '--cassandra', :cassandra,
         '--', '-p', '4177',
-        :stdout => :greenio, :stderr => :redio,
+        :stdout => :greenio, :stderr => proc do |line|
+          sinatra_ready = true if line =~ /== Sinatra.* has taken the stage/
+        end,
       ),
 
       :client1svc   => Nodule::Process.new(
@@ -60,6 +63,7 @@ class QueryServerTest < Test::Unit::TestCase
     )
 
     @topology.start_all
+    until(sinatra_ready){sleep 0.1}
     create_all_column_families(@topology[:cassandra].client) # helper
   end
 
