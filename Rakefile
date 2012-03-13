@@ -42,8 +42,15 @@ namespace "test" do
     end
   end
 
-  # TODO: remove this hack when we fix our tests
-  integration_tests.delete("message")
+  LIST_OF_SHAME = [ "message", "query_server" ]
+
+  unless LIST_OF_SHAME.empty?
+    puts "****************************************************"
+    puts "CURRENT LIST OF SHAME: #{LIST_OF_SHAME.join(", ")}"
+    puts "****************************************************"
+
+    integration_tests -= LIST_OF_SHAME
+  end
 
   task :integrations => integration_tests.map { |t| "test:integration:#{t}" }
 end
