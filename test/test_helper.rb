@@ -1,3 +1,6 @@
+# This must be first, before anything else
+require_relative "./hastur_simplecov"
+
 require "rubygems"
 require "bundler"
 #Bundler.require(:default, :development)

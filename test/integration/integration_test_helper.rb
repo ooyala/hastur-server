@@ -1,4 +1,6 @@
 #!/usr/bin/env ruby
+# This must be first, before anything else
+require_relative "./hastur_simplecov"
 
 require "multi_json"
 require "hastur-server/libc_ffi"
