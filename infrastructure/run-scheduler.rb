@@ -9,11 +9,11 @@ require "cassandra"
 
 opts = Trollop::options do
   opt :routers, "ZMQ URI for the router", :default => ["tcp://127.0.0.1:8126"], :type => :strings, :multi => true
-  opt :hosts, "Cassandra Hostname(s)",    :default => ["127.0.0.1"],            :type => :strings, :multi => true
+  opt :hosts, "Cassandra Hostname(s)",    :default => ["127.0.0.1:9160"],            :type => :strings, :multi => true
 end
 
 ctx = ZMQ::Context.new(1)
-router_socket = Hastur::ZMQUtils.connect_socket(ctx, ZMQ::PUSH, opts[:routers])
+router_socket = Hastur::ZMQUtils.connect_socket(ctx, ZMQ::PUSH, opts[:routers].flatten)
 
 scheduler = Hastur::Scheduler.new(router_socket)
 scheduler.start
@@ -27,7 +27,7 @@ scraper = Thread.new do
     # TODO(viet): Use Noah's library after the naming service is in place. These cassandra
     #             calls are a work around for not knowing which client UUIDs are currently
     #             registered.
-    client = Cassandra.new("Hastur", opts[:hosts].map { |h| "#{h}:9160" })
+    client = Cassandra.new("Hastur", opts[:hosts])
     loop do
       begin
         jobs = []
@@ -66,8 +66,9 @@ scraper = Thread.new do
         # wait another 5 minutes
         sleep 5
       rescue Exception => e
-        puts e.message
-        puts.backtrace
+        puts "Error: #{e.inspect}"
+        puts e.backtrace
+        break
         # TODO(viet): Do proper logging here
       end
     end
