@@ -1,9 +1,7 @@
 #!/usr/bin/env ruby
-$:.unshift File.join(File.dirname(__FILE__), '..', '..', 'lib')
+require_relative "../test_helper"
 
-require 'rubygems'
 require 'minitest/autorun'
-
 require 'hastur-server/input/collectd'
 
 PACKET_DIR = File.join(File.dirname(__FILE__), '..', 'data', 'collectd-raw-packets')

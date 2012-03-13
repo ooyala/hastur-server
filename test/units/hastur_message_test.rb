@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
-$:.unshift File.join(File.dirname(__FILE__), '..', '..', 'lib')
+require_relative "../test_helper"
 
-require 'rubygems'
 require 'minitest/autorun'
 require 'ffi-rzmq'
 require 'securerandom'

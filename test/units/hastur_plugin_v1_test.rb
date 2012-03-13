@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
-$:.unshift File.join(File.dirname(__FILE__), '..', '..', 'lib')
+require_relative "../test_helper"
 
-require "rubygems"
 require 'minitest/autorun'
 require 'hastur-server/plugin/v1'
 require 'hastur-server/libc_ffi'

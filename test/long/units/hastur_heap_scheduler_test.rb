@@ -1,7 +1,6 @@
-$LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..", "..", "lib")
+require_relative "../../test_helper"
 
 require "test/unit"
-
 require "hastur-server/hastur-heap-scheduler"
 
 class HasturHeapSchedulerTest < Test::Unit::TestCase 

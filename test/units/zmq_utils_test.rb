@@ -1,4 +1,3 @@
-require 'rubygems'
 require_relative "../test_helper"
 require "hastur-server/zmq_utils"
 
