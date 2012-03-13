@@ -14,4 +14,4 @@ bundle install
 gem build hastur-server.gemspec
 gem install hastur-server-*.gem
 
-bundle exec rake --trace test:integrations
+COVERAGE=true bundle exec rake --trace test:integrations
