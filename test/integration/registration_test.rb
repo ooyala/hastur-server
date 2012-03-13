@@ -16,7 +16,7 @@ class RegistrationTest < Test::Unit::TestCase
     assert_equal 1, messages.count
 
     payload = MultiJson.decode messages[0][-1] rescue nil
-    refute_nil payload
+    assert_not_nil payload
     assert_kind_of Hash, payload
 
     assert_equal payload["from"], "11111111-2222-3333-4444-555555555555"

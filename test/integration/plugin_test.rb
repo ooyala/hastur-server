@@ -82,12 +82,12 @@ EOJSON
     @topology.wait :heartbeat, 2
 
     messages = @topology[:heartbeat].output.pop
-    refute_nil messages, "should have caught some zmq messages"
+    assert_not_nil messages, "should have caught some zmq messages"
     assert messages.count > 0, "should have caught some zmq messages"
     envelope = Hastur::Envelope.parse messages[-2]
-    refute_nil envelope, "should have captured a valid envelope"
+    assert_not_nil envelope, "should have captured a valid envelope"
     message = Hastur::Message::Heartbeat.new :envelope => envelope, :payload => messages[-1]
-    refute_nil message, "should have captured a valid message"
+    assert_not_nil message, "should have captured a valid message"
 
     data = message.decode
     assert_kind_of Hash, data, "message.decode must return a hash"

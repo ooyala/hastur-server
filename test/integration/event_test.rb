@@ -57,7 +57,7 @@ class NotificationTest < Test::Unit::TestCase
 
     @topology[:event].add_reader proc { |messages|
       e = Hastur::Envelope.parse(messages[-2])
-      refute_nil e, "Hastur::Envelope.parse on messages[-2] must return an envelope."
+      assert_not_nil e, "Hastur::Envelope.parse on messages[-2] must return an envelope."
       assert e.ack?, "Events must always have the ack flag enabled (got: #{e.ack})."
       @events_seen += 1
 
