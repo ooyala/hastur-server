@@ -58,7 +58,7 @@ class AckTest < Test::Unit::TestCase
 
     # emulate a client heartbeat and wait for it to go all the way through to
     # make sure we're ready to go
-    @client = @topology[:client].socket 
+    @client = @topology[:client].socket
     hb = Hastur::Message::Heartbeat.new(:payload => "{}", :from => C1UUID)
     hb.send @client
     @topology[:heartbeat].require_read_count 1
