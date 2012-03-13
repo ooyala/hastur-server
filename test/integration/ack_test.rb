@@ -7,7 +7,7 @@ require 'nodule/zeromq'
 require 'multi_json'
 require 'hastur-server/message'
 
-class NotificationTest < Test::Unit::TestCase
+class AckTest < Test::Unit::TestCase
   EVENT_REPLAYS = 3
 
   def setup
