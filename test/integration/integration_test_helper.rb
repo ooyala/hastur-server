@@ -16,6 +16,7 @@ HASTUR_CLIENT_BIN="#{HASTUR_ROOT}/bin/hastur-client.rb"
 HASTUR_MSGTOOL_BIN="#{HASTUR_ROOT}/tools/msgtool.rb"
 HASTUR_QUERY_SERVER_BIN="#{HASTUR_ROOT}/bin/hastur-query-server.rb"
 HASTUR_CASS_SINK_BIN="#{HASTUR_ROOT}/bin/cass_sink.rb"
+HASTUR_SCHEDULER="#{HASTUR_ROOT}/infrastructure/run-scheduler.rb"
 
 # easy to spot fake UUID's
 C1UUID = '11111111-2222-3333-4444-555555555555'

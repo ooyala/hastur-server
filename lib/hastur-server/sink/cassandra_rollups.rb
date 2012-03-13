@@ -12,8 +12,48 @@ module Hastur
       # Month and year are weird - they aren't the same kind of simple granularities
     }
 
-    # For now, leave out month and year to keep the math simple
+    # For now, leave out month and year to keep the math simple. These are all Fixnums
     GRANULARITIES = [ONE_WEEK, ONE_DAY, ONE_HOUR, FIVE_MINUTES]
+
+    #
+    # Given a start time, returns the timestamp for the previous occuring rollup for a particular granularity
+    #
+    def last_time_segment_for_timestamp(start_ts, granularity)
+      # For example: 
+      #   remainder = start_ts % granularity
+      #       1     =    10    %      3
+      #   start_ts - remainder = last_time_segment
+      #       10   -     1     =       9
+
+      # do not combine these two statements because it will be difficult to debug later on
+      remainder = start_ts % granularity
+      start_ts - remainder
+    end
+
+    #
+    # Given a start time, returns the timestamp for the next occuring rollup for a particular granularity
+    #
+    def next_time_segment_for_timestamp(start_ts, granularity)
+      # For example: 
+      #   remainder = start_ts % granularity
+      #       1     =     10   %       3
+      #   start_ts - remainder = last_time_segment
+      #       10   -     1     =        9
+      #   next_time_segment = last_time_segment + granularity
+      #       12            =        9          +      3
+
+      # do not combine these two statements because it will be difficult to debug later on
+      remainder = start_ts % granularity
+      start_ts - remainder + granularity
+    end
+
+    #
+    # Retrieves an OrderedHash for a particular rollup
+    #
+    def get_previous_rollup(cass_client, uuid, route, timestamp, granularity)
+      rollup_timestamp = last_time_segment_for_timestamp(timestamp, granularity)
+      get(cass_client, uuid, route, rollup_timestamp, rollup_timestamp + 1)
+    end
 
     #
     # UNTESTED

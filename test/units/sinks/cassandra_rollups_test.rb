@@ -35,6 +35,24 @@ class CassandraRollupsTest < Scope::TestCase
     Hastur::Util.stubs(:timestamp).with(nil).returns(TESTING_NOW_TS)
   end
 
+  context "with rollup segments" do
+    should "return last time segment for timestamp" do
+      five_minute_time = 5*60*1_000_000
+      last_time_segment = Hastur::Cassandra.last_time_segment_for_timestamp(
+                                    five_minute_time + 1000,
+                                    Hastur::Cassandra::FIVE_MINUTES)
+      assert_equal(five_minute_time, last_time_segment)
+    end
+
+    should "return next time segment for timestamp" do
+      five_minute_time = 5*60*1_000_000
+      next_time_segment = Hastur::Cassandra.next_time_segment_for_timestamp(
+                                    five_minute_time + 1000,
+                                    Hastur::Cassandra::FIVE_MINUTES)
+      assert_equal(five_minute_time + five_minute_time, next_time_segment)
+    end
+  end
+
 =begin
   context "with rollup segments" do
     should "..." do
