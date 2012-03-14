@@ -54,7 +54,7 @@ topology = Nodule::Topology.new(
     :stdout => :cyanio, :stderr => :cyanio, :verbose => :cyanio,
   ),
   :cass_sink => Nodule::Process.new(
-    File.join(HASTUR_ROOT, "bin", "cass_sink.rb"),
+    File.join(HASTUR_ROOT, "bin", "cass-sink.rb"),
     '--sinks', :stat, :event, :heartbeat, :registration, :log,
     '--acks-to', :direct, # '--cassandra', '127.0.0.1:9160',
     :verbose => :cyanio, :stderr => :redio, :stdout => :yellowio
