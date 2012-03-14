@@ -28,7 +28,7 @@ topology = Nodule::Topology.new(
   :direct        => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
   :control       => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
   :routersvc     => Nodule::Process.new(
-    '../infrastructure/hastur-router.rb',
+    '../bin/hastur-router.rb',
     '--uuid',          uuid1,
     '--hwm',           100,
     '--router',        :router,
