@@ -12,6 +12,8 @@ class HeartbeatTest < Test::Unit::TestCase
     @topology = Nodule::Topology.new(
       :greenio      => Nodule::Console.new(:fg => :green),
       :redio        => Nodule::Console.new(:fg => :red),
+      :cyanio       => Nodule::Console.new(:fg => :cyan),
+      :yellowio     => Nodule::Console.new(:fg => :yellow),
       :client1unix  => Nodule::UnixSocket.new,
       :client2unix  => Nodule::UnixSocket.new,
       :router       => Nodule::ZeroMQ.new(:uri => :gen),
@@ -26,12 +28,12 @@ class HeartbeatTest < Test::Unit::TestCase
 
       :client1svc   => Nodule::Process.new(
         HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--unix', :client1unix,
-        :stdout => :greenio, :stderr => :redio,
+        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
 
       :client2svc => Nodule::Process.new(
         HASTUR_CLIENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--unix', :client2unix,
-        :stdout => :greenio, :stderr => :redio,
+        :stdout => :greenio, :stderr => :redio, :verbose => :yellowio,
       ),
 
       :routersvc => Nodule::Process.new(
