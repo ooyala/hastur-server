@@ -59,7 +59,7 @@ end
 yesterday = Hastur::Cassandra.get_previous_rollup( client, REGISTRATION, curr_time, GRANULARITY )
 yesterday_filtered = filter_registrations(yesterday)
 
-# TODO(viet): write today's rollup to cassandra
+# write today's rollup to cassandra
 Hastur::Cassandra.write_next_rollup( client, REGISTRATION, curr_time, GRANULARITY, yesterday_filtered )
 
 
