@@ -28,7 +28,7 @@ module Hastur
       @hmac_key               = opts[:hmac_key]
       @logger                 = Termite::Logger.new
       @poller                 = ZMQ::Poller.new
-      @stats                  = { :to => 0, :from => 0, :to_from => 0, :missed => 0 }
+      @stats                  = { :type => 0, :to => 0, :from => 0, :to_from => 0, :missed => 0 }
       opts[:stats_interval] ||= 5   # default to send stats every 5 seconds
       @errors                 = 0
       @num_msgs               = 0
@@ -69,23 +69,28 @@ module Hastur
     #  :static  - (bool) this route cannot be modified at runtime
     #
     # Examples:
-    # r.route :to => :stat, :src => client_router_sock, :dest => stat_sink_sock
-    # r.route :to => :stat, :src => client_router_sock, :dest => stats_tap_sock
-    # r.route :to => :log,  :src => client_router_sock, :dest => cass_log_sock
-    # r.route :to => :log,  :src => client_router_sock, :dest => file_sink_sock
+    # r.route :type => :stat, :src => client_router_sock, :dest => stat_sink_sock
+    # r.route :type => :stat, :src => client_router_sock, :dest => stats_tap_sock
+    # r.route :type => :log,  :src => client_router_sock, :dest => cass_log_sock
+    # r.route :type => :log,  :src => client_router_sock, :dest => file_sink_sock
     # r.route(
-    #   :to   => :log,
+    #   :type => :log,
     #   :from => '62780b2f-8d12-4840-9c6e-e89dae8cd322',
     #   :src  => client_router_sock,
     #   :dest => console_debug_sock,
     # )
-    #
+    # r.route(
+    #   :from => '93218295-6081-4871-b9df-6c3961a9ae94',
+    #   :to   => 'bc7dbea3-da62-477c-88bd-468481a68d6b',
+    #   :src  => client_router_sock,
+    #   :dest => event_ack_tap_sock,
+    # )
     #
     def route(opts)
-      unless opts[:to] or opts[:from]
-        raise ArgumentError.new ":to or :from is required"
+      unless opts[:to] or opts[:from] or opts[:type]
+        raise ArgumentError.new "One or more of :to, :from, or :type is required"
       end
-        
+
       raise ArgumentError.new ":src is required"  unless opts.has_key? :src
       raise ArgumentError.new ":dest is required" unless opts.has_key? :dest
 
@@ -107,20 +112,26 @@ module Hastur
         :static  => opts[:static] ? true : false
       }
 
-      if opts[:to] 
+      if opts[:to]
         if Hastur::Util.valid_uuid?(opts[:to])
           route[:to] = opts[:to]
-        elsif Hastur::Message.symbol?(opts[:to].to_sym)
-          klass = Hastur::Message.symbol_to_class(opts[:to].to_sym)
-          route[:to] = klass.route_uuid
         else
           raise ArgumentError.new ":to must be a valid Hastur route (id or symbol) or a 36-byte hex UUID (#{opts[:to]})"
         end
       end
 
-      # :from can never be a symbolic route - it doesn't make any sense
       if opts[:from] and Hastur::Util.valid_uuid?(opts[:from])
         route[:from] = opts[:from]
+      end
+
+      if opts[:type]
+        if Hastur::Message.type_id? opts[:type]
+          route[:type] = opts[:type]
+        elsif Hastur::Message.symbol? opts[:type]
+          route[:type] = Hastur::Message.symbol_to_type_id(opts[:type])
+        else
+          raise ArgumentError.new ":type must be a valid Hastur::Message type"
+        end
       end
 
       src_id = sockid(route[:src])
@@ -194,6 +205,7 @@ module Hastur
         # convenience variables
         from = envelope.from
         to   = envelope.to
+        type = envelope.type
 
         # append this router's identity to the message envelope
         envelope.add_router @uuid
@@ -214,33 +226,46 @@ module Hastur
         times_routed = 0
         @route_ids[id].each do |r|
           # test in the order of popularity
-          # simple :to routes without :from matching should be well over 90% of cases, e.g.
+          # simple :type routes without :to or :from should be well over 90% of cases, e.g.
+          if r[:type] == type and not r.has_key? :to and not r.has_key? :from
+            forward r[:dest], envelope.pack, hastur_message
+            @stats[:type] += 1
+            times_routed += 1
+
           # r.route :to => :stat, :src => client_router_sock, :dest => stat_sink_sock
-          if r.has_key? :to and not r.has_key? :from and r[:to] == to
+          elsif r[:to] == to and not r.has_key? :from and not r.has_key? :type
             forward r[:dest], envelope.pack, hastur_message
             @stats[:to] += 1
+            times_routed += 1
+
+          # only match on from, generally expected to be used for client debugging/test replaying, e.g.
+          # r.route :from => client_uuid, :src => client_router_sock, :dest => client_tap_sock
+          elsif r[:from] == from and not r.has_key? :to and not r.has_key? :type
+            forward r[:dest], envelope.pack, hastur_message
+            @stats[:from] += 1
+            times_routed += 1
+
+          # all three of to/from/type are specified
+          elsif r[:to] == to and r[:from] == from and r[:type] == type
+            forward r[:dest], envelope.pack, hastur_message
+            @stats[:to_from_type] += 1
             times_routed += 1
 
           # very specific :to and :from exact specification
           # mostly useful for tapping a specific stream from a specific source, e.g.
           # r.route :to => :stat, :from => client_uuid, :src => client_router_sock, :dest => stat_tap_sock
-          elsif r.has_key? :to and r.has_key? :from and r[:to] == to and r[:from] == from
+          elsif r[:to] == to and r[:from] == from
             forward r[:dest], envelope.pack, hastur_message
             @stats[:to_from] += 1
             times_routed += 1
 
-          # only match on from, generally expected to be used for client debugging/test replaying, e.g.
-          # r.route :from => client_uuid, :src => client_router_sock, :dest => client_tap_sock
-          elsif r.has_key? :from and not r.has_key? :to and r[:from] == from
-            forward r[:dest], envelope.pack, hastur_message
-            @stats[:from] += 1
-            times_routed += 1
-
           else
+            # might be interesting if the router seems slow - a high number of misses for a given route
+            # isn't bad, but might be indicitave that it's time to optimize the order above
             @stats[:missed] += 1
           end
         end
-        
+
         # Messages destined to clients on the ROUTER socket can only be reached via their random identity.
         # For every message we receive from a client, we cache its identity in @dynamic as a binary string
         # that can be converted back to the ZMQ envelope part before sending on the router socket. This will

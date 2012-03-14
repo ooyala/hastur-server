@@ -15,7 +15,7 @@ module Hastur
   # end later on and old unpacks will just ignore data at the end.
   #
   # Numbers are big endian wherever it makes sense.
-  # 
+  #
   class Envelope
     VERSION = 1
     DIGEST = OpenSSL::Digest::Digest.new('sha256')
@@ -106,11 +106,6 @@ module Hastur
       if opts[:type].kind_of? Symbol
         msg_class = Hastur::Message.symbol_to_class(opts[:type])
         opts[:type] = msg_class.type_id
-      end
-
-      unless opts[:to]
-        msg_class = Hastur::Message.type_id_to_class(opts[:type])
-        opts[:to] = msg_class.route_uuid
       end
 
       # make sure :to/:from are proper UUID's in 36-byte hex, but don't be

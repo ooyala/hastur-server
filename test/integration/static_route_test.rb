@@ -42,21 +42,25 @@ class NotificationTest < Test::Unit::TestCase
       ),
     )
 
-    # test a selection of routes, injecting a message on the ROUTER socket, then check
+    # test a selection of types, injecting a message on the ROUTER socket, then check
     # the receiver sockets to make sure they got routed and routed to the right socket
-    @routes_to_test = [:error, :heartbeat, :registration, :event, :stat, :log]
-    @message_count = @routes_to_test.count
+    @types_to_test = [:error, :heartbeat, :registration, :event, :stat, :log]
+    @message_count = @types_to_test.count
 
     # run the tests inside handler blocks
     @count = 0
-    @routes_to_test.each do |route|
-      @topology[route].add_reader do |messages|
+    # the symbols used in the topology setup above must match the hastur type symbols for this to work
+    @types_to_test.each do |type_symbol|
+      klass = Hastur::Message.symbol_to_class(type_symbol)
+      @topology[type_symbol].add_reader do |messages|
         @count += 1 
         e = Hastur::Envelope.parse(messages[-2])
         refute_nil e
-        klass = Hastur::Message.symbol_to_class(route.to_sym)
-        rid = klass.route_uuid
-        assert_equal rid, e.to, "routed to #{route}"
+
+        assert_equal e.type, klass.type_id
+
+        msg = klass.new :envelope => e, :payload => messages[-1]
+        refute_nil msg
       end
     end
 
@@ -68,17 +72,17 @@ class NotificationTest < Test::Unit::TestCase
   end
 
   def test_routes
-    @routes_to_test.each do |route|
-      klass = Hastur::Message.symbol_to_class(route.to_sym)
+    @types_to_test.each do |type_symbol|
+      klass = Hastur::Message.symbol_to_class(type_symbol)
       msg = klass.new(:payload => "{}", :from => C1UUID)
       rc = msg.send @topology[:client].socket
       assert rc > -1, "msg.send() must succeed to have a useful test"
     end
 
     messages = {}
-    @routes_to_test.each do |route|
-      @topology.wait route, 1
-      messages[route] = @topology[route].output
+    @types_to_test.each do |type_symbol|
+      @topology.wait type_symbol, 1
+      messages[type_symbol] = @topology[type_symbol].output
     end
 
     assert_equal @message_count, @count, "should have seen #{@message_count} messages"

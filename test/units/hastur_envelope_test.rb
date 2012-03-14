@@ -8,8 +8,10 @@ require 'hastur-server/envelope'
 require 'hastur-server/message'
 
 class TestClassHasturEnvelope < MiniTest::Unit::TestCase
-  UUID = "01234567-89ab-cdef-deaf-cafedeadbeef"
+  FROM_UUID = "01234567-89ab-cdef-deaf-cafedeadbeef"
+  NONE_UUID = "00000000-0000-0000-0000-000000000000"
   ENVELOPE = {
+    :to        => NONE_UUID,
     :from      => "be7f4980-6a1f-4120-b0ce-26de709afcf6",
     :type      => :rawdata,
     :timestamp => 1329865874428623,
@@ -19,19 +21,20 @@ class TestClassHasturEnvelope < MiniTest::Unit::TestCase
 
   def test_envelope
     e = Hastur::Envelope.new(
-      :from      => UUID,
+      :to        => NONE_UUID,
+      :from      => FROM_UUID,
       :type      => :rawdata,
       :timestamp => 1328301436948527,
       :uptime    => 12.401439189910889,
       :sequence  => 1234
     )
     assert_equal false, e.ack? # should default to false
-    assert_equal '72617764-6174-6100-0000-000000000000', e.to
+    assert_equal NONE_UUID, e.to
 
     ehex = e.to_s # returns envelope in hex
     assert_equal "0001",               ehex[0,  4 ], "check version"
-    assert_equal "72617764617461",     ehex[6,  14], "check route"
-    assert_equal UUID.split(/-/).join, ehex[38, 32], "check uuid"
+    assert_equal "00000000000000",     ehex[6,  14], "check to"
+    assert_equal FROM_UUID.split(/-/).join, ehex[38, 32], "check uuid"
 
     assert_raises ArgumentError, "empty args should raise an exception" do
       Hastur::Envelope.new
@@ -51,21 +54,23 @@ class TestClassHasturEnvelope < MiniTest::Unit::TestCase
 
     acked = Hastur::Envelope.new(
       :type => :stat,
+      :to   => NONE_UUID,
       :from => SecureRandom.uuid.split(/-/).join,
       :ack  => true
     )
     assert_equal true, acked.ack?
-    assert_equal '73746174-0000-0000-0000-000000000000', acked.to
+    assert_equal NONE_UUID, acked.to
 
     noack = Hastur::Envelope.new(
       :type => :stat,
+      :to   => NONE_UUID,
       :from => SecureRandom.uuid,
-      :ack => false
+      :ack  => false
     )
     assert_equal false, noack.ack?
     assert_equal 186,   noack.to_s.length
     assert_equal 93,    noack.pack.bytesize
-    assert_equal '73746174-0000-0000-0000-000000000000', noack.to
+    assert_equal NONE_UUID, noack.to
   end
 
   def test_router_trace

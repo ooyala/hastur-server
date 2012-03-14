@@ -26,8 +26,7 @@ module Hastur
         end
 
         if opts[:data]
-          raise ArgumentError.new ":data must respond to :to_hash" unless opts[:data].respond_to?(:to_hash)
-          @payload = MultiJson.encode opts[:data].to_hash
+          @payload = encode opts[:data]
         elsif opts[:payload]
           @payload = opts[:payload]
         else
@@ -47,13 +46,6 @@ module Hastur
       #
       def self.type_id() CLASS_TYPE_IDS[self] end
       def type_id() CLASS_TYPE_IDS[self.class] end
-
-      #
-      # Return the route UUID for the class.
-      # Route UUID's are defined in the Hastur::Message module.
-      #
-      def self.route_uuid() CLASS_ROUTE_UUIDS[self] end
-      def route_uuid() CLASS_ROUTE_UUIDS[self.class] end
 
       #
       # Return the symbol that should be used for the class.
@@ -165,6 +157,7 @@ module Hastur
       #
       # Decode the JSON payload. This may be overridden in subclasses of Base.
       # Does not validate.
+      # @return [Hash] data structure
       #
       def decode
         MultiJson.decode @payload, :symbolize_keys => true
@@ -172,9 +165,11 @@ module Hastur
 
       #
       # Set the payload to the serialized JSON of the given data structure.
-      # Does not validate.
+      # @param [Hash] data structure
+      # @return [String] JSON payload
       #
       def encode(data)
+        raise ArgumentError.new "argument must respond to :to_hash" unless data.respond_to?(:to_hash)
         @payload = MultiJson.encode data
       end
     end

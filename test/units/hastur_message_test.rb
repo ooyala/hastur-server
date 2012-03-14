@@ -7,7 +7,8 @@ require 'securerandom'
 require 'hastur-server/message'
 
 class TestClassHasturMessage < MiniTest::Unit::TestCase
-  UUID = "01234567-89ab-cdef-deaf-cafedeadbeef"
+  FROM_UUID = "01234567-89ab-cdef-deaf-cafedeadbeef"
+  NONE_UUID = "00000000-0000-0000-0000-000000000000"
 
   # this should be consistent .... if another json encoder changes the order it will break
   STAT = {
@@ -19,6 +20,7 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   STAT_JSON = '{"name":"foo.bar","value":1024,"timestamp":1329865874428623,"labels":{"blahblah":456,"units":"s"}}'
 
   ENVELOPE = {
+    :to        => NONE_UUID,
     :from      => "be7f4980-6a1f-4120-b0ce-26de709afcf6",
     :type      => :rawdata,
     :timestamp => 1329865874428623,
@@ -34,7 +36,7 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     zmq_part = "00670243f680d448deae3f2ca4513bb1e8"
     e = Hastur::Message::Rawdata.new(ENVELOPE.merge(:payload => "a b c d e f g"))
 
-    json1= "{\"klass\":\"Hastur::Message::Rawdata\",\"envelope\":{\"version\":1,\"type\":6,\"to\":\"72617764-6174-6100-0000-000000000000\",\"from\":\"be7f4980-6a1f-4120-b0ce-26de709afcf6\",\"ack\":0,\"resend\":0,\"sequence\":88888,\"timestamp\":1329865874428623,\"uptime\":12.4,\"hmac\":\"\",\"routers\":[]},\"payload\":\"a b c d e f g\",\"zmq_parts\":[]}"
+    json1= "{\"klass\":\"Hastur::Message::Rawdata\",\"envelope\":{\"version\":1,\"type\":6,\"to\":\"#{NONE_UUID}\",\"from\":\"be7f4980-6a1f-4120-b0ce-26de709afcf6\",\"ack\":0,\"resend\":0,\"sequence\":88888,\"timestamp\":1329865874428623,\"uptime\":12.4,\"hmac\":\"\",\"routers\":[]},\"payload\":\"a b c d e f g\",\"zmq_parts\":[]}"
     json2 = "{\"klass\":\"Hastur::Message::Log\",\"envelope\":{\"version\":1,\"type\":3,\"to\":\"72617764-6174-6100-0000-000000000000\",\"from\":\"ac8084af-955f-4a48-ac8d-6d2c73f33a75\",\"ack\":1,\"resend\":0,\"sequence\":1234,\"timestamp\":1328301436000000,\"uptime\":15.9,\"hmac\":\"\",\"routers\":[]},\"payload\":\" 90ea9aa814354df5a4e82921c63a42cb \",\"zmq_parts\":[\"#{zmq_part}\"]}"
 
     assert_equal json1, e.to_json, "converting envelope to json matches static data"
@@ -90,7 +92,7 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   end
 
   def test_stat
-    e = Hastur::Envelope.new :type => :stat, :from => SecureRandom.uuid
+    e = Hastur::Envelope.new :type => :stat, :to => NONE_UUID, :from => SecureRandom.uuid
     hmsg = Hastur::Message::Stat.new :envelope => e, :data => STAT
     refute_nil hmsg
     assert_kind_of Hastur::Message::Base, hmsg
@@ -101,22 +103,21 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   end
 
   def test_const_methods
-    stat_uuid = '73746174-0000-0000-0000-000000000000'
-    log_uuid  = '6c6f6700-0000-0000-0000-000000000000'
     assert Hastur::Message.symbol?(:stat)
     assert Hastur::Message.symbol?(:log)
     assert Hastur::Message.symbol?(:error)
     assert Hastur::Message.symbol?(:registration)
-    assert Hastur::Message.route_uuid?(stat_uuid)
-    assert Hastur::Message.route_uuid?(log_uuid)
+    refute Hastur::Message.symbol?(:foobar)
+    refute Hastur::Message.type_id?(0)
     assert Hastur::Message.type_id?(1)
     assert Hastur::Message.type_id?(9)
+    refute Hastur::Message.type_id?(10)
 
     assert_equal Hastur::Message::Stat, Hastur::Message.symbol_to_class(:stat)
-    assert_equal Hastur::Message::Stat, Hastur::Message.route_uuid_to_class(stat_uuid)
+    assert_equal 1, Hastur::Message.symbol_to_type_id(:stat)
     assert_equal Hastur::Message::Stat, Hastur::Message.type_id_to_class(1)
+    assert_equal :stat, Hastur::Message.type_id_to_symbol(1)
     refute_equal Hastur::Message::Stat, Hastur::Message.symbol_to_class(:error)
-    refute_equal Hastur::Message::Stat, Hastur::Message.route_uuid_to_class(log_uuid)
     refute_equal Hastur::Message::Stat, Hastur::Message.type_id_to_class(9)
   end
 

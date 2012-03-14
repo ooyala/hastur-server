@@ -32,7 +32,7 @@ module Hastur
         opts[:port]           ||= 8125
         opts[:heartbeat]      ||= 30
         opts[:ack_interval]   ||= 30
-        opts[:stats_interval] ||= 5 
+        opts[:stats_interval] ||= 5
 
         raise ArgumentError.new ":port must be an integer" unless opts[:port].kind_of? Fixnum
         raise ArgumentError.new ":port must be between 1025 and 65535" unless opts[:port].between? 1025, 65535

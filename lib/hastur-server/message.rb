@@ -20,20 +20,6 @@ module Hastur
   # and its subclasses, e.g. Hastur::Message::Error.
   #
   module Message
-    CLASS_ROUTE_UUIDS = {
-      Hastur::Message::Stat         => '73746174-0000-0000-0000-000000000000',
-      Hastur::Message::Event        => '6576656e-7400-0000-0000-000000000000',
-      Hastur::Message::Log          => '6c6f6700-0000-0000-0000-000000000000',
-      Hastur::Message::Ack          => '00000000-0000-0000-0000-000000000000',
-      Hastur::Message::Error        => '6572726f-7200-0000-0000-000000000000',
-      Hastur::Message::Rawdata      => '72617764-6174-6100-0000-000000000000',
-      Hastur::Message::Heartbeat    => '68656172-7462-6561-7400-000000000000',
-      Hastur::Message::PluginExec   => '706c7567-696e-5f65-7865-630000000000',
-      Hastur::Message::Registration => '72656769-7374-7261-7469-6f6e00000000',
-    }.freeze
-
-    ROUTE_UUID_CLASSES = CLASS_ROUTE_UUIDS.invert.freeze
-
     CLASS_TYPE_IDS = {
       Hastur::Message::Stat         => 1,
       Hastur::Message::Event        => 2,
@@ -66,10 +52,6 @@ module Hastur
       SYMBOL_CLASSES.has_key? sym
     end
 
-    def self.route_uuid?(uuid)
-      ROUTE_UUID_CLASSES.has_key? uuid
-    end
-
     def self.type_id?(type_id)
       TYPE_ID_CLASSES.has_key?(type_id)
     end
@@ -81,18 +63,25 @@ module Hastur
       SYMBOL_CLASSES[sym]
     end
 
-    def self.route_uuid_to_class(uuid)
-      unless ROUTE_UUID_CLASSES.has_key?(uuid)
-        raise BugError.new "'#{uuid}' is not a valid Hastur::Message route UUID."
+    def self.symbol_to_type_id(sym)
+      unless SYMBOL_CLASSES.has_key?(sym)
+        raise BugError.new "'#{sym}' is not a valid Hastur::Message symbol."
       end
-      ROUTE_UUID_CLASSES[uuid]
+      CLASS_TYPE_IDS[SYMBOL_CLASSES[sym]]
     end
-    
+
     def self.type_id_to_class(type_id)
       unless TYPE_ID_CLASSES.has_key?(type_id)
         raise BugError.new "'#{type_id}' is not a valid Hastur::Message type id."
       end
       TYPE_ID_CLASSES[type_id]
+    end
+
+    def self.type_id_to_symbol(type_id)
+      unless TYPE_ID_CLASSES.has_key?(type_id)
+        raise BugError.new "'#{type_id}' is not a valid Hastur::Message type id."
+      end
+      CLASS_SYMBOLS[TYPE_ID_CLASSES[type_id]]
     end
 
     #

@@ -6,8 +6,7 @@ module Hastur
   module Message
     class Heartbeat < Base
       def initialize(opts)
-        return super(opts) if opts.has_key? :envelope
-        opts[:to] = route_uuid
+        opts[:to] ||= '00000000-0000-0000-0000-000000000000'
         super(opts)
       end
     end

@@ -69,13 +69,13 @@ R = Hastur::Router.new(opts[:uuid], :error_socket => sockets[:error])
 end
 
 # Client -> Sink static routes
-R.route :to => :stat,              :src => sockets[:router], :dest => sockets[:stat],          :static => true
-R.route :to => :event,             :src => sockets[:router], :dest => sockets[:event],         :static => true
-R.route :to => :log,               :src => sockets[:router], :dest => sockets[:log],           :static => true
-R.route :to => :error,             :src => sockets[:router], :dest => sockets[:error],         :static => true
-R.route :to => :rawdata,           :src => sockets[:router], :dest => sockets[:rawdata],       :static => true
-R.route :to => :heartbeat,         :src => sockets[:router], :dest => sockets[:heartbeat],     :static => true
-R.route :to => :registration,      :src => sockets[:router], :dest => sockets[:registration],  :static => true
+R.route :type => :stat,         :src => sockets[:router], :dest => sockets[:stat],         :static => true
+R.route :type => :event,        :src => sockets[:router], :dest => sockets[:event],        :static => true
+R.route :type => :log,          :src => sockets[:router], :dest => sockets[:log],          :static => true
+R.route :type => :error,        :src => sockets[:router], :dest => sockets[:error],        :static => true
+R.route :type => :rawdata,      :src => sockets[:router], :dest => sockets[:rawdata],      :static => true
+R.route :type => :heartbeat,    :src => sockets[:router], :dest => sockets[:heartbeat],    :static => true
+R.route :type => :registration, :src => sockets[:router], :dest => sockets[:registration], :static => true
 
 # (scheduler / acks) -> Clients static route
 R.route :from => :direct, :src => sockets[:direct], :dest => sockets[:router], :static => true

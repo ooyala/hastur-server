@@ -13,16 +13,10 @@ module Hastur
     # rescue FooBar => e
     #   s = Hastur::Message::Error.new e
     # end
-    # 
+    #
     class Error < Base
       def initialize(opts)
-        return super(opts) if opts.has_key? :envelope
-        opts[:to] = route_uuid
-
-        if opts[:data]
-          opts[:payload] = encode(opts.delete(:data))
-        end
-
+        opts[:to] ||= '00000000-0000-0000-0000-000000000000'
         super(opts)
       end
 
@@ -31,7 +25,7 @@ module Hastur
       # or even (accidentally) malicious data.  The transmitted JSON should always
       # have two keys, :error and :data. :data could contain anything, including
       # more JSON.
-      # 
+      #
       # A few automatic conversions are executed:
       #   Hastur::Message::Base -> to_json -> base64
       #   Exception -> .inspect -> base64
