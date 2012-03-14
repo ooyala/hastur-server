@@ -47,15 +47,11 @@ end_ts = Hastur::Cassandra.next_time_for_timestamp( curr_time, GRANULARITY )
 uuids = get_client_uuids    # get the list of all client UUIDs
 uuids.each do |uuid|        # for each client, calculate the registration rollup
   today = Hastur::Cassandra.get( client, uuid, REGISTRATION, start_ts, end_ts )
-  today.each do |k|
-    k.each do |v|
-      if v.respond_to?("each")
-        v.each do |timestamp, payload|
-          # write today's rollup to cassandra
-          Hastur::Cassandra.write_rollup( client, REGISTRATION, curr_time, GRANULARITY, uuid, payload )
-        end
-      end
-    end
+  today.keys.each do |key|
+    # key = timestamp
+    payload = today[key]
+    # write today's rollup to cassandra
+    Hastur::Cassandra.write_rollup( client, REGISTRATION, curr_time, GRANULARITY, uuid, payload )
   end
 end
 
