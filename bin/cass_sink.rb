@@ -6,9 +6,7 @@ require "hastur-server/sink/cassandra_schema"
 
 opts = Trollop::options do
   banner "Creates a Cassandra keyspace\n\nOptions:"
-  opt :hosts,     "Cassandra URI(s)",       :default => ["127.0.0.1:9160"],        :type => :strings,
-                                                                                   :multi => true
-  opt :routers,   "Router URI(s)",          :default => ["tcp://127.0.0.1"],       :type => :strings,
+  opt :cassandra, "Cassandra URI(s)",       :default => ["127.0.0.1:9160"],        :type => :strings,
                                                                                    :multi => true
   opt :sinks,     "Router sink URI(s)",     :default => ["tcp://127.0.0.1:8127"],  :type => :strings,
                                                                                    :multi => true
@@ -23,8 +21,8 @@ ctx = ZMQ::Context.new
 msg_socket = Hastur::ZMQUtils.connect_socket(ctx, ::ZMQ::PULL, opts[:sinks].flatten)
 ack_socket = Hastur::ZMQUtils.connect_socket(ctx, ::ZMQ::PUSH, opts[:acks_to].flatten)
 
-puts "Connecting to Cassandra at #{opts[:hosts].inspect}"
-client = Cassandra.new(opts[:keyspace], opts[:hosts])
+puts "Connecting to Cassandra at #{opts[:cassandra].flatten.inspect}"
+client = Cassandra.new(opts[:keyspace], opts[:cassandra].flatten)
 client.default_write_consistency = 2  # Initial default: 1
 
 @running = true
