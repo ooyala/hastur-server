@@ -10,25 +10,18 @@ opts = Trollop::options do
                                                                                    :multi => true
   opt :routers,   "Router URI(s)",          :default => ["tcp://127.0.0.1"],       :type => :strings,
                                                                                    :multi => true
-  opt :sink_port, "Router sink port num(s)",:default => 8127,                      :type => :integer,
+  opt :sinks,     "Router sink URI(s)",     :default => ["tcp://127.0.0.1:8127"],  :type => :strings,
                                                                                    :multi => true
-  opt :ack_port,  "Router ack port num",    :default => 8134,                      :type => :integer
+  opt :acks_to,   "Router ack URI(s)",      :default => ["tcp://127.0.0.1:8134"],  :type => :strings,
+                                                                                   :multi => true
   opt :keyspace,  "Keyspace",               :default => "Hastur",                  :type => String
   opt :hwm,       "ZMQ message queue size", :default => 1,                         :type => :int
 end
 
 ctx = ZMQ::Context.new
 
-# Build a list of URIs that are the direct port on each router
-msg_uri_list = opts[:routers].flatten.map { |r| "#{r}:#{opts[:ack_port]}" }
-
-# Build a list of URIs of routers cross sink ports.
-# So if there are six routers and we're being a sink for four message types,
-#   you'd get 24 URIs to connect to.  Load balancing!
-ack_uri_list = opts[:routers].flatten.map { |r| [opts[:sink_port]].flatten.map { |p| "#{r}:#{p}" }}.flatten
-
-msg_socket = Hastur::ZMQUtils.connect_socket(ctx, ::ZMQ::PULL, msg_uri_list)
-ack_socket = Hastur::ZMQUtils.connect_socket(ctx, ::ZMQ::PUSH, ack_uri_list)
+msg_socket = Hastur::ZMQUtils.connect_socket(ctx, ::ZMQ::PULL, opts[:sinks].flatten)
+ack_socket = Hastur::ZMQUtils.connect_socket(ctx, ::ZMQ::PUSH, opts[:acks_to].flatten)
 
 puts "Connecting to Cassandra at #{opts[:hosts].inspect}"
 client = Cassandra.new(opts[:keyspace], opts[:hosts])
