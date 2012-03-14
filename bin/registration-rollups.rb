@@ -34,7 +34,7 @@ end
 
 #
 # TODO(viet): Filters out expired plugins. Not sure how this is going to look like yet.
-# This needs to be done, otherwise a "rollup" will essentially be the cummulative registrations
+# This needs to be done, otherwise a "rollup" will essentially be the cumulative registrations
 # from the beginning of time.
 #
 def registration_filter(ordered_hash)
@@ -65,4 +65,5 @@ yesterday_filtered = filter_registrations(yesterday)
 
 # TODO(viet): write today's rollup to cassandra
 Hastur::Cassandra.write_next_rollup( client, REGISTRATION, curr_time, GRANULARITY, yesterday_filtered )
+
 
