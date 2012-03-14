@@ -83,7 +83,9 @@ module Hastur
     # @params [OrderedHash] ordered_hash The data is that rolling over from the period segment.
     #
     def write_ordered_hash_rollup(cass_client, route, timestamp, granularity, ordered_hash)
-      # TODO(viet): implement me
+      ordered_hash.keys.each do |key|
+        write_rollup(cass_client, route, timestamp, granulairty, key, ordered_hash[key])
+      end
     end
 
     #
