@@ -42,6 +42,8 @@ namespace "test" do
     end
   end
 
+  shameful_integration_tests = integration_tests
+
   LIST_OF_SHAME = [ "message", "query_server", "registration", "heartbeat" ]
 
   unless LIST_OF_SHAME.empty?
@@ -53,6 +55,7 @@ namespace "test" do
   end
 
   task :integrations => integration_tests.map { |t| "test:integration:#{t}" }
+  task :shameful => shameful_integration_tests.map { |t| "test:integration:#{t}" }
 end
 
 # Put together a test target for Jenkins
