@@ -42,7 +42,7 @@ namespace "test" do
     end
   end
 
-  LIST_OF_SHAME = [ "message", "query_server", "registration" ]
+  LIST_OF_SHAME = [ "message", "query_server", "registration", "heartbeat" ]
 
   unless LIST_OF_SHAME.empty?
     puts "****************************************************"
