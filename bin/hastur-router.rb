@@ -23,7 +23,7 @@ hastur-router.rb - route to/from Hastur clients
 EOS
   opt :uuid,           "Router UUID (for logging)",      :type => String
   opt :hwm,            "ZeroMQ message queue depth",     :default => 1
-  opt :router,         "Router (incoming) URI (ROUTER)", :default => "tcp://*:8126"
+  opt :router,         "Router (client) URI   (ROUTER)", :default => "tcp://*:8126"
   opt :stat,           "Stat sink URI           (PUSH)", :default => "tcp://*:8127"
   opt :event,          "Event sink URI          (PUSH)", :default => "tcp://*:8128"
   opt :log,            "Log sink URI            (PUSH)", :default => "tcp://*:8129"
