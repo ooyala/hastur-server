@@ -12,7 +12,6 @@ CREATE COLUMN FAMILY ErrorArchive;
 CREATE COLUMN FAMILY RawdataArchive;
 CREATE COLUMN FAMILY EventArchive;
 CREATE COLUMN FAMILY HeartbeatArchive;
-CREATE COLUMN FAMILY PluginResultArchive;
 CREATE COLUMN FAMILY RegistrationArchive;
 
 # Per-UUID Full-granularity Hastur stat messages
