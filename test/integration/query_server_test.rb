@@ -63,7 +63,7 @@ class QueryServerTest < Test::Unit::TestCase
     )
 
     @topology.start_all
-    until(sinatra_ready){sleep 0.1}
+    sleep 0.01 until sinatra_ready
     create_all_column_families(@topology[:cassandra].client) # helper
   end
 
