@@ -12,6 +12,8 @@ require 'rainbow'
 uuid1 = '11111111-2222-3333-4444-555555555555'
 uuid2 = 'ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb'
 
+HASTUR_ROOT = File.join(File.dirname(__FILE__), "..")
+
 topology = Nodule::Topology.new(
   :cyanio        => Nodule::Console.new(:fg => :cyan),
   :greenio       => Nodule::Console.new(:fg => :green),
@@ -28,7 +30,7 @@ topology = Nodule::Topology.new(
   :direct        => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
   :control       => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
   :routersvc     => Nodule::Process.new(
-    '../bin/hastur-router.rb',
+    File.join(HASTUR_ROOT, "bin", "hastur-router.rb"),
     '--uuid',          uuid1,
     '--hwm',           100,
     '--router',        :router,
@@ -44,7 +46,7 @@ topology = Nodule::Topology.new(
     :stdout => :cyanio, :stderr => :cyanio, :verbose => :cyanio,
   ),
   :client1svc    => Nodule::Process.new(
-    '../bin/hastur-client.rb',
+    File.join(HASTUR_ROOT, "bin", "hastur-client.rb"),
     '--uuid',         uuid2,
     '--router',       :router,
     '--port',         8125,
@@ -52,7 +54,8 @@ topology = Nodule::Topology.new(
     :stdout => :cyanio, :stderr => :cyanio, :verbose => :cyanio,
   ),
   :cass_sink => Nodule::Process.new(
-    '../bin/cass_sink.rb', '--routers', :stat, :event, :heartbeat, :registration, :log,
+    File.join(HASTUR_ROOT, "bin", "cass_sink.rb"),
+    '--routers', :stat, :event, :heartbeat, :registration, :log,
     :verbose => :cyanio, :stderr => :redio, :stdout => :yellowio
   ),
 )
