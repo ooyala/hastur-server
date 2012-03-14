@@ -7,7 +7,7 @@ require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'hastur-server/message'
 
-class NotificationTest < Test::Unit::TestCase
+class StaticRouteTest < Test::Unit::TestCase
   def setup
     set_test_alarm(30)
 
@@ -55,12 +55,12 @@ class NotificationTest < Test::Unit::TestCase
       @topology[type_symbol].add_reader do |messages|
         @count += 1 
         e = Hastur::Envelope.parse(messages[-2])
-        refute_nil e
+        assert_not_nil e
 
         assert_equal e.type, klass.type_id
 
         msg = klass.new :envelope => e, :payload => messages[-1]
-        refute_nil msg
+        assert_not_nil msg
       end
     end
 
