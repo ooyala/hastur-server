@@ -7,6 +7,7 @@ require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'nodule/cassandra'
 require 'multi_json'
+require 'open-uri'
 require 'hastur'
 
 class QueryServerTest < Test::Unit::TestCase
@@ -86,8 +87,10 @@ class QueryServerTest < Test::Unit::TestCase
     start_ts = Hastur.timestamp(Time.now.to_i - 600)
     end_ts = Hastur.timestamp(Time.now.to_i + 600)
 
-    c1_messages = MultiJson.decode `curl http://localhost:4177/data/heartbeat/json?uuid=#{C1UUID}\\\&start=#{start_ts}\\\&end=#{end_ts}`
-    c2_messages = MultiJson.decode `curl http://localhost:4177/data/heartbeat/values?uuid=#{C2UUID}\\\&start=#{start_ts}\\\&end=#{end_ts}`
+    c1_html = open("http://localhost:4177/data/heartbeat/json?uuid=#{C1UUID}&start=#{start_ts}&end=#{end_ts}") do |f| f.read end
+    c1_messages = MultiJson.decode c1_html
+    c2_html = open("http://localhost:4177/data/heartbeat/values?uuid=#{C2UUID}&start=#{start_ts}&end=#{end_ts}") do |f| f.read end
+    c2_messages = MultiJson.decode c2_html
 
     STDERR.puts "Client 1 messages: #{c1_messages.inspect}"
     STDERR.puts "Client 2 messages: #{c2_messages.inspect}"
