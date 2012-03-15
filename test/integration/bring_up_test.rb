@@ -11,6 +11,7 @@ require 'hastur'
 
 class BringUpTest < Test::Unit::TestCase
   def setup
+    set_test_alarm
     sinatra_ready = false
     @topology = Nodule::Topology.new(
       :greenio      => Nodule::Console.new(:fg => :green),
