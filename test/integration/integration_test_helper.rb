@@ -51,10 +51,17 @@ def cancel_test_alarm
 end
 
 def create_all_column_families(cassandra)
-  cassandra.cli do |process,stdin,stdout,stderr|
+  cassandra.cli "--batch" do |process,stdin,stdout,stderr|
     stdout.readline
+    a = Thread.new { stdout.each do |l| STDERR.puts l end }
+    b = Thread.new { stderr.each do |l| STDERR.puts l end }
+
     File.open(File.join(HASTUR_ROOT, 'tools', 'cassandra', 'create_keyspace.cass')).each do |line|
-      stdin.puts line unless line =~ /#/ or line.chomp.length == 0
+      unless line =~ /#/ or line.chomp.length == 0
+        stdin.puts line
+        STDERR.puts line
+        sleep 0.1
+      end
     end
   end
 end

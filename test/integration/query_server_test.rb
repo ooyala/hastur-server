@@ -73,7 +73,6 @@ class QueryServerTest < Test::Unit::TestCase
         :verbose => :redio, :stderr => :redio, :stdout => :yellowio
       ),
     )
-    #@topology[:heartbeat].add_reader :cyanio
 
     # start cassandra first and set up the CF's before bringing anything else up
     @topology.start :cassandra
@@ -94,9 +93,6 @@ class QueryServerTest < Test::Unit::TestCase
     # TODO: some of the tests below may have to change, since the clients will continue to send heartbeats
     # with this method of sync.
     @topology[:heartbeat].require_read_count 4, 10
-
-    # TODO: find a better way, maybe flow a message through the sink and catch the ack?
-    sleep 5 # give some time for it to end up in Cassandra
 
     # Query from 10 minutes ago to 10 minutes from now, just to grab everything
     start_ts = Hastur.timestamp(Time.now.to_i - 600)
