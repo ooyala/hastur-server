@@ -120,15 +120,15 @@ module Hastur
     #   :consistency
     # Additional options:
     #   :uuid - client UUID
-    #   :route - sink sent to (required)
-    def insert(cass_client, json_string, route, options = {})
+    #   :msg_type - data type from the hastur message (required)
+    def insert(cass_client, json_string, msg_type, options = {})
       hash = MultiJson.decode(json_string, :symbolize_keys => true)
       raise "Cannot deserialize JSON string!" unless hash
       uuid = options.delete(:uuid) || hash[:uuid] || hash[:from]
       raise "No UUID given!" unless uuid
 
-      schema = SCHEMA[route]
-      raise "No schema defined for route #{route}!" unless schema
+      schema = SCHEMA[msg_type]
+      raise "No schema defined for Hastur message type '#{msg_type}'!" unless schema
 
       subdivide = false
       if schema[:subtype]
@@ -138,7 +138,7 @@ module Hastur
         raise "No '#{sub_key}' specified in the payload" unless type
 
         subtype = schema[:subtype][sub_key]
-        raise "Unknown #{route} #{sub_key}: #{type.inspect}!" unless subtype
+        raise "Unknown #{type} #{sub_key}: #{type.inspect}!" unless subtype
 
         cf = subtype[:cf][type]                # Example: :StatGauge
 
@@ -170,12 +170,12 @@ module Hastur
       end
     end
 
-    def get(cass_client, client_uuid, route, start_timestamp, end_timestamp, options = {})
+    def get(cass_client, client_uuid, type, start_timestamp, end_timestamp, options = {})
       if end_timestamp - start_timestamp > 72 * ONE_HOUR
         raise "Don't query more than 3 days at once yet!"
       end
 
-      raw_get_all(cass_client, client_uuid, route, start_timestamp, end_timestamp, options)
+      raw_get_all(cass_client, client_uuid, type, start_timestamp, end_timestamp, options)
     end
 
     # Get a stat on a given client UUID over a given block of time, up to about a day.
@@ -299,7 +299,7 @@ module Hastur
 
     #
     # This is the basic getter for messages.  By default it gets all messages with a given
-    # route and client UUID across the given timestamps.  It can be modified in several
+    # message type and client UUID across the given timestamps.  It can be modified in several
     # other ways by options:
     #
     # Hastur Options:
@@ -317,13 +317,13 @@ module Hastur
     # If you specify :name, it will be implemented by changing the
     # :start and :finish options to Cassandra.
     #
-    def raw_get_all(cass_client, client_uuid, route, start_timestamp, end_timestamp, options = {})
+    def raw_get_all(cass_client, client_uuid, msg_type, start_timestamp, end_timestamp, options = {})
       if options[:name] && (options[:start] || options[:finish])
         raise "Error: you can't specify the :name option with :start or :finish in raw_get_all!"
       end
 
-      schema = SCHEMA[route]
-      raise "No schema for route #{route}!" unless schema
+      schema = SCHEMA[msg_type]
+      raise "No schema defined for Hastur message type '#{msg_type}'!" unless schema
 
       name_field = schema[:name]
       cf = schema[:cf]

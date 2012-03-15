@@ -23,7 +23,7 @@ module Hastur
     # pass the envelope around as a binary packed string - the routers should be able to parse this
     # quickly without diving into JSON or anything not built directly into the language
     PACK =  %w[ n C H8H4H4H4H12 H8H4H4H4H12 C C Q> Q> Q> H64 a* ].join
-    attr_reader :version, :type, :to, :from, :ack, :resend, :sequence, :timestamp, :uptime, :hmac, :routers
+    attr_reader :version, :type_id, :to, :from, :ack, :resend, :sequence, :timestamp, :uptime, :hmac, :routers
 
     VERSION_IDX     = 0
     TYPE_IDX        = 1
@@ -54,7 +54,7 @@ module Hastur
 
       self.new(
         :version   => parts[VERSION_IDX],
-        :type      => parts[TYPE_IDX],
+        :type_id   => parts[TYPE_IDX],
         :to        => parts[TO_UUID_IDX].join('-'),
         :from      => parts[FROM_UUID_IDX].join('-'),
         :ack       => parts[ACK_IDX],
@@ -78,7 +78,7 @@ module Hastur
 
       [
         @version,
-        @type,
+        @type_id,
         @to.split(/-/),
         @from.split(/-/),
         @ack,
@@ -101,12 +101,16 @@ module Hastur
     def initialize(opts)
       # make sure required arguments exist
       raise ArgumentError.new(":from is required") unless opts[:from]
-      raise ArgumentError.new(":type is required") unless opts[:type]
 
-      if opts[:type].kind_of? Symbol
-        msg_class = Hastur::Message.symbol_to_class(opts[:type])
-        opts[:type] = msg_class.type_id
+      if opts[:type].kind_of? Fixnum
+        opts[:type_id] = opts.delete :type
+      elsif opts[:type].kind_of? Symbol
+        opts[:type_id] = Hastur::Message.symbol_to_type_id(opts.delete(:type))
+      elsif opts[:type].respond_to? :type_id
+        opts[:type_id] = opts.delete(:type).type_id
       end
+
+      raise ArgumentError.new(":type or :type_id is required") unless opts[:type_id]
 
       # make sure :to/:from are proper UUID's in 36-byte hex, but don't be
       # opinionated about them beyond that
@@ -118,7 +122,7 @@ module Hastur
       end
 
       @version   = opts[:version]  || VERSION
-      @type      = opts[:type]
+      @type_id   = opts[:type_id]
       @to        = opts[:to]
       @from      = opts[:from]
       @resend    = opts[:resend]   || 0
@@ -134,6 +138,14 @@ module Hastur
         when Fixnum; @ack = opts[:ack]
         else;        @ack = 0
       end
+    end
+
+    def type_symbol
+      Hastur::Message.type_id_to_symbol(@type_id)
+    end
+
+    def type_class
+      Hastur::Message.type_id_to_class(@type_id)
     end
 
     #
@@ -175,7 +187,7 @@ module Hastur
     def to_hash
       {
         :version   => @version,
-        :type      => @type,
+        :type_id   => @type_id,
         :to        => @to,
         :from      => @from,
         :ack       => @ack,

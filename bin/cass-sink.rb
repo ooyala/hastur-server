@@ -34,19 +34,27 @@ client.default_write_consistency = 2  # Initial default: 1
 end
 
 while @running do
+  puts "Receiving..."
   begin
-    puts "Receiving..."
     message = Hastur::Message.recv(msg_socket)
     envelope = message.envelope
     uuid = message.envelope.from
-    route = message.type_symbol.to_s
-    puts "[#{route}] - #{message.payload}"
-    Hastur::Cassandra.insert(client, message.payload, route, :uuid => uuid)
+    puts "[#{envelope.type_symbol}] - #{message.payload}"
+    Hastur::Cassandra.insert(client, message.payload, envelope.type_symbol.to_s, :uuid => uuid)
     envelope.to_ack.send(ack_socket) if envelope.ack?
+  rescue Hastur::ZMQError
+    sleep 1
   rescue Exception => e
     puts e.message
     puts e.backtrace
   end
 end
 
-STDERR.puts "Exited!"
+# client will throw backtraces if it's not closed
+client.disconnect!
+# clean up ZMQ sockets / context
+msg_socket.close
+ack_socket.close
+ctx.terminate
+
+STDERR.puts "Cassandra Sink Exited!"

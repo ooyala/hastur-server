@@ -205,7 +205,7 @@ module Hastur
         # convenience variables
         from = envelope.from
         to   = envelope.to
-        type = envelope.type
+        type = envelope.type_id
 
         # append this router's identity to the message envelope
         envelope.add_router @uuid

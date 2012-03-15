@@ -98,7 +98,7 @@ module Hastur
       rc = socket.recvmsgs messages, zmq_flags
       return rc if zmq_flags != 0 and rc == -1
 
-      raise "socket.recvmsgs failed" unless rc != -1
+      raise ZMQError.new "ZMQ recvmsgs failed: '#{ZMQ::Util.error_string}'" unless rc != -1
 
       payload = messages[-1].copy_out_string
       messages.pop.close
@@ -106,7 +106,7 @@ module Hastur
       envelope = Hastur::Envelope.parse messages[-1].copy_out_string
       messages.pop.close
 
-      klass = type_id_to_class envelope.type
+      klass = envelope.type_class
       klass.new :envelope => envelope, :payload => payload, :zmq_parts => messages
     end
 
