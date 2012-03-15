@@ -15,6 +15,8 @@ class BringUpTest < Test::Unit::TestCase
     @topology = Nodule::Topology.new(
       :greenio      => Nodule::Console.new(:fg => :green),
       :redio        => Nodule::Console.new(:fg => :red),
+      :cyanio       => Nodule::Console.new(:fg => :cyan),
+      :yellowio     => Nodule::Console.new(:fg => :yellow),
       :client1unix  => Nodule::UnixSocket.new,
       :client2unix  => Nodule::UnixSocket.new,
       :router       => Nodule::ZeroMQ.new(:uri => :gen),
