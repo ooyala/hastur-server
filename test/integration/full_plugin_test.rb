@@ -69,7 +69,7 @@ class FullPluginTest < Test::Unit::TestCase
     )
 
     @topology.start_all
-    create_all_column_families(@topology[:cassandra].client) # helper
+    create_all_column_families(@topology[:cassandra]) # helper
     sleep 5
   end
 
