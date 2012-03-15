@@ -39,7 +39,7 @@ while @running do
     message = Hastur::Message.recv(msg_socket)
     envelope = message.envelope
     uuid = message.envelope.from
-    puts "[#{envelope.type_symbol}] - #{message.payload}"
+    puts "[#{envelope.type_symbol}] - #{message.to_hash.inspect}"
     Hastur::Cassandra.insert(client, message.payload, envelope.type_symbol.to_s, :uuid => uuid)
     envelope.to_ack.send(ack_socket) if envelope.ack?
   rescue Hastur::ZMQError
