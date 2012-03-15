@@ -62,7 +62,7 @@ GEM
     msgpack (0.4.6)
     multi_json (1.1.0)
     multi_xml (0.4.2)
-    nodule (0.0.15)
+    nodule (0.0.16)
       cassandra
       ffi-rzmq
       rainbow
@@ -106,7 +106,7 @@ DEPENDENCIES
   erubis
   hastur-server!
   mocha
-  nodule (~> 0.0.15)
+  nodule (~> 0.0.16)
   redcarpet
   rerun
   scope
