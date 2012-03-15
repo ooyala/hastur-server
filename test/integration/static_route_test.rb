@@ -57,7 +57,7 @@ class StaticRouteTest < Test::Unit::TestCase
         e = Hastur::Envelope.parse(messages[-2])
         assert_not_nil e
 
-        assert_equal e.type, klass.type_id
+        assert_equal e.type_id, klass.type_id
 
         msg = klass.new :envelope => e, :payload => messages[-1]
         assert_not_nil msg
