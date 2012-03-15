@@ -30,6 +30,7 @@ class BringUpTest < Test::Unit::TestCase
       :rawdata      => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REP,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
+      # TODO(jbhat): Add cassandra/sink stuff to topology once it's working
       # :cassandra    => Nodule::Cassandra.new(:keyspace => "Hastur"),
       # :query_server => Nodule::Process.new(HASTUR_QUERY_SERVER_BIN,
       #   '--cassandra', :cassandra,
