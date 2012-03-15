@@ -35,7 +35,7 @@ def check_absent(param_name, human_name = nil)
   end
 end
 
-before "/data/:TYPE/*" do
+before "/data/:type/*" do
   if params[:type]
     params[:type] = params[:type].downcase
     unless TYPES.include?(params[:type])
