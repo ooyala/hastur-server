@@ -11,5 +11,8 @@ module Hastur
   # thrown when something is an outright bug
   class BugError < StandardError
   end
+
+  class ZMQError < StandardError
+  end
 end
 
