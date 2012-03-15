@@ -56,8 +56,8 @@ class FullPluginTest < Test::Unit::TestCase
       ),
       :regsvc       => Nodule::Process.new(
         HASTUR_CASS_SINK_BIN,
-        '--routers', :registration,
-        '--hosts',   :cassandra,
+        '--sinks',       :registration,
+        '--cassandra',   :cassandra,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
       ),
       :scheduler     => Nodule::Process.new(
