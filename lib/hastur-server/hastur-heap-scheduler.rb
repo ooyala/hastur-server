@@ -116,9 +116,10 @@ module Hastur
         opts = Hash.new
         opts[:payload] = payload
         opts[:to] = uuid
+        opts[:from] = "fafafafa-fafa-fafa-fafa-fafafafafafa"    # every Hastur::Messages requires a :from
         msg = Hastur::Message::PluginExec.new(opts)
         msg.send(@socket)
-        puts "Scheduling plugin => #{payload}"
+        STDERR.puts "Scheduling plugin for #{uuid} => #{payload}"
       end
     end
   end

@@ -162,8 +162,9 @@ module Hastur
         client.insert(cf, key, { colname => value.to_msgpack, "last_write" => now_ts,
                         "last_access" => now_ts }, insert_options) if subdivide
 
+        # TODO: Do we really need this? Registration should take care of this.
         # Insert into "saw this in this time period" rows
-        client.insert(:UUIDDay, one_day_ts.to_s, { uuid => "" })
+        #client.insert(:UUIDDay, one_day_ts.to_s, { uuid => "" })
         if schema[:name_cf]
           client.insert(schema[:name_cf], one_day_ts.to_s, { name => "" })
         end
