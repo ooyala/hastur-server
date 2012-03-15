@@ -25,6 +25,8 @@ class QueryServerTest < Test::Unit::TestCase
       :event        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :log          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :rawdata      => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REP,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
       :statsvc      => Nodule::Process.new(HASTUR_CASS_SINK_BIN, "--sinks", :stat, "--acks-to", :direct, "--cassandra", :cassandra, :stderr => :redio),
       :cassandra    => Nodule::Cassandra.new(:keyspace => "Hastur"),
@@ -55,6 +57,8 @@ class QueryServerTest < Test::Unit::TestCase
         '--stat',         :stat,
         '--log',          :log,
         '--error',        :error,
+        '--rawdata',      :rawdata,
+        '--control',      :control,
         '--router',       :router,
         '--direct',       :direct,
         '--hwm',          10,   # Set HWM so this doesn't 'clog'
@@ -62,6 +66,7 @@ class QueryServerTest < Test::Unit::TestCase
       ),
     )
 
+    @topology[:heartbeat].add_reader :greenio
     @topology.start_all
     sleep 0.01 until sinatra_ready
     create_all_column_families(@topology[:cassandra].client) # helper
@@ -94,5 +99,6 @@ class QueryServerTest < Test::Unit::TestCase
 
     STDERR.puts "Client 1 messages: #{c1_messages.inspect}"
     STDERR.puts "Client 2 messages: #{c2_messages.inspect}"
+    sleep 10000000000
   end
 end
