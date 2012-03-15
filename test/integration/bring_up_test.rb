@@ -30,15 +30,6 @@ class BringUpTest < Test::Unit::TestCase
       :rawdata      => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REP,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
-      # TODO(jbhat): Add cassandra/sink stuff to topology once it's working
-      # :cassandra    => Nodule::Cassandra.new(:keyspace => "Hastur"),
-      # :query_server => Nodule::Process.new(HASTUR_QUERY_SERVER_BIN,
-      #   '--cassandra', :cassandra,
-      #   '--', '-p', '4177',
-      #   :stdout => :greenio, :stderr => proc do |line|
-      #     sinatra_ready = true if line =~ /== Sinatra.* has taken the stage/
-      #   end,
-      # ),
       :client1svc   => Nodule::Process.new(
         HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--unix', :client1unix,
         :stdout => :greenio, :stderr => :redio, :verbose => :yellowio,
@@ -79,23 +70,12 @@ class BringUpTest < Test::Unit::TestCase
         '--hwm',          10,   # Set HWM so this doesn't 'clog'
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
       ),
-      # :cass_sink => Nodule::Process.new(
-      #   HASTUR_CASS_SINK_BIN,
-      #   '--sinks', :stat, :event, :heartbeat, :registration, :log, :error,
-      #   '--cassandra', :cassandra,
-      #   :verbose => :cyanio, :stderr => :redio, :stdout => :yellowio
-      # ),
     )
 
-    # @topology.start :cassandra
-    # create_all_column_families(@topology[:cassandra]) # helper
-
     @topology.start_all_but :client2svc, :router2svc
-    # sleep 0.01 until sinatra_ready
   end
 
   def teardown
-    # @topology.stop :cass_sink
     @topology.stop_all
   end
 
@@ -114,15 +94,5 @@ class BringUpTest < Test::Unit::TestCase
     @topology.start :client2svc
 
     @topology.start :router2svc
-
-    # Query from 10 minutes ago to 10 minutes from now, just to grab everything
-    # start_ts = Hastur.timestamp(Time.now.to_i - 600)
-    # end_ts = Hastur.timestamp(Time.now.to_i + 600)
-    #
-    # c1_messages = MultiJson.decode `curl http://localhost:4177/data/heartbeat/json?uuid=#{C1UUID}\\\&start=#{start_ts}\\\&end=#{end_ts}`
-    # c2_messages = MultiJson.decode `curl http://localhost:4177/data/heartbeat/values?uuid=#{C2UUID}\\\&start=#{start_ts}\\\&end=#{end_ts}`
-    #
-    # STDERR.puts "Client 1 messages: #{c1_messages.inspect}"
-    # STDERR.puts "Client 2 messages: #{c2_messages.inspect}"
   end
 end
