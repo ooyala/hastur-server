@@ -46,9 +46,25 @@ class BringUpTest < Test::Unit::TestCase
         HASTUR_CLIENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--unix', :client2unix,
         :stdout => :greenio, :stderr => :redio, :verbose => :yellowio,
       ),
-      :routersvc => Nodule::Process.new(
+      :router1svc => Nodule::Process.new(
         HASTUR_ROUTER_BIN,
         '--uuid',         R1UUID,
+        '--heartbeat',    :heartbeat,
+        '--registration', :registration,
+        '--event',        :event,
+        '--stat',         :stat,
+        '--log',          :log,
+        '--error',        :error,
+        '--rawdata',      :rawdata,
+        '--control',      :control,
+        '--router',       :router,
+        '--direct',       :direct,
+        '--hwm',          10,   # Set HWM so this doesn't 'clog'
+        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
+      ),
+      :router2svc => Nodule::Process.new(
+        HASTUR_ROUTER_BIN,
+        '--uuid',         R2UUID,
         '--heartbeat',    :heartbeat,
         '--registration', :registration,
         '--event',        :event,
@@ -73,7 +89,7 @@ class BringUpTest < Test::Unit::TestCase
     # @topology.start :cassandra
     # create_all_column_families(@topology[:cassandra]) # helper
 
-    @topology.start_all
+    @topology.start_all_but :client2svc, :router2svc
     # sleep 0.01 until sinatra_ready
   end
 
@@ -93,6 +109,10 @@ class BringUpTest < Test::Unit::TestCase
     envelopes = messages.map { |m| m[-2].unpack("H*") }
 
     STDERR.puts "Heartbeat message(s): #{messages.inspect}"
+
+    @topology.start :client2svc
+
+    @topology.start :router2svc
 
     # Query from 10 minutes ago to 10 minutes from now, just to grab everything
     # start_ts = Hastur.timestamp(Time.now.to_i - 600)
