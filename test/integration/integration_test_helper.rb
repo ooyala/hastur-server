@@ -50,7 +50,7 @@ def cancel_test_alarm
   LibC.alarm(0)
 end
 
-def create_all_column_families(cassandra, keyspace="Hastur")
+def create_all_column_families(cassandra)
   cassandra.cli do |process,stdin,stdout,stderr|
     stdout.readline
     File.open(File.join(HASTUR_ROOT, 'tools', 'cassandra', 'create_keyspace.cass')).each do |line|
