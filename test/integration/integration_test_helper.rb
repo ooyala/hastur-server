@@ -56,10 +56,18 @@ def create_all_column_families(cassandra)
     a = Thread.new { stdout.each do |l| STDERR.puts l end }
     b = Thread.new { stderr.each do |l| STDERR.puts l end }
 
+    # delete the C* schema
+    File.open(File.join(HASTUR_ROOT, 'tools', 'cassandra', 'drop_keyspace.cass')).each do |line|
+      unless line =~ /#/ or line.chomp.length == 0
+        stdin.puts line
+        sleep 0.1
+      end
+    end
+
+    # create the C* schema
     File.open(File.join(HASTUR_ROOT, 'tools', 'cassandra', 'create_keyspace.cass')).each do |line|
       unless line =~ /#/ or line.chomp.length == 0
         stdin.puts line
-        STDERR.puts line
         sleep 0.1
       end
     end
