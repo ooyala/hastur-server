@@ -73,6 +73,7 @@ class BringUpTest < Test::Unit::TestCase
     create_all_column_families(@topology[:cassandra]) # helper
 
     @topology.start_all
+    sleep 0.01 until sinatra_ready
   end
 
   def teardown
