@@ -175,7 +175,7 @@ module Hastur
     #
     # poll all of the sockets set up via .route() for read and route messages based on those rules
     #
-    def poll_zmq(zmq_poll_timeout=0.1)
+    def poll_zmq(zmq_poll_timeout=0.001)
       rc = @poller.poll(zmq_poll_timeout)
 
       # nothing waiting or socket error, take a hit and make sure we don't spin a CPU
