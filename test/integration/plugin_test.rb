@@ -25,10 +25,9 @@ EOJSON
       :greenio       => Nodule::Console.new(:fg => :green),
       :redio         => Nodule::Console.new(:fg => :red),
       :cyanio        => Nodule::Console.new(:fg => :cyan),
-      :client1unix   => Nodule::UnixSocket.new,
       :router        => Nodule::ZeroMQ.new(:uri => :gen),
       :event         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 2),
+      :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture),
       :registration  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain,   :limit => 1),
       :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
@@ -55,9 +54,9 @@ EOJSON
         HASTUR_CLIENT_BIN,
         '--uuid',         C1UUID,
         '--router',       :router,
-        '--unix',         :client1unix,
         '--ack-timeout',  1,
         '--heartbeat',    300,
+        '--port',         8125,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
     )
@@ -86,15 +85,18 @@ EOJSON
     assert messages.count > 0, "should have caught some zmq messages"
     envelope = Hastur::Envelope.parse messages[-2]
     assert_not_nil envelope, "should have captured a valid envelope"
+
     message = Hastur::Message::Heartbeat.new :envelope => envelope, :payload => messages[-1]
     assert_not_nil message, "should have captured a valid message"
 
     data = message.decode
     assert_kind_of Hash, data, "message.decode must return a hash"
+    plugin_info = data[:labels]
+    assert_kind_of Hash, plugin_info, ":labels value must return a hash"
 
-    assert_kind_of Fixnum, data[:pid], "plugin result 'pid' should be a number"
-    assert_kind_of Fixnum, data[:exit], "plugin result 'exit' should be a number"
-    assert_equal 0, data[:exit], "plugin result should be 0"
+    assert_kind_of Fixnum, plugin_info[:pid], "plugin result 'pid' should be a number"
+    assert_kind_of Fixnum, plugin_info[:exit], "plugin result 'exit' should be a number"
+    assert_equal 0, plugin_info[:exit], "plugin result should be 0"
 
     # TODO: client plugin output isn't parsed - this is a bug that must be fixed first
   end

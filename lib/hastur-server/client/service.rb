@@ -184,7 +184,7 @@ module Hastur
       end
 
       #
-      # Sets up the local UDP and TCP sockets. Services communicate with the client through these sockets.
+      # Sets up the local UDP socket. Services communicate with the client through these sockets.
       #
       def set_up_local_ports
         if @unix
