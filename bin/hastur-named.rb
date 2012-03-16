@@ -25,7 +25,7 @@ CASS_CLIENT = Cassandra.new "Hastur", opts[:cassandra].flatten
 
 #
 # This method grabs the most recent registrations from Cassandra and
-# returns them as a hash of the format:
+# returns them as a hash of hashes:
 #
 # { UUID => reg_hash, UUID2 => reg_hash2, UUID3 => reg_hash3 }
 #
