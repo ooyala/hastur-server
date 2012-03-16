@@ -47,4 +47,3 @@ opts[:port] = opts[:port].to_i
 
 client = Hastur::Client::Service.new(opts)
 client.run
-
