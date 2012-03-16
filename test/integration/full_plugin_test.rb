@@ -89,15 +89,12 @@ class FullPluginTest < Test::Unit::TestCase
 
     # give time for the register_plugin message to make its way over
     sleep 2
-    Hastur.register_plugin("my.plugin.echo", "echo", "OK", :five_minutes)
 
     heartbeat_msgs = @topology[:heartbeat].output
     assert_equal 1, heartbeat_msgs.size
 
     # give time for the scheduler to pick up the new registration
     sleep 10
-    Hastur.register_plugin("my.plugin.echo", "echo", "OK", :five_minutes)
-    sleep 1
 
     heartbeat_msgs = @topology[:heartbeat].output
     assert_equal 2, heartbeat_msgs.size
