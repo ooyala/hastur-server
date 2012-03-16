@@ -18,7 +18,7 @@ class NotificationTest < Test::Unit::TestCase
       :cyanio        => Nodule::Console.new(:fg => :cyan),
       :client1unix   => Nodule::UnixSocket.new,
       :router        => Nodule::ZeroMQ.new(:uri => :gen),
-      :event         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => ITERATIONS),
+      :event         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture),
       :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
       :registration  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
       :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
@@ -94,7 +94,7 @@ EOJSON
       @topology[:client1unix].send event
     end
 
-    @topology[:event].require_read_count ITERATIONS, 3 do
+    @topology[:event].require_read_count ITERATIONS * 2, 3 do
       flunk "timeout waiting for #{ITERATIONS} events (had #{@topology[:event].read_count})"
     end
 
