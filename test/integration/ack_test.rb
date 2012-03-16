@@ -8,7 +8,7 @@ require 'multi_json'
 require 'hastur-server/message'
 
 class AckTest < Test::Unit::TestCase
-  EVENT_REPLAYS = 3
+  EVENT_REPLAYS = 10
 
   def setup
     @topology = Nodule::Topology.new(
@@ -16,7 +16,7 @@ class AckTest < Test::Unit::TestCase
       :redio         => Nodule::Console.new(:fg => :red),
       :cyanio        => Nodule::Console.new(:fg => :cyan),
       :yellow        => Nodule::Console.new(:fg => :yellow),
-      :client        => Nodule::ZeroMQ.new(:connect => ZMQ::DEALER, :uri => :gen, :reader => :capture, :limit => EVENT_REPLAYS),
+      :client        => Nodule::ZeroMQ.new(:connect => ZMQ::DEALER, :uri => :gen, :reader => :capture),
       :event         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :yellow),
       :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
       :registration  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
@@ -49,7 +49,6 @@ class AckTest < Test::Unit::TestCase
       e = Hastur::Envelope.parse(messages[-2])
       assert_not_nil e
       ack = e.to_ack
-      STDERR.puts "Sending ack: #{ack.to_hash}"
       rc = ack.send @topology[:direct].socket
       assert rc > -1, "sending an ack created from the envelope of the message"
     end
@@ -69,18 +68,17 @@ class AckTest < Test::Unit::TestCase
   end
 
   def test_event
-    puts "sending empty payload"
     hb = Hastur::Message::Event.new(:payload => "{}", :from => C1UUID)
 
     EVENT_REPLAYS.times do
       rc = hb.send @client
-      puts "Sending: #{hb.to_hash}"
       assert ZMQ::Util.resultcode_ok? rc
       sleep 0.1
     end
 
-    @topology[:client].wait
+    # the read count should be 2x the events
+    @topology[:client].require_read_count EVENT_REPLAYS * 2, 10
 
-    assert_equal EVENT_REPLAYS, @topology[:client].output.count, "should have gotten 3 messages"
+    assert_equal EVENT_REPLAYS, @topology[:client].output.count, "should have gotten #{EVENT_REPLAYS} messages"
   end
 end
