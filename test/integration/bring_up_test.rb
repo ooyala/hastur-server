@@ -18,12 +18,10 @@ class BringUpTest < Test::Unit::TestCase
       :redio        => Nodule::Console.new(:fg => :red),
       :yellowio     => Nodule::Console.new(:fg => :yellow),
       :cyanio       => Nodule::Console.new(:fg => :cyan),
-      :client1unix  => Nodule::UnixSocket.new,
-      :client2unix  => Nodule::UnixSocket.new,
       :router       => Nodule::ZeroMQ.new(:uri => :gen),
       :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture),
-      :registration => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :stat         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
+      :registration => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture),
+      :stat         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture),
       :event        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :log          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
@@ -31,11 +29,11 @@ class BringUpTest < Test::Unit::TestCase
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REP,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
       :client1svc   => Nodule::Process.new(
-        HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--unix', :client1unix,
+        HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router,
         :stdout => :greenio, :stderr => :redio, :verbose => :yellowio,
       ),
       :client2svc => Nodule::Process.new(
-        HASTUR_CLIENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--unix', :client2unix,
+        HASTUR_CLIENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--port', 8124,
         :stdout => :greenio, :stderr => :redio, :verbose => :yellowio,
       ),
       :router1svc => Nodule::Process.new(
@@ -82,7 +80,7 @@ class BringUpTest < Test::Unit::TestCase
   def test_bring_up
     # TODO: some of the tests below may have to change, since the clients will continue to send heartbeats
     # with this method of sync.
-    @topology[:heartbeat].require_read_count 4, 5
+    @topology[:heartbeat].require_read_count 2, 5
 
     messages = @topology[:heartbeat].output
     # First, check messages
@@ -92,7 +90,12 @@ class BringUpTest < Test::Unit::TestCase
     STDERR.puts "Heartbeat message(s): #{messages.inspect}"
 
     @topology.start :client2svc
+    @topology[:registration].require_read_count 2, 5
 
     @topology.start :router2svc
+    Hastur.counter("My.counter")
+    Hastur.udp_port = 8124
+    Hastur.counter("My.counter")
+    @topology[:stat].require_read_count 2,5
   end
 end
