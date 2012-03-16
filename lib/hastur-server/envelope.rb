@@ -47,8 +47,8 @@ module Hastur
       # traceroute-like functionality (and debug-ability)
       routers = []
       if not parts[ROUTER_LIST_IDX].empty? and parts[ROUTER_LIST_IDX].length % 16 == 0
-        0.upto(parts[ROUTER_LIST_IDX].length / 16) do |i|
-          routers << parts[ROUTER_LIST_IDX].unpack("@#{i}H8H4H4H4H12").join('-')
+        0.step(parts[ROUTER_LIST_IDX].length, 16) do |position|
+          routers << parts[ROUTER_LIST_IDX].unpack("@#{position}H8H4H4H4H12").join('-')
         end
       end
 
