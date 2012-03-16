@@ -9,7 +9,6 @@ require 'nodule/cassandra'
 require 'multi_json'
 require 'open-uri'
 require 'hastur'
-require 'pry'
 
 class QueryServerTest < Test::Unit::TestCase
   def setup
