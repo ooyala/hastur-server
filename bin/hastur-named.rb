@@ -19,7 +19,50 @@ configure do
   set :port, opts[:port]
 end
 
-cass_client = Cassandra.new "Hastur", opts[:cassandra].flatten
+STDERR.puts "Connecting to Cassandra: #{opts[:cassandra].flatten.inspect}"
+CASS_CLIENT = Cassandra.new "Hastur", opts[:cassandra].flatten
+
+def get_last_registrations
+  last_registrations = {}
+  # TODO(noah): Encapsulate this properly in cassanda_schema.rb
+  STDERR.puts "Querying Cassandra..."
+  CASS_CLIENT.each(:RegistrationArchive) do |row, columns|
+    STDERR.puts "  - Got row"
+    uuid = row[0..35]
+    last = last_registrations[uuid]
+    last_timestamp = last[:timestamp] if last
+    last_value = last[:value] if last
+
+    columns.each do |col_key, value|
+      timestamp = col_key[-8..-1].unpack("Q>")[0]
+      if !last_timestamp || timestamp > last_timestamp
+        last_timestamp = timestamp
+        last_value = value
+      end
+    end
+
+    last_registrations[uuid] = { :timestamp => last_timestamp, :json => last_value }
+  end
+  STDERR.puts "Finished rows"
+end
+
+@initialized = false
+t = Thread.new do
+  begin
+    loop do
+      @registrations = get_last_registrations
+
+      STDERR.puts "Initialized! *************************************"
+      @initialized = true
+      sleep 5 * 60
+    end
+  rescue Exception
+    STDERR.puts "Exception: #{$!.message}"
+    STDERR.puts $!.backtrace.join("\n")
+  end
+end
+
+sleep 0.01 until @initialized
 
 TYPES = Hastur::Cassandra::SCHEMA.keys
 
@@ -64,7 +107,16 @@ get "/hostnames_for/" do
 
   result = {}
   uuids.each do |uuid|
-    result[uuid] = []
+    reg = @registrations[uuid]
+    value = nil
+    if reg
+      hash = MultiJson.decode(reg) rescue nil
+      if hash
+        value = hash[:hostname]
+      end
+    end
+
+    result[uuid] = value
   end
 
   [ 200, MultiJson.encode(result) ]
@@ -72,14 +124,14 @@ end
 
 get "/healthz" do
   # Do a trivial no-op query to see if it 500s
-  Hastur::Cassandra.get(cass_client, "nouuid", "stat", 1, 2)
+  Hastur::Cassandra.get(CASS_CLIENT, "nouuid", "stat", 1, 2)
 
   [ 200, "OK" ]
 end
 
 get "/statusz" do
   # Do a trivial no-op query to see if it 500s
-  Hastur::Cassandra.get(cass_client, "nouuid", "stat", 1, 2)
+  Hastur::Cassandra.get(CASS_CLIENT, "nouuid", "stat", 1, 2)
 
   [ 200, "OK" ]
 end
