@@ -63,6 +63,9 @@ module Hastur
           :errors      => 0,
           :events      => 0,
         }
+
+        # set the hastur client UDP port to match the listening port
+        Hastur.udp_port = @port
       end
 
       def _fail(message, e)
