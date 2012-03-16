@@ -21,7 +21,7 @@ class TestHasturPluginV1Module < MiniTest::Unit::TestCase
   end
 
   def run_plugin(name, args=[], should_succeed=true)
-    p = Hastur::Plugin::V1.new(File.join(PLUGIN_PATH, name), args)
+    p = Hastur::Plugin::V1.new(File.join(PLUGIN_PATH, name), args, "my_name")
 
     pid = p.run 
     assert pid > 1, "p.run should return a pid"
@@ -34,6 +34,9 @@ class TestHasturPluginV1Module < MiniTest::Unit::TestCase
         sleep 0.1
       end
     end
+    
+    h = p.to_hash
+    assert_equal "my_name", h[:name]
   end
 
   def test_minimal_plugins

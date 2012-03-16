@@ -169,8 +169,8 @@ module Hastur
       def poll_plugin_pids
         @plugins.each do |pid,plugin|
           if plugin.done?
-            msg = Hastur::Message::Heartbeat.new(:from => @uuid, :data => plugin.to_hash)
-            msg.send(@router_socket)
+            plugin_hash = plugin.to_hash
+            Hastur.heartbeat(plugin_hash[:name], nil, nil, nil, plugin_hash)
             @counters[:zmq_send] += 1
 
             # TODO: call plugin.stat (when it's ready) and send along a stat too
@@ -240,7 +240,7 @@ module Hastur
           when Hastur::Message::PluginExec
             # TODO: add hmac authentication of plugin exec messages
             config = msg.decode
-            plugin = Hastur::Plugin::V1.new(config[:plugin_path], config[:plugin_args])
+            plugin = Hastur::Plugin::V1.new(config[:plugin_path], config[:plugin_args], config[:plugin])
             pid = plugin.run
             @plugins[pid] = plugin
           else

@@ -2,11 +2,12 @@
 module Hastur
   module Plugin
     class V1
-      attr_accessor :command, :args, :out_fd, :err_fd, :pid, :status
+      attr_accessor :command, :args, :out_fd, :err_fd, :pid, :status, :name
 
-      def initialize(command, args=[], env={})
+      def initialize(command, args=[], name="", env={})
         @command = command
         @args    = args
+        @name    = name
         @env     = env
         @out_fd, @out_w = IO.pipe
         @err_fd, @err_w = IO.pipe
@@ -66,6 +67,7 @@ module Hastur
         {
           :command => @command,
           :args    => @args,
+          :name    => @name,
           :source  => self.class.to_s,
           :pid     => @pid,
           :exit    => @status.exitstatus,
