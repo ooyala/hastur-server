@@ -14,6 +14,7 @@ end
 
 require "sinatra"
 require "hastur-server/sink/cassandra_rollups"
+require "hastur-server/monkeypatch"
 
 configure do
   set :port, opts[:port]
@@ -22,22 +23,37 @@ end
 STDERR.puts "Connecting to Cassandra: #{opts[:cassandra].flatten.inspect}"
 CASS_CLIENT = Cassandra.new "Hastur", opts[:cassandra].flatten
 
-def get_last_registrations
+#
+# This method grabs the most recent registrations from Cassandra and
+# returns them as a hash of the format:
+#
+# { UUID => reg_hash, UUID2 => reg_hash2, UUID3 => reg_hash3 }
+#
+# Normally the filter parameter will be used to restrict which type(s)
+# of registrations are returned.
+#
+# @param [Hash] filter The fuzzy_filter hash to restrict registrations returned
+# @return [Hash] The latest registrations per client UUID
+#
+def get_last_registrations(filter)
   last_registrations = {}
   # TODO(noah): Encapsulate this properly in cassanda_schema.rb
   STDERR.puts "Querying Cassandra..."
   CASS_CLIENT.each(:RegistrationArchive) do |row, columns|
-    STDERR.puts "  - Got row"
     uuid = row[0..35]
     last = last_registrations[uuid]
     last_timestamp = last[:timestamp] if last
     last_value = last[:value] if last
 
     columns.each do |col_key, value|
+      next if col_key == "last_access" || col_key == "last_write"
       timestamp = col_key[-8..-1].unpack("Q>")[0]
       if !last_timestamp || timestamp > last_timestamp
+        hash = MultiJson.decode(value)
+        next if [hash].fuzzy_filter(filter) == []
+
         last_timestamp = timestamp
-        last_value = value
+        last_value = hash
       end
     end
 
@@ -50,9 +66,8 @@ end
 t = Thread.new do
   begin
     loop do
-      @registrations = get_last_registrations
+      @registrations = get_last_registrations("type" => "client")
 
-      STDERR.puts "Initialized! *************************************"
       @initialized = true
       sleep 5 * 60
     end
@@ -69,17 +84,6 @@ TYPES = Hastur::Cassandra::SCHEMA.keys
 def check_present(param_name, human_name = nil)
   unless params[param_name]
     halt 404, "{ \"msg\": \"#{human_name || param_name} param is required!\" }"
-  end
-end
-
-before "/data/:type/*" do
-  if params[:type]
-    params[:type] = params[:type].downcase
-    unless TYPES.include?(params[:type])
-      halt 404, <<EOJSON
-{ "msg": "Type must be one of: #{TYPES.join ', '}" }
-EOJSON
-    end
   end
 end
 
@@ -110,10 +114,7 @@ get "/hostnames_for/" do
     reg = @registrations[uuid]
     value = nil
     if reg
-      hash = MultiJson.decode(reg) rescue nil
-      if hash
-        value = hash[:hostname]
-      end
+      value = reg[:hostname]
     end
 
     result[uuid] = value
@@ -122,6 +123,19 @@ get "/hostnames_for/" do
   [ 200, MultiJson.encode(result) ]
 end
 
+#
+# This route returns all currently-registered UUIDs as a JSON-encoded
+# array of strings.
+#
+get "/uuids/" do
+  uuids = @registrations.keys
+  [ 200, MultiJson.encode(uuids) ]
+end
+
+#
+# This route returns whether the server is healthy.  A 200 or 500
+# is returned via HTTP.
+#
 get "/healthz" do
   # Do a trivial no-op query to see if it 500s
   Hastur::Cassandra.get(CASS_CLIENT, "nouuid", "stat", 1, 2)
@@ -129,6 +143,11 @@ get "/healthz" do
   [ 200, "OK" ]
 end
 
+#
+# This route returns miscellaneous status information.  A 200 or 500
+# is returned via HTTP, along with whatever other information the
+# server feels like sending.
+#
 get "/statusz" do
   # Do a trivial no-op query to see if it 500s
   Hastur::Cassandra.get(CASS_CLIENT, "nouuid", "stat", 1, 2)
