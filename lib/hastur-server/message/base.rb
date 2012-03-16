@@ -120,7 +120,7 @@ module Hastur
       #
       def to_hash
         {
-          :klass     => self.class,
+          :type      => self.type_symbol,
           :envelope  => @envelope.to_hash,
           :zmq_parts => @zmq_parts,
           :payload   => @payload,
