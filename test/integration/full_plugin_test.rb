@@ -121,7 +121,7 @@ class FullPluginTest < Test::Unit::TestCase
       assert_equal 2, m.size
       MultiJson.decode m[1]
     end
-    plugin_result = heartbeat_payloads.fuzzy_filter("command" => "echo")
+    plugin_result = heartbeat_payloads.fuzzy_filter("name" => "my.plugin.echo")
     assert_equal 1, plugin_result.size
   end
 end
