@@ -73,7 +73,7 @@ module Hastur
     def pack
       routers = ''
       if @routers.any?
-        routers = @routers.map { |r| r.split('-').pack('H8H4H4H4H12') }.join('')
+        routers = @routers.map { |r| r.split('-').pack('H8H4H4H4H12') rescue '' }.join('')
       end
 
       [
