@@ -147,6 +147,10 @@ get "/names/:type" do
   [ 200, "" ]
 end
 
+#
+# This route returns whether the server is healthy.  A 200 or 500
+# is returned via HTTP.
+#
 get "/healthz" do
   # Do a trivial no-op query to see if it 500s
   Hastur::Cassandra.get(cass_client, "nouuid", "stat", 1, 2)
@@ -154,6 +158,11 @@ get "/healthz" do
   [ 200, "OK" ]
 end
 
+#
+# This route returns miscellaneous status information.  A 200 or 500
+# is returned via HTTP, along with whatever other information the
+# server feels like sending.
+#
 get "/statusz" do
   # Do a trivial no-op query to see if it 500s
   Hastur::Cassandra.get(cass_client, "nouuid", "stat", 1, 2)
