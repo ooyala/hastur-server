@@ -14,22 +14,26 @@ require 'nodule/process'
 require 'nodule/topology'
 require 'nodule/unixsocket'
 require 'nodule/zeromq'
+require 'nodule/util'
 
 class FullPluginTest < Test::Unit::TestCase
+  HASTUR_UDP_PORT = Nodule::Util.random_udp_port
   def setup
     set_test_alarm(30) # helper
+    Hastur.udp_port = HASTUR_UDP_PORT
 
     @topology = Nodule::Topology.new(
       :greenio       => Nodule::Console.new(:fg => :green),
       :redio         => Nodule::Console.new(:fg => :red),
       :cyanio        => Nodule::Console.new(:fg => :cyan),
       :router        => Nodule::ZeroMQ.new(:uri => :gen),
-      :registration  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :greenio),
+      :registration  => Nodule::ZeroMQ.new(:uri => :gen),
       :event         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture),
       :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
+      :rawdata       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :direct        => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen, :reader => :drain),
       :cassandra     => Nodule::Cassandra.new( :keyspace => "Hastur", :verbose => :greenio ),
       :routersvc     => Nodule::Process.new(
@@ -42,6 +46,7 @@ class FullPluginTest < Test::Unit::TestCase
         '--stat',          :stat,
         '--log',           :log,
         '--error',         :error,
+        '--rawdata',       :rawdata,
         '--direct',        :direct,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
@@ -51,13 +56,14 @@ class FullPluginTest < Test::Unit::TestCase
         '--router',       :router,
         '--ack-timeout',  1,
         '--heartbeat',    300,
-        '--port',         8125,
+        '--port',         HASTUR_UDP_PORT,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
       :regsvc       => Nodule::Process.new(
         HASTUR_CASS_SINK_BIN,
         '--sinks',       :registration,
         '--cassandra',   :cassandra,
+        '--acks-to',     :direct,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
       ),
       :scheduler     => Nodule::Process.new(
@@ -68,9 +74,11 @@ class FullPluginTest < Test::Unit::TestCase
       ),
     )
 
-    @topology.start_all
+    @topology.start :cassandra
+    @topology[:cassandra].create_keyspace
     create_all_column_families(@topology[:cassandra]) # helper
-    sleep 5
+
+    @topology.start_all
   end
 
   def teardown
@@ -78,24 +86,32 @@ class FullPluginTest < Test::Unit::TestCase
   end
 
   def test_plugin
+    @topology[:heartbeat].require_read_count 1, 1
+
     # make sure the cassandra schema is at least loaded
     client = @topology[:cassandra].client
     hash = client.get(:RegistrationArchive, "kye")
     assert_not_nil hash
     assert_equal "Hastur", @topology[:cassandra].keyspace
 
-    # register plugin
-    Hastur.register_plugin("my.plugin.echo", "echo", "OK", :five_minutes)
-
-    # give time for the register_plugin message to make its way over
-    sleep 2
-
+    # should be one heartbeat before any plugins are registered
     heartbeat_msgs = @topology[:heartbeat].output
     assert_equal 1, heartbeat_msgs.size
 
-    # give time for the scheduler to pick up the new registration
-    sleep 10
+    # register plugin
+    Hastur.register_plugin("my.plugin.echo", "echo", "OK", :five_minutes)
 
+    #sleep 10
+
+    # wait for the row to show up in Cassandra
+    wait_for_cassandra_rows(client, "RegistrationArchive", 1, 5) do
+      flunk "Gave up waiting for registrations in cassandra."
+    end
+
+    # the schedule should pick up the registration and start generating more heartbeats
+    @topology[:heartbeat].require_read_count 4, 12 do
+      flunk "Gave up waiting for the plugin's heartbeat to arrive"
+    end
     heartbeat_msgs = @topology[:heartbeat].output
     assert_equal 2, heartbeat_msgs.size
 

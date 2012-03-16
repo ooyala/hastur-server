@@ -79,6 +79,7 @@ class QueryServerTest < Test::Unit::TestCase
 
     # start cassandra first and set up the CF's before bringing anything else up
     @topology.start :cassandra
+    @topology[:cassandra].create_keyspace
 
     create_all_column_families(@topology[:cassandra]) # helper
 

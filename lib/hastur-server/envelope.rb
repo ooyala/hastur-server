@@ -63,7 +63,7 @@ module Hastur
         :timestamp => parts[TIMESTAMP_IDX],
         :uptime    => parts[UPTIME_IDX],
         :hmac      => parts[HMAC_IDX],
-        :routers   => routers
+        :routers   => routers.select { |r| r.length == 36 }
       )
     end
 
@@ -73,7 +73,7 @@ module Hastur
     def pack
       routers = ''
       if @routers.any?
-        routers = @routers.map { |r| r.split('-').pack('H8H4H4H4H12') rescue '' }.join('')
+        routers = @routers.select { |r| r.length == 36 }.map { |r| r.split('-').pack('H8H4H4H4H12') }.join('')
       end
 
       [

@@ -4,6 +4,8 @@ require "hastur-server/zmq_utils"
 require "hastur-server/message"
 require "hastur-server/sink/cassandra_schema"
 
+STDOUT.sync = true # make stdout flush immediately
+
 opts = Trollop::options do
   banner "Creates a Cassandra keyspace\n\nOptions:"
   opt :cassandra, "Cassandra URI(s)",       :default => ["127.0.0.1:9160"],        :type => :strings,
@@ -34,12 +36,11 @@ client.default_write_consistency = 2  # Initial default: 1
 end
 
 while @running do
-  puts "Receiving..."
   begin
     message = Hastur::Message.recv(msg_socket)
     envelope = message.envelope
     uuid = message.envelope.from
-    puts "[#{envelope.type_symbol}] - #{message.to_hash.inspect}"
+    puts "[cass-sink.rb] [#{envelope.type_symbol}] - #{message.to_hash.inspect}"
     Hastur::Cassandra.insert(client, message.payload, envelope.type_symbol.to_s, :uuid => uuid)
     envelope.to_ack.send(ack_socket) if envelope.ack?
   rescue Hastur::ZMQError

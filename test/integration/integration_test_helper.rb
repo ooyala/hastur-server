@@ -76,10 +76,12 @@ end
 
 def wait_for_cassandra_rows(client, cf, count, max_iterations=30)
   max_iterations.times do
-    client.each_key(cf) do |key|
-      return true if client.count_columns("HeartbeatArchive", key) > count
-    end
     sleep 1
+    client.each_key(cf) do |key|
+      return true if client.count_columns(cf, key) >= count
+    end
   end
+  yield if block_given?
+  false
 end
 
