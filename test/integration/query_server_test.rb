@@ -14,6 +14,11 @@ class QueryServerTest < Test::Unit::TestCase
   def setup
     set_test_alarm
     sinatra_ready = false
+    sinatra_ready_proc = proc do |line|
+      sinatra_ready = true if line =~ /== Sinatra.* has taken the stage/
+    end
+    @sinatra_port = Nodule::Util.random_tcp_port
+
     @topology = Nodule::Topology.new(
       :greenio      => Nodule::Console.new(:fg => :green),
       :redio        => Nodule::Console.new(:fg => :red),
@@ -32,14 +37,11 @@ class QueryServerTest < Test::Unit::TestCase
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REP,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
       :cassandra    => Nodule::Cassandra.new(:keyspace => "Hastur",
-        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
+        :stderr => :redio, :verbose => :cyanio, #:stdout => :greenio,
       ),
       :query_server => Nodule::Process.new(HASTUR_QUERY_SERVER_BIN,
-        '--cassandra', :cassandra,
-        '--', '-p', '4177',
-        :stdout => :greenio, :stderr => proc do |line|
-          sinatra_ready = true if line =~ /== Sinatra.* has taken the stage/
-        end,
+        '--cassandra', :cassandra, '--port', @sinatra_port.to_s,
+        :stdout => :greenio, :stderr => [sinatra_ready_proc, :greenio], :verbose => :cyanio
       ),
 
       :client1svc   => Nodule::Process.new(
@@ -78,8 +80,8 @@ class QueryServerTest < Test::Unit::TestCase
 
     # start cassandra first and set up the CF's before bringing anything else up
     @topology.start :cassandra
-    @topology[:cassandra].create_keyspace
 
+    # this will also issue the CREATE KEYSPACE command
     create_all_column_families(@topology[:cassandra]) # helper
 
     @topology.start_all
@@ -99,16 +101,16 @@ class QueryServerTest < Test::Unit::TestCase
     start_ts = Hastur.timestamp(Time.now.to_i - 600)
     end_ts = Hastur.timestamp(Time.now.to_i + 600)
 
-    c1_html = open("http://localhost:4177/data/heartbeat/json?uuid=#{C1UUID}&start=#{start_ts}&end=#{end_ts}") do |f| f.read end
+    url1 = "http://127.0.0.1:#{@sinatra_port}/data/heartbeat/json?uuid=#{C1UUID}&start=#{start_ts}&end=#{end_ts}"
+    c1_html = open(url1).read
     assert c1_html.length > 10, "got at least 10 bytes of data for the client 1 heartbeat query"
     assert c1_html.length < 4096, "got no more than 4096 bytes of data for the client 1 heartbeat query"
     assert c1_html.match(/^\s*{.*}\s*$/), "looks like JSON"
     c1_messages = MultiJson.decode c1_html
 
-    # TODO: this still fails even though the first one succeeds, figure out why
-
     # always run two tests - we've seen cases where the first works but the second doesn't
-    c2_html = open("http://localhost:4177/data/heartbeat/values?uuid=#{C2UUID}&start=#{start_ts}&end=#{end_ts}") do |f| f.read end
+    url2 = "http://127.0.0.1:#{@sinatra_port}/data/heartbeat/values?uuid=#{C2UUID}&start=#{start_ts}&end=#{end_ts}"
+    c2_html = open(url2).read
     assert c2_html.length > 10, "got at least 10 bytes of data for the client 2 heartbeat query"
     assert c2_html.length < 4096, "got no more than 4096 bytes of data for the client 2 heartbeat query"
     assert c2_html.match(/^\s*{.*}\s*$/), "looks like JSON"
