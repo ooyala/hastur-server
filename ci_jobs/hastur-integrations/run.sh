@@ -7,6 +7,8 @@ unset CASSANDRA_HOME
 echo "---------------------------------------"
 ulimit -a
 echo "---------------------------------------"
+env
+echo "---------------------------------------"
 
 : ${REPO_ROOT:="$WORKSPACE"}
 source $HOME/.rvm/scripts/rvm
