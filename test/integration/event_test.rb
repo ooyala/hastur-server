@@ -8,7 +8,7 @@ require 'nodule/zeromq'
 require 'multi_json'
 require 'hastur-server/message'
 
-class NotificationTest < Test::Unit::TestCase
+class EventTest < Test::Unit::TestCase
   ITERATIONS = 4
 
   def setup

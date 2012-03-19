@@ -67,7 +67,7 @@ class AckTest < Test::Unit::TestCase
     @topology.stop_all
   end
 
-  def test_event
+  def test_event_ack
     hb = Hastur::Message::Event.new(:payload => "{}", :from => C1UUID)
 
     EVENT_REPLAYS.times do
