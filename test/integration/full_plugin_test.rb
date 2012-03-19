@@ -113,8 +113,6 @@ class FullPluginTest < Test::Unit::TestCase
     # register plugin
     Hastur.register_plugin("my.plugin.echo", "echo", "OK", :five_minutes)
 
-    #sleep 10
-
     # the schedule should pick up the registration and start generating more heartbeats
     @topology[:heartbeat].require_read_count 2, 12 do
       flunk "Gave up waiting for the plugin's heartbeat to arrive"
