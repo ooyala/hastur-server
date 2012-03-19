@@ -72,10 +72,16 @@ class FullPluginTest < Test::Unit::TestCase
       ),
     )
 
+    # start cassandra
     @topology.start :cassandra
     create_all_column_families(@topology[:cassandra]) # helper
 
-    @topology.start_all
+    # start everything else but the scheduler
+    @topology.keys.each do |key|
+      if key.to_s != "scheduler" && key.to_s != "cassandra"
+        @topology.start key.to_sym
+      end
+    end
   end
 
   def teardown
@@ -83,10 +89,19 @@ class FullPluginTest < Test::Unit::TestCase
   end
 
   def test_plugin
+    client = @topology[:cassandra].client
+    
+    # wait for the row to show up in Cassandra
+    wait_for_cassandra_rows(client, "RegistrationArchive", 1, 5) do
+      flunk "Gave up waiting for registrations in cassandra."
+    end
+
+    # start the scheduler once we know cassandra is up and running
+    @topology.start :scheduler
+
     @topology[:heartbeat].require_read_count 1, 1
 
     # make sure the cassandra schema is at least loaded
-    client = @topology[:cassandra].client
     hash = client.get(:RegistrationArchive, "kye")
     assert_not_nil hash
     assert_equal "Hastur", @topology[:cassandra].keyspace
@@ -99,11 +114,6 @@ class FullPluginTest < Test::Unit::TestCase
     Hastur.register_plugin("my.plugin.echo", "echo", "OK", :five_minutes)
 
     #sleep 10
-
-    # wait for the row to show up in Cassandra
-    wait_for_cassandra_rows(client, "RegistrationArchive", 1, 5) do
-      flunk "Gave up waiting for registrations in cassandra."
-    end
 
     # the schedule should pick up the registration and start generating more heartbeats
     @topology[:heartbeat].require_read_count 4, 12 do
