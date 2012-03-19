@@ -20,7 +20,9 @@ bundle install
 gem build hastur-server.gemspec
 gem install hastur-server-*.gem
 
+gem env
 echo "------------ Bundler-ized environment -----"
+bundle exec gem env
 bundle exec env
 echo "-------------------------------------------"
 
