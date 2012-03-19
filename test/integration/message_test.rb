@@ -10,7 +10,7 @@ require 'hastur-server/message'
 # shake out concurrency bugs. It has already exposed a few interesting bugs that are now fixed.
 
 class TestClassHasturMessageIntegration < MiniTest::Unit::TestCase
-  DEALER_COUNT = 40 # number of emulated ZMQ::DEALER clients to run
+  DEALER_COUNT = 20 # number of emulated ZMQ::DEALER clients to run
   ROUTER_COUNT = 2  # number of emulated routers to run
   PULLER_COUNT = 4  # number of sinks to run, must divide evenly into dealer count
   DEALER_MESSAGES = DEALER_COUNT * DEALER_COUNT
@@ -87,9 +87,10 @@ class TestClassHasturMessageIntegration < MiniTest::Unit::TestCase
         :from => uuid,
         :data => {
           :name      => "foo.bar",
+          :type      => "gauge",
           :value     => num,
-          :units     => "s",
           :timestamp => Time.new.to_f,
+          :labels    => {},
         }
       )
       #puts MultiJson.encode(msg.to_hash)
@@ -140,7 +141,7 @@ class TestClassHasturMessageIntegration < MiniTest::Unit::TestCase
       end
     end
 
-    # block until all the dealers are done
+    # block until all the threads are done
     dealers.each {|_,thr| thr.join }
     pullers.each {|_,thr| thr.join }
     routers.each {|_,thr| thr.join }
