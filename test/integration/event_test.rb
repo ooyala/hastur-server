@@ -94,7 +94,7 @@ EOJSON
       @topology[:client1unix].send event
     end
 
-    @topology[:event].require_read_count ITERATIONS * 2, 3 do
+    @topology[:event].require_read_count ITERATIONS, 3 do
       flunk "timeout waiting for #{ITERATIONS} events (had #{@topology[:event].read_count})"
     end
 

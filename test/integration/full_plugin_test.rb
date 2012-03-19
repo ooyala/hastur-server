@@ -116,7 +116,7 @@ class FullPluginTest < Test::Unit::TestCase
     #sleep 10
 
     # the schedule should pick up the registration and start generating more heartbeats
-    @topology[:heartbeat].require_read_count 4, 12 do
+    @topology[:heartbeat].require_read_count 2, 12 do
       flunk "Gave up waiting for the plugin's heartbeat to arrive"
     end
     heartbeat_msgs = @topology[:heartbeat].output

@@ -76,8 +76,7 @@ class AckTest < Test::Unit::TestCase
       sleep 0.1
     end
 
-    # the read count should be 2x the events
-    @topology[:client].require_read_count EVENT_REPLAYS * 2, 10
+    @topology[:client].require_read_count EVENT_REPLAYS, 10
 
     assert_equal EVENT_REPLAYS, @topology[:client].output.count, "should have gotten #{EVENT_REPLAYS} messages"
   end
