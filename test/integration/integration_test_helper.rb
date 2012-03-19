@@ -21,6 +21,7 @@ HASTUR_MSGTOOL_BIN="#{HASTUR_ROOT}/tools/msgtool.rb"
 HASTUR_QUERY_SERVER_BIN="#{HASTUR_ROOT}/bin/hastur-query-server.rb"
 HASTUR_CASS_SINK_BIN="#{HASTUR_ROOT}/bin/cass-sink.rb"
 HASTUR_SCHEDULER="#{HASTUR_ROOT}/bin/run-scheduler.rb"
+HASTUR_REGISTRATION_ROLLUP_BIN="#{HASTUR_ROOT}/bin/registration-rollups.rb"
 
 HASTUR_UDP_PORT = Nodule::Util.random_udp_port
 Hastur.udp_port = HASTUR_UDP_PORT
