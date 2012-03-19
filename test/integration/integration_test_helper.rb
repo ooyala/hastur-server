@@ -10,6 +10,8 @@ require 'hastur-server/sink/cassandra_schema'
 $LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..", "..", "lib")
 
 require "nodule"
+require "nodule/util"
+require "hastur"
 
 HASTUR_ROOT = File.join(File.dirname(__FILE__), "..", "..")
 
@@ -19,6 +21,9 @@ HASTUR_MSGTOOL_BIN="#{HASTUR_ROOT}/tools/msgtool.rb"
 HASTUR_QUERY_SERVER_BIN="#{HASTUR_ROOT}/bin/hastur-query-server.rb"
 HASTUR_CASS_SINK_BIN="#{HASTUR_ROOT}/bin/cass-sink.rb"
 HASTUR_SCHEDULER="#{HASTUR_ROOT}/bin/run-scheduler.rb"
+
+HASTUR_UDP_PORT = Nodule::Util.random_udp_port
+Hastur.udp_port = HASTUR_UDP_PORT
 
 # easy to spot fake UUID's
 C1UUID = '11111111-2222-3333-4444-555555555555'

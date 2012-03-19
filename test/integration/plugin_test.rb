@@ -11,7 +11,6 @@ require 'hastur-server/message'
 class PluginTest < Test::Unit::TestCase
   def setup
     set_test_alarm(30) # helper
-
     @plugin_text = MultiJson.encode("{\"status\": 0, \"message\": \"OK - plugin success!\"}")
     @plugin_request = <<EOJSON
 {
@@ -56,7 +55,7 @@ EOJSON
         '--router',       :router,
         '--ack-timeout',  1,
         '--heartbeat',    300,
-        '--port',         8125,
+        '--port',         HASTUR_UDP_PORT,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
     )

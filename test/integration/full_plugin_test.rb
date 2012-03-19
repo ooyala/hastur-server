@@ -17,10 +17,8 @@ require 'nodule/zeromq'
 require 'nodule/util'
 
 class FullPluginTest < Test::Unit::TestCase
-  HASTUR_UDP_PORT = Nodule::Util.random_udp_port
   def setup
     set_test_alarm(30) # helper
-    Hastur.udp_port = HASTUR_UDP_PORT
 
     @topology = Nodule::Topology.new(
       :greenio       => Nodule::Console.new(:fg => :green),
@@ -75,7 +73,6 @@ class FullPluginTest < Test::Unit::TestCase
     )
 
     @topology.start :cassandra
-    @topology[:cassandra].create_keyspace
     create_all_column_families(@topology[:cassandra]) # helper
 
     @topology.start_all
