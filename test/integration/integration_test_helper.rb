@@ -61,6 +61,14 @@ def cancel_test_alarm
   LibC.alarm(0)
 end
 
+def assert_not_empty(*strs)
+  strs.flatten.each do |str|
+    assert_not_nil str
+    assert_false str.empty?
+    assert_false str == "{}"
+  end
+end
+
 def create_all_column_families(cassandra)
   cassandra.cli "--batch" do |process,stdin,stdout,stderr|
     # create the C* schema
