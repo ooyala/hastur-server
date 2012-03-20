@@ -6,7 +6,6 @@ require 'nodule'
 require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'nodule/cassandra'
-require 'multi_json'
 require 'hastur'
 
 class BringUpTest < Test::Unit::TestCase
@@ -90,15 +89,16 @@ class BringUpTest < Test::Unit::TestCase
       ),
     )
 
-    # @topology.start :cassandra
-    # create_all_column_families(@topology[:cassandra]) # helper
-    @topology.start_all_but :client2svc, :router2svc, :cass_sink1, :cass_sink2, :query_server, :cassandra
-    # sleep 0.01 until sinatra_ready
+    @topology.start :cassandra
+    create_all_column_families(@topology[:cassandra]) # helper
+
+    @topology.start_all_but :client2svc, :router2svc, :cass_sink2
+    sleep 0.01 until sinatra_ready
   end
 
   def teardown
-    # @topology.stop :cass_sink1, :cass_sink2
-    @topology.stop_all_but :cass_sink1, :cass_sink2, :query_server, :cassandra
+    @topology.stop :cass_sink1, :cass_sink2
+    @topology.stop_all
   end
 
   def test_bring_up
@@ -106,7 +106,7 @@ class BringUpTest < Test::Unit::TestCase
     @topology[:heartbeat].require_read_count 2, 5
 
     messages = @topology[:heartbeat].output
-    assert_not_empty messages
+    assert_json_not_empty messages
 
     # Start up and test second client
     @topology.start :client2svc
@@ -119,18 +119,18 @@ class BringUpTest < Test::Unit::TestCase
     Hastur.counter("My.counter")
     @topology[:stat].require_read_count 2,5
 
-    # # Test query server
-    # # Query from 10 minutes ago to 10 minutes from now, just to grab everything
-    # start_ts = Hastur.timestamp(Time.now.to_i - 600)
-    # end_ts = Hastur.timestamp(Time.now.to_i + 600)
-    #
-    # c1_messages = MultiJson.decode `curl http://localhost:4177/data/heartbeat/json?uuid=#{C1UUID}\\\&start=#{start_ts}\\\&end=#{end_ts}`
-    # c2_messages = MultiJson.decode `curl http://localhost:4177/data/heartbeat/values?uuid=#{C2UUID}\\\&start=#{start_ts}\\\&end=#{end_ts}`
-    #
-    # assert_not_empty c1_messages
-    # assert_not_empty c2_messages
+    # Test query server
+    # Query from 10 minutes ago to 10 minutes from now, just to grab everything
+    start_ts = Hastur.timestamp(Time.now.to_i - 600)
+    end_ts = Hastur.timestamp(Time.now.to_i + 600)
+
+    c1_messages = `curl http://localhost:4177/data/heartbeat/json?uuid=#{C1UUID}\\\&start=#{start_ts}\\\&end=#{end_ts}`
+    c2_messages = `curl http://localhost:4177/data/heartbeat/values?uuid=#{C2UUID}\\\&start=#{start_ts}\\\&end=#{end_ts}`
+
+    assert_json_not_empty c1_messages
+    assert_json_not_empty c2_messages
 
     # Start up and test second sink
-    # @topology.start :cass_sink2
+    @topology.start :cass_sink2
   end
 end
