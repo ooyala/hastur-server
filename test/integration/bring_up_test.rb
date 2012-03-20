@@ -7,11 +7,16 @@ require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'nodule/cassandra'
 require 'hastur'
+require 'open-uri'
 
 class BringUpTest < Test::Unit::TestCase
   def setup
     set_test_alarm
     sinatra_ready = false
+    sinatra_ready_proc = proc do |line|
+      sinatra_ready = true if line =~ /== Sinatra.* has taken the stage/
+    end
+    @sinatra_port = Nodule::Util.random_tcp_port
     @topology = Nodule::Topology.new(
       :greenio      => Nodule::Console.new(:fg => :green),
       :redio        => Nodule::Console.new(:fg => :red),
@@ -27,13 +32,12 @@ class BringUpTest < Test::Unit::TestCase
       :rawdata      => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REP,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
-      :cassandra    => Nodule::Cassandra.new(:keyspace => "Hastur"),
+      :cassandra    => Nodule::Cassandra.new(:keyspace => "Hastur",
+        :stderr => :redio, :verbose => :cyanio, #:stdout => :greenio,
+      ),
       :query_server => Nodule::Process.new(HASTUR_QUERY_SERVER_BIN,
-        '--cassandra', :cassandra,
-        '--', '-p', '4177',
-        :stdout => :greenio, :stderr => proc do |line|
-          sinatra_ready = true if !sinatra_ready && line =~ /== Sinatra.* has taken the stage/
-        end,
+        '--cassandra', :cassandra, '--port', @sinatra_port.to_s,
+        :stdout => :greenio, :stderr => [sinatra_ready_proc, :greenio], :verbose => :cyanio
       ),
       :client1svc   => Nodule::Process.new(
         HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router,
@@ -77,13 +81,15 @@ class BringUpTest < Test::Unit::TestCase
       ),
       :cass_sink1 => Nodule::Process.new(
         HASTUR_CASS_SINK_BIN,
-        '--sinks', :stat, :event, :heartbeat, :registration, :log, :error,
+        '--sinks', :stat, :heartbeat, :registration,
+        '--acks-to', :direct,
         '--cassandra', :cassandra,
         :verbose => :cyanio, :stderr => :redio, :stdout => :yellowio
       ),
       :cass_sink2 => Nodule::Process.new(
         HASTUR_CASS_SINK_BIN,
-        '--sinks', :stat, :event, :heartbeat, :registration, :log, :error,
+        '--sinks', :stat, :heartbeat, :registration,
+        '--acks-to', :direct,
         '--cassandra', :cassandra,
         :verbose => :cyanio, :stderr => :redio, :stdout => :yellowio
       ),
@@ -119,16 +125,17 @@ class BringUpTest < Test::Unit::TestCase
     Hastur.counter("My.counter")
     @topology[:stat].require_read_count 2,5
 
-    # Test query server
     # Query from 10 minutes ago to 10 minutes from now, just to grab everything
     start_ts = Hastur.timestamp(Time.now.to_i - 600)
     end_ts = Hastur.timestamp(Time.now.to_i + 600)
 
-    c1_messages = `curl http://localhost:4177/data/heartbeat/json?uuid=#{C1UUID}\\\&start=#{start_ts}\\\&end=#{end_ts}`
-    c2_messages = `curl http://localhost:4177/data/heartbeat/values?uuid=#{C2UUID}\\\&start=#{start_ts}\\\&end=#{end_ts}`
-
+    url1 = "http://127.0.0.1:#{@sinatra_port}/data/heartbeat/json?uuid=#{C1UUID}&start=#{start_ts}&end=#{end_ts}"
+    c1_messages = open(url1).read
     assert_json_not_empty c1_messages
-    assert_json_not_empty c2_messages
+
+    url2 = "http://127.0.0.1:#{@sinatra_port}/data/heartbeat/values?uuid=#{C2UUID}&start=#{start_ts}&end=#{end_ts}"
+    c2_messages = open(url2).read
+    assert_json_not_empty c1_messages
 
     # Start up and test second sink
     @topology.start :cass_sink2
