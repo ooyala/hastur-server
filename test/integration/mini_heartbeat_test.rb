@@ -18,7 +18,7 @@ class MiniHeartbeatTest < Test::Unit::TestCase
       :router       => Nodule::ZeroMQ.new(:bind => ZMQ::ROUTER, :uri => :gen, :reader => :capture, :limit => 2),
 
       :client1svc   => Nodule::Process.new(
-        HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--unix', :client1unix,
+        HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router,
         '--port', HASTUR_UDP_PORT,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
