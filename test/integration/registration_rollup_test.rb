@@ -1,12 +1,13 @@
 #!/usr/bin/env ruby
 
+require 'minitest/autorun'
 require 'multi_json'
-require "test/unit"
 
 require_relative "./integration_test_helper"
 
 require 'hastur'
 require 'hastur-server/message'
+require 'hastur-server/util'
 
 require 'nodule/cassandra'
 require 'nodule/console'
@@ -16,7 +17,10 @@ require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'nodule/util'
 
-class RegistrationRollupTest < Test::Unit::TestCase
+class RegistrationRollupTest < MiniTest::Unit::TestCase
+
+  FAKE_UUID = "fafafafa-fafa-fafa-fafa-fafafafafafa"
+
   def setup
     set_test_alarm(30) # helper
 
@@ -42,21 +46,33 @@ class RegistrationRollupTest < Test::Unit::TestCase
       end
     end
   end
-
+  
   def teardown
     @topology.stop_all
   end
-
-  def test_plugin
+ 
+  def test_rollup
     client = @topology[:cassandra].client
-    
+
     # make sure the cassandra schema is at least loaded
-    assert_not_nil client.get(:RegistrationArchive, "key")
-    assert_not_nil client.get(:RegistrationDay, "key")
+    assert client.get(:RegistrationArchive, "key") != nil
+    assert client.get(:RegistrationDay, "key") != nil
     assert_equal "Hastur", @topology[:cassandra].keyspace
 
     # TODO(viet): pump data into C*
-    
+    data=<<JSON
+      {
+        "type"        : "plugin",
+        "plugin_path" : "echo",
+        "plugin_args" : "OK",
+        "interval"    : "five_minutes",
+        "plugin"      : "my.plugin.echo",
+        "timestamp"   : #{Hastur::Util.timestamp}
+      }
+JSON
+
+    ::Hastur::Cassandra.insert(client, data, "registration", { :uuid => FAKE_UUID })
+
     # start the registration rollup once we know cassandra is up and running
     @topology.start :reg_rollup
 
