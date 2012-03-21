@@ -387,8 +387,13 @@ module Hastur
           name, timestamp = col_name_to_name_and_timestamp(col_key)
 
           if timestamp <= end_timestamp && timestamp >= start_timestamp
-            final_values[name] ||= {}
-            final_values[name][timestamp] = subdivide ? MessagePack.unpack(value) : value
+            val = subdivide ? MessagePack.unpack(value) : value
+            if name
+              final_values[name] ||= {}
+              final_values[name][timestamp] = val
+            else
+              final_values[timestamp] = val
+            end
           end
         end
       end
