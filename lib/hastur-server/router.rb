@@ -17,7 +17,7 @@ module Hastur
     # r = Hastur::Router.new('e315debb-50ba-47a6-9fb4-461757fe1e78')
     #
     def initialize(uuid, opts = {})
-      raise ArgumentError.new "uuid (positional) is required" unless uuid 
+      raise ArgumentError.new "uuid (positional) is required" unless uuid
       raise ArgumentError.new "uuid must be in 36-byte hex form" unless Hastur::Util.valid_uuid?(uuid)
 
       @uuid                   = uuid
