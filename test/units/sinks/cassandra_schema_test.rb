@@ -41,6 +41,7 @@ JSON
 
 EVENT_JSON = <<JSON
 {
+  "name": "fake.event.name",
   "severity": "bogus",
   "timestamp": 1329858724285438,
   "tags": [

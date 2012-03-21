@@ -146,7 +146,7 @@ module Hastur
         value = hash[value_name]               # Example: 37.914
       end
 
-      name = hash[:name]
+      name = schema[:name] ? hash[schema[:name]] : nil
       timestamp_usec = hash[:timestamp]
 
       colname = col_name(name, timestamp_usec)
@@ -362,7 +362,7 @@ module Hastur
         cass_options[:start] = col_name(options[:name], start_timestamp)
         cass_options[:finish] = col_name(options[:name], end_timestamp)
       elsif !name_field
-        # For an unnamed schema like errors, tell Cassandra what column range to query
+        # For an unnamed schema like events, tell Cassandra what column range to query
         cass_options[:start] = col_name(nil, start_timestamp) unless options[:start]
         cass_options[:finish] = col_name(nil, end_timestamp) unless options[:finish]
       end
