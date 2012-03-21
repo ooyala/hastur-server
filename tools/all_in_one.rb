@@ -59,6 +59,10 @@ topology = Nodule::Topology.new(
     '--acks-to', :direct, # '--cassandra', '127.0.0.1:9160',
     :verbose => :cyanio, :stderr => :redio, :stdout => :yellowio
   ),
+  :query_server => Nodule::Process.new(
+    File.join(HASTUR_ROOT, "bin", "hastur-query-server.rb"),
+    :verbose => :cyanio, :stderr => :greenio, :stdout => :greenio
+  ),
 )
 
 topology.start_all
