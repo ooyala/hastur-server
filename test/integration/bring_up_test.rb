@@ -100,7 +100,7 @@ class BringUpTest < Test::Unit::TestCase
     @topology.start :cassandra
     create_all_column_families(@topology[:cassandra]) # helper
 
-    @topology.start_all_but :router2svc, :cass_sink2,:client2svc
+    @topology.start_all_but :router2svc, :cass_sink2, :client2svc
     sleep 0.01 until sinatra_ready
   end
 
