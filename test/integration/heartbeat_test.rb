@@ -88,4 +88,3 @@ class HeartbeatTest < Test::Unit::TestCase
     assert envelopes.flatten.any? { |e| e.include?(c2uuid) }, "No envelope contains client 2's UUID"
   end
 end
-
