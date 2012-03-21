@@ -59,8 +59,6 @@ end
 # The hash is serialized as JSON which means that each internal JSON
 # chunk must be individually deserialized as well.
 #
-# TODO(noah): Fix these return types to avoid double-decode
-#
 get "/data/:type/json" do
   [ :start, :end, :uuid ].each { |p| check_present p }
 
@@ -69,6 +67,17 @@ get "/data/:type/json" do
 
   # Get with no subtype gives JSON
   values = Hastur::Cassandra.get(cass_client, params[:uuid], params[:type], start_ts, end_ts)
+
+  # TODO(noah): speed this up by joining, not MultiJson-ing
+  values.each do |key, val|
+    if val.is_a? Hash
+      val.each do |ts, json|
+        val[ts] = MultiJson.decode(json)
+      end
+    else
+      values[key] = MultiJson.decode(val)
+    end
+  end
 
   [ 200, MultiJson.encode(values) ]
 end
