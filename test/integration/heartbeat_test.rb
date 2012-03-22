@@ -62,7 +62,7 @@ class HeartbeatTest < Test::Unit::TestCase
 
   def test_heartbeat
     # wait for some messages to flow
-    sleep 3
+    @topology[:heartbeat].require_read_count 4, 10
 
     messages = @topology[:heartbeat].output
     # work with raw messages for now
