@@ -48,7 +48,20 @@ module Hastur
     end
 
     #
-    # Retrieves an OrderedHash for a particular rollup
+    # Retrieves an OrderedHash for the next rollup
+    #
+    def get_next_rollup(cass_client, route, timestamp, granularity)
+      rollup_timestamp = next_time_segment_for_timestamp(timestamp, granularity)
+      # get the CF from route
+      raise "Unable to determine find schema for #{route}" unless SCHEMA[route]
+      rollup_cf = SCHEMA[route][:rollup_cf]
+      raise "Unable to determine the rollup column family for #{route}" unless rollup_cf
+      # get the rollup
+      cass_client.get(rollup_cf, rollup_timestamp.to_s)
+    end
+
+    #
+    # Retrieves an OrderedHash for the previous rollup
     #
     def get_previous_rollup(cass_client, route, timestamp, granularity)
       rollup_timestamp = last_time_segment_for_timestamp(timestamp, granularity)
@@ -57,7 +70,7 @@ module Hastur
       rollup_cf = SCHEMA[route][:rollup_cf]
       raise "Unable to determine the rollup column family for #{route}" unless rollup_cf
       # get the rollup
-      cass_client.get(rollup_cf, rollup_timestamp)
+      cass_client.get(rollup_cf, rollup_timestamp.to_s)
     end
 
     #
@@ -69,7 +82,7 @@ module Hastur
       raise "Unable to determine find schema for #{route}" unless SCHEMA[route]
       rollup_cf = SCHEMA[route][:rollup_cf]
       raise "Unable to determine the rollup column family for #{route}" unless rollup_cf
-      cass_client.insert(rollup_cf, rollup_timestamp, {col => value })
+      cass_client.insert(rollup_cf, rollup_timestamp.to_s, {col => value.to_s })
     end
 
     #

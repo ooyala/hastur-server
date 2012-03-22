@@ -31,7 +31,8 @@ class RegistrationRollupTest < MiniTest::Unit::TestCase
       :cassandra     => Nodule::Cassandra.new( :keyspace => "Hastur", :verbose => :greenio ),
       :reg_rollup    => Nodule::Process.new(
         HASTUR_REGISTRATION_ROLLUP_BIN,
-        'hosts', :cassandra
+        '--hosts', :cassandra,
+        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
       ),
     )
 
@@ -60,22 +61,39 @@ class RegistrationRollupTest < MiniTest::Unit::TestCase
     assert_equal "Hastur", @topology[:cassandra].keyspace
 
     # TODO(viet): pump data into C*
-    data=<<JSON
-      {
-        "type"        : "plugin",
-        "plugin_path" : "echo",
-        "plugin_args" : "OK",
-        "interval"    : "five_minutes",
-        "plugin"      : "my.plugin.echo",
-        "timestamp"   : #{Hastur::Util.timestamp}
-      }
-JSON
+    hash = {
+      :type        => "plugin",
+      :plugin_path => "echo",
+      :plugin_args => "OK",
+      :interval    => "five_minutes",
+      :plugin      => "my.plugin.echo",
+      :timestamp   => 0 # fill me in
+    }
 
-    ::Hastur::Cassandra.insert(client, data, "registration", { :uuid => FAKE_UUID })
+    curr_time = Hastur::Util.timestamp
+    seven_minutes_ago = curr_time - 7*60*1_000_000
+    four_minutes_ago = curr_time - 4*60*1_000_000
+    two_minutes_ago = curr_time - 2*60*1_000_000
+
+    times = []
+    times << seven_minutes_ago
+    times << four_minutes_ago
+    times << two_minutes_ago
+    times << curr_time
+
+    times.each do |time|
+      hash[:timestamp] = time
+      p hash
+      data = MultiJson.encode(hash)
+      ::Hastur::Cassandra.insert(client, data, "registration", { :uuid => FAKE_UUID })
+    end
 
     # start the registration rollup once we know cassandra is up and running
     @topology.start :reg_rollup
 
+    sleep 5
+
     # TODO(viet): check rollup CF to make sure data is correctly rolled up
+    o = Hastur::Cassandra.get_next_rollup(client, "registration", curr_time, Hastur::Cassandra::ONE_DAY)
   end
 end

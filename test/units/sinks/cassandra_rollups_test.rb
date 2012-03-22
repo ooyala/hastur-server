@@ -36,6 +36,15 @@ class CassandraRollupsTest < Scope::TestCase
   end
 
   context "with rollup segments" do
+    should "return last time segment for timestamp variation #2" do
+      five_minute_time  = 5*60*1_000_000
+      eight_minute_time = 8*60*1_000_000
+      last_time_segment = Hastur::Cassandra.last_time_segment_for_timestamp(
+                                    eight_minute_time + 1000,
+                                    Hastur::Cassandra::FIVE_MINUTES)
+      assert_equal(five_minute_time, last_time_segment)
+    end
+
     should "return last time segment for timestamp" do
       five_minute_time = 5*60*1_000_000
       last_time_segment = Hastur::Cassandra.last_time_segment_for_timestamp(
