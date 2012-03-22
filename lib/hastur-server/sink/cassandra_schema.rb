@@ -45,8 +45,8 @@ module Hastur
             },
             :value => {
               :gauge => :value,
-              :counter => :increment,
-              :mark => nil,
+              :counter => :value,
+              :mark => :value,
             },
             :rollup_cf_prefix => {
               :gauge => "StatGauge",
@@ -84,6 +84,7 @@ module Hastur
         :granularity => FIVE_MINUTES,
         :name => :name,
         :rollup_cf_prefix => "Heartbeat",
+        :value => :value,
       },
       # No plugin_exec - not for sinks
       "registration" => {
@@ -142,8 +143,7 @@ module Hastur
 
         cf = subtype[:cf][type]                # Example: :StatGauge
 
-        value_name = subtype[:value][type]     # Example: :value
-        value = hash[value_name]               # Example: 37.914
+        value = hash[:value]                   # Example: 37.914
       end
 
       name = schema[:name] ? hash[schema[:name]] : nil
@@ -338,8 +338,6 @@ module Hastur
 
         cf = subtype[:cf][options[:subtype]]   # Example: :StatGauge
         raise "No such subtype as #{options[:subtype]}!" unless cf
-        value_name = subtype[:value][options[:subtype]] # Example: :value
-        # value_name may be nil, so don't raise on nil
       end
 
       segments = segments_for_timestamps(start_timestamp, end_timestamp, granularity)

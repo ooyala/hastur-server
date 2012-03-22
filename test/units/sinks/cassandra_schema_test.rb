@@ -19,7 +19,7 @@ COUNTER_JSON = <<JSON
 {
   "type": "counter",
   "name": "totally.a.counter",
-  "increment": 5,
+  "value": 5,
   "timestamp": 1329858724285438,
   "labels": {
     "c": 1,
