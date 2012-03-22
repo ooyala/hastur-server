@@ -10,7 +10,7 @@ require "multi_json"
 class RegistrationTest < Test::Unit::TestCase
 
   def test_registration
-    @topology.wait :registration, 1
+    @topology[:registration].require_read_count 1, 10
 
     messages = @topology[:registration].output
     assert_equal 1, messages.count
