@@ -72,12 +72,12 @@ EOJSON
   def test_plugin
     msg = Hastur::Message::PluginExec.new(:to => C1UUID, :from => C2UUID, :payload => @plugin_request)
 
-    @topology.wait :registration, 1
+    @topology[:registration].require_read_count 1, 10
 
     rc = msg.send @topology[:direct].socket
     assert rc > -1, "zeromq send must return > -1 (errno: #{ZMQ::Util.error_string})"
 
-    @topology.wait :heartbeat, 2
+    @topology[:heartbeat].require_read_count 2, 10
 
     messages = @topology[:heartbeat].output.pop
     assert_not_nil messages, "should have caught some zmq messages"
