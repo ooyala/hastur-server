@@ -102,19 +102,23 @@ class BringUpTest < Test::Unit::TestCase
 
     @topology.start_all_but :router2svc, :cass_sink2, :client2svc
     sleep 0.01 until sinatra_ready
+
+    # wait for the row to show up in Cassandra
+    wait_for_cassandra_rows(@topology[:cassandra].client, "RegistrationArchive", 1, 5) do
+      flunk "Gave up waiting for registration in cassandra."
+    end
   end
 
   def teardown
-    @topology.stop :cass_sink1, :cass_sink2
+    @topology.stop :cass_sink1
+    @topology.stop :cass_sink2
     @topology.stop_all
   end
 
   def test_bring_up
-
     # Query from 10 minutes ago to 10 minutes from now, just to grab everything
     start_ts = Hastur.timestamp(Time.now.to_i - 600)
     end_ts = Hastur.timestamp(Time.now.to_i + 600)
-
 
     # Start up and test second client
     @topology.start :client2svc
