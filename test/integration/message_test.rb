@@ -23,10 +23,10 @@ class TestClassHasturMessageIntegration < MiniTest::Unit::TestCase
   def zmq_sockopts(s)
     s.setsockopt(ZMQ::LINGER, -1)
     if ZMQ::LibZMQ.version2?
-      s.setsockopt(ZMQ::HWM, 1)
+      s.setsockopt(ZMQ::HWM, 10)
     elsif  ZMQ::LibZMQ.version3?
-      s.setsockopt(ZMQ::SNDHWM, 1)
-      s.setsockopt(ZMQ::RCVHWM, 1)
+      s.setsockopt(ZMQ::SNDHWM, 10)
+      s.setsockopt(ZMQ::RCVHWM, 10)
     end
   end
 
@@ -49,6 +49,8 @@ class TestClassHasturMessageIntegration < MiniTest::Unit::TestCase
       STDERR.write '-'
       break if count == ROUTER_MESSAGES
     end
+
+    sleep 2
 
     push.close
     STDERR.write ' P$ '
@@ -122,7 +124,7 @@ class TestClassHasturMessageIntegration < MiniTest::Unit::TestCase
       end
     end
 
-    sleep 1
+    sleep 2
 
     # start up consumers (sinks)
     PULLER_COUNT.times do |num|
@@ -131,7 +133,7 @@ class TestClassHasturMessageIntegration < MiniTest::Unit::TestCase
       end
     end
 
-    sleep 1
+    sleep 2
 
     # start dealers and produce data (clients)
     DEALER_COUNT.times do |num|
