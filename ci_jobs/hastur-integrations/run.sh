@@ -11,6 +11,8 @@ env
 echo "---------------------------------------"
 
 : ${REPO_ROOT:="$WORKSPACE"}
+export IS_JENKINS="true"
+
 source $HOME/.rvm/scripts/rvm
 
 cd $REPO_ROOT/hastur-server

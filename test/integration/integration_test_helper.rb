@@ -49,7 +49,7 @@ def set_test_alarm(timeout=30)
   # HACK / TODO: this is a dirty, dirty hack to get our tests to at least run in Jenkins
   # the right fix is to do a block/wait like wait_for_cassandra_rows below, but there's a bunch
   # of stuff that will need to churn to make it work consistently. We'll get to it, just not right now.
-  timeout += 60 if ENV['JENKINS_HOME'] and ENV['JENKINS_URL']
+  timeout += 60 if ENV["IS_JENKINS"]
   Signal.trap("ALRM") do
     assert false, "Timed out."
     Thread.list.each { |t| t.kill unless t == Thread.current }
@@ -78,11 +78,13 @@ def create_all_column_families(cassandra)
     File.open(File.join(HASTUR_ROOT, 'tools', 'cassandra', 'create_keyspace.cass')).each do |line|
       unless line =~ /#/ or line.chomp.length == 0
         stdin.puts line
+        sleep 0.1
       end
     end
   end
+  # TODO: Hack - figure out how to do this better
   # cassandra migrations are /really/ slow in jenkins
-  sleep 60 if ENV['JENKINS_HOME'] and ENV['JENKINS_URL']
+  sleep 60 if ENV["IS_JENKINS"]
 end
 
 def wait_for_cassandra_rows(client, cf, count, max_iterations=30)
