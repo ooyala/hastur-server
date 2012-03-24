@@ -73,6 +73,7 @@ end
 
 def create_all_column_families(cassandra)
   cassandra.cli "--batch" do |process,stdin,stdout,stderr|
+    stdin.sync = true
     # create the C* schema
     File.open(File.join(HASTUR_ROOT, 'tools', 'cassandra', 'create_keyspace.cass')).each do |line|
       unless line =~ /#/ or line.chomp.length == 0
