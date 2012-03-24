@@ -92,7 +92,7 @@ class FullPluginTest < Test::Unit::TestCase
     client = @topology[:cassandra].client
     
     # wait for the row to show up in Cassandra
-    wait_for_cassandra_rows(client, "RegistrationArchive", 1, 5) do
+    wait_for_cassandra_rows(client, "RegistrationArchive", 1, 30) do
       flunk "Gave up waiting for registrations in cassandra."
     end
 

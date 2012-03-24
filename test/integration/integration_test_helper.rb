@@ -78,7 +78,6 @@ def create_all_column_families(cassandra)
     File.open(File.join(HASTUR_ROOT, 'tools', 'cassandra', 'create_keyspace.cass')).each do |line|
       unless line =~ /#/ or line.chomp.length == 0
         stdin.puts line
-        sleep 0.1
       end
     end
   end
