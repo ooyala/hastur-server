@@ -10,8 +10,8 @@ module Hastur
       def self.decode_packet(data)
         hash = MultiJson.decode(data, :symbolize_keys => true)
 
-        unless hash.has_key? :_route
-          raise Hastur::PacketDecodingError.new "missing :_route key in JSON" 
+        unless hash.has_key? :type
+          raise Hastur::PacketDecodingError.new "missing :type key in JSON" 
         end
 
         return hash

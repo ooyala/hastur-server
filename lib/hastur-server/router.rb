@@ -69,10 +69,10 @@ module Hastur
     #  :static  - (bool) this route cannot be modified at runtime
     #
     # Examples:
-    # r.route :type => :stat, :src => client_router_sock, :dest => stat_sink_sock
-    # r.route :type => :stat, :src => client_router_sock, :dest => stats_tap_sock
-    # r.route :type => :log,  :src => client_router_sock, :dest => cass_log_sock
-    # r.route :type => :log,  :src => client_router_sock, :dest => file_sink_sock
+    # r.route :type => :counter, :src => client_router_sock, :dest => stat_sink_sock
+    # r.route :type => :counter, :src => client_router_sock, :dest => stats_tap_sock
+    # r.route :type => :log, :src => client_router_sock, :dest => cass_log_sock
+    # r.route :type => :log, :src => client_router_sock, :dest => file_sink_sock
     # r.route(
     #   :type => :log,
     #   :from => '62780b2f-8d12-4840-9c6e-e89dae8cd322',
@@ -232,7 +232,7 @@ module Hastur
             @stats[:type] += 1
             times_routed += 1
 
-          # r.route :to => :stat, :src => client_router_sock, :dest => stat_sink_sock
+          # r.route :to => uuid, :src => client_router_sock, :dest => stat_sink_sock
           elsif r[:to] == to and not r.has_key? :from and not r.has_key? :type
             forward r[:dest], envelope.pack, hastur_message
             @stats[:to] += 1

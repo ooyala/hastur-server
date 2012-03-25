@@ -82,18 +82,12 @@ module Hastur
       end
 
       #
-      # use the '_route' field in a JSON hash to choose a Hastur class via
-      # Hastur::Message's route_class message (which uses a table of route => class)
+      # use the type field in a JSON hash to choose a Hastur class
+      # @param [Hash] a hash of options for building a hastur message
       #
       def hash_to_message(data)
-        route = data.delete(:_route).to_sym
-
-        if klass = Hastur::Message.symbol_to_class(route)
-          payload = MultiJson.encode(data)
-        else
-          payload = data[:payload]
-        end
-
+        klass = Hastur::Message.symbol_to_class(data[:type])
+        payload = MultiJson.encode(data)
         klass.new :from => @uuid, :payload => payload
       end
 
@@ -107,11 +101,12 @@ module Hastur
         elsif smsg = Hastur::Input::Statsd.decode(data)
           _send hash_to_message(smsg)
         elsif cmsg = Hastur::Input::Collectd.decode(data)
+          # collectd packets usually contain multiple values, break them up
           cmsg.each do |msg|
             _send hash_to_message(msg)
           end
         else
-          raise Hastur::UnsupportedError.new "Cannot route raw message: '#{data}'"
+          raise Hastur::UnsupportedError.new "Cannot determine type of raw message: '#{data}'"
         end
       end
 

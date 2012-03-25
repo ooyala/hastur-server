@@ -40,7 +40,7 @@ module Hastur
           value = value_in.to_i
           type = :counter
 
-          if unit == 'c' 
+          if unit == 'c'
             if @counters.has_key? name
               value = @counters[name] += value
             else
@@ -49,9 +49,8 @@ module Hastur
           elsif unit == 'ms'
             type = :gauge
           end
-          
+
           out = {
-            :_route    => :stat,
             :name      => name,
             :type      => type,
             :value     => value,
@@ -65,7 +64,7 @@ module Hastur
           }
 
         end
-        
+
         return out
       end
 

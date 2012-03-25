@@ -122,7 +122,6 @@ module Hastur
           end
 
           {
-            :_route    => :stat,
             :name      => name.join('.'),
             :type      => val[0],
             :value     => val[1],
