@@ -21,21 +21,22 @@ module Hastur
   #
   module Message
     CLASS_TYPE_IDS = {
-      Hastur::Message::Stat         => 1,
-      Hastur::Message::Event        => 2,
-      Hastur::Message::Log          => 3,
-      Hastur::Message::Ack          => 4,
-      Hastur::Message::Error        => 5,
-      Hastur::Message::Rawdata      => 6,
-      Hastur::Message::Heartbeat    => 7,
-      Hastur::Message::PluginExec   => 8,
-      Hastur::Message::Registration => 9,
+      Hastur::Message::Event         => 2,
+      Hastur::Message::Log           => 3,
+      Hastur::Message::Ack           => 4,
+      Hastur::Message::Error         => 5,
+      Hastur::Message::Rawdata       => 6,
+      Hastur::Message::Heartbeat     => 7,
+      Hastur::Message::PluginExec    => 8,
+      Hastur::Message::Registration  => 9,
+      Hastur::Message::Stat::Mark    => 10,
+      Hastur::Message::Stat::Gauge   => 11,
+      Hastur::Message::Stat::Counter => 12,
     }.freeze
 
     TYPE_ID_CLASSES = CLASS_TYPE_IDS.invert.freeze
 
     SYMBOL_CLASSES = {
-      :stat         => Hastur::Message::Stat,
       :event        => Hastur::Message::Event,
       :log          => Hastur::Message::Log,
       :ack          => Hastur::Message::Ack,
@@ -44,6 +45,9 @@ module Hastur
       :heartbeat    => Hastur::Message::Heartbeat,
       :plugin_exec  => Hastur::Message::PluginExec,
       :registration => Hastur::Message::Registration,
+      :mark         => Hastur::Message::Stat::Mark,
+      :gauge        => Hastur::Message::Stat::Gauge,
+      :counter      => Hastur::Message::Stat::Counter,
     }.freeze
 
     CLASS_SYMBOLS = SYMBOL_CLASSES.invert.freeze
