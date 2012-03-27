@@ -11,7 +11,7 @@ require 'open-uri'
 
 class BringUpTest < Test::Unit::TestCase
   def setup
-    set_test_alarm
+    set_test_alarm(100)
     sinatra_ready = false
     sinatra_ready_proc = proc do |line|
       sinatra_ready = true if line =~ /== Sinatra.* has taken the stage/
@@ -122,7 +122,7 @@ class BringUpTest < Test::Unit::TestCase
 
     # Start up and test second client
     @topology.start :client2svc
-    sleep 1
+    sleep 5
 
     url1 = "http://127.0.0.1:#{@sinatra_port}/data/registration/json?uuid=#{C1UUID}&start=#{start_ts}&end=#{end_ts}"
     c1_messages = open(url1).read
