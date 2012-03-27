@@ -12,7 +12,7 @@ require 'hastur'
 
 class QueryServerTest < Test::Unit::TestCase
   def setup
-    set_test_alarm
+    set_test_alarm(100)
     sinatra_ready = false
     sinatra_ready_proc = proc do |line|
       sinatra_ready = true if line =~ /== Sinatra.* has taken the stage/
