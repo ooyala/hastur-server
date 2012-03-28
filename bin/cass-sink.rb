@@ -18,6 +18,14 @@ opts = Trollop::options do
   opt :hwm,       "ZMQ message queue size", :default => 1,                         :type => :int
 end
 
+unless opts[:sinks].flatten.all? { |uri| Hastur::Util.valid_zmq_uri? uri }
+  Trollop::die :sinks, "must be in this format: protocol://hostname:port.  Sinks: #{opts[:sinks].inspect}"
+end
+
+unless opts[:acks_to].flatten.all? { |uri| Hastur::Util.valid_zmq_uri? uri }
+  Trollop::die :acks_to, "must be in this format: protocol://hostname:port"
+end
+
 ctx = ZMQ::Context.new
 
 msg_socket = Hastur::ZMQUtils.connect_socket(ctx, ::ZMQ::PULL, opts[:sinks].flatten)

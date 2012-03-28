@@ -9,7 +9,6 @@ require 'uuid'
 require 'socket'
 require 'termite'
 
-require "uuid"
 require "hastur-server/zmq_utils"
 require "hastur-server/util"
 require "hastur-server/client/service"
@@ -27,7 +26,7 @@ opts = Trollop::options do
   opt :ack_timeout, "Time between unacked message resends", :default => 10
 end
 
-unless opts[:router].any? { |uri| Hastur::Util.valid_zmq_uri? uri }
+unless opts[:router].all? { |uri| Hastur::Util.valid_zmq_uri? uri }
   Trollop::die :router, "must be in this format: protocol://hostname:port"
 end
 
