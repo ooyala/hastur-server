@@ -51,4 +51,6 @@ EOS
   s.add_runtime_dependency "msgpack"
   s.add_runtime_dependency "hastur", "~>1.0.1"
   s.add_runtime_dependency "algorithms"
+  s.add_runtime_dependency "celluloid"
+  s.add_runtime_dependency "dcell"
 end
