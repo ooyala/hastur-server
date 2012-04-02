@@ -291,7 +291,7 @@ module Hastur
           msg = Hastur::Message::Heartbeat.new(
             :from => @uuid,
             :data => {
-              :name           => "hastur.client.heartbeat",
+              :name           => "hastur.agent.heartbeat",
               :value          => delta,
               :timestamp      => now,
               :labels         => {

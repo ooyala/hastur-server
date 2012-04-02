@@ -40,7 +40,7 @@ class MiniHeartbeatTest < Test::Unit::TestCase
 
     # work with raw messages for now
     payloads  = messages.map { |m| MultiJson.decode(m[-1]) }
-    heartbeat_payloads = payloads.fuzzy_filter("name" => "hastur.client.heartbeat")
+    heartbeat_payloads = payloads.fuzzy_filter("name" => "hastur.agent.heartbeat")
     envelopes = messages.map { |m| m[-2].unpack("H*") }
 
     assert_equal 2, messages.count, "Should have exactly two captured messages"

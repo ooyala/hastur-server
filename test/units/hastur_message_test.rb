@@ -138,4 +138,3 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     Hastur::Message::Registration
   end
 end
-

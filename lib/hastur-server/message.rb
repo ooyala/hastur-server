@@ -127,6 +127,33 @@ module Hastur
       klass = type_id_to_class envelope.type
       klass.new :envelope => envelope, :payload => payload_msg
     end
+
+    #
+    # Creates a new Hastur::Message from a data Hash,
+    # with overrides.
+    #
+    # e.g.
+    #  msg = Hastur::Message.from_hash(:uuid => uuid,
+    #              :type => :counter, :value => 7,
+    #              :labels => { "a" => "b" })
+    #
+    def self.from_hash(data_hash, options = {})
+      # Make sure string keys work even if symbols are supplied
+      options.keys.each { |k| options[k.to_s] = options[k] if k.is_a?(Symbol) }
+      data_hash.keys.each { |k| data_hash[k.to_s] = data_hash[k] if k.is_a?(Symbol) }
+
+      envelope = Hastur::Envelope.new \
+        :version   => ::Hastur::Envelope::VERSION,
+        :type_id   => options["type_id"] || options["type"] || data_hash["type_id"] || data_hash["type"],
+        :to        => options["to"] || data_hash["to"],
+        :from      => options["from"] || data_hash["from"],
+        :ack       => options["ack"] || data_hash["ack"],
+        :resend    => options["resend"] || data_hash["resend"],
+        :sequence  => options["sequence"] || data_hash["sequence"],
+        :timestamp => options["timestamp"] || data_hash["timestamp"],
+        :uptime    => options["uptime"] || data_hash["uptime"],
+        :hmac      => options["hmac"] || data_hash["hmac"],
+        :routers   => []
+    end
   end
 end
-

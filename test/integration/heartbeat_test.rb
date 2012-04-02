@@ -80,7 +80,7 @@ class HeartbeatTest < Test::Unit::TestCase
 
     # verify that the messages on the heartbeat shims are heartbeat messages
     assert_equal(payloads.count, payloads.fuzzy_filter("value" => Fixnum).count)
-    assert_equal(payloads.count, payloads.fuzzy_filter("name" => "hastur.client.heartbeat").count)
+    assert_equal(payloads.count, payloads.fuzzy_filter("name" => "hastur.agent.heartbeat").count)
 
     c1uuid = C1UUID.gsub('-', '')
     c2uuid = C2UUID.gsub('-', '')
