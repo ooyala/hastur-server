@@ -33,7 +33,7 @@ module Hastur
     #
     def filters
       # make it difficult to mess with the list directly
-      @filters.map do |f| f.dup end
+      @filters.map(&:dup)
     end
 
     #
