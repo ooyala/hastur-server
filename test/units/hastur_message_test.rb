@@ -12,12 +12,13 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
 
   # this should be consistent .... if another json encoder changes the order it will break
   STAT = {
+    :type      => "counter",
     :name      => "foo.bar",
     :value     => 1024,
     :timestamp => 1329865874428623,
     :labels    => { :blahblah => 456, :units => "s" }
   }
-  STAT_JSON = '{"name":"foo.bar","value":1024,"timestamp":1329865874428623,"labels":{"blahblah":456,"units":"s"}}'
+  STAT_JSON = '{"type":"counter","name":"foo.bar","value":1024,"timestamp":1329865874428623,"labels":{"blahblah":456,"units":"s"}}'
 
   ENVELOPE = {
     :to        => NONE_UUID,
@@ -92,8 +93,8 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   end
 
   def test_stat
-    e = Hastur::Envelope.new :type => :stat, :to => NONE_UUID, :from => SecureRandom.uuid
-    hmsg = Hastur::Message::Stat.new :envelope => e, :data => STAT
+    e = Hastur::Envelope.new :type => :counter, :to => NONE_UUID, :from => SecureRandom.uuid
+    hmsg = Hastur::Message::Stat::Counter.new :envelope => e, :data => STAT
     refute_nil hmsg
     assert_kind_of Hastur::Message::Base, hmsg
     refute_nil hmsg.to_s
@@ -103,22 +104,24 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
   end
 
   def test_const_methods
-    assert Hastur::Message.symbol?(:stat)
+    assert Hastur::Message.symbol?(:counter)
+    assert Hastur::Message.symbol?(:gauge)
+    assert Hastur::Message.symbol?(:mark)
     assert Hastur::Message.symbol?(:log)
     assert Hastur::Message.symbol?(:error)
     assert Hastur::Message.symbol?(:registration)
     refute Hastur::Message.symbol?(:foobar)
     refute Hastur::Message.type_id?(0)
-    assert Hastur::Message.type_id?(1)
-    assert Hastur::Message.type_id?(9)
-    refute Hastur::Message.type_id?(10)
+    assert Hastur::Message.type_id?(2), "2 must be a message type"
+    assert Hastur::Message.type_id?(9), "9 must be a message type"
+    refute Hastur::Message.type_id?(15), "15 must not be a message type"
 
-    assert_equal Hastur::Message::Stat, Hastur::Message.symbol_to_class(:stat)
-    assert_equal 1, Hastur::Message.symbol_to_type_id(:stat)
-    assert_equal Hastur::Message::Stat, Hastur::Message.type_id_to_class(1)
-    assert_equal :stat, Hastur::Message.type_id_to_symbol(1)
-    refute_equal Hastur::Message::Stat, Hastur::Message.symbol_to_class(:error)
-    refute_equal Hastur::Message::Stat, Hastur::Message.type_id_to_class(9)
+    assert_equal Hastur::Message::Stat::Counter, Hastur::Message.symbol_to_class(:counter)
+    assert_equal 12, Hastur::Message.symbol_to_type_id(:counter)
+    assert_equal Hastur::Message::Stat::Gauge, Hastur::Message.type_id_to_class(11)
+    assert_equal :mark, Hastur::Message.type_id_to_symbol(10)
+    refute_equal Hastur::Message::Stat::Gauge, Hastur::Message.symbol_to_class(:error)
+    refute_equal Hastur::Message::Stat::Counter, Hastur::Message.type_id_to_class(9)
   end
 
   def test_error
