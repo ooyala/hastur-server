@@ -53,7 +53,7 @@ class TestClassHasturEnvelope < MiniTest::Unit::TestCase
     end
 
     acked = Hastur::Envelope.new(
-      :type => :stat,
+      :type => :counter,
       :to   => NONE_UUID,
       :from => SecureRandom.uuid.split(/-/).join,
       :ack  => true
@@ -62,7 +62,7 @@ class TestClassHasturEnvelope < MiniTest::Unit::TestCase
     assert_equal NONE_UUID, acked.to
 
     noack = Hastur::Envelope.new(
-      :type => :stat,
+      :type => :counter,
       :to   => NONE_UUID,
       :from => SecureRandom.uuid,
       :ack  => false
