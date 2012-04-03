@@ -129,6 +129,8 @@ module Hastur
 
       @sockets[id] = []
       @filters << [ id, filter ]
+
+      id
     end
 
     #
