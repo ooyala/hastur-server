@@ -119,5 +119,27 @@ module Hastur
       end
       socket
     end
+
+    #
+    # Find a useful socket identity, falling back to the memory address of the socket
+    # if it no identity was assigned with setsockopt(ZMQ::IDENTITY, ""). Since identity
+    # can't be changed after connect/bind, it's unlikely this will ever change during runtime.
+    # @param [ZMQ::Socket] socket to identify
+    # @return [String] id
+    #
+    def self.sockid(socket)
+      if socket.kind_of? ZMQ::Socket
+        rc = socket.getsockopt(ZMQ::IDENTITY, id=[])
+        if ZMQ::Util.resultcode_ok?(rc) and id[0]
+          id[0]
+        else
+          socket.socket.address
+        end
+      elsif socket.kind_of? FFI::Pointer
+        socket.address
+      else
+        raise ArgumentError.new "Cannot generate a useful identity for the socket."
+      end
+    end
   end
 end
