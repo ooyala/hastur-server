@@ -21,7 +21,7 @@ class BringDownTest < Test::Unit::TestCase
 public
 
   def setup
-    set_test_alarm(30) # helper
+    set_test_alarm(100) # helper
 
     @client_udp_port1 = Nodule::Util.random_udp_port
     @client_udp_port2 = Nodule::Util.random_udp_port
