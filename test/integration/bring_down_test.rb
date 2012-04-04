@@ -17,11 +17,16 @@ require 'nodule/zeromq'
 require 'nodule/util'
 
 class BringDownTest < Test::Unit::TestCase
+
+public
+
   def setup
     set_test_alarm(30) # helper
 
     @client_udp_port1 = Nodule::Util.random_udp_port
     @client_udp_port2 = Nodule::Util.random_udp_port
+    @heartbeat_client1 = "heartbeat-client1"
+    @heartbeat_client2 = "heartbeat-client2"
 
     sinatra_ready = false
     sinatra_ready_proc = proc do |line|
@@ -109,12 +114,36 @@ class BringDownTest < Test::Unit::TestCase
   end
 
   def test_plugin
-    heartbeat_client1 = "heartbeat-client1"
-    heartbeat_client2 = "heartbeat-client2"
-    send_heartbeat(heartbeat_client1, heartbeat_client2)
+    # send heartbeat to both clients
+    send_heartbeat
 
-    sleep 3
+    # ensure that both heartbeats were received
+    ensure_heartbeats(true, 1, 1)
+    
+    # shut a client down
+    @topology.stop :client2svc
+    sleep 5
+    
+    # resend heartbeats to both clients
+    send_heartbeat
 
+    # ensure that only one heartbeat was received
+    ensure_heartbeats(true, 2, 1)
+
+    # start a client
+    @topology.start :client2svc
+    sleep 1
+
+    # resend heartbeats to both clients
+    send_heartbeat
+
+    # ensure that both heartbeats were received
+    ensure_heartbeats(true, 3, 2)
+  end
+
+private
+
+  def ensure_heartbeats(both, num_msgs_1, num_msgs_2)
     # Query from 10 minutes ago to 10 minutes from now, just to grab everything
     start_ts = Hastur.timestamp(Time.now.to_i - 600)
     end_ts = Hastur.timestamp(Time.now.to_i + 600)
@@ -124,32 +153,33 @@ class BringDownTest < Test::Unit::TestCase
     c1_messages = open(url1).read
     c2_messages = open(url2).read
 
+    # ensure that there is at least something in the C*
     assert_json_not_empty c1_messages
     assert_json_not_empty c2_messages
-    
+   
+    # attempt to parse the data
     c1_hashes = MultiJson.decode(c1_messages)
     c2_hashes = MultiJson.decode(c2_messages)
 
-    c1_hashes[heartbeat_client1].keys.each do |timestamp|
-      assert_equal(heartbeat_client1, c1_hashes[heartbeat_client1][timestamp]["name"])
+    # check for accurate data
+    assert_not_nil(c1_hashes[@heartbeat_client1])
+    assert_equal(num_msgs_1, c1_hashes[@heartbeat_client1].keys.size)
+    c1_hashes[@heartbeat_client1].keys.each do |timestamp|
+      assert_equal(@heartbeat_client1, c1_hashes[@heartbeat_client1][timestamp]["name"])
     end
-
-    c2_hashes[heartbeat_client2].keys.each do |timestamp|
-      assert_equal(heartbeat_client2, c2_hashes[heartbeat_client2][timestamp]["name"])
+    # check for the second client data if needed
+    assert_not_nil(c2_hashes[@heartbeat_client2])
+    assert_equal(num_msgs_2, c2_hashes[@heartbeat_client2].keys.size)
+    c2_hashes[@heartbeat_client2].keys.each do |timestamp|
+      assert_equal(@heartbeat_client2, c2_hashes[@heartbeat_client2][timestamp]["name"])
     end
-
-    # TODO(viet): shut a client down
-    # TODO(viet): resend heartbeats to both clients
-    # TODO(viet): ensure that only one heartbeat was received
-    # TODO(viet): start a client
-    # TODO(viet): resent heartbeats to both clients
-    # TODO(viet): ensure that both heartbeats were received
   end
 
-  def send_heartbeat(heartbeat_client1, heartbeat_client2)
+  def send_heartbeat
     Hastur.udp_port = @client_udp_port1
-    Hastur.heartbeat( heartbeat_client1 )
+    Hastur.heartbeat( @heartbeat_client1 )
     Hastur.udp_port = @client_udp_port2
-    Hastur.heartbeat( heartbeat_client2 )
+    Hastur.heartbeat( @heartbeat_client2 )
+    sleep 3
   end
 end
