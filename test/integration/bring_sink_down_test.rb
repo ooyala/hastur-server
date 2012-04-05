@@ -140,7 +140,7 @@ public
 
     # start a client
     @topology.start :cass_sink1
-    sleep 1
+    ENV["IS_JENKINS"].nil? ? (sleep 1) : (sleep 10)
 
     # resend heartbeats to both clients
     send_2_heartbeat(@client_udp_port1, @client_udp_port2, @heartbeat_client1, @heartbeat_client2)
