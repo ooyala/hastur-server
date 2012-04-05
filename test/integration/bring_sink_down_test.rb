@@ -16,7 +16,7 @@ require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'nodule/util'
 
-class BringDownTest < Test::Unit::TestCase
+class BringSinkDownTest < Test::Unit::TestCase
 
 public
 
@@ -82,7 +82,7 @@ public
         '--port',         @client_udp_port2,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
-      :regsvc       => Nodule::Process.new(
+      :cass_sink1     => Nodule::Process.new(
         HASTUR_CASS_SINK_BIN,
         '--sinks',       :heartbeat, :registration,
         '--cassandra',   :cassandra,
@@ -90,7 +90,15 @@ public
         '--hwm',         100,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
       ),
-      :query_server => Nodule::Process.new(HASTUR_QUERY_SERVER_BIN,
+      :cass_sink2     => Nodule::Process.new(
+        HASTUR_CASS_SINK_BIN,
+        '--sinks',       :heartbeat, :registration,
+        '--cassandra',   :cassandra,
+        '--acks-to',     :direct,
+        '--hwm',         100,
+        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
+      ),
+      :query_server   => Nodule::Process.new(HASTUR_QUERY_SERVER_BIN,
         '--cassandra', :cassandra, '--port', @sinatra_port.to_s,
         :stdout => :greenio, :stderr => [sinatra_ready_proc, :greenio], :verbose => :cyanio
       ),
@@ -113,31 +121,31 @@ public
     @topology.stop_all
   end
 
-  def test_plugin
+  def test_sink_restart
     # send heartbeat to both clients
     send_2_heartbeat(@client_udp_port1, @client_udp_port2, @heartbeat_client1, @heartbeat_client2)
 
     # ensure that both heartbeats were received
     ensure_heartbeats(true, @heartbeat_client1, @heartbeat_client2, 1, 1, @sinatra_port)
-    
+
     # shut a client down
-    @topology.stop :client2svc
+    @topology.stop :cass_sink1
     sleep 5
-    
+
     # resend heartbeats to both clients
     send_2_heartbeat(@client_udp_port1, @client_udp_port2, @heartbeat_client1, @heartbeat_client2)
 
     # ensure that only one heartbeat was received
-    ensure_heartbeats(true, @heartbeat_client1, @heartbeat_client2, 2, 1, @sinatra_port)
+    ensure_heartbeats(true, @heartbeat_client1, @heartbeat_client2, 2, 2, @sinatra_port)
 
     # start a client
-    @topology.start :client2svc
+    @topology.start :cass_sink1
     sleep 1
 
     # resend heartbeats to both clients
     send_2_heartbeat(@client_udp_port1, @client_udp_port2, @heartbeat_client1, @heartbeat_client2)
 
     # ensure that both heartbeats were received
-    ensure_heartbeats(true, @heartbeat_client1, @heartbeat_client2, 3, 2, @sinatra_port)
+    ensure_heartbeats(true, @heartbeat_client1, @heartbeat_client2, 3, 3, @sinatra_port)
   end
 end
