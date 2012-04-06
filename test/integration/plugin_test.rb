@@ -31,7 +31,6 @@ EOJSON
       :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
-      :rawdata       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :direct        => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
       :control       => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
       :routersvc     => Nodule::Process.new(
@@ -45,7 +44,6 @@ EOJSON
         '--log',           :log,
         '--error',         :error,
         '--direct',        :direct,
-        '--rawdata',       :rawdata,
         '--control',       :control,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
@@ -70,7 +68,7 @@ EOJSON
   end
 
   def test_plugin
-    msg = Hastur::Message::PluginExec.new(:to => C1UUID, :from => C2UUID, :payload => @plugin_request)
+    msg = Hastur::Message::Cmd::PluginV1.new(:to => C1UUID, :from => C2UUID, :payload => @plugin_request)
 
     @topology[:registration].require_read_count 1, 10
 
@@ -85,7 +83,7 @@ EOJSON
     envelope = Hastur::Envelope.parse messages[-2]
     assert_not_nil envelope, "should have captured a valid envelope"
 
-    message = Hastur::Message::Heartbeat.new :envelope => envelope, :payload => messages[-1]
+    message = Hastur::Message::HB::Agent.new :envelope => envelope, :payload => messages[-1]
     assert_not_nil message, "should have captured a valid message"
 
     data = message.decode
