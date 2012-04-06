@@ -41,10 +41,10 @@ module Hastur
             error = :structured
           when String
             error = :raw
-            data = opts.delete(:data)
+            data = data
           else
             error = :undefined
-            data = opts.delete(:data).inspect
+            data = data.inspect
         end
 
         @payload = MultiJson.encode({:error => error, :data  => data})
