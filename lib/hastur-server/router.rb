@@ -130,7 +130,7 @@ module Hastur
         elsif Hastur::Message.symbol? opts[:type]
           route[:type] = Hastur::Message.symbol_to_type_id(opts[:type])
         else
-          raise ArgumentError.new ":type must be a valid Hastur::Message type"
+          raise ArgumentError.new ":type must be a valid Hastur::Message type, '#{opts[:type]}' is not valid."
         end
       end
 

@@ -1,7 +1,3 @@
-require 'ffi-rzmq'
-require 'hastur-server/exception'
-require 'hastur-server/util'
-
 module Hastur
   module Message
     #
@@ -21,6 +17,8 @@ module Hastur
       # @option opts [String] :payload a packed Envelope
       #
       def initialize(opts)
+        raise ArgumentError.new "Only hash arguments are supported." unless opts.kind_of? Hash
+
         if opts.has_key? :data
           data = opts[:data]
         elsif opts.has_key? :payload
@@ -47,18 +45,29 @@ module Hastur
       end
 
       #
-      # Return the envelope of the acked message.
+      # Serialize the envelope into its binary form and put it in the payload.
+      # @param [Hastur::Envelope] envelope to serialize
+      # @return [String] binary envelope payload
       #
-      def acked
-        decode
-      end
-
       def encode(data)
         @payload = data.pack
       end
 
+      #
+      # Deserialize the binary envelope in the message payload.
+      # @param [String] binary envelope payload
+      # @string [Hastur::Envelope] envelope to serialize
+      #
       def decode(payload=@payload)
         Hastur::Envelope.parse payload
+      end
+
+      #
+      # Return the envelope of the acked message.
+      # @return [Hastur::Envelope] envelope of the acked message
+      #
+      def acked
+        decode @payload
       end
     end
   end

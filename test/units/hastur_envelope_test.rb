@@ -13,7 +13,7 @@ class TestClassHasturEnvelope < MiniTest::Unit::TestCase
   ENVELOPE = {
     :to        => NONE_UUID,
     :from      => "be7f4980-6a1f-4120-b0ce-26de709afcf6",
-    :type      => :rawdata,
+    :type      => :log,
     :timestamp => 1329865874428623,
     :uptime    => 12.400000000000000,
     :sequence  => 88888
@@ -23,7 +23,7 @@ class TestClassHasturEnvelope < MiniTest::Unit::TestCase
     e = Hastur::Envelope.new(
       :to        => NONE_UUID,
       :from      => FROM_UUID,
-      :type      => :rawdata,
+      :type      => :log,
       :timestamp => 1328301436948527,
       :uptime    => 12.401439189910889,
       :sequence  => 1234

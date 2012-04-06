@@ -1,7 +1,3 @@
-require 'ffi-rzmq'
-require 'hastur-server/exception'
-require 'hastur-server/util'
-
 module Hastur
   module Message
     #
@@ -14,12 +10,7 @@ module Hastur
     #   s = Hastur::Message::Error.new e
     # end
     #
-    class Error < Base
-      def initialize(opts)
-        opts[:to] ||= '00000000-0000-0000-0000-000000000000'
-        super(opts)
-      end
-
+    class Error < Simple
       #
       # Always JSON encode any data in an Error, because it may be malformed
       # or even (accidentally) malicious data.  The transmitted JSON should always
@@ -32,6 +23,9 @@ module Hastur
       #   Array / Hash -> JSON encoded -> base64
       #   String -> base64
       #   * -> .inspect -> base64
+      #
+      # @param [Object] data to include in the message payload
+      # @return [String] JSON-encoded data
       #
       def encode(data)
         case data

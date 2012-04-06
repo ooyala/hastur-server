@@ -4,15 +4,11 @@ require 'hastur-server/exception'
 require 'hastur-server/util'
 require 'hastur-server/envelope'
 require 'hastur-server/message/base'
-require 'hastur-server/message/stat'
-require 'hastur-server/message/event'
-require 'hastur-server/message/log'
 require 'hastur-server/message/ack'
+require 'hastur-server/message/cmd'
 require 'hastur-server/message/error'
-require 'hastur-server/message/rawdata'
-require 'hastur-server/message/heartbeat'
-require 'hastur-server/message/plugin_exec'
-require 'hastur-server/message/registration'
+require 'hastur-server/message/event'
+require 'hastur-server/message/noop'
 
 module Hastur
   #
@@ -20,18 +16,46 @@ module Hastur
   # and its subclasses, e.g. Hastur::Message::Error.
   #
   module Message
+    # these classes don't have any extra logic, so they don't get their own files
+    class Log        < Simple ; end
+    module Reg
+      class Agent    < Simple ; end
+      class Process  < Simple ; end
+      class PluginV1 < Simple ; end
+      class Facter   < Simple ; end
+    end
+    module HB
+      class Agent    < Simple ; end
+      class Process  < Simple ; end
+      class PluginV1 < Simple ; end
+    end
+    module Stat
+      class Mark     < Simple ; end
+      class Gauge    < Simple ; end
+      class Counter  < Simple ; end
+    end
+
     CLASS_TYPE_IDS = {
-      Hastur::Message::Event         => 2,
-      Hastur::Message::Log           => 3,
-      Hastur::Message::Ack           => 4,
-      Hastur::Message::Error         => 5,
-      Hastur::Message::Rawdata       => 6,
-      Hastur::Message::Heartbeat     => 7,
-      Hastur::Message::PluginExec    => 8,
-      Hastur::Message::Registration  => 9,
-      Hastur::Message::Stat::Mark    => 10,
-      Hastur::Message::Stat::Gauge   => 11,
-      Hastur::Message::Stat::Counter => 12,
+      # basic types
+      Hastur::Message::Event          => 1,
+      Hastur::Message::Log            => 2,
+      Hastur::Message::Ack            => 3,
+      Hastur::Message::Error          => 4,
+      # stats
+      Hastur::Message::Stat::Mark     => 10,
+      Hastur::Message::Stat::Gauge    => 11,
+      Hastur::Message::Stat::Counter  => 12,
+      # registrations
+      Hastur::Message::Reg::Agent     => 20,
+      Hastur::Message::Reg::Process   => 21,
+      Hastur::Message::Reg::PluginV1  => 22,
+      Hastur::Message::Reg::Facter    => 23,
+      # heartbeats
+      Hastur::Message::HB::Agent      => 30,
+      Hastur::Message::HB::Process    => 31,
+      Hastur::Message::HB::PluginV1   => 32,
+      # commands
+      Hastur::Message::Cmd::PluginV1  => 40,
     }.freeze
 
     TYPE_ID_CLASSES = CLASS_TYPE_IDS.invert.freeze
@@ -41,13 +65,16 @@ module Hastur
       :log          => Hastur::Message::Log,
       :ack          => Hastur::Message::Ack,
       :error        => Hastur::Message::Error,
-      :rawdata      => Hastur::Message::Rawdata,
-      :heartbeat    => Hastur::Message::Heartbeat,
-      :plugin_exec  => Hastur::Message::PluginExec,
-      :registration => Hastur::Message::Registration,
       :mark         => Hastur::Message::Stat::Mark,
       :gauge        => Hastur::Message::Stat::Gauge,
       :counter      => Hastur::Message::Stat::Counter,
+      :reg_agent    => Hastur::Message::Reg::Agent,
+      :reg_process  => Hastur::Message::Reg::Process,
+      :reg_pluginv1 => Hastur::Message::Reg::PluginV1,
+      :hb_agent     => Hastur::Message::HB::Agent,
+      :hb_process   => Hastur::Message::HB::Process,
+      :hb_pluginv1  => Hastur::Message::HB::PluginV1,
+      :cmd_pluginv1 => Hastur::Message::Cmd::PluginV1,
     }.freeze
 
     CLASS_SYMBOLS = SYMBOL_CLASSES.invert.freeze
@@ -90,7 +117,7 @@ module Hastur
 
     #
     # receive a message from a ZeroMQ socket and return an appropriate Hastur::Message::* class,
-    # 
+    #
     # object = Hastur::Message.recv(@socket)
     # object.envelope # Hastur::Envelope
     # object.payload  # usually JSON

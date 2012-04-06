@@ -1,18 +1,23 @@
-require 'ffi-rzmq'
-require 'hastur-server/exception'
-require 'hastur-server/util'
-
 module Hastur
   module Message
     #
-    # base class for the various Hastur::Message types
+    # base methods for the various Hastur::Message types
     #
     class Base
       attr_reader :envelope, :payload
       attr_accessor :zmq_parts
 
-      # this should only really ever get called via super() in the
-      # subclasses below
+      #
+      # Create a new Hastur::Message.
+      #
+      # @param [Hash{Symbol => Object}] opts
+      # @option opts [String] :to destination UUID, 36-byte string form
+      # @option opts [String] :from sending UUID, 36-byte string form
+      # @option opts [Hastur::Envelope] :envelope a pre-initialized envelope
+      # @option opts [String] :data data structure of the message body, will be serialized with :encode
+      # @option opts [String] :payload serialized data of the message
+      # @option opts [Array<ZMQ::Message>] :zmq_parts zeromq message parts to pre-pend
+      #
       def initialize(opts)
         raise ArgumentError.new "Only hash arguments are supported." unless opts.kind_of? Hash
 
@@ -56,7 +61,7 @@ module Hastur
 
       #
       # WARNING: send() is going to be renamed to "transmit" soon! (al, 2012-03-06)
-      # 
+      #
       # send the message on a ZeroMQ socket. This is not particular about what kind of ZeroMQ socket.
       # Care is taken to try to use ZMQ::Message as-is without converting to/from strings until it's
       # necessary. Generally this only helps with router envelopes where they exist, since ZMQ::Message's
@@ -171,6 +176,17 @@ module Hastur
       def encode(data)
         raise ArgumentError.new "argument must respond to :to_hash" unless data.respond_to?(:to_hash)
         @payload = MultiJson.encode data
+      end
+    end
+
+    #
+    # Many/most message classes have the exact same initializer. They should subclass Simple instead.
+    #
+    class Simple < Base
+      def initialize(opts)
+        raise ArgumentError.new "Only hash arguments are supported." unless opts.kind_of? Hash
+        opts[:to] ||= '00000000-0000-0000-0000-000000000000'
+        super(opts)
       end
     end
   end

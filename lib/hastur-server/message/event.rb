@@ -1,16 +1,9 @@
-require 'ffi-rzmq'
-require 'hastur-server/exception'
-require 'hastur-server/util'
-
 module Hastur
   module Message
-    #
-    # a general event
-    #
-    class Event < Base
+    class Event < Simple
       def initialize(opts)
+        raise ArgumentError.new "Only hash arguments are supported." unless opts.kind_of? Hash
         opts[:ack] = true unless opts.has_key?(:ack)
-        opts[:to]  ||= '00000000-0000-0000-0000-000000000000'
         super(opts)
       end
     end

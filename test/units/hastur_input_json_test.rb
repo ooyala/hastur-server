@@ -18,11 +18,11 @@ class TestHasturInputJSON < MiniTest::Unit::TestCase
   end
 
   def test_json_doesnt_match
-    stat = Hastur::Input::JSON.decode("{\"type\": \"rawdata\", \"params\": {\"foo\": \"bar\"}}")
-    refute_nil stat, "should not return nil when fed valid JSON with correct :method and :params"
+    stat = Hastur::Input::JSON.decode("{\"type\": \"log\", \"params\": {\"foo\": \"bar\"}}")
+    refute_nil stat, "should not return nil when fed valid JSON with correct type and params"
 
     stat = Hastur::Input::JSON.decode("{\"foo\": \"bar\"}")
-    assert_nil stat, "should return nil when fed valid JSON that does not have :method and :params"
+    assert_nil stat, "should return nil when fed valid JSON that does not have type and params"
 
     stat = Hastur::Input::JSON.decode("{globs:1|c")
     assert_nil stat, "should return nil when fed invalid JSON"
