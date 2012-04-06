@@ -14,6 +14,9 @@ module Hastur
           raise Hastur::PacketDecodingError.new "missing :type key in JSON" 
         end
 
+        # type should always be a symbol
+        hash[:type] = hash[:type].to_sym
+
         return hash
       end
 
