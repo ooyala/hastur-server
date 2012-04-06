@@ -21,18 +21,17 @@ hastur-router.rb - route to/from Hastur clients
 
   Options:
 EOS
-  opt :uuid,           "Router UUID (for logging)",      :type => String
-  opt :hwm,            "ZeroMQ message queue depth",     :default => 1
-  opt :router,         "Router (client) URI   (ROUTER)", :default => "tcp://*:8126"
-  opt :stat,           "Stat sink URI           (PUSH)", :default => "tcp://*:8127"
-  opt :event,          "Event sink URI          (PUSH)", :default => "tcp://*:8128"
-  opt :log,            "Log sink URI            (PUSH)", :default => "tcp://*:8129"
-  opt :error,          "Error sink URI          (PUSH)", :default => "tcp://*:8130"
-  opt :rawdata,        "Rawdata sink URI        (PUSH)", :default => "tcp://*:8131"
-  opt :heartbeat,      "Heartbeat sink URI      (PUSH)", :default => "tcp://*:8132"
-  opt :registration,   "Registration sink URI   (PUSH)", :default => "tcp://*:8133"
-  opt :direct,         "Direct routing URI      (PULL)", :default => "tcp://*:8134"
-  opt :control,        "Router control RPC URI   (REP)", :default => "tcp://127.0.0.1:8135"
+  opt :uuid,         "Router UUID (for logging)",      :type => String
+  opt :hwm,          "ZeroMQ message queue depth",     :default => 1
+  opt :router,       "Router (client) URI   (ROUTER)", :default => "tcp://*:8126"
+  opt :stat,         "Stat sink URI           (PUSH)", :default => "tcp://*:8129"
+  opt :event,        "Event sink URI          (PUSH)", :default => "tcp://*:8130"
+  opt :log,          "Log sink URI            (PUSH)", :default => "tcp://*:8131"
+  opt :error,        "Error sink URI          (PUSH)", :default => "tcp://*:8132"
+  opt :heartbeat,    "Heartbeat sink URI      (PUSH)", :default => "tcp://*:8134"
+  opt :registration, "Registration sink URI   (PUSH)", :default => "tcp://*:8135"
+  opt :direct,       "Direct routing URI      (PULL)", :default => "tcp://*:8136"
+  opt :control,      "Router control RPC URI   (REP)", :default => "tcp://127.0.0.1:8137"
 end
 
 ctx = ZMQ::Context.new
@@ -43,7 +42,6 @@ sockets = {
    :event          => ctx.socket(ZMQ::PUSH),
    :log            => ctx.socket(ZMQ::PUSH),
    :error          => ctx.socket(ZMQ::PUSH),
-   :rawdata        => ctx.socket(ZMQ::PUSH),
    :heartbeat      => ctx.socket(ZMQ::PUSH),
    :registration   => ctx.socket(ZMQ::PUSH),
    :direct         => ctx.socket(ZMQ::PULL),
@@ -68,14 +66,19 @@ R = Hastur::Router.new(opts[:uuid], :error_socket => sockets[:error])
   end
 end
 
-# Client -> Sink static routes
-R.route :type => :stat,         :src => sockets[:router], :dest => sockets[:stat],         :static => true
+# Client -> Sink static routes, in order of expected frequency since they're run in insertion order
+R.route :type => :counter,      :src => sockets[:router], :dest => sockets[:stat],         :static => true
+R.route :type => :gauge,        :src => sockets[:router], :dest => sockets[:stat],         :static => true
 R.route :type => :event,        :src => sockets[:router], :dest => sockets[:event],        :static => true
 R.route :type => :log,          :src => sockets[:router], :dest => sockets[:log],          :static => true
 R.route :type => :error,        :src => sockets[:router], :dest => sockets[:error],        :static => true
-R.route :type => :rawdata,      :src => sockets[:router], :dest => sockets[:rawdata],      :static => true
-R.route :type => :heartbeat,    :src => sockets[:router], :dest => sockets[:heartbeat],    :static => true
-R.route :type => :registration, :src => sockets[:router], :dest => sockets[:registration], :static => true
+R.route :type => :mark,         :src => sockets[:router], :dest => sockets[:stat],         :static => true
+R.route :type => :hb_agent,     :src => sockets[:router], :dest => sockets[:heartbeat],    :static => true
+R.route :type => :hb_process,   :src => sockets[:router], :dest => sockets[:heartbeat],    :static => true
+R.route :type => :hb_pluginv1,  :src => sockets[:router], :dest => sockets[:heartbeat],    :static => true
+R.route :type => :reg_agent,    :src => sockets[:router], :dest => sockets[:registration], :static => true
+R.route :type => :reg_process,  :src => sockets[:router], :dest => sockets[:registration], :static => true
+R.route :type => :reg_pluginv1, :src => sockets[:router], :dest => sockets[:registration], :static => true
 
 # (scheduler / acks) -> Clients static route
 R.route :from => :direct, :src => sockets[:direct], :dest => sockets[:router], :static => true
