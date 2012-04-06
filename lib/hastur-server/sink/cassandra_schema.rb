@@ -69,11 +69,6 @@ module Hastur
         :granularity => ONE_DAY,
         :name => nil,
       },
-      "rawdata" => {
-        :cf => :RawdataArchive,
-        :granularity => ONE_DAY,  # Yes?  No?
-        :name => nil,
-      },
       "event" => {
         :cf => :EventArchive,
         :granularity => ONE_DAY,
