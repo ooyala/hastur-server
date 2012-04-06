@@ -9,52 +9,44 @@ module Hastur
       class Queue
         include Celluloid
 
+        REQUIRED_OPTS = [:incoming_uri, :outgoing_uri]
         attr_reader :incoming_uri, :outgoing_uri
         #
         # Sets up a persistent cassandra-backed zmq queue.
         # @param [String] The queueUUID for the queue to use
         # @param [Hash{Symbol => String}] opts
         # @option [String] :router_uri default tcp://*:8126
-        # @option [String] :incoming_uri default tcp://*:8127
-        # @option [String] :outgoing_uri default tcp://*:8128
+        # @option [String] :incoming_uri required
+        # @option [String] :outgoing_uri required
         #
-        def initialize(qid, incoming_uri = "tcp://*:8187", outgoing_uri = "tcp://*:8188")
-          @ctx = ::ZMQ::Context.new
+        def initialize(qid, opts = {})
+          # Make sure REQUIRED_OPTS are defined
+          raise "URIs not defined in opts" unless opts.keys & REQUIRED_OPTS == REQUIRED_OPTS
 
-          @incoming_uri = incoming_uri
-          @outgoing_uri = outgoing_uri
+          @incoming_uri = opt[:incoming_uri]
+          @outgoing_uri = opt[:outgoing_uri]
+          @ctx = opt[:ctx] || ::ZMQ::Context.new
+        end
 
-          @incoming_socket = @ctx.socket(::ZMQ::PUSH)
-          @outgoing_socket = @ctx.socket(::ZMQ::PULL)
+        def run
+          @running = true
 
-          setsockopts(@incoming_socket)
-          setsockopts(@outgoing_socket)
+          @consumer = Consumer.new(qid, {:ctx => @ctx, :uri => @outgoing_uri})
+          @producer = Producer.new(qid, {:ctx => @ctx, :uri => @incoming_uri, :consumer => @consumer})
 
-          bind(@incoming_socket, @incoming_uri)
-          bind(@outgoing_socket, @outgoing_uri)
-          @producer = Producer.new(qid, @incoming_socket)
-          @consumer = Consumer.new(qid, @outgoing_socket)
+          @producer.supervise_as :producer
+          @consumer.supervise_as :consumer
+          sleep
         end
 
         def stop
-          @producer.stop
-          @consumer.stop
+          @running = false
+          # @producer.stop
+          # @consumer.stop
           @ctx.terminate
         end
 
         private
-
-        def setsockopts(sock)
-          rc = sock.setsockopt(::ZMQ::LINGER, -1)
-          raise "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
-          rc = sock.setsockopt(::ZMQ::HWM, 1)
-          raise "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
-        end
-
-        def bind(sock, uri)
-          rc = sock.bind(uri)
-          raise "Could not bind socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
-        end
       end
     end
   end
