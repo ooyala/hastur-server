@@ -45,6 +45,7 @@ module Hastur
         @logger            = Termite::Logger.new
         @ctx               = ZMQ::Context.new
         @ack_interval      = opts[:ack_interval]
+        @noop_interval     = opts[:noop_interval] || 30
         @uuid              = opts[:uuid]
         @routers           = opts[:routers]
         @port              = opts[:port]
@@ -53,6 +54,7 @@ module Hastur
         @stats_interval    = opts[:stats_interval]
         @last_heartbeat    = Hastur::Util.timestamp - @heartbeat
         @last_ack_check    = Time.now - @ack_interval
+        @last_noop_blast   = Time.now - @noop_interval
         @last_agent_reg    = Time.now - 129600 # 1.5 days
         @last_stat_flush   = Time.now
 
@@ -316,6 +318,18 @@ module Hastur
       end
 
       #
+      # send out (number of routers) messages periodically to make sure they have routes cached
+      #
+      def poll_noop
+        if Time.now - @last_noop_blast > @noop_interval
+          @routers.count.times do
+            Hastur::Message::Noop.new(:from => @uuid).send(@router_socket)
+          end
+          @last_noop_check = Time.now
+        end
+      end
+
+      #
       # Run the main loop.
       #
       def run
@@ -328,6 +342,7 @@ module Hastur
           poll_registration_timeout
           poll_heartbeat_timeout
           poll_ack_timeouts
+          poll_noop
           poll_plugin_pids
           poll_udp
           poll_zmq
