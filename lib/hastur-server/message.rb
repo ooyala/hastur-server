@@ -41,6 +41,7 @@ module Hastur
       Hastur::Message::Log            => 2,
       Hastur::Message::Ack            => 3,
       Hastur::Message::Error          => 4,
+      Hastur::Message::Noop           => 5,
       # stats
       Hastur::Message::Stat::Mark     => 10,
       Hastur::Message::Stat::Gauge    => 11,
@@ -65,6 +66,7 @@ module Hastur
       :log          => Hastur::Message::Log,
       :ack          => Hastur::Message::Ack,
       :error        => Hastur::Message::Error,
+      :noop         => Hastur::Message::Noop,
       :mark         => Hastur::Message::Stat::Mark,
       :gauge        => Hastur::Message::Stat::Gauge,
       :counter      => Hastur::Message::Stat::Counter,
