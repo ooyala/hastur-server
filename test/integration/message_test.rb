@@ -5,6 +5,7 @@ require 'minitest/autorun'
 require 'ffi-rzmq'
 require 'securerandom'
 require 'hastur-server/message'
+require 'hastur-server/util'
 
 # This test is complicated on purpose. The idea is to over-parallelize with minimal locking
 # shake out concurrency bugs. It has already exposed a few interesting bugs that are now fixed.
@@ -85,13 +86,13 @@ class TestClassHasturMessageIntegration < MiniTest::Unit::TestCase
     STDERR.write ' d^ '
 
     count.times do |num|
-      msg = Hastur::Message::Stat.new(
+      msg = Hastur::Message::Stat::Gauge.new(
         :from => uuid,
         :data => {
           :name      => "foo.bar",
           :type      => "gauge",
           :value     => num,
-          :timestamp => Time.new.to_f,
+          :timestamp => Hastur::Util.timestamp,
           :labels    => {},
         }
       )
