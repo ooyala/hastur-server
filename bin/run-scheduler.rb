@@ -26,7 +26,7 @@ scheduler.start
 scraper = Thread.new do
   begin
     # TODO(viet): Use Noah's library after the naming service is in place. These cassandra
-    #             calls are a work around for not knowing which client UUIDs are currently
+    #             calls are a work around for not knowing which agent UUIDs are currently
     #             registered.
     STDERR.puts "Scheduler connecting to #{opts[:hosts].flatten}"
     client = Cassandra.new("Hastur", opts[:hosts].flatten)
@@ -36,7 +36,7 @@ scraper = Thread.new do
         end_time = ::Hastur::Util.timestamp
         start_time = end_time.to_i - 60*5*1_000_000  # 5 minutes before
         uuids = Set.new
-        # retrieve all client UUIDs
+        # retrieve all agent UUIDs
         client.each_key(:RegistrationArchive) do |key|
           uuids.add( key[0..35] )
         end

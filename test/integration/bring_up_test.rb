@@ -135,10 +135,10 @@ class BringUpTest < Test::Unit::TestCase
     sleep 1
 
     Hastur.udp_port = @agent1_port
-    Hastur.counter("Client1.countme")
+    Hastur.counter("Agent1.countme")
 
     Hastur.udp_port = @agent2_port
-    Hastur.counter("Client2.countme")
+    Hastur.counter("Agent2.countme")
 
     sleep 1
 
@@ -156,10 +156,10 @@ class BringUpTest < Test::Unit::TestCase
     sleep 1
 
     Hastur.udp_port = @agent1_port
-    Hastur.counter("Client1.second_countme")
+    Hastur.counter("Agent1.second_countme")
 
     Hastur.udp_port = @agent2_port
-    Hastur.counter("Client2.second_countme")
+    Hastur.counter("Agent2.second_countme")
 
     sleep 1
 

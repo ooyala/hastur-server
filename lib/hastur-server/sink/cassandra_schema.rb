@@ -105,7 +105,7 @@ module Hastur
     #   :ttl
     #   :consistency
     # Additional options:
-    #   :uuid - client UUID
+    #   :uuid - agent UUID
     def insert_stat(cass_client, json_string, options = {})
       insert(cass_client, json_string, "stat", options)
     end
@@ -114,7 +114,7 @@ module Hastur
     #   :ttl
     #   :consistency
     # Additional options:
-    #   :uuid - client UUID
+    #   :uuid - agent UUID
     #   :msg_type - data type from the hastur message (required)
     def insert(cass_client, json_string, msg_type, options = {})
       hash = MultiJson.decode(json_string, :symbolize_keys => true)
@@ -164,15 +164,15 @@ module Hastur
       end
     end
 
-    def get(cass_client, client_uuid, type, start_timestamp, end_timestamp, options = {})
+    def get(cass_client, agent_uuid, type, start_timestamp, end_timestamp, options = {})
       if end_timestamp - start_timestamp > 72 * ONE_HOUR
         raise "Don't query more than 3 days at once yet!"
       end
 
-      raw_get_all(cass_client, client_uuid, type, start_timestamp, end_timestamp, options)
+      raw_get_all(cass_client, agent_uuid, type, start_timestamp, end_timestamp, options)
     end
 
-    # Get a stat on a given client UUID over a given block of time, up to about a day.
+    # Get a stat on a given agent UUID over a given block of time, up to about a day.
     # If a :type option is given, pull the values from that type's storage area.  Otherwise,
     # pull raw JSON information from the all-stats archive area.
     #
@@ -180,16 +180,16 @@ module Hastur
     #   :consistency - Cassandra read consistency
     #   :count - maximum number of entries to return, default 10000
     #
-    def get_stat(cass_client, client_uuid, stat_name, type, start_timestamp, end_timestamp, options = {})
+    def get_stat(cass_client, agent_uuid, stat_name, type, start_timestamp, end_timestamp, options = {})
       if end_timestamp - start_timestamp > 72 * ONE_HOUR
         raise "Don't query more than 3 days at once yet!"
       end
 
-      raw_get_all(cass_client, client_uuid, "stat", start_timestamp, end_timestamp,
+      raw_get_all(cass_client, agent_uuid, "stat", start_timestamp, end_timestamp,
                   options.merge(:name => stat_name, :subtype => type))
     end
 
-    # Get all stats on a given client UUID over a given block of time, up to about a day.
+    # Get all stats on a given agent UUID over a given block of time, up to about a day.
     # If a :type option is given, pull the values from that type's storage area.  Otherwise,
     # pull raw JSON information from the all-stats archive area.
     #
@@ -198,7 +198,7 @@ module Hastur
     #   :consistency - Cassandra read consistency
     #   :count - maximum number of entries to return, default 10000
     #
-    def get_all_stats(cass_client, client_uuid, start_timestamp, end_timestamp, options = {})
+    def get_all_stats(cass_client, agent_uuid, start_timestamp, end_timestamp, options = {})
       if end_timestamp - start_timestamp > 72 * ONE_HOUR
         raise "Don't query more than 3 days at once yet!"
       end
@@ -209,7 +209,7 @@ module Hastur
         raise "Unknown type #{options[:type]} passed to get_all_stats!"
       end
 
-      raw_get_all(cass_client, client_uuid, "stat", start_timestamp, end_timestamp, options)
+      raw_get_all(cass_client, agent_uuid, "stat", start_timestamp, end_timestamp, options)
     end
 
     protected
@@ -242,7 +242,7 @@ module Hastur
     def row_key(uuid, timestamp, granularity)
       time_segment = time_segment_for_timestamp(timestamp, granularity)
 
-      # The row key uses the client ID spelled out in hex, not compressed to 128 bits.
+      # The row key uses the agent ID spelled out in hex, not compressed to 128 bits.
       # However, rows are huge and this makes them easy to understand and query.
       # Similarly, the time_segment is a timestamp in seconds rather than a compressed
       # 64-bit number.
@@ -293,7 +293,7 @@ module Hastur
 
     #
     # This is the basic getter for messages.  By default it gets all messages with a given
-    # message type and client UUID across the given timestamps.  It can be modified in several
+    # message type and agent UUID across the given timestamps.  It can be modified in several
     # other ways by options:
     #
     # Hastur Options:
@@ -311,7 +311,7 @@ module Hastur
     # If you specify :name, it will be implemented by changing the
     # :start and :finish options to Cassandra.
     #
-    def raw_get_all(cass_client, client_uuid, msg_type, start_timestamp, end_timestamp, options = {})
+    def raw_get_all(cass_client, agent_uuid, msg_type, start_timestamp, end_timestamp, options = {})
       if options[:name] && (options[:start] || options[:finish])
         raise "Error: you can't specify the :name option with :start or :finish in raw_get_all!"
       end
@@ -336,12 +336,12 @@ module Hastur
 
       segments = segments_for_timestamps(start_timestamp, end_timestamp, granularity)
 
-      if client_uuid.kind_of?(Array)
-        row_keys = client_uuid.map do |uuid|
+      if agent_uuid.kind_of?(Array)
+        row_keys = agent_uuid.map do |uuid|
           segments.map { |seg| "#{uuid}-#{seg}" }
         end.flatten
       else
-        row_keys = segments.map { |seg| "#{client_uuid}-#{seg}" }
+        row_keys = segments.map { |seg| "#{agent_uuid}-#{seg}" }
       end
 
       cass_options = { :count => 10_000 }

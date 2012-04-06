@@ -23,9 +23,9 @@ client = Cassandra.new("Hastur", opts[:hosts].flatten)
 curr_time = Hastur::Util.timestamp
 
 #
-# Retrieves the list of client UUIDs
+# Retrieves the list of agent UUIDs
 #
-def get_client_uuids(c)
+def get_agent_uuids(c)
   uuids = Set.new
   c.each_key(:RegistrationArchive) do |key|
     uuids.add( key[0..35] )
@@ -45,8 +45,8 @@ end
 # query everything that has happened today
 start_ts = Hastur::Cassandra.last_time_segment_for_timestamp( curr_time, GRANULARITY )
 end_ts = Hastur::Cassandra.next_time_segment_for_timestamp( curr_time, GRANULARITY )
-uuids = get_client_uuids(client)    # get the list of all client UUIDs
-uuids.each do |uuid|                # for each client, calculate the registration rollup
+uuids = get_agent_uuids(client)    # get the list of all agent UUIDs
+uuids.each do |uuid|               # for each agent, calculate the registration rollup
   today = Hastur::Cassandra.get( client, uuid, REGISTRATION, start_ts, end_ts )
   today = today[""]   # no name for registration, this is usually a stat name
   today.keys.each do |key|

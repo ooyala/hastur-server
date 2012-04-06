@@ -23,10 +23,10 @@ public
   def setup
     set_test_alarm(100) # helper
 
-    @client_udp_port1 = Nodule::Util.random_udp_port
-    @client_udp_port2 = Nodule::Util.random_udp_port
-    @heartbeat_client1 = "heartbeat-client1"
-    @heartbeat_client2 = "heartbeat-client2"
+    @agent_udp_port1 = Nodule::Util.random_udp_port
+    @agent_udp_port2 = Nodule::Util.random_udp_port
+    @heartbeat_agent1 = "heartbeat-agent1"
+    @heartbeat_agent2 = "heartbeat-agent2"
 
     sinatra_ready = false
     sinatra_ready_proc = proc do |line|
@@ -62,22 +62,22 @@ public
         '--hwm',           100,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
-      :client1svc    => Nodule::Process.new(
-        HASTUR_CLIENT_BIN,
+      :agent1svc    => Nodule::Process.new(
+        HASTUR_AGENT_BIN,
         '--uuid',         A1UUID,
         '--router',       :router,
         '--ack-timeout',  1,
         '--heartbeat',    300,
-        '--port',         @client_udp_port1,
+        '--port',         @agent_udp_port1,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
-      :client2svc    => Nodule::Process.new(
-        HASTUR_CLIENT_BIN,
+      :agent2svc    => Nodule::Process.new(
+        HASTUR_AGENT_BIN,
         '--uuid',         A2UUID,
         '--router',       :router,
         '--ack-timeout',  1,
         '--heartbeat',    300,
-        '--port',         @client_udp_port2,
+        '--port',         @agent_udp_port2,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
       :regsvc       => Nodule::Process.new(
@@ -112,30 +112,30 @@ public
   end
 
   def test_plugin
-    # send heartbeat to both clients
-    send_2_heartbeat(@client_udp_port1, @client_udp_port2, @heartbeat_client1, @heartbeat_client2)
+    # send heartbeat to both agents
+    send_2_heartbeat(@agent_udp_port1, @agent_udp_port2, @heartbeat_agent1, @heartbeat_agent2)
 
     # ensure that both heartbeats were received
-    ensure_heartbeats(true, @heartbeat_client1, @heartbeat_client2, 1, 1, @sinatra_port)
+    ensure_heartbeats(true, @heartbeat_agent1, @heartbeat_agent2, 1, 1, @sinatra_port)
     
-    # shut a client down
-    @topology.stop :client2svc
+    # shut an agent down
+    @topology.stop :agent2svc
     sleep 5
     
-    # resend heartbeats to both clients
-    send_2_heartbeat(@client_udp_port1, @client_udp_port2, @heartbeat_client1, @heartbeat_client2)
+    # resend heartbeats to both agents
+    send_2_heartbeat(@agent_udp_port1, @agent_udp_port2, @heartbeat_agent1, @heartbeat_agent2)
 
     # ensure that only one heartbeat was received
-    ensure_heartbeats(true, @heartbeat_client1, @heartbeat_client2, 2, 1, @sinatra_port)
+    ensure_heartbeats(true, @heartbeat_agent1, @heartbeat_agent2, 2, 1, @sinatra_port)
 
-    # start a client
-    @topology.start :client2svc
+    # start an agent
+    @topology.start :agent2svc
     ENV["IS_JENKINS"].nil? ? (sleep 1) : (sleep 10)
 
-    # resend heartbeats to both clients
-    send_2_heartbeat(@client_udp_port1, @client_udp_port2, @heartbeat_client1, @heartbeat_client2)
+    # resend heartbeats to both agents
+    send_2_heartbeat(@agent_udp_port1, @agent_udp_port2, @heartbeat_agent1, @heartbeat_agent2)
 
     # ensure that both heartbeats were received
-    ensure_heartbeats(true, @heartbeat_client1, @heartbeat_client2, 3, 2, @sinatra_port)
+    ensure_heartbeats(true, @heartbeat_agent1, @heartbeat_agent2, 3, 2, @sinatra_port)
   end
 end

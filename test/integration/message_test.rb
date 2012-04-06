@@ -11,7 +11,7 @@ require 'hastur-server/util'
 # shake out concurrency bugs. It has already exposed a few interesting bugs that are now fixed.
 
 class TestClassHasturMessageIntegration < MiniTest::Unit::TestCase
-  DEALER_COUNT = 20 # number of emulated ZMQ::DEALER clients to run
+  DEALER_COUNT = 20 # number of emulated ZMQ::DEALER agents to run
   ROUTER_COUNT = 2  # number of emulated routers to run
   PULLER_COUNT = 4  # number of sinks to run, must divide evenly into dealer count
   DEALER_MESSAGES = DEALER_COUNT * DEALER_COUNT
@@ -136,7 +136,7 @@ class TestClassHasturMessageIntegration < MiniTest::Unit::TestCase
 
     sleep 2
 
-    # start dealers and produce data (clients)
+    # start dealers and produce data (agents)
     DEALER_COUNT.times do |num|
       uuid = DEALER_IDS[num - 1]
       dealers[uuid] = Thread.new do 

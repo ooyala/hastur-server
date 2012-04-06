@@ -5,13 +5,13 @@ Hastur is a new monitoring system focused on removing any barriers to entry
 for engineers who need their systems monitored. Many of the components are
 built from existing open source projects, making Hastur mostly a new way
 to (not) manage monitoring configuration. The communication and most points
-of scalability are built on top of ZeroMQ, allowing the client daemon to be
+of scalability are built on top of ZeroMQ, allowing the agent daemon to be
 thin and simple.
 
 Components
 ----------
 
-* hastur-client.rb
+* hastur-agent.rb
 * hastur-router.rb
 
 (in progress)

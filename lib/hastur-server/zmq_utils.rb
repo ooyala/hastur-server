@@ -56,7 +56,6 @@ module Hastur
       method ||= "error"
       @seq_num ||= 0
       @uptime ||= Time.now.to_i
-      # TODO(noah): add client UUID here
       packet_data = {
         'sequence' => @seq_num,
         'uptime' => @uptime,

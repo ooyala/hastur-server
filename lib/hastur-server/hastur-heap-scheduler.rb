@@ -107,7 +107,7 @@ module Hastur
     end
 
     #
-    # Notifies the appropriate client that it should execute a plugin
+    # Notifies the appropriate agent that it should execute a plugin
     #
     def send_to_router(payload, uuid)
       if @test_mode
@@ -132,7 +132,7 @@ module Hastur
     attr_accessor :json,            # payload to send across the wire
                   :time_to_execute, # Hastur time to send request
                   :interval,        # Interval between requests in seconds
-                  :uuid             # client UUID
+                  :uuid             # agent UUID
 
     def initialize(json, time_to_execute, uuid)
       @uuid = uuid

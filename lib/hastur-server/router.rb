@@ -22,8 +22,8 @@ module Hastur
 
       @uuid                   = uuid
       @route_ids              = {} # hash of id => [ {route}, {route}, ... ]
-      @dynamic                = {} # hash of client_uuid => [socket, [zmq parts]]
-      @timestamps             = {} # hash of client_uuid => timestamp (float)
+      @dynamic                = {} # hash of agent_uuid => [socket, [zmq parts]]
+      @timestamps             = {} # hash of agent_uuid => timestamp (float)
       @handlers               = {} # hash of socket id => blocks for integrating extra sockets into the poller
       @hmac_key               = opts[:hmac_key]
       @logger                 = Termite::Logger.new
@@ -70,20 +70,20 @@ module Hastur
     #  :static  - (bool) this route cannot be modified at runtime
     #
     # Examples:
-    # r.route :type => :counter, :src => client_router_sock, :dest => stat_sink_sock
-    # r.route :type => :counter, :src => client_router_sock, :dest => stats_tap_sock
-    # r.route :type => :log, :src => client_router_sock, :dest => cass_log_sock
-    # r.route :type => :log, :src => client_router_sock, :dest => file_sink_sock
+    # r.route :type => :counter, :src => agent_router_sock, :dest => stat_sink_sock
+    # r.route :type => :counter, :src => agent_router_sock, :dest => stats_tap_sock
+    # r.route :type => :log, :src => agent_router_sock, :dest => cass_log_sock
+    # r.route :type => :log, :src => agent_router_sock, :dest => file_sink_sock
     # r.route(
     #   :type => :log,
     #   :from => '62780b2f-8d12-4840-9c6e-e89dae8cd322',
-    #   :src  => client_router_sock,
+    #   :src  => agent_router_sock,
     #   :dest => console_debug_sock,
     # )
     # r.route(
     #   :from => '93218295-6081-4871-b9df-6c3961a9ae94',
     #   :to   => 'bc7dbea3-da62-477c-88bd-468481a68d6b',
-    #   :src  => client_router_sock,
+    #   :src  => agent_router_sock,
     #   :dest => event_ack_tap_sock,
     # )
     #
@@ -212,7 +212,7 @@ module Hastur
         envelope.add_router @uuid
 
         # Write the zmq headers into the dynamic route cache on every noop message.
-        # This cache is used to route messages the correct client on the router socket.
+        # This cache is used to route messages the correct agent on the router socket.
         if type == @noop_type_id
           # cache a copy of the binary string rather than the ZMQ::Message to avoid free() headaches
           headers = zmq_messages.map { |m| m.copy_out_string }
@@ -231,14 +231,14 @@ module Hastur
             @stats[:type] += 1
             times_routed += 1
 
-          # r.route :to => uuid, :src => client_router_sock, :dest => stat_sink_sock
+          # r.route :to => uuid, :src => agent_router_sock, :dest => stat_sink_sock
           elsif r[:to] == to and not r.has_key? :from and not r.has_key? :type
             forward r[:dest], envelope.pack, hastur_message
             @stats[:to] += 1
             times_routed += 1
 
-          # only match on from, generally expected to be used for client debugging/test replaying, e.g.
-          # r.route :from => client_uuid, :src => client_router_sock, :dest => client_tap_sock
+          # only match on from, generally expected to be used for agent debugging/test replaying, e.g.
+          # r.route :from => agent_uuid, :src => agent_router_sock, :dest => agent_tap_sock
           elsif r[:from] == from and not r.has_key? :to and not r.has_key? :type
             forward r[:dest], envelope.pack, hastur_message
             @stats[:from] += 1
@@ -252,7 +252,7 @@ module Hastur
 
           # very specific :to and :from exact specification
           # mostly useful for tapping a specific stream from a specific source, e.g.
-          # r.route :to => :stat, :from => client_uuid, :src => client_router_sock, :dest => stat_tap_sock
+          # r.route :to => :stat, :from => agent_uuid, :src => agent_router_sock, :dest => stat_tap_sock
           elsif r[:to] == to and r[:from] == from
             forward r[:dest], envelope.pack, hastur_message
             @stats[:to_from] += 1
@@ -265,10 +265,10 @@ module Hastur
           end
         end
 
-        # Messages destined to clients on the ROUTER socket can only be reached via their random identity.
-        # For every message we receive from a client, we cache its identity in @dynamic as a binary string
+        # Messages destined to agents on the ROUTER socket can only be reached via their random identity.
+        # For every message we receive from an agent, we cache its identity in @dynamic as a binary string
         # that can be converted back to the ZMQ envelope part before sending on the router socket. This will
-        # allow ZeroMQ to route the message to the right client.
+        # allow ZeroMQ to route the message to the right agent.
         # This is a lot like ARP on IPv4 ethernet networks.
         # Future: We may eventually want a router broadcast channel for an arp-like "who has" pattern.
         if @dynamic.has_key? to

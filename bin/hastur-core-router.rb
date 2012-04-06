@@ -10,13 +10,13 @@ require "hastur-server/service/core-router"
 
 opts = Trollop::options do
   banner <<-EOS
-hastur-core-router.rb - route to/from Hastur clients
+hastur-core-router.rb - route to/from Hastur agents
 
   Options:
 EOS
   opt :uuid,           "Router UUID (for logging)",      :type => String
   opt :hwm,            "ZeroMQ message queue depth",     :default => 1
-  opt :router,         "Router (client) URI   (ROUTER)", :default => "tcp://*:8126"
+  opt :router,         "Router (agent) URI   (ROUTER)",  :default => "tcp://*:8126"
   opt :incoming,       "All the incoming data   (PUSH)", :default => "tcp://*:8127"
   opt :syndication,    "All the incoming data   (PUSH)", :default => "tcp://*:8128"
   opt :outgoing,       "Direct routing URI      (PULL)", :default => "tcp://*:8129"

@@ -15,7 +15,7 @@ class StaticRouteTest < Test::Unit::TestCase
       :greenio          => Nodule::Console.new(:fg => :green),
       :redio            => Nodule::Console.new(:fg => :red),
       :cyanio           => Nodule::Console.new(:fg => :cyan),
-      :client           => Nodule::ZeroMQ.new(:connect => ZMQ::DEALER, :uri => :gen),
+      :agent            => Nodule::ZeroMQ.new(:connect => ZMQ::DEALER, :uri => :gen),
       :registration     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL,   :uri => :gen, :reader => :capture, :limit => 1),
       :event            => Nodule::ZeroMQ.new(:connect => ZMQ::PULL,   :uri => :gen, :reader => :capture, :limit => 1),
       :heartbeat        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL,   :uri => :gen, :reader => :capture, :limit => 1),
@@ -27,7 +27,7 @@ class StaticRouteTest < Test::Unit::TestCase
       :routersvc        => Nodule::Process.new(
         HASTUR_ROUTER_BIN,
         '--uuid',          R1UUID,
-        '--router',        :client,
+        '--router',        :agent,
         '--stat',          :stat,
         '--log',           :log,
         '--error',         :error,
@@ -73,7 +73,7 @@ class StaticRouteTest < Test::Unit::TestCase
     @types_to_test.each do |type_symbol|
       klass = Hastur::Message.symbol_to_class(type_symbol)
       msg = klass.new(:payload => "{}", :from => A1UUID)
-      rc = msg.send @topology[:client].socket
+      rc = msg.send @topology[:agent].socket
       assert rc > -1, "msg.send() must succeed to have a useful test"
     end
 

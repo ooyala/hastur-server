@@ -94,7 +94,7 @@ module Hastur
     #
     # create a new envelope
     # :to is required, usually Hastur::Message::*::ROUTE_UUID
-    # :from is required, generally the client UUID
+    # :from is required, generally the agent UUID
     # :ack is optional, defaults to disabled
     # :sequence, :timestamp, and :uptime are optional and will be set to sane defaults
     #

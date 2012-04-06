@@ -33,7 +33,7 @@ CASS_CLIENT = Cassandra.new "Hastur", opts[:cassandra].flatten
 # of registrations are returned.
 #
 # @param [Hash] filter The fuzzy_filter hash to restrict registrations returned
-# @return [Hash] The latest registrations per client UUID
+# @return [Hash] The latest registrations per agent UUID
 #
 def get_last_registrations(filter)
   last_registrations = {}
@@ -66,7 +66,7 @@ end
 t = Thread.new do
   begin
     loop do
-      @registrations = get_last_registrations("type" => "client")
+      @registrations = get_last_registrations("type" => "agent")
 
       @initialized = true
       sleep 5 * 60

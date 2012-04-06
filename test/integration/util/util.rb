@@ -30,7 +30,7 @@ def ensure_heartbeats(both, msg1, msg2, num_msgs_1, num_msgs_2, sinatra_port)
   a1_hashes[msg1].keys.each do |timestamp|
     assert_equal(msg1, a1_hashes[msg1][timestamp]["name"])
   end
-  # check for the second client data if needed
+  # check for the second agent's data if needed
   assert_not_nil(a2_hashes[msg2])
   assert_equal(num_msgs_2, a2_hashes[msg2].keys.size)
   a2_hashes[msg2].keys.each do |timestamp|

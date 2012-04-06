@@ -20,7 +20,7 @@ class RegistrationTest < Test::Unit::TestCase
     assert_kind_of Hash, payload
 
     assert_equal payload["from"], "11111111-2222-3333-4444-555555555555"
-    assert_equal payload["source"], "Hastur::Client::Service"
+    assert_equal payload["source"], "Hastur::Service::Agent"
   end
 
   def setup

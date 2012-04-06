@@ -17,13 +17,13 @@ logger = Termite::Logger.new
 
 opts = Trollop::options do
   banner <<-EOS
-hastur-router.rb - route to/from Hastur clients
+hastur-router.rb - route to/from Hastur agents
 
   Options:
 EOS
   opt :uuid,         "Router UUID (for logging)",      :type => String
   opt :hwm,          "ZeroMQ message queue depth",     :default => 1
-  opt :router,       "Router (client) URI   (ROUTER)", :default => "tcp://*:8126"
+  opt :router,       "Router (agent) URI   (ROUTER)",  :default => "tcp://*:8126"
   opt :stat,         "Stat sink URI           (PUSH)", :default => "tcp://*:8129"
   opt :event,        "Event sink URI          (PUSH)", :default => "tcp://*:8130"
   opt :log,          "Log sink URI            (PUSH)", :default => "tcp://*:8131"
@@ -66,7 +66,7 @@ R = Hastur::Router.new(opts[:uuid], :error_socket => sockets[:error])
   end
 end
 
-# Client -> Sink static routes, in order of expected frequency since they're run in insertion order
+# Agent -> Sink static routes, in order of expected frequency since they're run in insertion order
 R.route :type => :counter,      :src => sockets[:router], :dest => sockets[:stat],         :static => true
 R.route :type => :gauge,        :src => sockets[:router], :dest => sockets[:stat],         :static => true
 R.route :type => :event,        :src => sockets[:router], :dest => sockets[:event],        :static => true
@@ -80,7 +80,7 @@ R.route :type => :reg_agent,    :src => sockets[:router], :dest => sockets[:regi
 R.route :type => :reg_process,  :src => sockets[:router], :dest => sockets[:registration], :static => true
 R.route :type => :reg_pluginv1, :src => sockets[:router], :dest => sockets[:registration], :static => true
 
-# (scheduler / acks) -> Clients static route
+# (scheduler / acks) -> Agents static route
 R.route :from => :direct, :src => sockets[:direct], :dest => sockets[:router], :static => true
 
 R.handle sockets[:control] do |sock|
