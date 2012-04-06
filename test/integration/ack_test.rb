@@ -6,6 +6,7 @@ require 'nodule'
 require 'nodule/zeromq'
 require 'multi_json'
 require 'hastur-server/message'
+require 'hastur-server/mock/nodule_agent'
 
 class AckTest < Test::Unit::TestCase
   EVENT_REPLAYS = 10
@@ -16,7 +17,7 @@ class AckTest < Test::Unit::TestCase
       :redio         => Nodule::Console.new(:fg => :red),
       :cyanio        => Nodule::Console.new(:fg => :cyan),
       :yellow        => Nodule::Console.new(:fg => :yellow),
-      :agent         => Nodule::ZeroMQ.new(:connect => ZMQ::DEALER, :uri => :gen, :reader => :capture),
+      :mock_agent    => Hastur::Mock::NoduleAgent.new,
       :event         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :registration  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
@@ -28,8 +29,7 @@ class AckTest < Test::Unit::TestCase
       :routersvc     => Nodule::Process.new(
         HASTUR_ROUTER_BIN,
         '--uuid',          R1UUID,
-        '--hwm',           10000,
-        '--router',        :agent,
+        '--router',        :mock_agent,
         '--event',         :event,
         '--heartbeat',     :heartbeat,
         '--registration',  :registration,
@@ -53,11 +53,7 @@ class AckTest < Test::Unit::TestCase
 
     @topology.start_all
 
-    # emulate an agent heartbeat and wait for it to go all the way through to
-    # make sure we're ready to go
-    @agent = @topology[:agent].socket
-    hb = Hastur::Message::HB::Agent.new(:payload => "{}", :from => C1UUID)
-    hb.send @agent
+    @topology[:mock_agent].heartbeat
     @topology[:heartbeat].require_read_count 1
   end
 
@@ -66,16 +62,16 @@ class AckTest < Test::Unit::TestCase
   end
 
   def test_event_ack
-    hb = Hastur::Message::Event.new(:payload => "{}", :from => C1UUID)
+    event = Hastur::Message::Event.new(:payload => "{}", :from => C1UUID)
 
     EVENT_REPLAYS.times do
-      rc = hb.send @agent
+      rc = event.send @topology[:mock_agent].socket
       assert ZMQ::Util.resultcode_ok? rc
       sleep 0.1
     end
 
-    @topology[:agent].require_read_count EVENT_REPLAYS, 10
+    @topology[:mock_agent].require_read_count EVENT_REPLAYS, 10
 
-    assert_equal EVENT_REPLAYS, @topology[:agent].output.count, "should have gotten #{EVENT_REPLAYS} messages"
+    assert_equal EVENT_REPLAYS, @topology[:mock_agent].output.count, "should have gotten #{EVENT_REPLAYS} messages"
   end
 end
