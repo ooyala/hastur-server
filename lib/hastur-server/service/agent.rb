@@ -15,8 +15,8 @@ require "hastur-server/input/collectd"
 require "hastur-server/message"
 
 module Hastur
-  class Client
-    class Service
+  module Service
+    class Agent
       attr_reader :uuid, :routers, :port, :heartbeat, :ack_interval
 
       def initialize(opts)
@@ -53,7 +53,7 @@ module Hastur
         @stats_interval    = opts[:stats_interval]
         @last_heartbeat    = Hastur::Util.timestamp - @heartbeat
         @last_ack_check    = Time.now - @ack_interval
-        @last_client_reg   = Time.now - 129600 # 1.5 days
+        @last_agent_reg    = Time.now - 129600 # 1.5 days
         @last_stat_flush   = Time.now
 
         @counters = {
@@ -64,7 +64,7 @@ module Hastur
           :events      => 0,
         }
 
-        # set the hastur client UDP port to match the listening port
+        # set the hastur agent UDP port to match the listening port
         Hastur.udp_port = @port
       end
 
@@ -92,7 +92,7 @@ module Hastur
       end
 
       #
-      # Processes a raw network message that was sent to hastur client. The Hastur::Input::*
+      # Processes a raw network message that was sent to hastur agent. The Hastur::Input::*
       # classes all return the same hash structure, suitable for hash_to_message().
       #
       def raw_to_hastur_message(data)
@@ -136,21 +136,21 @@ module Hastur
       #
       # After some timeout, all collected stats are sent to hastur
       #
-      def send_client_stats
+      def send_agent_stats
         curr_time = Time.now
 
         if curr_time - @last_stat_flush > @stats_interval
           t = Process.times
           # amount of user/system cpu time in seconds
-          Hastur.gauge("hastur.client.utime", t.utime, curr_time)
-          Hastur.gauge("hastur.client.stime", t.stime, curr_time)
+          Hastur.gauge("hastur.agent.utime", t.utime, curr_time)
+          Hastur.gauge("hastur.agent.stime", t.stime, curr_time)
           # completed child processes' (plugins) user/system cpu time in seconds (always 0 on Windows NT)
-          Hastur.gauge("hastur.client.cutime", t.cutime, curr_time)
-          Hastur.gauge("hastur.client.cstime", t.cstime, curr_time)
+          Hastur.gauge("hastur.agent.cutime", t.cutime, curr_time)
+          Hastur.gauge("hastur.agent.cstime", t.cstime, curr_time)
 
           @counters.each do |name,count|
             if count > 0
-              Hastur.counter("hastur.client.#{name}", count, curr_time)
+              Hastur.counter("hastur.agent.#{name}", count, curr_time)
               @counters[name] = 0
             end
           end
@@ -179,7 +179,7 @@ module Hastur
       end
 
       #
-      # Sets up the local UDP socket. Services communicate with the client through these sockets.
+      # Sets up the local UDP socket. Services communicate with the agent through these sockets.
       #
       def set_up_local_ports
         if @unix
@@ -235,7 +235,7 @@ module Hastur
               Hastur::Message::Error.new :from => @uuid,
                 :payload => "Received an unexpected ack with ID: '#{ack_key}'"
             end
-          when Hastur::Message::PluginExec
+          when Hastur::Message::Cmd::PluginV1
             # TODO: add hmac authentication of plugin exec messages
             config = msg.decode
             plugin = Hastur::Plugin::V1.new(config[:plugin_path], config[:plugin_args], config[:plugin])
@@ -249,26 +249,25 @@ module Hastur
       end
 
       #
-      # Registers a client with Hastur.
+      # Registers an agent with Hastur.
       #
       def poll_registration_timeout
-        # re-register the client once a day
-        if Time.now - @last_client_reg > 86400
+        # re-register the agent once a day
+        if Time.now - @last_agent_reg > 86400
           reg_info = {
             :from      => @uuid,
             :source    => self.class.to_s,
             :hostname  => Socket.gethostname,
             :ipv4      => IPSocket.getaddress(Socket.gethostname),
-            :type      => "client",
             :timestamp => ::Hastur::Util.timestamp
           }
 
-          msg = Hastur::Message::Registration.new :from => @uuid, :data => reg_info
+          msg = Hastur::Message::Reg::Agent.new :from => @uuid, :data => reg_info
 
-          @logger.debug "Attempting to register client #{@uuid}: #{msg.to_json}"
+          @logger.debug "Attempting to register agent #{@uuid}: #{msg.to_json}"
           msg.send @router_socket
           @counters[:zmq_send] += 1
-          @last_client_reg = Time.now
+          @last_agent_reg = Time.now
         end
       end
 
@@ -283,7 +282,7 @@ module Hastur
         if delta > @heartbeat
           @logger.debug "Sending heartbeat"
 
-          msg = Hastur::Message::Heartbeat.new(
+          msg = Hastur::Message::HB::Agent.new(
             :from => @uuid,
             :data => {
               :name           => "hastur.agent.heartbeat",
@@ -332,12 +331,12 @@ module Hastur
           poll_plugin_pids
           poll_udp
           poll_zmq
-          send_client_stats
+          send_agent_stats
 
           sleep 0.1 # prevent tight loops from using too much CPU
         end
 
-        msg = Hastur::Message::Log.new :from => @uuid, :payload => "Client #{@uuid} exiting."
+        msg = Hastur::Message::Log.new :from => @uuid, :payload => "Hastur Agent #{@uuid} exiting."
         msg.send(@router_socket)
         @counters[:zmq_send] += 1
 
