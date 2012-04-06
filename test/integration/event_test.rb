@@ -7,6 +7,7 @@ require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'multi_json'
 require 'hastur-server/message'
+require 'hastur-server/mock/nodule_router'
 
 class EventTest < Test::Unit::TestCase
   ITERATIONS = 4
@@ -16,32 +17,10 @@ class EventTest < Test::Unit::TestCase
       :greenio       => Nodule::Console.new(:fg => :green),
       :redio         => Nodule::Console.new(:fg => :red),
       :cyanio        => Nodule::Console.new(:fg => :cyan),
-      :agent1unix   => Nodule::UnixSocket.new,
-      :router        => Nodule::ZeroMQ.new(:uri => :gen),
-      :event         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture),
-      :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
-      :registration  => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
-      :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
-      :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
-      :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
-      :direct        => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
-      :control       => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
-      :routersvc     => Nodule::Process.new(
-        HASTUR_ROUTER_BIN,
-        '--uuid',          R1UUID,
-        '--hwm',           10000,
-        '--router',        :router,
-        '--event',         :event,
-        '--heartbeat',     :heartbeat,
-        '--registration',  :registration,
-        '--stat',          :stat,
-        '--log',           :log,
-        '--error',         :error,
-        '--direct',        :direct,
-        '--control',       :control,
-        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
-      ),
-      :agent1svc    => Nodule::Process.new(
+      :agent1unix    => Nodule::UnixSocket.new,
+      #:router        => Nodule::ZeroMQ.new(:uri => :gen, :bind => ZMQ::ROUTER, :reader => :capture),
+      :router        => Hastur::Mock::NoduleRouter.new,
+      :agent1svc     => Nodule::Process.new(
         HASTUR_AGENT_BIN,
         '--uuid',         C1UUID,
         '--router',       :router,
@@ -53,15 +32,19 @@ class EventTest < Test::Unit::TestCase
 
     @events_seen = 0
 
-    @topology[:event].add_reader proc { |messages|
+    @topology[:router].add_reader proc { |messages|
       e = Hastur::Envelope.parse(messages[-2])
-      assert_not_nil e, "Hastur::Envelope.parse on messages[-2] must return an envelope."
-      assert e.ack?, "Events must always have the ack flag enabled (got: #{e.ack})."
-      @events_seen += 1
 
-      # send an ack, since it's the right thing to do
-      rc = e.to_ack.send @topology[:direct].socket
-      assert rc > -1, "sending an ack created from the envelope of the message"
+      if e.type_symbol == :event
+        assert e.ack?, "Events must always have the ack flag enabled (got: #{e.ack})."
+        @events_seen += 1
+
+        # send an ack, since it's the right thing to do
+        rc = e.to_ack.send @topology[:router].socket
+        assert rc > -1, "sending an ack created from the envelope of the message"
+      elsif e.type_symbol == :error
+        flunk "Hastur::Message::Error: #{messages.inspect}"
+      end
     }
 
     @topology.start_all
@@ -75,7 +58,7 @@ class EventTest < Test::Unit::TestCase
     # send an event
     event = <<EOJSON
 {
-  "_route": "event",
+  "type": "event",
   "sla": 604800,
   "app": "dyson",
   "recipients": [
@@ -85,18 +68,20 @@ class EventTest < Test::Unit::TestCase
   ]
 }
 EOJSON
-
-    @topology[:heartbeat].require_read_count 1
+    # The agent will send three messages at startup, a heartbeat and a noop, and a registration
+    @topology[:router].require_read_count 3, 30
+    @topology[:router].clear!
 
     ITERATIONS.times do
       @topology[:agent1unix].send event
+      sleep 0.1
     end
 
-    @topology[:event].require_read_count ITERATIONS, 3 do
-      flunk "timeout waiting for #{ITERATIONS} events (had #{@topology[:event].read_count})"
+    @topology[:router].require_read_count ITERATIONS do
+      flunk "timeout waiting for #{ITERATIONS} events (had #{@topology[:router].read_count})"
     end
 
-    messages = @topology[:event].output
+    messages = @topology[:router].output
     payloads = messages.map { |m| MultiJson.decode(m[-1]) }
 
     assert_equal ITERATIONS, payloads.size
