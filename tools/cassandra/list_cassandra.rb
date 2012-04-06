@@ -8,27 +8,27 @@ require "date"
 opts = Trollop::options do
   opt :rows,     "List row keys",                         :type => :boolean
   opt :stat,     "List a single stat",                    :type => String
-  opt :client,   "Client UUID, if any",                   :type => String
+  opt :agent,    "Agent UUID, if any",                    :type => String
   opt :server,   "Cassandra server",                      :type => String,   :default => "127.0.0.1:9160"
   opt :keyspace, "Cassandra keyspace",                    :type => String,   :default => "Hastur"
   opt :route,    "Hastur message type",                   :type => String,   :default => "stat"
   opt :date,     "Date to query for",                     :type => String
 end
 
-client = Cassandra.new(opts[:keyspace], opts[:server])
+agent = Cassandra.new(opts[:keyspace], opts[:server])
 
 if opts[:rows]
   # Calculate the archive row.  This is a hack because list_cassandra is breaking encapsulation by existing.
   cf = "#{opts[:route].capitalize}Archive".to_sym
 
-  client.each_key(cf.to_sym) do |key|
+  agent.each_key(cf.to_sym) do |key|
     puts key.inspect
   end
   exit 0
 end
 
-unless opts[:client]
-  raise "Must supply a client (hex) UUID unless just querying rows!"
+unless opts[:agent]
+  raise "Must supply an agent (hex) UUID unless just querying rows!"
 end
 
 if opts[:date]
@@ -43,15 +43,15 @@ end_time = end_date.to_time.to_f * 1_000_000
 start_time = start_time.to_i
 end_time = end_time.to_i
 
-puts "Querying client '#{opts[:client]}', around time #{end_date}."
+puts "Querying agent '#{opts[:agent]}', around time #{end_date}."
 
 if opts[:stat]
   puts "Querying stat #{opts[:stat]}, of type #{opts[:type]}."
-  vals = Hastur::Cassandra.get_stat(client, opts[:client], opts[:stat], opts[:type].to_sym,
+  vals = Hastur::Cassandra.get_stat(agent, opts[:agent], opts[:stat], opts[:type].to_sym,
                                     start_time, end_time)
 else
   puts "Querying all stats."
-  vals = Hastur::Cassandra.get_all_stats(client, opts[:client], start_time, end_time,
+  vals = Hastur::Cassandra.get_all_stats(agent, opts[:agent], start_time, end_time,
                                          :type => opts[:type].to_sym)
 end
 

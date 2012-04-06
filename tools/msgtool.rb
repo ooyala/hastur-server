@@ -54,7 +54,7 @@ EOS
   opt :prefix,    "prefix string",     :default => "",                :type => String
   opt :color,     "enable colored output",                            :type => :boolean
   opt :envelope,  "envelope string",                                  :type => String, :multi => true
-  opt :route,     "do Hastur client routing",                         :type => :boolean
+  opt :route,     "do Hastur agent routing",                          :type => :boolean
 end
 
 # further option handling / checking

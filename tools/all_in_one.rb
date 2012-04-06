@@ -43,8 +43,8 @@ topology = Nodule::Topology.new(
     '--control',       :control,
     :stdout => :cyanio, :stderr => :cyanio, :verbose => :cyanio,
   ),
-  :client1svc    => Nodule::Process.new(
-    File.join(HASTUR_ROOT, "bin", "hastur-client.rb"),
+  :agent1svc    => Nodule::Process.new(
+    File.join(HASTUR_ROOT, "bin", "hastur-agent.rb"),
     '--uuid',         uuid2,
     '--router',       :router,
     '--port',         8125,

@@ -56,7 +56,7 @@ EOS
   opt :color,     "color to print in",                                :type => String
   opt :precolor,  "color to print prefix in",                         :type => String
   opt :envelope,  "envelope string",                                  :type => String, :multi => true
-  opt :route,     "do Hastur client routing",                         :type => :boolean
+  opt :route,     "do Hastur agent routing",                          :type => :boolean
   opt :spark,     "Use spark to report numbers", :default => false,   :type => :boolean
 end
 

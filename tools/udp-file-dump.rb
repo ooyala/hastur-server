@@ -2,7 +2,7 @@
 #
 # A simple program for recording packets on a UDP port to files.
 # One of the primary use cases is to record packets to use as test input.
-# Could also be handy to debug Hastur UDP clients.
+# Could also be handy to debug Hastur agents.
 
 require 'socket'
 require 'trollop'
@@ -23,11 +23,11 @@ end
 counter=0
 
 BasicSocket.do_not_reverse_lookup = true
-client = UDPSocket.new
-client.bind(opts[:bind], opts[:port])
+agent = UDPSocket.new
+agent.bind(opts[:bind], opts[:port])
 
 loop do
-  data, addr = client.recvfrom(16384)
+  data, addr = agent.recvfrom(16384)
 
   File.open("#{opts[:path]}/#{counter}", "w") do |f|
     f.write data
@@ -36,5 +36,5 @@ loop do
   counter += 1
 end
 
-client.close
+agent.close
 

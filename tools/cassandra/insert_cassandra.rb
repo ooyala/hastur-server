@@ -21,7 +21,7 @@ opts = Trollop.options do
                                                 :type => String
 end
 
-client = Cassandra.new(opts[:keyspace], opts[:host])
+agent = Cassandra.new(opts[:keyspace], opts[:host])
 
 opts[:batches].times do |batch|
   opts[:n].times do |i|
@@ -42,7 +42,7 @@ opts[:batches].times do |batch|
 EOM
 
     puts "Generated stat:\n#{message}" if opts[:print]
-    Hastur::Cassandra.insert_stat(client, message) if opts[:insert]
+    Hastur::Cassandra.insert_stat(agent, message) if opts[:insert]
   end
 
   # Sleep, except on the last batch
