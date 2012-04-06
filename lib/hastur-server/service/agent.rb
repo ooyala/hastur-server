@@ -17,7 +17,7 @@ require "hastur-server/message"
 module Hastur
   module Service
     class Agent
-      attr_reader :uuid, :routers, :port, :heartbeat, :ack_interval
+      attr_reader :uuid, :routers, :port, :heartbeat, :ack_interval, :noop_interval
 
       def initialize(opts)
         raise ArgumentError.new ":uuid is required" unless opts[:uuid]
@@ -32,6 +32,7 @@ module Hastur
         opts[:port]           ||= 8125
         opts[:heartbeat]      ||= 30
         opts[:ack_interval]   ||= 30
+        opts[:noop_interval]  ||= 30
         opts[:stats_interval] ||= 5
 
         raise ArgumentError.new ":port must be an integer" unless opts[:port].kind_of? Fixnum
@@ -45,7 +46,7 @@ module Hastur
         @logger            = Termite::Logger.new
         @ctx               = ZMQ::Context.new
         @ack_interval      = opts[:ack_interval]
-        @noop_interval     = opts[:noop_interval] || 30
+        @noop_interval     = opts[:noop_interval]
         @uuid              = opts[:uuid]
         @routers           = opts[:routers]
         @port              = opts[:port]
@@ -72,7 +73,7 @@ module Hastur
 
       def _fail(message, e)
         @logger.debug "FAIL: #{message}: #{e.inspect}"
-        error = Hastur::Message::Error.new :from => @uuid, :payload => e
+        error = Hastur::Message::Error.new :from => @uuid, :data => e
         error.send(@router_socket)
         @counters[:zmq_send] += 1
         @counters[:errors] += 1
@@ -325,7 +326,7 @@ module Hastur
           @routers.count.times do
             Hastur::Message::Noop.new(:from => @uuid).send(@router_socket)
           end
-          @last_noop_check = Time.now
+          @last_noop_blast = Time.now
         end
       end
 
