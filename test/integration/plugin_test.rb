@@ -49,7 +49,7 @@ EOJSON
       ),
       :agent1svc     => Nodule::Process.new(
         HASTUR_AGENT_BIN,
-        '--uuid',         C1UUID,
+        '--uuid',         A1UUID,
         '--router',       :router,
         '--ack-timeout',  1,
         '--heartbeat',    300,
@@ -68,7 +68,7 @@ EOJSON
   end
 
   def test_plugin
-    msg = Hastur::Message::Cmd::PluginV1.new(:to => C1UUID, :from => C2UUID, :payload => @plugin_request)
+    msg = Hastur::Message::Cmd::PluginV1.new(:to => A1UUID, :from => A2UUID, :payload => @plugin_request)
 
     @topology[:registration].require_read_count 1, 10
 

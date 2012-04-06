@@ -44,12 +44,12 @@ class QueryServerTest < Test::Unit::TestCase
       ),
 
       :agent1svc   => Nodule::Process.new(
-        HASTUR_AGENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent1unix,
+        HASTUR_AGENT_BIN, '--uuid', A1UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent1unix,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
 
       :agent2svc => Nodule::Process.new(
-        HASTUR_AGENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent2unix,
+        HASTUR_AGENT_BIN, '--uuid', A2UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent2unix,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
 
@@ -99,19 +99,19 @@ class QueryServerTest < Test::Unit::TestCase
     start_ts = Hastur.timestamp(Time.now.to_i - 600)
     end_ts = Hastur.timestamp(Time.now.to_i + 600)
 
-    url1 = "http://127.0.0.1:#{@sinatra_port}/data/heartbeat/json?uuid=#{C1UUID}&start=#{start_ts}&end=#{end_ts}"
-    c1_html = open(url1).read
-    assert c1_html.length > 10, "got at least 10 bytes of data for the agent 1 heartbeat query"
-    assert c1_html.length < 4096, "got no more than 4096 bytes of data for the agent 1 heartbeat query"
-    assert c1_html.match(/^\s*{.*}\s*$/), "looks like JSON"
-    c1_messages = MultiJson.decode c1_html
+    url1 = "http://127.0.0.1:#{@sinatra_port}/data/heartbeat/json?uuid=#{A1UUID}&start=#{start_ts}&end=#{end_ts}"
+    a1_html = open(url1).read
+    assert a1_html.length > 10, "got at least 10 bytes of data for the agent 1 heartbeat query"
+    assert a1_html.length < 4096, "got no more than 4096 bytes of data for the agent 1 heartbeat query"
+    assert a1_html.match(/^\s*{.*}\s*$/), "looks like JSON"
+    a1_messages = MultiJson.decode a1_html
 
     # always run two tests - we've seen cases where the first works but the second doesn't
-    url2 = "http://127.0.0.1:#{@sinatra_port}/data/heartbeat/values?uuid=#{C2UUID}&start=#{start_ts}&end=#{end_ts}"
-    c2_html = open(url2).read
-    assert c2_html.length > 10, "got at least 10 bytes of data for the agent 2 heartbeat query"
-    assert c2_html.length < 4096, "got no more than 4096 bytes of data for the agent 2 heartbeat query"
-    assert c2_html.match(/^\s*{.*}\s*$/), "looks like JSON"
-    c2_messages = MultiJson.decode c2_html
+    url2 = "http://127.0.0.1:#{@sinatra_port}/data/heartbeat/values?uuid=#{A2UUID}&start=#{start_ts}&end=#{end_ts}"
+    a2_html = open(url2).read
+    assert a2_html.length > 10, "got at least 10 bytes of data for the agent 2 heartbeat query"
+    assert a2_html.length < 4096, "got no more than 4096 bytes of data for the agent 2 heartbeat query"
+    assert a2_html.match(/^\s*{.*}\s*$/), "looks like JSON"
+    a2_messages = MultiJson.decode a2_html
   end
 end

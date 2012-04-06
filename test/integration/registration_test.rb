@@ -39,7 +39,7 @@ class RegistrationTest < Test::Unit::TestCase
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
 
       :agent1svc   => Nodule::Process.new(HASTUR_AGENT_BIN,
-        "--uuid", C1UUID,
+        "--uuid", A1UUID,
         "--router", :router,
         "--unix",   :agent1unix,
         :stdout => :greenio, :stderr => :redio

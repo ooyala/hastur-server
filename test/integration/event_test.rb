@@ -22,7 +22,7 @@ class EventTest < Test::Unit::TestCase
       :router        => Hastur::Mock::NoduleRouter.new,
       :agent1svc     => Nodule::Process.new(
         HASTUR_AGENT_BIN,
-        '--uuid',         C1UUID,
+        '--uuid',         A1UUID,
         '--router',       :router,
         '--unix',         :agent1unix,
         '--ack-timeout',  1,

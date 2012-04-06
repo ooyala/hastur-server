@@ -66,7 +66,7 @@ public
       ),
       :client1svc    => Nodule::Process.new(
         HASTUR_CLIENT_BIN,
-        '--uuid',         C1UUID,
+        '--uuid',         A1UUID,
         '--router',       :router,
         '--ack-timeout',  1,
         '--heartbeat',    300,
@@ -75,7 +75,7 @@ public
       ),
       :client2svc    => Nodule::Process.new(
         HASTUR_CLIENT_BIN,
-        '--uuid',         C2UUID,
+        '--uuid',         A2UUID,
         '--router',       :router,
         '--ack-timeout',  1,
         '--heartbeat',    300,

@@ -72,7 +72,7 @@ class StaticRouteTest < Test::Unit::TestCase
   def test_routes
     @types_to_test.each do |type_symbol|
       klass = Hastur::Message.symbol_to_class(type_symbol)
-      msg = klass.new(:payload => "{}", :from => C1UUID)
+      msg = klass.new(:payload => "{}", :from => A1UUID)
       rc = msg.send @topology[:client].socket
       assert rc > -1, "msg.send() must succeed to have a useful test"
     end

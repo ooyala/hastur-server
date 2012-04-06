@@ -48,7 +48,7 @@ class FullPluginTest < Test::Unit::TestCase
       ),
       :agent1svc    => Nodule::Process.new(
         HASTUR_AGENT_BIN,
-        '--uuid',         C1UUID,
+        '--uuid',         A1UUID,
         '--router',       :router,
         '--ack-timeout',  1,
         '--heartbeat',    300,

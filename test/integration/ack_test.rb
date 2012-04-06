@@ -62,7 +62,7 @@ class AckTest < Test::Unit::TestCase
   end
 
   def test_event_ack
-    event = Hastur::Message::Event.new(:payload => "{}", :from => C1UUID)
+    event = Hastur::Message::Event.new(:payload => "{}", :from => A1UUID)
 
     EVENT_REPLAYS.times do
       rc = event.send @topology[:mock_agent].socket

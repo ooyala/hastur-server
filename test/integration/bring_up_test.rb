@@ -41,11 +41,11 @@ class BringUpTest < Test::Unit::TestCase
         :stdout => :greenio, :stderr => [sinatra_ready_proc, :greenio], :verbose => :cyanio
       ),
       :agent1svc => Nodule::Process.new(
-        HASTUR_AGENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--port', @agent1_port,
+        HASTUR_AGENT_BIN, '--uuid', A1UUID, '--heartbeat', 1, '--router', :router, '--port', @agent1_port,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
       :agent2svc => Nodule::Process.new(
-        HASTUR_AGENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--port', @agent2_port,
+        HASTUR_AGENT_BIN, '--uuid', A2UUID, '--heartbeat', 1, '--router', :router, '--port', @agent2_port,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
       :router1svc => Nodule::Process.new(
@@ -121,13 +121,13 @@ class BringUpTest < Test::Unit::TestCase
     @topology.start :agent2svc
     sleep 1
 
-    url1 = "http://127.0.0.1:#{@sinatra_port}/data/registration/json?uuid=#{C1UUID}&start=#{start_ts}&end=#{end_ts}"
-    c1_messages = open(url1).read
-    assert_json_not_empty c1_messages
+    url1 = "http://127.0.0.1:#{@sinatra_port}/data/registration/json?uuid=#{A1UUID}&start=#{start_ts}&end=#{end_ts}"
+    a1_messages = open(url1).read
+    assert_json_not_empty a1_messages
 
-    url2 = "http://127.0.0.1:#{@sinatra_port}/data/registration/json?uuid=#{C2UUID}&start=#{start_ts}&end=#{end_ts}"
-    c2_messages = open(url2).read
-    assert_json_not_empty c2_messages
+    url2 = "http://127.0.0.1:#{@sinatra_port}/data/registration/json?uuid=#{A2UUID}&start=#{start_ts}&end=#{end_ts}"
+    a2_messages = open(url2).read
+    assert_json_not_empty a2_messages
 
     # Start up and test second router
     @topology.start :router2svc
@@ -142,13 +142,13 @@ class BringUpTest < Test::Unit::TestCase
 
     sleep 1
 
-    url1 = "http://127.0.0.1:#{@sinatra_port}/data/stat/values?uuid=#{C1UUID}&start=#{start_ts}&end=#{end_ts}"
-    c1_messages = open(url1).read
-    assert_json_not_empty c1_messages
+    url1 = "http://127.0.0.1:#{@sinatra_port}/data/stat/values?uuid=#{A1UUID}&start=#{start_ts}&end=#{end_ts}"
+    a1_messages = open(url1).read
+    assert_json_not_empty a1_messages
 
-    url2 = "http://127.0.0.1:#{@sinatra_port}/data/stat/values?uuid=#{C2UUID}&start=#{start_ts}&end=#{end_ts}"
-    c2_messages = open(url2).read
-    assert_json_not_empty c2_messages
+    url2 = "http://127.0.0.1:#{@sinatra_port}/data/stat/values?uuid=#{A2UUID}&start=#{start_ts}&end=#{end_ts}"
+    a2_messages = open(url2).read
+    assert_json_not_empty a2_messages
 
     # Start up and test second sink
     @topology.start :cass_sink2
@@ -163,12 +163,12 @@ class BringUpTest < Test::Unit::TestCase
 
     sleep 1
 
-    url1 = "http://127.0.0.1:#{@sinatra_port}/data/stat/values?uuid=#{C1UUID}&start=#{start_ts}&end=#{end_ts}"
-    c1_messages = open(url1).read
-    assert_not_nil c1_messages =~ /second_countme/
+    url1 = "http://127.0.0.1:#{@sinatra_port}/data/stat/values?uuid=#{A1UUID}&start=#{start_ts}&end=#{end_ts}"
+    a1_messages = open(url1).read
+    assert_not_nil a1_messages =~ /second_countme/
 
-    url2 = "http://127.0.0.1:#{@sinatra_port}/data/stat/values?uuid=#{C2UUID}&start=#{start_ts}&end=#{end_ts}"
-    c2_messages = open(url2).read
-    assert_not_nil c2_messages =~ /second_countme/
+    url2 = "http://127.0.0.1:#{@sinatra_port}/data/stat/values?uuid=#{A2UUID}&start=#{start_ts}&end=#{end_ts}"
+    a2_messages = open(url2).read
+    assert_not_nil a2_messages =~ /second_countme/
   end
 end

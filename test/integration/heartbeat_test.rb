@@ -27,13 +27,13 @@ class HeartbeatTest < Test::Unit::TestCase
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
 
       :agent1svc   => Nodule::Process.new(
-        HASTUR_AGENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent1unix,
+        HASTUR_AGENT_BIN, '--uuid', A1UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent1unix,
         '--port', HASTUR_UDP_PORT,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
 
       :agent2svc => Nodule::Process.new(
-        HASTUR_AGENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent2unix,
+        HASTUR_AGENT_BIN, '--uuid', A2UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent2unix,
         '--port', Nodule::Util.random_udp_port,
         :stdout => :greenio, :stderr => :redio, :verbose => :yellowio,
       ),
@@ -82,9 +82,9 @@ class HeartbeatTest < Test::Unit::TestCase
     assert_equal(payloads.count, payloads.fuzzy_filter("value" => Fixnum).count)
     assert_equal(payloads.count, payloads.fuzzy_filter("name" => "hastur.agent.heartbeat").count)
 
-    c1uuid = C1UUID.gsub('-', '')
-    c2uuid = C2UUID.gsub('-', '')
-    assert envelopes.flatten.any? { |e| e.include?(c1uuid) }, "No envelope contains agent 1's UUID"
-    assert envelopes.flatten.any? { |e| e.include?(c2uuid) }, "No envelope contains agent 2's UUID"
+    a1uuid = A1UUID.gsub('-', '')
+    a2uuid = A2UUID.gsub('-', '')
+    assert envelopes.flatten.any? { |e| e.include?(a1uuid) }, "No envelope contains agent 1's UUID"
+    assert envelopes.flatten.any? { |e| e.include?(a2uuid) }, "No envelope contains agent 2's UUID"
   end
 end
