@@ -14,8 +14,8 @@ class HeartbeatTest < Test::Unit::TestCase
       :redio        => Nodule::Console.new(:fg => :red),
       :cyanio       => Nodule::Console.new(:fg => :cyan),
       :yellowio     => Nodule::Console.new(:fg => :yellow),
-      :client1unix  => Nodule::UnixSocket.new,
-      :client2unix  => Nodule::UnixSocket.new,
+      :agent1unix   => Nodule::UnixSocket.new,
+      :agent2unix   => Nodule::UnixSocket.new,
       :router       => Nodule::ZeroMQ.new(:uri => :gen),
       :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 4),
       :registration => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
@@ -26,14 +26,14 @@ class HeartbeatTest < Test::Unit::TestCase
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
 
-      :client1svc   => Nodule::Process.new(
-        HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--unix', :client1unix,
+      :agent1svc   => Nodule::Process.new(
+        HASTUR_AGENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent1unix,
         '--port', HASTUR_UDP_PORT,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
 
-      :client2svc => Nodule::Process.new(
-        HASTUR_CLIENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--unix', :client2unix,
+      :agent2svc => Nodule::Process.new(
+        HASTUR_AGENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent2unix,
         '--port', Nodule::Util.random_udp_port,
         :stdout => :greenio, :stderr => :redio, :verbose => :yellowio,
       ),
@@ -84,7 +84,7 @@ class HeartbeatTest < Test::Unit::TestCase
 
     c1uuid = C1UUID.gsub('-', '')
     c2uuid = C2UUID.gsub('-', '')
-    assert envelopes.flatten.any? { |e| e.include?(c1uuid) }, "No envelope contains client 1's UUID"
-    assert envelopes.flatten.any? { |e| e.include?(c2uuid) }, "No envelope contains client 2's UUID"
+    assert envelopes.flatten.any? { |e| e.include?(c1uuid) }, "No envelope contains agent 1's UUID"
+    assert envelopes.flatten.any? { |e| e.include?(c2uuid) }, "No envelope contains agent 2's UUID"
   end
 end

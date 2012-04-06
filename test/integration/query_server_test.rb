@@ -24,8 +24,8 @@ class QueryServerTest < Test::Unit::TestCase
       :redio        => Nodule::Console.new(:fg => :red),
       :yellowio     => Nodule::Console.new(:fg => :yellow),
       :cyanio       => Nodule::Console.new(:fg => :cyan),
-      :client1unix  => Nodule::UnixSocket.new,
-      :client2unix  => Nodule::UnixSocket.new,
+      :agent1unix   => Nodule::UnixSocket.new,
+      :agent2unix   => Nodule::UnixSocket.new,
       :router       => Nodule::ZeroMQ.new(:uri => :gen),
       :heartbeat    => Nodule::ZeroMQ.new(:uri => :gen),
       :registration => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :greenio),
@@ -33,7 +33,6 @@ class QueryServerTest < Test::Unit::TestCase
       :event        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :greenio),
       :log          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :greenio),
       :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :greenio),
-      :rawdata      => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :greenio),
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REP,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
       :cassandra    => Nodule::Cassandra.new(:keyspace => "Hastur",
@@ -44,13 +43,13 @@ class QueryServerTest < Test::Unit::TestCase
         :stdout => :greenio, :stderr => [sinatra_ready_proc, :greenio], :verbose => :cyanio
       ),
 
-      :client1svc   => Nodule::Process.new(
-        HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--unix', :client1unix,
+      :agent1svc   => Nodule::Process.new(
+        HASTUR_AGENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent1unix,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
 
-      :client2svc => Nodule::Process.new(
-        HASTUR_CLIENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--unix', :client2unix,
+      :agent2svc => Nodule::Process.new(
+        HASTUR_AGENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent2unix,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
 
@@ -63,7 +62,6 @@ class QueryServerTest < Test::Unit::TestCase
         '--stat',         :stat,
         '--log',          :log,
         '--error',        :error,
-        '--rawdata',      :rawdata,
         '--control',      :control,
         '--router',       :router,
         '--direct',       :direct,
@@ -103,16 +101,16 @@ class QueryServerTest < Test::Unit::TestCase
 
     url1 = "http://127.0.0.1:#{@sinatra_port}/data/heartbeat/json?uuid=#{C1UUID}&start=#{start_ts}&end=#{end_ts}"
     c1_html = open(url1).read
-    assert c1_html.length > 10, "got at least 10 bytes of data for the client 1 heartbeat query"
-    assert c1_html.length < 4096, "got no more than 4096 bytes of data for the client 1 heartbeat query"
+    assert c1_html.length > 10, "got at least 10 bytes of data for the agent 1 heartbeat query"
+    assert c1_html.length < 4096, "got no more than 4096 bytes of data for the agent 1 heartbeat query"
     assert c1_html.match(/^\s*{.*}\s*$/), "looks like JSON"
     c1_messages = MultiJson.decode c1_html
 
     # always run two tests - we've seen cases where the first works but the second doesn't
     url2 = "http://127.0.0.1:#{@sinatra_port}/data/heartbeat/values?uuid=#{C2UUID}&start=#{start_ts}&end=#{end_ts}"
     c2_html = open(url2).read
-    assert c2_html.length > 10, "got at least 10 bytes of data for the client 2 heartbeat query"
-    assert c2_html.length < 4096, "got no more than 4096 bytes of data for the client 2 heartbeat query"
+    assert c2_html.length > 10, "got at least 10 bytes of data for the agent 2 heartbeat query"
+    assert c2_html.length < 4096, "got no more than 4096 bytes of data for the agent 2 heartbeat query"
     assert c2_html.match(/^\s*{.*}\s*$/), "looks like JSON"
     c2_messages = MultiJson.decode c2_html
   end

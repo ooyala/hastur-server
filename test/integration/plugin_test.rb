@@ -49,8 +49,8 @@ EOJSON
         '--control',       :control,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
-      :client1svc    => Nodule::Process.new(
-        HASTUR_CLIENT_BIN,
+      :agent1svc     => Nodule::Process.new(
+        HASTUR_AGENT_BIN,
         '--uuid',         C1UUID,
         '--router',       :router,
         '--ack-timeout',  1,
@@ -97,6 +97,6 @@ EOJSON
     assert_kind_of Fixnum, plugin_info[:exit], "plugin result 'exit' should be a number"
     assert_equal 0, plugin_info[:exit], "plugin result should be 0"
 
-    # TODO: client plugin output isn't parsed - this is a bug that must be fixed first
+    # TODO: agent plugin output isn't parsed - this is a bug that must be fixed first
   end
 end

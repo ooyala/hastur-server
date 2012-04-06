@@ -16,7 +16,7 @@ class EventTest < Test::Unit::TestCase
       :greenio       => Nodule::Console.new(:fg => :green),
       :redio         => Nodule::Console.new(:fg => :red),
       :cyanio        => Nodule::Console.new(:fg => :cyan),
-      :client1unix   => Nodule::UnixSocket.new,
+      :agent1unix   => Nodule::UnixSocket.new,
       :router        => Nodule::ZeroMQ.new(:uri => :gen),
       :event         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture),
       :heartbeat     => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
@@ -24,7 +24,6 @@ class EventTest < Test::Unit::TestCase
       :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
       :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
       :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
-      :rawdata       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :cyanio),
       :direct        => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
       :control       => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
       :routersvc     => Nodule::Process.new(
@@ -39,15 +38,14 @@ class EventTest < Test::Unit::TestCase
         '--log',           :log,
         '--error',         :error,
         '--direct',        :direct,
-        '--rawdata',       :rawdata,
         '--control',       :control,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
-      :client1svc    => Nodule::Process.new(
-        HASTUR_CLIENT_BIN,
+      :agent1svc    => Nodule::Process.new(
+        HASTUR_AGENT_BIN,
         '--uuid',         C1UUID,
         '--router',       :router,
-        '--unix',         :client1unix,
+        '--unix',         :agent1unix,
         '--ack-timeout',  1,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
@@ -91,7 +89,7 @@ EOJSON
     @topology[:heartbeat].require_read_count 1
 
     ITERATIONS.times do
-      @topology[:client1unix].send event
+      @topology[:agent1unix].send event
     end
 
     @topology[:event].require_read_count ITERATIONS, 3 do

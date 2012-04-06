@@ -27,7 +27,7 @@ class RegistrationTest < Test::Unit::TestCase
     @topology = Nodule::Topology.new(
       :greenio      => Nodule::Console.new(:fg => :green),
       :redio        => Nodule::Console.new(:fg => :red),
-      :client1unix  => Nodule::UnixSocket.new,
+      :agent1unix   => Nodule::UnixSocket.new,
       :router       => Nodule::ZeroMQ.new(:uri => :gen),
       :registration => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 1),
       :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
@@ -38,10 +38,10 @@ class RegistrationTest < Test::Unit::TestCase
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
 
-      :client1svc   => Nodule::Process.new(HASTUR_CLIENT_BIN,
+      :agent1svc   => Nodule::Process.new(HASTUR_AGENT_BIN,
         "--uuid", C1UUID,
         "--router", :router,
-        "--unix",   :client1unix,
+        "--unix",   :agent1unix,
         :stdout => :greenio, :stderr => :redio
       ),
 

@@ -20,7 +20,7 @@ module Hastur
       attr_reader :uuid, :routers, :port, :heartbeat, :ack_interval
 
       def initialize(opts)
-        raise ArgumentError.new ":uuid is required" unless opts[:uuid] 
+        raise ArgumentError.new ":uuid is required" unless opts[:uuid]
         raise ArgumentError.new ":uuid must be in 36-byte hex form" unless Hastur::Util.valid_uuid?(opts[:uuid])
         raise ArgumentError.new ":routers is required" unless opts[:routers]
         raise ArgumentError.new ":routers must be a list" unless opts[:routers].kind_of? Enumerable
@@ -190,7 +190,7 @@ module Hastur
           @udp_socket.bind(address)
         else
           @udp_socket = UDPSocket.new
-          @udp_socket.bind nil, @port 
+          @udp_socket.bind nil, @port
         end
         @logger.debug "Binding UDP socket localhost:#{@port}"
         @tcp_socket = nil

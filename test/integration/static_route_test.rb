@@ -22,7 +22,6 @@ class StaticRouteTest < Test::Unit::TestCase
       :stat             => Nodule::ZeroMQ.new(:connect => ZMQ::PULL,   :uri => :gen, :reader => :capture, :limit => 1),
       :log              => Nodule::ZeroMQ.new(:connect => ZMQ::PULL,   :uri => :gen, :reader => :capture, :limit => 1),
       :error            => Nodule::ZeroMQ.new(:connect => ZMQ::PULL,   :uri => :gen, :reader => :capture, :limit => 1),
-      :rawdata          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL,   :uri => :gen, :reader => :drain),
       :direct           => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH,   :uri => :gen),
       :control          => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,    :uri => :gen),
       :routersvc        => Nodule::Process.new(
@@ -32,7 +31,6 @@ class StaticRouteTest < Test::Unit::TestCase
         '--stat',          :stat,
         '--log',           :log,
         '--error',         :error,
-        '--rawdata',       :rawdata,
         '--heartbeat',     :heartbeat,
         '--registration',  :registration,
         '--event',         :event,

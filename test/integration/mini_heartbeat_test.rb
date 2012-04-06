@@ -14,15 +14,13 @@ class MiniHeartbeatTest < Test::Unit::TestCase
       :redio        => Nodule::Console.new(:fg => :red),
       :cyanio       => Nodule::Console.new(:fg => :cyan),
       :yellowio     => Nodule::Console.new(:fg => :yellow),
-      :client1unix  => Nodule::UnixSocket.new,
+      :agent1unix   => Nodule::UnixSocket.new,
       :router       => Nodule::ZeroMQ.new(:bind => ZMQ::ROUTER, :uri => :gen, :reader => :capture, :limit => 2),
-
-      :client1svc   => Nodule::Process.new(
-        HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router,
+      :agent1svc    => Nodule::Process.new(
+        HASTUR_AGENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router,
         '--port', HASTUR_UDP_PORT,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
-
     )
 
     @topology.start_all
@@ -53,7 +51,7 @@ class MiniHeartbeatTest < Test::Unit::TestCase
     assert_equal 3, messages[1].count, "each message should have 3 parts"
 
     c1uuid = C1UUID.gsub('-', '')
-    assert envelopes.flatten.any? { |e| e.include?(c1uuid) }, "No envelope contains client 1's UUID"
+    assert envelopes.flatten.any? { |e| e.include?(c1uuid) }, "No envelope contains agent 1's UUID"
   end
 end
 

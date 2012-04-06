@@ -17,8 +17,8 @@ class BringUpTest < Test::Unit::TestCase
       sinatra_ready = true if line =~ /== Sinatra.* has taken the stage/
     end
     @sinatra_port = Nodule::Util.random_tcp_port
-    @client1_port = Nodule::Util.random_udp_port
-    @client2_port = Nodule::Util.random_udp_port
+    @agent1_port = Nodule::Util.random_udp_port
+    @agent2_port = Nodule::Util.random_udp_port
     @topology = Nodule::Topology.new(
       :greenio      => Nodule::Console.new(:fg => :green),
       :redio        => Nodule::Console.new(:fg => :red),
@@ -31,7 +31,6 @@ class BringUpTest < Test::Unit::TestCase
       :event        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :log          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :rawdata      => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REP,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
       :cassandra    => Nodule::Cassandra.new(:keyspace => "Hastur",
@@ -41,12 +40,12 @@ class BringUpTest < Test::Unit::TestCase
         '--cassandra', :cassandra, '--port', @sinatra_port.to_s,
         :stdout => :greenio, :stderr => [sinatra_ready_proc, :greenio], :verbose => :cyanio
       ),
-      :client1svc   => Nodule::Process.new(
-        HASTUR_CLIENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--port', @client1_port,
+      :agent1svc => Nodule::Process.new(
+        HASTUR_AGENT_BIN, '--uuid', C1UUID, '--heartbeat', 1, '--router', :router, '--port', @agent1_port,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
-      :client2svc => Nodule::Process.new(
-        HASTUR_CLIENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--port', @client2_port,
+      :agent2svc => Nodule::Process.new(
+        HASTUR_AGENT_BIN, '--uuid', C2UUID, '--heartbeat', 1, '--router', :router, '--port', @agent2_port,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
       :router1svc => Nodule::Process.new(
@@ -58,7 +57,6 @@ class BringUpTest < Test::Unit::TestCase
         '--stat',         :stat,
         '--log',          :log,
         '--error',        :error,
-        '--rawdata',      :rawdata,
         '--control',      :control,
         '--router',       :router,
         '--direct',       :direct,
@@ -74,7 +72,6 @@ class BringUpTest < Test::Unit::TestCase
         '--stat',         :stat,
         '--log',          :log,
         '--error',        :error,
-        '--rawdata',      :rawdata,
         '--control',      :control,
         '--router',       :router,
         '--direct',       :direct,
@@ -100,7 +97,7 @@ class BringUpTest < Test::Unit::TestCase
     @topology.start :cassandra
     create_all_column_families(@topology[:cassandra]) # helper
 
-    @topology.start_all_but :router2svc, :cass_sink2, :client2svc
+    @topology.start_all_but :router2svc, :cass_sink2, :agent2svc
     sleep 0.01 until sinatra_ready
 
     # wait for the row to show up in Cassandra
@@ -120,9 +117,9 @@ class BringUpTest < Test::Unit::TestCase
     start_ts = Hastur.timestamp(Time.now.to_i - 600)
     end_ts = Hastur.timestamp(Time.now.to_i + 600)
 
-    # Start up and test second client
-    @topology.start :client2svc
-    sleep 5
+    # Start up and test second agent
+    @topology.start :agent2svc
+    sleep 1
 
     url1 = "http://127.0.0.1:#{@sinatra_port}/data/registration/json?uuid=#{C1UUID}&start=#{start_ts}&end=#{end_ts}"
     c1_messages = open(url1).read
@@ -137,10 +134,10 @@ class BringUpTest < Test::Unit::TestCase
 
     sleep 1
 
-    Hastur.udp_port = @client1_port
+    Hastur.udp_port = @agent1_port
     Hastur.counter("Client1.countme")
 
-    Hastur.udp_port = @client2_port
+    Hastur.udp_port = @agent2_port
     Hastur.counter("Client2.countme")
 
     sleep 1
@@ -158,10 +155,10 @@ class BringUpTest < Test::Unit::TestCase
 
     sleep 1
 
-    Hastur.udp_port = @client1_port
+    Hastur.udp_port = @agent1_port
     Hastur.counter("Client1.second_countme")
 
-    Hastur.udp_port = @client2_port
+    Hastur.udp_port = @agent2_port
     Hastur.counter("Client2.second_countme")
 
     sleep 1

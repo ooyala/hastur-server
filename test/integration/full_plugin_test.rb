@@ -31,7 +31,6 @@ class FullPluginTest < Test::Unit::TestCase
       :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
-      :rawdata       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :direct        => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen, :reader => :drain),
       :cassandra     => Nodule::Cassandra.new( :keyspace => "Hastur", :verbose => :greenio ),
       :routersvc     => Nodule::Process.new(
@@ -44,12 +43,11 @@ class FullPluginTest < Test::Unit::TestCase
         '--stat',          :stat,
         '--log',           :log,
         '--error',         :error,
-        '--rawdata',       :rawdata,
         '--direct',        :direct,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
-      :client1svc    => Nodule::Process.new(
-        HASTUR_CLIENT_BIN,
+      :agent1svc    => Nodule::Process.new(
+        HASTUR_AGENT_BIN,
         '--uuid',         C1UUID,
         '--router',       :router,
         '--ack-timeout',  1,
@@ -90,7 +88,7 @@ class FullPluginTest < Test::Unit::TestCase
 
   def test_plugin
     client = @topology[:cassandra].client
-    
+
     # wait for the row to show up in Cassandra
     wait_for_cassandra_rows(client, "RegistrationArchive", 1, 30) do
       flunk "Gave up waiting for registrations in cassandra."
