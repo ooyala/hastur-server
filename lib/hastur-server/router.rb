@@ -32,6 +32,7 @@ module Hastur
       opts[:stats_interval] ||= 5   # default to send stats every 5 seconds
       @errors                 = 0
       @num_msgs               = 0
+      @noop_type_id           = Hastur::Message.symbol_to_type_id(:noop)
       @stats_interval         = opts[:stats_interval]
       @error_socket           = opts[:error_socket]
       @last_stat_flush        = Time.now
@@ -210,16 +211,14 @@ module Hastur
         # append this router's identity to the message envelope
         envelope.add_router @uuid
 
-        # Write the zmq headers into the dynamic route cache on every message from a ZMQ::ROUTER socket.
-        # This cache is used to route message from a pull/sub socket to the correct client on the
-        # router socket.
-        # The dynamic route cache is only useful on ROUTER (and maybe DEALER?) sockets.
-        socket.getsockopt(ZMQ::TYPE, socktype=[])
-        if socktype.member? ZMQ::ROUTER
+        # Write the zmq headers into the dynamic route cache on every noop message.
+        # This cache is used to route messages the correct client on the router socket.
+        if type == @noop_type_id
           # cache a copy of the binary string rather than the ZMQ::Message to avoid free() headaches
           headers = zmq_messages.map { |m| m.copy_out_string }
           @dynamic[from] = [socket, headers]
           @timestamps[from] = Time.now
+          next # do not continue processing, noops are unroutable
         end
 
         # keep track of how many times a message is routed so we can easily tell when a message is unroutable
