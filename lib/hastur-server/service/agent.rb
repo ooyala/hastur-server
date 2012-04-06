@@ -64,6 +64,7 @@ module Hastur
           :zmq_send    => 0,
           :zmq_recv    => 0,
           :errors      => 0,
+          :noops       => 0,
           :events      => 0,
         }
 
@@ -325,6 +326,7 @@ module Hastur
         if Time.now - @last_noop_blast > @noop_interval
           @routers.count.times do
             Hastur::Message::Noop.new(:from => @uuid).send(@router_socket)
+            @counters[:noops] += 1
           end
           @last_noop_blast = Time.now
         end
@@ -340,10 +342,10 @@ module Hastur
 
         @running = true
         while @running
+          poll_noop
           poll_registration_timeout
           poll_heartbeat_timeout
           poll_ack_timeouts
-          poll_noop
           poll_plugin_pids
           poll_udp
           poll_zmq
