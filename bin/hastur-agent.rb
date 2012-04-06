@@ -11,7 +11,7 @@ require 'termite'
 
 require "hastur-server/zmq_utils"
 require "hastur-server/util"
-require "hastur-server/client/service"
+require "hastur-server/service/agent"
 
 MultiJson.engine = :yajl
 NOTIFICATION_INTERVAL = 5   # Hardcode for now
@@ -44,5 +44,5 @@ end
 opts[:routers] = opts[:router]
 opts[:port] = opts[:port].to_i
 
-client = Hastur::Client::Service.new(opts)
-client.run
+agent = Hastur::Service::Agent.new(opts)
+agent.run
