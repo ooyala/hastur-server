@@ -19,7 +19,7 @@ require_relative "util/util"
 HASTUR_ROOT = File.join(File.dirname(__FILE__), "..", "..")
 
 HASTUR_ROUTER_BIN="#{HASTUR_ROOT}/bin/hastur-router.rb"
-HASTUR_CLIENT_BIN="#{HASTUR_ROOT}/bin/hastur-client.rb"
+HASTUR_AGENT_BIN="#{HASTUR_ROOT}/bin/hastur-agent.rb"
 HASTUR_MSGTOOL_BIN="#{HASTUR_ROOT}/tools/msgtool.rb"
 HASTUR_QUERY_SERVER_BIN="#{HASTUR_ROOT}/bin/hastur-query-server.rb"
 HASTUR_CASS_SINK_BIN="#{HASTUR_ROOT}/bin/cass-sink.rb"
@@ -36,15 +36,6 @@ C3UUID = '66666666-7777-8888-9999-aaaaaaaaaaaa'
 
 R1UUID = 'fafafafa-fafa-fafa-fafa-fafafafafafa'
 R2UUID = '01010101-0101-0101-0101-010101010101'
-
-MESSAGES = {
-  :heartbeat_client => "{\"last_heartbeat\":\"2012-02-18 12:29:48 -0800\",\"heartbeat\":30}",
-  :register_client  => "{\"uuid\":\"#{C1UUID}\",\"hostname\":\"web01.domain\",\"ipv4\":\"10.1.1.10\"}",
-  :notification     => "{\"sla\":604800,\"app\":\"sinatra\",\"recipients\":[\"web-oncall\"]}",
-  :stat             => "{\"name\":\"foo.bar.baz\",\"value\":1234,\"timestamp\":1234567890}",
-  :log              => "{}",
-  :error            => "{}",
-}
 
 def set_test_alarm(timeout=30)
   # cassandra migrations are /really/ slow in jenkins
@@ -98,4 +89,3 @@ def wait_for_cassandra_rows(client, cf, count, max_iterations=30)
   yield if block_given?
   false
 end
-
