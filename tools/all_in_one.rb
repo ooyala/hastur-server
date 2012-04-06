@@ -26,7 +26,6 @@ topology = Nodule::Topology.new(
   :registration  => Nodule::ZeroMQ.new(:uri => :gen),
   :log           => Nodule::ZeroMQ.new(:uri => :gen),
   :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
-  :rawdata       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :greenio),
   :direct        => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
   :control       => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
   :routersvc     => Nodule::Process.new(
@@ -41,7 +40,6 @@ topology = Nodule::Topology.new(
     '--log',           :log,
     '--error',         :error,
     '--direct',        :direct,
-    '--rawdata',       :rawdata,
     '--control',       :control,
     :stdout => :cyanio, :stderr => :cyanio, :verbose => :cyanio,
   ),

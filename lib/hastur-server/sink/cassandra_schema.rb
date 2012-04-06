@@ -11,7 +11,6 @@ require "hastur-server/util"
 # Stats - column families by subtype, five-minute resolution, high traffic
 # Logs - subdivision?  High resolution.  High traffic.
 # Errors - no subdivision, medium resolution?, medium traffic?
-# Rawdata - large entries, low resolution, low number of entries but sometimes large
 # Notification - no subdivision, low resolution, low traffic
 # Heartbeat - subdivision?, high resolution, high traffic
 # Registration - no subdivision, low resolution, low traffic

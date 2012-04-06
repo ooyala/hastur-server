@@ -46,7 +46,6 @@ public
       :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
-      :rawdata       => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :direct        => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen, :reader => :drain),
       :cassandra     => Nodule::Cassandra.new( :keyspace => "Hastur", :verbose => :greenio ),
       :routersvc     => Nodule::Process.new(
@@ -59,7 +58,6 @@ public
         '--stat',          :stat,
         '--log',           :log,
         '--error',         :error,
-        '--rawdata',       :rawdata,
         '--direct',        :direct,
         '--hwm',           100,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
