@@ -92,10 +92,10 @@ module Hastur
       end
     end
 
-    def self.setsockopts(sock)
-      rc = sock.setsockopt(::ZMQ::LINGER, -1)
+    def self.setsockopts(sock, opts = {})
+      rc = sock.setsockopt(::ZMQ::LINGER, opts[:linger] || -1)
       raise "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
-      rc = sock.setsockopt(::ZMQ::HWM, 1)
+      rc = sock.setsockopt(::ZMQ::HWM, opts[:hwm] || 1)
       raise "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
     end
 
