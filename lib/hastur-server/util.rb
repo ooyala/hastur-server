@@ -100,16 +100,27 @@ module Hastur
       end
     end
 
-    def self.setsockopts(sock, opts = {})
-      rc = sock.setsockopt(::ZMQ::LINGER, opts[:linger] || -1)
-      raise "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
-      rc = sock.setsockopt(::ZMQ::HWM, opts[:hwm] || 1)
-      raise "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
+    def self.setsockopts(socks, opts = {})
+      [socks].flatten.each do |sock|
+        rc = sock.setsockopt(::ZMQ::LINGER, opts[:linger] || -1)
+        raise "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
+        rc = sock.setsockopt(::ZMQ::HWM, opts[:hwm] || 1)
+        raise "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
+      end
     end
 
-    def self.bind(sock, uri)
-      rc = sock.bind(uri)
-      raise "Could not bind socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
+    def self.bind(socks, uri)
+      [socks].flatten.each do |sock|
+        rc = sock.bind(uri)
+        raise "Could not bind socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
+      end
+    end
+
+    def self.connect(socks, uri)
+      [socks].flatten.each do |sock|
+        rc = sock.connect(uri)
+        raise "Could not connect socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
+      end
     end
 
     #
