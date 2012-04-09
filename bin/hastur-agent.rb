@@ -9,7 +9,6 @@ require 'uuid'
 require 'socket'
 require 'termite'
 
-require "hastur-server/zmq_utils"
 require "hastur-server/util"
 require "hastur-server/service/agent"
 

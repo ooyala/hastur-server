@@ -3,7 +3,6 @@
 require "hastur-server/sink/cassandra_schema"
 require "hastur-server/hastur-heap-scheduler"
 require "hastur-server/util"
-require "hastur-server/zmq_utils"
 require "trollop"
 require "cassandra"
 
@@ -14,7 +13,7 @@ opts = Trollop::options do
 end
 
 ctx = ZMQ::Context.new(1)
-router_socket = Hastur::ZMQUtils.connect_socket(ctx, ZMQ::PUSH, opts[:routers].flatten)
+router_socket = Hastur::Util.connect_socket(ctx, ZMQ::PUSH, opts[:routers].flatten)
 
 scheduler = Hastur::Scheduler.new(router_socket)
 scheduler.start
@@ -57,9 +56,9 @@ scraper = Thread.new do
 
         # schedule jobs
         scheduler.add_jobs( jobs )
-        # TODO(viet): properly log this 
-        STDERR.puts "#{jobs.size} more jobs scheduled" 
-        
+        # TODO(viet): properly log this
+        STDERR.puts "#{jobs.size} more jobs scheduled"
+
         # wait another 10 seconds
         sleep 10
       rescue Exception => e

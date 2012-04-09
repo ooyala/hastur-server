@@ -6,7 +6,6 @@ require 'multi_json'
 require 'trollop'
 require 'uuid'
 require 'rubygems'
-require_relative '../tools/zmq_utils'
 
 def main(routers)
   ctx = ZMQ::Context.new

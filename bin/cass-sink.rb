@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 require "trollop"
-require "hastur-server/zmq_utils"
+require "hastur-server/util"
 require "hastur-server/message"
 require "hastur-server/sink/cassandra_schema"
 
@@ -28,8 +28,8 @@ end
 
 ctx = ZMQ::Context.new
 
-msg_socket = Hastur::ZMQUtils.connect_socket(ctx, ::ZMQ::PULL, opts[:sinks].flatten)
-ack_socket = Hastur::ZMQUtils.connect_socket(ctx, ::ZMQ::PUSH, opts[:acks_to].flatten)
+msg_socket = Hastur::Util.connect_socket(ctx, ::ZMQ::PULL, opts[:sinks].flatten)
+ack_socket = Hastur::Util.connect_socket(ctx, ::ZMQ::PUSH, opts[:acks_to].flatten)
 
 puts "Connecting to Cassandra at #{opts[:cassandra].flatten.inspect}"
 client = Cassandra.new(opts[:keyspace], opts[:cassandra].flatten)

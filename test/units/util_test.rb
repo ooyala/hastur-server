@@ -1,8 +1,8 @@
 require_relative "../test_helper"
-require "hastur-server/zmq_utils"
+require "hastur-server/util"
 
-class ZmqUtilsTest < Scope::TestCase
-  include Hastur::ZMQUtils
+class UtilTest < Scope::TestCase
+  include Hastur::Util
 
   context "checking URI validity" do
     should "reject hostname with no protocol" do
