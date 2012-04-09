@@ -8,18 +8,6 @@ module Hastur
   module Service
     module ZmqCassandra
 
-      def self.setsockopts(sock)
-        rc = sock.setsockopt(::ZMQ::LINGER, -1)
-        raise "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
-        rc = sock.setsockopt(::ZMQ::HWM, 1)
-        raise "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
-      end
-
-      def self.bind(sock, uri)
-        rc = sock.bind(uri)
-        raise "Could not bind socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
-      end
-
       REQUIRED_PRODUCER_OPTS = [:ctx, :incoming_uri, :consumer]
       class Producer
         include Celluloid
@@ -34,8 +22,8 @@ module Hastur
           @queue = CassandraQueue::Queue.get_queue(@qid)
 
           @incoming_socket = @ctx.socket(::ZMQ::PULL)
-          Hastur::Service::ZmqCassandra.setsockopts(@incoming_socket)
-          Hastur::Service::ZmqCassandra.bind(@incoming_socket, @incoming_uri)
+          Hastur::Util.setsockopts(@incoming_socket)
+          Hastur::Util.bind(@incoming_socket, @incoming_uri)
 
           @poller = ::ZMQ::Poller.new
           @poller.add_readable @incoming_socket
@@ -92,8 +80,8 @@ module Hastur
 
           @outgoing_socket = @ctx.socket(::ZMQ::PUSH)
 
-          Hastur::Service::ZmqCassandra.setsockopts(@outgoing_socket)
-          Hastur::Service::ZmqCassandra.bind(@outgoing_socket, @outgoing_uri)
+          Hastur::Util.setsockopts(@outgoing_socket)
+          Hastur::Util.bind(@outgoing_socket, @outgoing_uri)
 
         end
 

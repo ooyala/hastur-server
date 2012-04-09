@@ -91,6 +91,19 @@ module Hastur
         raise ArgumentError.new "Cannot generate a useful identity for the socket."
       end
     end
+
+    def self.setsockopts(sock)
+      rc = sock.setsockopt(::ZMQ::LINGER, -1)
+      raise "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
+      rc = sock.setsockopt(::ZMQ::HWM, 1)
+      raise "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
+    end
+
+    def self.bind(sock, uri)
+      rc = sock.bind(uri)
+      raise "Could not bind socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
+    end
+
   end
 end
 
