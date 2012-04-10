@@ -93,7 +93,7 @@ class QueryServerTest < Test::Unit::TestCase
   end
 
   def test_query_server
-    wait_for_cassandra_rows(@topology[:cassandra].client, "HeartbeatArchive", 4, 10)
+    wait_for_cassandra_rows(@topology[:cassandra].client, "HBProcessArchive", 4, 10)
 
     # Query from 10 minutes ago to 10 minutes from now, just to grab everything
     start_ts = Hastur.timestamp(Time.now.to_i - 600)
