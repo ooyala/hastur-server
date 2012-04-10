@@ -11,8 +11,6 @@ require 'trollop'
 require 'rainbow'
 require 'uuid'
 
-require "hastur-server/zmq_utils"
-
 ZMQ_TYPELIST = ZMQ::SocketTypeNameMap.values.join(", ")
 
 MultiJson.engine = :yajl

@@ -1,7 +1,7 @@
 $LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..")
 
 require "base_sink"
-require "hastur-server/zmq_utils"
+require "hastur-server/util"
 
 #
 # Event sink will drain several routers' sockets and push the event
@@ -10,10 +10,10 @@ require "hastur-server/zmq_utils"
 # stored to disk.
 #
 class EventSink < Hastur::Sink
- 
+
   def initialize
     super
-    @to_socket = Hastur::ZMQUtils.connect_socket(@context, ::ZMQ::PUSH, @opts[:routers].flatten)
+    @to_socket = Hastur::Util.connect_socket(@context, ::ZMQ::PUSH, @opts[:routers].flatten)
   end
 
   #

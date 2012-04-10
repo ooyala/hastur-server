@@ -41,25 +41,6 @@ module Hastur
     end
 
     #
-    # return a useful socket identity, falling back to the memory address of the socket
-    # if it no identity was assigned with setsockopt(ZMQ::IDENTITY, "").
-    #
-    def sockid(socket)
-      if socket.kind_of? ZMQ::Socket
-        rc = socket.getsockopt(ZMQ::IDENTITY, id=[])
-        if ZMQ::Util.resultcode_ok?(rc) and id[0]
-          id[0]
-        else
-          socket.socket.address
-        end
-      elsif socket.kind_of? FFI::Pointer
-        socket.address
-      else
-        raise ArgumentError.new "Cannot generate a useful identity for the socket."
-      end
-    end
-
-    #
     # Create a routing rule on route :to from socket :src to socket :dest.  This doesn't actually
     # run much except for parameter checking and adding the rule to the internal list.
     #
@@ -135,7 +116,7 @@ module Hastur
         end
       end
 
-      src_id = sockid(route[:src])
+      src_id = Hastur::Util.sockid(route[:src])
       @route_ids[src_id] ||= []
       @route_ids[src_id] << route
     end
@@ -153,7 +134,7 @@ module Hastur
     #
     def handle(socket, &block)
       @poller.register_readable socket
-      @handlers[sockid(socket)] = block
+      @handlers[Hastur::Util.sockid(socket)] = block
     end
 
     def forward(socket, *list)
@@ -188,7 +169,7 @@ module Hastur
 
       @poller.readables.each do |socket|
         # use the "id" to map back to a route list
-        id = sockid(socket)
+        id = Hastur::Util.sockid(socket)
 
         # additional socket handlers can be registered for things like control or route advertisement
         if @handlers[id]

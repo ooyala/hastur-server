@@ -1,6 +1,6 @@
 require "trollop"
 require "hastur-server/message"
-require "hastur-server/zmq_utils"
+require "hastur-server/util"
 require "hastur-server/sink/cassandra_schema"
 
 module Hastur
@@ -16,7 +16,7 @@ module Hastur
       @client.default_write_consistency = 2    # Initial default: 1
       # connect to Hastur router(s)
       @context = ::ZMQ::Context.new
-      @socket = Hastur::ZMQUtils.connect_socket(@context, ::ZMQ::PULL, @opts[:routers].flatten)
+      @socket = Hastur::Util.connect_socket(@context, ::ZMQ::PULL, @opts[:routers].flatten)
       # properly set up signal trapping
       %w(INT TERM KILL).each do |sig|
         ::Signal.trap(sig) do
