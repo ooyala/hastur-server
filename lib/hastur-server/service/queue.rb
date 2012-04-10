@@ -58,14 +58,21 @@ module Hastur
       # This is the method that is called to submit something to the queue
       #
       def method_submit(message)
-
+        marsh = Marshal.dump message
+        tuuid = @queue.push marsh
+        # Add tuuid as the first part, and then pass the message on the inproc
+        @ssock.send_strings message.unshift tuuid
+        @socket.send_strings [tuuid, "OK"]
       end
 
       #
       # This is the method to get an element from the queue
+      # On the backend, it will take the first message off the inproc, and forward it to the worker
       #
       def method_get(message)
-
+        @rsock.recv_strings messages=[]
+        # Send along the message with the tuuid as the first part
+        @socket.send_strings messages
       end
 
       #
@@ -73,11 +80,13 @@ module Hastur
       # so that it can be deleted from the queue
       #
       def method_done(message)
-
+        tuuid = message.shift
+        @queue.remove(tuuid)
+        @socket.send_strings [tuuid, "OK"]
       end
 
       def pick_method(message)
-        case message[0]
+        case message.shift
         when "submit"
           method_submit message
         when "get"
