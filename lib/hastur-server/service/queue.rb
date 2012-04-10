@@ -85,6 +85,10 @@ module Hastur
         @socket.send_strings [tuuid, "OK"]
       end
 
+      #
+      # Figure out with type of request is being made,
+      # and then call the approrpiate function, after stripping it from the message.
+      #
       def pick_method(message)
         case message.shift
         when "submit"
