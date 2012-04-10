@@ -90,7 +90,7 @@ module Hastur
         tuuid = message.shift
         @queue.remove(tuuid)
         @done = true
-        Hastur::Util.send_string(@socket, [tuuid, "OK"])
+        Hastur::Util.send_strings(@socket, [tuuid, "OK"])
       end
 
       #
@@ -98,7 +98,7 @@ module Hastur
       # and then call the approrpiate function, after stripping it from the message.
       #
       def pick_method(message)
-        case message.shift
+        case method = message.shift
         when "submit"
           method_submit message
         when "get"
@@ -106,7 +106,9 @@ module Hastur
         when "done"
           method_done message
         else
-          # TODO(jbhat): Send back a reply saying invalid method
+          err = "Invalid Request. Please have the first part of your message be one of {submit, get, done}"
+          Hastur::Util.send_strings(@socket, [err])
+          STDERR.puts "Request made with invalid method: #{method}"
         end
       end
 
