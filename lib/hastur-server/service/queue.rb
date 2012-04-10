@@ -25,6 +25,8 @@ module Hastur
         # Create the queue client for the cassandra-backed queue
         @queue = CassandraQueue::Queue.get_queue(@qid)
 
+        @done = true
+
         # Setup outbound communication socket
         @socket = @ctx.socket(::ZMQ::ROUTER)
         Hastur::Util.setsockopts(@socket)
@@ -70,9 +72,13 @@ module Hastur
       # On the backend, it will take the first message off the inproc, and forward it to the worker
       #
       def method_get(message)
-        @rsock.recv_strings messages=[]
+        if @done
+          @rsock.recv_strings message=[]
+          @message = message
+          @done = false
+        end
         # Send along the message with the tuuid as the first part
-        @socket.send_strings messages
+        @socket.send_strings @message
       end
 
       #
@@ -82,6 +88,7 @@ module Hastur
       def method_done(message)
         tuuid = message.shift
         @queue.remove(tuuid)
+        @done = true
         @socket.send_strings [tuuid, "OK"]
       end
 
