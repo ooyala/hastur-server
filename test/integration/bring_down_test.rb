@@ -111,7 +111,7 @@ public
     @topology.stop_all
   end
 
-  def test_plugin
+  def test_bring_down
     # send heartbeat to both agents
     send_2_heartbeat(@agent_udp_port1, @agent_udp_port2, @heartbeat_agent1, @heartbeat_agent2)
 
