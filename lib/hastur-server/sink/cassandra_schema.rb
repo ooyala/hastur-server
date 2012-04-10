@@ -5,19 +5,6 @@ require "date"
 
 require "hastur-server/util"
 
-# Data types we will eventually want to support:
-#
-#
-# Stats - column families by subtype, five-minute resolution, high traffic
-# Logs - subdivision?  High resolution.  High traffic.
-# Errors - no subdivision, medium resolution?, medium traffic?
-# Notification - no subdivision, low resolution, low traffic
-# Heartbeat - subdivision?, high resolution, high traffic
-# Registration - no subdivision, low resolution, low traffic
-
-# Needs more study:
-# Plugin results - subdivision?, high resolution, high traffic - like stats?
-
 module Hastur
   module Cassandra
     extend self
@@ -33,30 +20,32 @@ module Hastur
     ONE_WEEK = 7 * ONE_DAY
 
     SCHEMA = {
-      "stat" => {
-        :cf => :StatArchive,
-        :subtype => {
-          :type => {
-            :cf => {
-              :gauge => :StatGauge,
-              :counter => :StatCounter,
-              :mark => :StatMark,
-            },
-            :value => {
-              :gauge => :value,
-              :counter => :value,
-              :mark => :value,
-            },
-            :rollup_cf_prefix => {
-              :gauge => "StatGauge",
-              :counter => "StatCounter",
-              :mark => "StatMark",
-            }
-          }
-        },
-        :granularity => FIVE_MINUTES,
+      "gauge" => {
+        :cf => :GaugeArchive,
         :name => :name,
-        :name_cf => :StatNameDay,
+        :value => :value,
+        :granularity => FIVE_MINUTES,
+
+        :values_cf => :StatGauge,
+        :name_cf => :GaugeNameDay,
+      },
+      "counter" => {
+        :cf => :CounterArchive,
+        :name => :name,
+        :value => :value,
+        :granularity => FIVE_MINUTES,
+
+        :values_cf => :StatCounter,
+        :name_cf => :CounterNameDay,
+      },
+      "mark" => {
+        :cf => :MarkArchive,
+        :name => :name,
+        :value => :value,
+        :granularity => ONE_HOUR,
+
+        :values_cf => :StatMark,
+        :name_cf => :MarkNameDay,
       },
       "log" => {
         :cf => :LogArchive,
@@ -73,21 +62,48 @@ module Hastur
         :granularity => ONE_DAY,
         :name => nil,
       },
-      "heartbeat" => {
-        :cf => :HeartbeatArchive,
-        :granularity => FIVE_MINUTES,
+      "hb_process" => {
+        :cf => :HBProcessArchive,
         :name => :name,
-        :rollup_cf_prefix => "Heartbeat",
         :value => :value,
+        :granularity => FIVE_MINUTES,
+
+        :values_cf => "HBProcess",
+        :name_cf => "HBProcessNameDay",
       },
-      # No plugin_exec - not for sinks
-      "registration" => {
-        :cf => :RegistrationArchive,
+      "hb_agent" => {
+        :cf => :HBAgentArchive,
+        :name => :name,
+        :value => :value,
+        :granularity => ONE_HOUR,
+
+        :values_cf => "HBAgent",
+      },
+      "hb_pluginv1" => {
+        :cf => :HBPluginV1Archive,
+        :name => :name,
+        :value => :value,
+        :granularity => ONE_HOUR,
+
+        :values_cf => "HBPluginV1",
+        :name_cf => "HBPluginV1NameDay",
+      },
+      "reg_agent" => {
+        :cf => :RegAgentArchive,
         :granularity => ONE_DAY,
         :name => nil,
-        :rollup_cf => :RegistrationDay
       },
-    }
+      "reg_process" => {
+        :cf => :RegProcessArchive,
+        :granularity => ONE_DAY,
+        :name => nil,
+      },
+      "reg_pluginv1" => {
+        :cf => :RegPluginV1Archive,
+        :granularity => ONE_DAY,
+        :name => nil,
+      },
+    }.freeze
 
     #
     # Return a list of CassandraThrift::CfDef objects that can be used for setup.
@@ -106,15 +122,6 @@ module Hastur
     #   :consistency
     # Additional options:
     #   :uuid - agent UUID
-    def insert_stat(cass_client, json_string, options = {})
-      insert(cass_client, json_string, "stat", options)
-    end
-
-    # Options from Twitter Cassandra gem:
-    #   :ttl
-    #   :consistency
-    # Additional options:
-    #   :uuid - agent UUID
     #   :msg_type - data type from the hastur message (required)
     def insert(cass_client, json_string, msg_type, options = {})
       hash = MultiJson.decode(json_string, :symbolize_keys => true)
@@ -125,22 +132,8 @@ module Hastur
       schema = SCHEMA[msg_type]
       raise "No schema defined for Hastur message type '#{msg_type}'!" unless schema
 
-      subdivide = false
-      if schema[:subtype]
-        subdivide = true
-        sub_key = schema[:subtype].keys[0]   # Example: :type
-        type = hash[sub_key].to_sym            # Example: :gauge
-        raise "No '#{sub_key}' specified in the payload" unless type
-
-        subtype = schema[:subtype][sub_key]
-        raise "Unknown #{type} #{sub_key}: #{type.inspect}!" unless subtype
-
-        cf = subtype[:cf][type]                # Example: :StatGauge
-
-        value = hash[:value]                   # Example: 37.914
-      end
-
       name = schema[:name] ? hash[schema[:name]] : nil
+      value = hash[:value]                   # Example: 37.914
       timestamp_usec = hash[:timestamp]
 
       colname = col_name(name, timestamp_usec)
@@ -153,8 +146,9 @@ module Hastur
       cass_client.batch do |client|
         client.insert(schema[:cf], key, { colname => json_string,
                         "last_write" => now_ts, "last_access" => now_ts }, insert_options)
+        cf = schema[:values_cf]
         client.insert(cf, key, { colname => value.to_msgpack, "last_write" => now_ts,
-                        "last_access" => now_ts }, insert_options) if subdivide
+                        "last_access" => now_ts }, insert_options) if cf
 
         # Insert into "saw this in this time period" rows
         client.insert(:UUIDDay, one_day_ts.to_s, { uuid => "" })
@@ -164,6 +158,13 @@ module Hastur
       end
     end
 
+    # Get a message on a given agent UUID over a given block of time, up to about a day.
+    #
+    # Options:
+    #   :name - message name
+    #   :consistency - Cassandra read consistency
+    #   :count - maximum number of entries to return, default 10000
+    #
     def get(cass_client, agent_uuid, type, start_timestamp, end_timestamp, options = {})
       if end_timestamp - start_timestamp > 72 * ONE_HOUR
         raise "Don't query more than 3 days at once yet!"
@@ -172,29 +173,12 @@ module Hastur
       raw_get_all(cass_client, agent_uuid, type, start_timestamp, end_timestamp, options)
     end
 
-    # Get a stat on a given agent UUID over a given block of time, up to about a day.
-    # If a :type option is given, pull the values from that type's storage area.  Otherwise,
-    # pull raw JSON information from the all-stats archive area.
-    #
-    # Options:
-    #   :consistency - Cassandra read consistency
-    #   :count - maximum number of entries to return, default 10000
-    #
-    def get_stat(cass_client, agent_uuid, stat_name, type, start_timestamp, end_timestamp, options = {})
-      if end_timestamp - start_timestamp > 72 * ONE_HOUR
-        raise "Don't query more than 3 days at once yet!"
-      end
-
-      raw_get_all(cass_client, agent_uuid, "stat", start_timestamp, end_timestamp,
-                  options.merge(:name => stat_name, :subtype => type))
-    end
-
     # Get all stats on a given agent UUID over a given block of time, up to about a day.
     # If a :type option is given, pull the values from that type's storage area.  Otherwise,
     # pull raw JSON information from the all-stats archive area.
     #
     # Options:
-    #   :type - :gauge, :mark, :counter (nil for raw)
+    #   :value_only - return only the value, not the full JSON
     #   :consistency - Cassandra read consistency
     #   :count - maximum number of entries to return, default 10000
     #
@@ -203,13 +187,10 @@ module Hastur
         raise "Don't query more than 3 days at once yet!"
       end
 
-      if [ :gauge, :mark, :counter ].include?(options[:type])
-        options[:subtype] = options[:type]
-      elsif options[:type]
-        raise "Unknown type #{options[:type]} passed to get_all_stats!"
-      end
-
-      raw_get_all(cass_client, agent_uuid, "stat", start_timestamp, end_timestamp, options)
+      r1 = raw_get_all(cass_client, agent_uuid, "gauge", start_timestamp, end_timestamp, options) || {}
+      r2 = raw_get_all(cass_client, agent_uuid, "counter", start_timestamp, end_timestamp, options) || {}
+      r3 = raw_get_all(cass_client, agent_uuid, "mark", start_timestamp, end_timestamp, options) || {}
+      r1.merge(r2).merge(r3)
     end
 
     protected
@@ -298,7 +279,7 @@ module Hastur
     #
     # Hastur Options:
     #   :name - the message name such as stat name, heartbeat name or plugin name
-    #   :subtype - message subtype such as :counter for stats (nil for none)
+    #   :value_only - return only the message (usually stat) value, not full JSON
     #
     # Cassandra Options:
     #   :count - maximum number of messages, default 10,000
@@ -320,19 +301,10 @@ module Hastur
       raise "No schema defined for Hastur message type '#{msg_type}'!" unless schema
 
       name_field = schema[:name]
-      cf = schema[:cf]
       granularity = schema[:granularity]
 
-      subdivide = false
-      if schema[:subtype] && options[:subtype]
-        subdivide = true
-        sub_key = schema[:subtype].keys[0]     # Example: :type
-
-        subtype = schema[:subtype][sub_key]
-
-        cf = subtype[:cf][options[:subtype]]   # Example: :StatGauge
-        raise "No such subtype as #{options[:subtype]}!" unless cf
-      end
+      cf = schema[:cf]
+      cf = schema[:values_cf] if options[:value_only] && schema[:values_cf]
 
       segments = segments_for_timestamps(start_timestamp, end_timestamp, granularity)
 
@@ -379,7 +351,7 @@ module Hastur
           name, timestamp = col_name_to_name_and_timestamp(col_key)
 
           if timestamp <= end_timestamp && timestamp >= start_timestamp
-            val = subdivide ? MessagePack.unpack(value) : value
+            val = options[:value_only] ? MessagePack.unpack(value) : value
             if name
               final_values[name] ||= {}
               final_values[name][timestamp] = val

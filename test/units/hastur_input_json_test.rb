@@ -46,10 +46,8 @@ class TestHasturInputJSON < MiniTest::Unit::TestCase
 }
 
 EOJSON
-
-    assert_block do
-      Hastur::Input::JSON.decode(json) rescue nil
-    end
+    decoded = Hastur::Input::JSON.decode(json) rescue nil
+    assert decoded
   end
 end
 
