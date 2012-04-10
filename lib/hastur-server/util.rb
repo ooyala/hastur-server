@@ -123,6 +123,48 @@ module Hastur
       end
     end
 
+    def self.read_msgs(socket)
+      message = []
+      rc = socket.recvmsgs message
+      if ::ZMQ::Util.resultcode_ok? rc
+        message
+      else
+        send_error ::ZMQ::Util.error_string
+        false
+      end
+    end
+
+    def self.send_msgs(socket, message)
+      rc = socket.sendmsgs message
+      if ::ZMQ::Util.resultcode_ok? rc
+        true
+      else
+        send_error ::ZMQ::Util.error_string
+        false
+      end
+    end
+
+    def self.read_strings(socket)
+      message = []
+      rc = socket.recv_strings message
+      if ::ZMQ::Util.resultcode_ok? rc
+        message
+      else
+        send_error ::ZMQ::Util.error_string
+        false
+      end
+    end
+
+    def self.send_strings(socket, message)
+      rc = socket.send_strings message
+      if ::ZMQ::Util.resultcode_ok? rc
+        true
+      else
+        send_error ::ZMQ::Util.error_string
+        false
+      end
+    end
+
     #
     # Check a URI for validity before passing onto ZMQ.
     # We explicitly disallow "localhost" because ZMQ will break silently on IPv6 enabled systems.

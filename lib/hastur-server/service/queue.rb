@@ -43,7 +43,7 @@ module Hastur
       def run
         @running = true
         while @running
-          @socket.recv_strings message=[]
+          message = Hastur::Util.read_strings(@socket)
           pick_method message
         end
       end
@@ -63,8 +63,9 @@ module Hastur
         marsh = Marshal.dump message
         tuuid = @queue.push marsh
         # Add tuuid as the first part, and then pass the message on the inproc
-        @ssock.send_strings message.unshift tuuid
-        @socket.send_strings [tuuid, "OK"]
+        message.unshift tuuid
+        Hastur::Util.send_strings(@ssock, message)
+        Hastur::Util.send_strings(@socket, [tuuid, "OK"])
       end
 
       #
@@ -73,12 +74,12 @@ module Hastur
       #
       def method_get(message)
         if @done
-          @rsock.recv_strings message=[]
+          message = Hastur::Util.read_strings(@rsock)
           @message = message
           @done = false
         end
         # Send along the message with the tuuid as the first part
-        @socket.send_strings @message
+        Hastur::Util.send_strings(@socket, @message)
       end
 
       #
@@ -89,7 +90,7 @@ module Hastur
         tuuid = message.shift
         @queue.remove(tuuid)
         @done = true
-        @socket.send_strings [tuuid, "OK"]
+        Hastur::Util.send_string(@socket, [tuuid, "OK"])
       end
 
       #
@@ -104,6 +105,8 @@ module Hastur
           method_get message
         when "done"
           method_done message
+        else
+          # TODO(jbhat): Send back a reply saying invalid method
         end
       end
 
