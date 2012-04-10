@@ -43,7 +43,7 @@ scraper = Thread.new do
         # fetch all of the jobs since 5 minutes ago
         curr_time = Time.now
         uuids.each do |uuid|
-          hash = Hastur::Cassandra.get(client, uuid, "registration", start_time, end_time)
+          hash = Hastur::Cassandra.get(client, uuid, "reg_agent", start_time, end_time)
           # for registration, there is not a 'name' as a key into the returned hash from Hastur::Cassandra.get()
           ordered_hash = hash[""]
           ordered_hash.keys.each do |key|
