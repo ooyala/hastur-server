@@ -36,7 +36,7 @@ scraper = Thread.new do
         start_time = end_time.to_i - 60*5*1_000_000  # 5 minutes before
         uuids = Set.new
         # retrieve all agent UUIDs
-        client.each_key(:RegistrationArchive) do |key|
+        client.each_key(:RegAgentArchive) do |key|
           uuids.add( key[0..35] )
         end
 

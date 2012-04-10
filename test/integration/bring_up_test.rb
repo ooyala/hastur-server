@@ -101,7 +101,7 @@ class BringUpTest < Test::Unit::TestCase
     sleep 0.01 until sinatra_ready
 
     # wait for the row to show up in Cassandra
-    wait_for_cassandra_rows(@topology[:cassandra].client, "RegistrationArchive", 1, 5) do
+    wait_for_cassandra_rows(@topology[:cassandra].client, "RegAgentArchive", 1, 5) do
       flunk "Gave up waiting for registration in cassandra."
     end
   end

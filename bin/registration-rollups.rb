@@ -8,7 +8,7 @@ require "hastur-server/sink/cassandra_schema"
 require "hastur-server/sink/cassandra_rollups"
 
 #
-# The registration rollup will periodically (daily) perform rollups for the RegistrationArchive column family 
+# The registration rollup will periodically (daily) perform rollups for the RegAgentArchive column family 
 #
 # TODO(viet): add proper logging via Termite
 #
@@ -27,7 +27,7 @@ curr_time = Hastur::Util.timestamp
 #
 def get_agent_uuids(c)
   uuids = Set.new
-  c.each_key(:RegistrationArchive) do |key|
+  c.each_key(:RegAgentArchive) do |key|
     uuids.add( key[0..35] )
   end
   uuids
