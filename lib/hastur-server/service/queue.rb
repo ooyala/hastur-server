@@ -21,6 +21,7 @@ module Hastur
         @qid = qid
         @uri = opt[:uri]
         @ctx = opt[:ctx] || ::ZMQ::Context.new
+        @deliver_many = opt[:deliver_many] || false
 
         # Create the queue client for the cassandra-backed queue
         @queue = CassandraQueue::Queue.get_queue(@qid)
@@ -38,6 +39,8 @@ module Hastur
         Hastur::Util.setsockopts([@rsock, @ssock], :hwm => 0)
         Hastur::Util.connect(@ssock, INPROC_URI)
         Hastur::Util.bind(@rsock, INPROC_URI)
+
+        # TODO(jbhat): Start up background thread that replays old work into the inproc
       end
 
       def run
@@ -73,9 +76,10 @@ module Hastur
       # On the backend, it will take the first message off the inproc, and forward it to the worker
       #
       def method_get(message)
-        if @done
-          message = Hastur::Util.read_strings(@rsock)
-          @message = message
+        # Get a message off the inproc if always delivering a new message,
+        # or if the previous message has been acked
+        if @deliver_many || @done
+          @message = Hastur::Util.read_strings(@rsock)
           @done = false
         end
         # Send along the message with the tuuid as the first part
