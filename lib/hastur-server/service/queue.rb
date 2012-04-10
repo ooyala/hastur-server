@@ -12,24 +12,25 @@ module Hastur
       # Sets up a persistent cassandra-backed zmq queue.
       # @param [String] The queueUUID for the queue to use
       # @param [Hash{Symbol => String}] opts
-      # @option [String] :router_uri default tcp://*:8126
-      # @option [String] :incoming_uri required
-      # @option [String] :outgoing_uri required
+      # @option [String] :uri required
       #
       def initialize(qid, opts = {})
-        # Make sure REQUIRED_OPTS are defined
+        # Make sure required options are defined
         raise "URIs not defined in opts" unless opts.has_key? :uri
 
         @qid = qid
         @uri = opt[:uri]
         @ctx = opt[:ctx] || ::ZMQ::Context.new
 
+        # Create the queue client for the cassandra-backed queue
         @queue = CassandraQueue::Queue.get_queue(@qid)
 
+        # Setup outbound communication socket
         @socket = @ctx.socket(::ZMQ::ROUTER)
         Hastur::Util.setsockopts(@socket)
         Hastur::Util.bind(@socket, @uri)
 
+        # Setup inproc socket
         @ssock = @ctx.socket(ZMQ::PAIR)
         @rsock = @ctx.socket(ZMQ::PAIR)
         Hastur::Util.setsockopts([@rsock, @ssock], :hwm => 0)
@@ -53,19 +54,29 @@ module Hastur
 
       private
 
-      def method_submit
+      #
+      # This is the method that is called to submit something to the queue
+      #
+      def method_submit(message)
 
       end
 
-      def method_get
+      #
+      # This is the method to get an element from the queue
+      #
+      def method_get(message)
 
       end
 
-      def method_done
+      #
+      # This is the method that is called to say you are done processing a message,
+      # so that it can be deleted from the queue
+      #
+      def method_done(message)
 
       end
 
-      def pick_method message
+      def pick_method(message)
         case message[0]
         when "submit"
           method_submit message
