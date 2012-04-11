@@ -1,5 +1,6 @@
 require "ffi-rzmq"
 require "cassandra-queue"
+require_relative "../util"
 
 module Hastur
   module Service
@@ -19,9 +20,9 @@ module Hastur
         raise "URIs not defined in opts" unless opts.has_key? :uri
 
         @qid = qid
-        @uri = opt[:uri]
-        @ctx = opt[:ctx] || ::ZMQ::Context.new
-        @deliver_many = opt[:deliver_many] || false
+        @uri = opts[:uri]
+        @ctx = opts[:ctx] || ::ZMQ::Context.new
+        @deliver_many = opts[:deliver_many] || false
 
         # Create the queue client for the cassandra-backed queue
         @queue = CassandraQueue::Queue.get_queue(@qid)
@@ -37,8 +38,8 @@ module Hastur
         @ssock = @ctx.socket(ZMQ::PAIR)
         @rsock = @ctx.socket(ZMQ::PAIR)
         Hastur::Util.setsockopts([@rsock, @ssock], :hwm => 0)
-        Hastur::Util.connect(@ssock, INPROC_URI)
         Hastur::Util.bind(@rsock, INPROC_URI)
+        Hastur::Util.connect(@ssock, INPROC_URI)
 
         # TODO(jbhat): Start up background thread that replays old work into the inproc
       end
@@ -62,20 +63,20 @@ module Hastur
       #
       # This is the method that is called to submit something to the queue
       #
-      def method_submit(message)
+      def method_submit(header, message)
         marsh = Marshal.dump message
-        tuuid = @queue.push marsh
+        tuuid = @queue.push(marsh).to_s
         # Add tuuid as the first part, and then pass the message on the inproc
         message.unshift tuuid
         Hastur::Util.send_strings(@ssock, message)
-        Hastur::Util.send_strings(@socket, [tuuid, "OK"])
+        Hastur::Util.send_strings(@socket, header.concat([tuuid, "OK"]))
       end
 
       #
       # This is the method to get an element from the queue
       # On the backend, it will take the first message off the inproc, and forward it to the worker
       #
-      def method_get(message)
+      def method_get(header, _)
         # Get a message off the inproc if always delivering a new message,
         # or if the previous message has been acked
         if @deliver_many || @done
@@ -83,18 +84,18 @@ module Hastur
           @done = false
         end
         # Send along the message with the tuuid as the first part
-        Hastur::Util.send_strings(@socket, @message)
+        Hastur::Util.send_strings(@socket, header.concat(@message))
       end
 
       #
       # This is the method that is called to say you are done processing a message,
       # so that it can be deleted from the queue
       #
-      def method_done(message)
+      def method_done(header, message)
         tuuid = message.shift
         @queue.remove(tuuid)
         @done = true
-        Hastur::Util.send_strings(@socket, [tuuid, "OK"])
+        Hastur::Util.send_strings(@socket, header.concat([tuuid, "OK"]))
       end
 
       #
@@ -102,16 +103,18 @@ module Hastur
       # and then call the approrpiate function, after stripping it from the message.
       #
       def pick_method(message)
-        case method = message.shift
+        header = message[0..1]
+        my_message = message[2..-1]
+        case method = my_message.shift
         when "submit"
-          method_submit message
+          method_submit header, my_message
         when "get"
-          method_get message
+          method_get header, my_message
         when "done"
-          method_done message
+          method_done header, my_message
         else
           err = "Invalid Request. Please have the first part of your message be one of {submit, get, done}"
-          Hastur::Util.send_strings(@socket, [err])
+          Hastur::Util.send_strings(@socket, header << err)
           STDERR.puts "Request made with invalid method: #{method}"
         end
       end
