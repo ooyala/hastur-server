@@ -41,10 +41,11 @@ module Hastur
         Hastur::Util.bind(@rsock, INPROC_URI)
         Hastur::Util.connect(@ssock, INPROC_URI)
 
-        # TODO(jbhat): Start up background thread that replays old work into the inproc
-
         @poller = ZMQ::Poller.new
         @poller.register(@rsock, ZMQ::POLLIN)
+
+        # TODO(jbhat): Start up background thread that replays old work into the inproc
+        _start_replay_thread
       end
 
       def run
@@ -133,6 +134,20 @@ module Hastur
         end
       end
 
+      private
+
+      #
+      # Starts a replay thread that reads unprocessed work from C* and enqueues
+      # the messages into this queue
+      #
+      # TODO: Need to worry about cases where there are too many messages in C* to
+      #       completely store in memory.
+      #
+      def _start_replay_thread
+        @replay_thrd = Thread.start do
+
+        end
+      end
     end
   end
 end
