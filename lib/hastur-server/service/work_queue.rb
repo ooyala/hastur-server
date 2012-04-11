@@ -22,12 +22,9 @@ module Hastur
         @qid = qid
         @uri = opts[:uri]
         @ctx = opts[:ctx] || ::ZMQ::Context.new
-        @deliver_many = opts[:deliver_many] || false
 
         # Create the queue client for the cassandra-backed queue
         @queue = CassandraQueue::Queue.get_queue(@qid)
-
-        @done = true
 
         # Setup outbound communication socket
         @socket = @ctx.socket(::ZMQ::ROUTER)
@@ -83,20 +80,15 @@ module Hastur
       def method_get(header, _)
         # Get a message off the inproc if always delivering a new message,
         # or if the previous message has been acked
-        if @deliver_many || @done
-          rc = @poller.poll_nonblock
-          if ::ZMQ::Util.resultcode_ok? rc
-            if @poller.readables.size > 0
-                @message = Hastur::Util.read_strings(@rsock)
-                @done = false
-            else
-                @message = ["No work in queue!"]
-                @done = true
-            end
+        rc = @poller.poll_nonblock
+        if ::ZMQ::Util.resultcode_ok? rc
+          if @poller.readables.size > 0
+              @message = Hastur::Util.read_strings(@rsock)
           else
-            @message = ["Unable to poll the queue's internal socket: #{::ZMQ::Util.error_string}"]
-            @done = true
+              @message = ["No work in queue!"]
           end
+        else
+          @message = ["Unable to poll the queue's internal socket: #{::ZMQ::Util.error_string}"]
         end
         # Send along the message with the tuuid as the first part
         Hastur::Util.send_strings(@socket, header.concat(@message))
@@ -109,7 +101,6 @@ module Hastur
       def method_done(header, message)
         tuuid = message.shift
         @queue.remove(tuuid)
-        @done = true
         Hastur::Util.send_strings(@socket, header.concat([tuuid, "OK"]))
       end
 
