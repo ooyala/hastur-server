@@ -44,7 +44,7 @@ module Hastur
         # TODO(jbhat): Start up background thread that replays old work into the inproc
 
         @poller = ZMQ::Poller.new
-        @poller.register_readables @rsock
+        @poller.register_readable @rsock
       end
 
       def run
