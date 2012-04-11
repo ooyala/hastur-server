@@ -4,7 +4,7 @@ require_relative "../util"
 
 module Hastur
   module Service
-    class Queue
+    class WorkQueue
 
       INPROC_URI = "inproc://queue_inproc"
 
