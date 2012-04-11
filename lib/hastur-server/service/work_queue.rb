@@ -24,7 +24,7 @@ module Hastur
         @ctx = opts[:ctx] || ::ZMQ::Context.new
 
         # Create the queue client for the cassandra-backed queue
-        @queue = CassandraQueue::Queue.get_queue(@qid)
+        @queue = opts[:queue] || CassandraQueue::Queue.get_queue(@qid)
 
         # Setup outbound communication socket
         @socket = @ctx.socket(::ZMQ::ROUTER)
