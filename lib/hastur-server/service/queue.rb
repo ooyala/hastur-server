@@ -42,6 +42,9 @@ module Hastur
         Hastur::Util.connect(@ssock, INPROC_URI)
 
         # TODO(jbhat): Start up background thread that replays old work into the inproc
+
+        @poller = ZMQ::Poller.new
+        @poller.register_readables @rsock
       end
 
       def run
@@ -80,7 +83,12 @@ module Hastur
         # Get a message off the inproc if always delivering a new message,
         # or if the previous message has been acked
         if @deliver_many || @done
-          @message = Hastur::Util.read_strings(@rsock)
+          @poller.poll_nonblock
+          if @poller.readables.include?(@rsock)
+            @message = Hastur::Util.read_strings(@rsock)
+          else
+            @message = ["No work in queue!"]
+          end
           @done = false
         end
         # Send along the message with the tuuid as the first part
