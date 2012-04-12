@@ -18,11 +18,14 @@ module Hastur
         @ruby       = opts[:ruby]
         @harness    = opts[:harness]
         @ctx        = opts[:ctx] || ZMQ::Context.new
-        @rpc_server = Hastur::RPC::Server.new @uri
+        @rpc_uri    = opts[:rpc_uri]
+        @rpc_server = Hastur::RPC::Server.new @rpc_uri
+        @mutex      = Mutex.new
         @blocks     = {}
         @processes  = {}
         @stopping   = {}
         @block_uris = {}
+        @context_cache = {}
 
         @rpc_server.add_handler :add_block do |data|
           @mutex.synchronize do
@@ -38,6 +41,14 @@ module Hastur
 
         @rpc_server.add_handler :status do
           @mutex.synchronize do get_status end
+        end
+
+        @rpc_server.add_handler :save_context do |id, context|
+          @mutex.synchronize do save_context(id, context) end
+        end
+
+        @rpc_server.add_handler :load_context do |id|
+          @mutex.synchronize do load_context(id) end
         end
       end
 
@@ -64,7 +75,7 @@ module Hastur
             # process died
             if @status and rc == pid
               unless @stopping[pid]
-                info = @processes.delete pid
+                info = @processes.delete(pid)
                 @logger.info "Restarting block '#{info[1]}' at #{Time.now} after it ran for #{Time.now - info[0]} seconds."
                 restart @processes[info[1]]
               end
@@ -80,7 +91,7 @@ module Hastur
       def launch_process(block_path, uri)
         pid = fork
         if pid == 0
-          Kernel.exec @ruby, '--queue', uri, '--triggers', block_path
+          Kernel.exec @ruby, '--queue', uri, '--rpc', @rpc_uri, '--triggers', block_path
         else
           @processes[pid] = [ Time.now, block_path ]
         end
@@ -96,8 +107,25 @@ module Hastur
         end
       end
 
+      def restart
+        # TODO: restart
+      end
+
       def get_status
         return "lulz"
+      end
+
+      def save_context(id, context)
+        @context_cache[id] = context
+        # TODO: write to cassandra
+      end
+
+      def load_context(id)
+        if @context_cache[id]
+          @context_cache[id]
+        else
+          # TODO: fetch from cassandra
+        end
       end
     end
   end
