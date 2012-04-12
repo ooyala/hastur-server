@@ -70,7 +70,7 @@ module Hastur
         # Add tuuid as the first part, and then pass the message on the inproc
         message.unshift tuuid
         Hastur::Util.send_strings(@ssock, message)
-        Hastur::Util.send_strings(@socket, header.concat([tuuid, "OK"]))
+        Hastur::Util.send_strings(@socket, header + [tuuid, "OK"])
       end
 
       #
@@ -91,7 +91,7 @@ module Hastur
           @message = ["Unable to poll the queue's internal socket: #{::ZMQ::Util.error_string}"]
         end
         # Send along the message with the tuuid as the first part
-        Hastur::Util.send_strings(@socket, header.concat(@message))
+        Hastur::Util.send_strings(@socket, header + @message)
       end
 
       #
@@ -101,7 +101,7 @@ module Hastur
       def method_done(header, message)
         tuuid = message.shift
         @queue.remove(tuuid)
-        Hastur::Util.send_strings(@socket, header.concat([tuuid, "OK"]))
+        Hastur::Util.send_strings(@socket, header + [tuuid, "OK"])
       end
 
       #
