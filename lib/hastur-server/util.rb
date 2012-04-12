@@ -206,25 +206,6 @@ module Hastur
       bind_or_connect_socket(ctx, type, uri, opts.merge(:connect => false, :bind => true))
     end
 
-    #
-    # Send a Hastur-specific message with a header envelope containing version, time, and sequence.
-    #
-    def hastur_send(socket, method, data_hash)
-      method ||= "error"
-      @seq_num ||= 0
-      @uptime ||= Time.now.to_i
-      packet_data = {
-        'sequence' => @seq_num,
-        'uptime' => @uptime,
-        'time' => Time.now,
-      }
-      method_data = { 'method' => method } if data_hash[:method].nil?
-      @seq_num += 1
-      json = MultiJson.encode(data_hash.merge(packet_data).merge(method_data || {}))
-      envelope = [ "v1\n#{method}\nack:none" ]
-      socket.send_strings(envelope + [ json ])
-    end
-
     private
 
     #
