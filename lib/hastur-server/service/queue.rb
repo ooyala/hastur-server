@@ -86,8 +86,10 @@ module Hastur
         rv = Hastur::Util.send_strings @outgoing_socket, message
         if rv
           method_remove(tuuid)
+        # Send this message over and over if in replay mode until success, then move on
         elsif replay_mode
           method_send(tuuid, message, true)
+        # Otherwise begin replay mode, which will call the repetitive method_send for each message
         else
           _replay_queue
         end
