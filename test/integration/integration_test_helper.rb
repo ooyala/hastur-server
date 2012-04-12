@@ -18,6 +18,7 @@ require_relative "util/util"
 
 HASTUR_ROOT = File.join(File.dirname(__FILE__), "..", "..")
 
+HASTUR_CORE_BIN="#{HASTUR_ROOT}/bin/hastur-core.rb"
 HASTUR_ROUTER_BIN="#{HASTUR_ROOT}/bin/hastur-router.rb"
 HASTUR_AGENT_BIN="#{HASTUR_ROOT}/bin/hastur-agent.rb"
 HASTUR_MSGTOOL_BIN="#{HASTUR_ROOT}/tools/msgtool.rb"
@@ -36,6 +37,20 @@ A3UUID = '66666666-7777-8888-9999-aaaaaaaaaaaa'
 
 R1UUID = 'fafafafa-fafa-fafa-fafa-fafafafafafa'
 R2UUID = '01010101-0101-0101-0101-010101010101'
+
+TIMESTAMP = Hastur::Util.timestamp
+
+EVENT = {
+  :type      => :event,
+  :name      => 'live.universe.everything',
+  :subject   => "42",
+  :body      => "The secret to Life, The Universe, and Everything! has been discovered. The universe will now be replaced.",
+  :attn      => [ 'root@localhost', '5555555555@message.text.com' ],
+  :timestamp => TIMESTAMP,
+  :labels    => { :fake => true, :maybe => "what is 6 times 7?" }
+}
+
+EVENT_JSON = MultiJson.encode EVENT
 
 def set_test_alarm(timeout=30)
   # cassandra migrations are /really/ slow in jenkins

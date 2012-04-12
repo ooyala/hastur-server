@@ -1,135 +1,144 @@
 require "ffi-rzmq"
-require "celluloid"
 require "hastur-server/message"
 require "hastur-server/router"
 
 module Hastur
-  class Service
+  module Service
     class CoreRouter
-      include Celluloid
-
-      attr_reader :router_uri, :incoming_uri, :outgoing_uri
-
       #
       # Create a new core router.
       # @param [String] uuid the core router's UUID (36 byte hyphenated string)
-      # @param [Hash{Symbol => String}] opts
-      # @option [String] :router_uri default tcp://*:8126
-      # @option [String] :incoming_uri default tcp://*:8127
-      # @option [String] :outgoing_uri default tcp://*:8128
+      # @param [Hash{Symbol => ZMQ::Socket}] opts
+      # @option [String] :router_uri
+      # @option [String] :firehose_uri
+      # @option [String] :return_uri
+      # @option [ZMQ::Context] :ctx
       #
       def initialize(uuid, opts={})
-        @ctx = ::ZMQ::Context.new
+        @ctx = opts[:ctx] || ZMQ::Context.new
+        @logger = Termite::Logger.new
 
-        @router_uri   = opts[:router_uri]   || "tcp://*:8126"
-        @incoming_uri = opts[:incoming_uri] || "tcp://*:8127"
-        @outgoing_uri = opts[:outgoing_uri] || "tcp://*:8128"
+        sopt = { :hwm => 1_000, :linger => 10 }
 
-        @router_socket   = @ctx.socket(::ZMQ::ROUTER)
-        @incoming_socket = @ctx.socket(::ZMQ::PUSH)
-        @outgoing_socket = @ctx.socket(::ZMQ::PULL)
+        @router_socket   = Hastur::Util.bind_socket @ctx, ZMQ::ROUTER, opts[:router_uri],   sopt
+        @firehose_socket = Hastur::Util.bind_socket @ctx, ZMQ::PUB,    opts[:firehose_uri], sopt
+        @return_socket   = Hastur::Util.bind_socket @ctx, ZMQ::PULL,   opts[:return_uri],   sopt
 
-        setsockopts(@router_socket)
-        setsockopts(@incoming_socket)
-        setsockopts(@outgoing_socket)
-
-        bind(@router_socket,   @router_uri)
-        bind(@incoming_socket, @incoming_uri)
-        bind(@outgoing_socket, @outgoing_uri)
+        @poller = ZMQ::Poller.new
+        @poller.register_readable @router_socket
+        @poller.register_readable @return_socket
 
         # agent UUID to ZMQ envelope ID mapping cache
         @agents = {}
+        @noop_type_id = Hastur::Message.symbol_to_type_id(:noop) # cache the value
+
+        @running = false
       end
 
+      #
+      # start the poll loop
+      #
       def run
+        @running = true
         while @running
           poll
         end
       end
 
+      #
+      # signal the end of the poll loop
+      #
       def stop
         @running = false
-        @router_socket.close
-        @incoming_socket.close
-        @outgoing_socket.close
-        @ctx.terminate
       end
 
       private
 
+      #
+      # Poll the sockets, forward data.
+      #
       def poll
         rc = @poller.poll 1
         if ::ZMQ::Util.resultcode_ok? rc
           @poller.readables.each do |r|
             if r == @router_socket
-              forward_router_to_incoming
-            elsif r == @outgoing_socket
-              forward_outgoing_to_router
+              forward_router_to_firehose
+            elsif r == @return_socket
+              forward_return_to_router
             end
           end
         else
-          send_error ::ZMQ::Util.error_string
+          @logger.error ZMQ::Util.error_string
         end
       end
 
+      #
+      # read a message from the zmq socket, check for errors, report on the error
+      # socket if something goes wrong
+      # @param [ZMQ::Socket]
+      # @return [Array<ZMQ::Message>, false] a list of messages on success, false on failure
+      #
       def read_from(socket)
         message = []
         rc = socket.recvmsgs message
         if ::ZMQ::Util.resultcode_ok? rc
           message
         else
-          send_error ::ZMQ::Util.error_string
+          @logger.error ZMQ::Util.error_string
           false
         end
       end
 
+      #
+      # send a message on a zmq socket, check for errors
+      # @param [ZMQ::Socket]
+      # @param [Array<ZMQ::Message>]
+      # @return [boolean]
+      #
       def send_to(socket, message)
         rc = socket.sendmsgs message
         if ::ZMQ::Util.resultcode_ok? rc
           true
         else
-          send_error ::ZMQ::Util.error_string
+          @logger.error ZMQ::Util.error_string
           false
         end
       end
 
-      def forward_router_to_incoming
+      #
+      # read from the router socket, write to the firehose
+      #
+      def forward_router_to_firehose
         message = read_from @router_socket
 
         if message
           # cache the ZMQ envelope to route messages back to agents
-          envelope = Hastur::Envelope.parse messages[-2].copy_out_string
-          @agents[envelope.from] = messages[0].copy_out_string
-
-          # forward the message, sans the ZMQ envelope
-          send_to @incoming_socket, message[1..2]
+          envelope = Hastur::Envelope.parse message[-2].copy_out_string
+          if envelope.type_id == @noop_type_id
+            @agents[envelope.from] = message[0].copy_out_string
+          else
+            # forward the message, sans the ZMQ envelope
+            message.shift
+            send_to @firehose_socket, message
+          end
 
           # close all of the zmq messages or we might leak C memory
-          messages.each do |m| m.close end
+          message.each do |m| m.close end
         end
       end
 
-      def forward_outgoing_to_router
-        message = read_from @outgoing_socket
+      #
+      # read from the return socket, insert the socket ID, write to the router socket
+      #
+      def forward_return_to_router
+        message = read_from @return_socket
 
         if message
-          envelope = Hastur::Envelope.parse messages[-2].copy_out_string
+          envelope = Hastur::Envelope.parse message[-2].copy_out_string
           agent_id = @agents[envelope.from]
           message.unshift ::ZMQ::Message.new(agent_id)
           send_to @router_socket, message
         end
-      end
-
-      def setsockopts(sock)
-        rc = sock.setsockopt(::ZMQ::LINGER, -1)
-        raise "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
-        rc = sock.setsockopt(::ZMQ::HWM, 1)
-        raise "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
-      end
-
-      def bind(sock, uri)
-        rc = sock.bind(uri)
-        raise "Could not bind socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
       end
     end
   end
