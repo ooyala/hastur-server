@@ -1,10 +1,13 @@
 require "ffi-rzmq"
 require "cassandra-queue"
+require "timeout"
 require_relative "../util"
 
 module Hastur
   module Service
     class Queue
+
+      TIMEOUT = 0.1
 
       attr_reader :incoming_uri, :outgoing_uri
       #
@@ -37,7 +40,7 @@ module Hastur
         @poller = ZMQ::Poller.new
         @poller.register_readable @incoming_socket
 
-        _replay_queue
+        @undelivered_messages = !_replay_queue
         @running = true
       end
 
@@ -76,22 +79,25 @@ module Hastur
       def method_submit(message)
         marsh = Marshal.dump message
         tuuid = @queue.push(marsh).to_s
-        method_send tuuid, message
+        @undelivered_messages ? _replay_queue : method_send(tuuid, message)
       end
 
       #
       # This is the method that tries to push the message out the outgoing socket
       #
-      def method_send(tuuid, message, replay_mode = false)
-        rv = Hastur::Util.send_strings @outgoing_socket, message
-        if rv
-          method_remove(tuuid)
-        # Send this message over and over if in replay mode until success, then move on
-        elsif replay_mode
-          method_send(tuuid, message, true)
-        # Otherwise begin replay mode, which will call the repetitive method_send for each message
-        else
-          _replay_queue
+      def method_send(tuuid, message, replay_tries = 1)
+        begin
+          rv = Timeout::timeout(TIMEOUT) { Hastur::Util.send_strings @outgoing_socket, message }
+          if rv
+            method_remove(tuuid)
+            return true
+          else
+            _replay_queue(replay_tries)
+            false
+          end
+        rescue Timeout::Error
+          _replay_queue(replay_tries)
+          false
         end
       end
 
@@ -111,12 +117,19 @@ module Hastur
       # TODO: Need to worry about cases where there are too many messages in C* to
       #       completely store in memory.
       #
-      def _replay_queue
+      def _replay_queue(tries = 1)
+        return if tries == 0
         messages = @queue.list(true)
         messages.each do |tuuid, marsh|
           message = Marshal.load marsh
-          method_send(tuuid, message, true)
+          rv = method_send(tuuid, message, tries - 1)
+          unless rv
+            @undelivered_messages = true
+            return false
+          end
         end
+        @undelivered_messages = false
+        return true
       end
     end
   end
