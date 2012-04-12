@@ -37,8 +37,8 @@ module Hastur
         @poller = ZMQ::Poller.new
         @poller.register_readable @incoming_socket
 
-        @running = true
         _replay_queue
+        @running = true
       end
 
       def run
@@ -82,9 +82,15 @@ module Hastur
       #
       # This is the method that tries to push the message out the outgoing socket
       #
-      def method_send(tuuid, message)
+      def method_send(tuuid, message, replay_mode = false)
         rv = Hastur::Util.send_strings message
-        rv ? method_remove(tuuid) : _replay_queue
+        if rv
+          method_remove(tuuid)
+        elsif replay_mode
+          method_send(tuuid, message, true)
+        else
+          _replay_queue
+        end
       end
 
       #
@@ -107,7 +113,7 @@ module Hastur
         messages = @queue.list(true)
         messages.each do |tuuid, marsh|
           message = Marshal.load marsh
-          method_send(tuuid, message)
+          method_send(tuuid, message, true)
         end
       end
     end
