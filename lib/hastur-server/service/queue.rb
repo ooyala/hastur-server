@@ -6,7 +6,7 @@ module Hastur
   module Service
     class Queue
 
-      attr_reader :uri
+      attr_reader :incoming_uri, :outgoing_uri
       #
       # Sets up a persistent cassandra-backed zmq queue.
       # @param [String] The queueUUID for the queue to use
