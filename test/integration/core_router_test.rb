@@ -9,7 +9,7 @@ require 'multi_json'
 require 'hastur-server/message'
 require 'hastur-server/mock/nodule_agent'
 
-class AckTest < Test::Unit::TestCase
+class CoreRouterTest < Test::Unit::TestCase
   EVENT_REPLAYS = 10
 
   def setup
@@ -50,7 +50,7 @@ class AckTest < Test::Unit::TestCase
     @topology.stop_all
   end
 
-  def test_event_ack
+  def test_core_router_ack
     @topology[:mock_agent].heartbeat
     @topology[:firehose].require_read_count 2, 10
 
