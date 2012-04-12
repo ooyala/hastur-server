@@ -16,7 +16,7 @@ module Hastur
       #
       def initialize(qid, opts = {})
         # Make sure required options are defined
-        raise "URIs not defined in opts" unless opts.has_key? :incoming_uri && opts.has_key? :outgoing_uri
+        raise "URIs not defined in opts" unless (opts.has_key?(:incoming_uri) && opts.has_key?(:outgoing_uri))
 
         # Create the queue client for the cassandra-backed queue
         @qid = qid
@@ -83,7 +83,7 @@ module Hastur
       # This is the method that tries to push the message out the outgoing socket
       #
       def method_send(tuuid, message, replay_mode = false)
-        rv = Hastur::Util.send_strings message
+        rv = Hastur::Util.send_strings @outgoing_socket, message
         if rv
           method_remove(tuuid)
         elsif replay_mode
