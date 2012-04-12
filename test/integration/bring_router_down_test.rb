@@ -127,7 +127,7 @@ public
     @topology.start_all
     # wait for the row to show up in Cassandra
     client = @topology[:cassandra].client
-    wait_for_cassandra_rows(client, "RegistrationArchive", 1, 60) do
+    wait_for_cassandra_rows(client, "RegAgentArchive", 1, 60) do
       flunk "Gave up waiting for registrations in cassandra."
     end
 

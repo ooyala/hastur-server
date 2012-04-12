@@ -42,9 +42,9 @@ JSON
 EVENT_JSON = <<JSON
 {
   "name": "fake.event.name",
-  "severity": "bogus",
   "timestamp": 1329858724285438,
-  "tags": [
+  "body": "stack trace placeholder",
+  "attn": [
     "backlot-oncall",
     "noah@ooyala.com",
     "big Jimmy"
@@ -59,7 +59,12 @@ FAKE_UUID2 = "fafafafa-fafa-fafa-fafa-fafafafafaf2"
 FAKE_UUID3 = "fafafafa-fafa-fafa-fafa-fafafafafaf3"
 NOWISH_TIMESTAMP = 1330000400.to_s
 
+# Row timestamp rounded to nearest 5 minutes
 ROW_TS = 1329858600000000
+
+# Row timestamp rounded to nearest hour
+ROW_HOUR_TS = 1329858000000000
+
 DAY_TS = Hastur::Cassandra.send(:time_segment_for_timestamp, ROW_TS, Hastur::Cassandra::ONE_DAY).to_s
 
 class CassandraSchemaTest < Scope::TestCase
@@ -71,48 +76,48 @@ class CassandraSchemaTest < Scope::TestCase
     @cass_client.stubs(:insert).with(:UUIDDay, anything, { FAKE_UUID => "" })
   end
 
-  context "Stat schema" do
+  context "Cassandra message schema" do
 
-    should "insert a gauge into StatArchive and StatGauge" do
+    should "insert a gauge into GaugeArchive and StatGauge" do
       json = GAUGE_JSON
       row_key = "#{FAKE_UUID}-#{ROW_TS}"
       colname = "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
-      @cass_client.expects(:insert).with(:StatArchive, row_key, { colname => json,
+      @cass_client.expects(:insert).with(:GaugeArchive, row_key, { colname => json,
                                            "last_access" => NOWISH_TIMESTAMP,
                                            "last_write" => NOWISH_TIMESTAMP }, {})
       @cass_client.expects(:insert).with(:StatGauge, row_key, { colname => (37.1).to_msgpack,
                                            "last_access" => NOWISH_TIMESTAMP,
                                            "last_write" => NOWISH_TIMESTAMP }, {})
-      @cass_client.expects(:insert).with(:StatNameDay, DAY_TS, { "this.is.a.gauge" => "" })
-      Hastur::Cassandra.insert_stat(@cass_client, json, :uuid => FAKE_UUID)
+      @cass_client.expects(:insert).with(:GaugeNameDay, DAY_TS, { "this.is.a.gauge" => "" })
+      Hastur::Cassandra.insert(@cass_client, json, "gauge", :uuid => FAKE_UUID)
     end
 
-    should "insert a counter into StatArchive and StatCounter" do
+    should "insert a counter into CounterArchive and StatCounter" do
       json = COUNTER_JSON
       row_key = "#{FAKE_UUID}-#{ROW_TS}"
       colname = "totally.a.counter-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
-      @cass_client.expects(:insert).with(:StatArchive, row_key, { colname => json,
+      @cass_client.expects(:insert).with(:CounterArchive, row_key, { colname => json,
                                            "last_access" => NOWISH_TIMESTAMP,
                                            "last_write" => NOWISH_TIMESTAMP }, {})
       @cass_client.expects(:insert).with(:StatCounter, row_key, { colname => 5.to_msgpack,
                                            "last_access" => NOWISH_TIMESTAMP,
                                            "last_write" => NOWISH_TIMESTAMP }, {})
-      @cass_client.expects(:insert).with(:StatNameDay, DAY_TS, { "totally.a.counter" => "" })
-      Hastur::Cassandra.insert_stat(@cass_client, json, :uuid => FAKE_UUID)
+      @cass_client.expects(:insert).with(:CounterNameDay, DAY_TS, { "totally.a.counter" => "" })
+      Hastur::Cassandra.insert(@cass_client, json, "counter", :uuid => FAKE_UUID)
     end
 
-    should "insert a mark into StatArchive and StatMark" do
+    should "insert a mark into MarkArchive and StatMark" do
       json = MARK_JSON
-      row_key = "#{FAKE_UUID}-#{ROW_TS}"
+      row_key = "#{FAKE_UUID}-#{ROW_HOUR_TS}"
       colname = "marky.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
-      @cass_client.expects(:insert).with(:StatArchive, row_key, { colname => json,
+      @cass_client.expects(:insert).with(:MarkArchive, row_key, { colname => json,
                                            "last_access" => NOWISH_TIMESTAMP,
                                            "last_write" => NOWISH_TIMESTAMP }, {})
       @cass_client.expects(:insert).with(:StatMark, row_key, { colname => nil.to_msgpack,
                                            "last_access" => NOWISH_TIMESTAMP,
                                            "last_write" => NOWISH_TIMESTAMP }, {})
-      @cass_client.expects(:insert).with(:StatNameDay, DAY_TS, { "marky.mark" => "" })
-      Hastur::Cassandra.insert_stat(@cass_client, json, :uuid => FAKE_UUID)
+      @cass_client.expects(:insert).with(:MarkNameDay, DAY_TS, { "marky.mark" => "" })
+      Hastur::Cassandra.insert(@cass_client, json, "mark", :uuid => FAKE_UUID)
     end
 
     should "insert an event into EventArchive" do
@@ -125,47 +130,50 @@ class CassandraSchemaTest < Scope::TestCase
       Hastur::Cassandra.insert(@cass_client, json, "event", :uuid => FAKE_UUID)
     end
 
-    should "query a stat from StatGauge" do
+    should "query a gauge from StatGauge" do
       @cass_client.expects(:multi_get).with(:StatGauge, [ "#{FAKE_UUID}-#{ROW_TS}" ],
                                             :count => 10_000,
                                             :start => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :finish => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
         returns({})
-      out = Hastur::Cassandra.get_stat(@cass_client, FAKE_UUID, "this.is.a.gauge", :gauge,
-                                       1329858724285438, 1329858724285440)
+      out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "gauge",
+                                  1329858724285438, 1329858724285440,
+                                  :name => "this.is.a.gauge", :value_only => true)
       assert_equal({}, out)
     end
 
-    should "query a stat from StatCounter" do
+    should "query a counter from StatCounter" do
       @cass_client.expects(:multi_get).with(:StatCounter, [ "#{FAKE_UUID}-#{ROW_TS}" ],
                                             :count => 10_000,
                                             :start => "some.counter-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :finish => "some.counter-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
         returns({})
-      out = Hastur::Cassandra.get_stat(@cass_client, FAKE_UUID, "some.counter", :counter,
-                                       1329858724285438, 1329858724285440)
+      out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "counter",
+                                  1329858724285438, 1329858724285440,
+                                  :name => "some.counter", :value_only => true)
       assert_equal({}, out)
     end
 
-    should "query a stat from StatMark" do
-      @cass_client.expects(:multi_get).with(:StatMark, [ "#{FAKE_UUID}-#{ROW_TS}" ],
+    should "query a mark from StatMark" do
+      @cass_client.expects(:multi_get).with(:StatMark, [ "#{FAKE_UUID}-#{ROW_HOUR_TS}" ],
                                             :count => 10_000,
                                             :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
         returns({})
-      out = Hastur::Cassandra.get_stat(@cass_client, FAKE_UUID, "this.is.a.mark", :mark,
-                                       1329858724285438, 1329858724285440)
+      out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "mark",
+                                  1329858724285438, 1329858724285440,
+                                  :name => "this.is.a.mark", :value_only => true)
       assert_equal({}, out)
     end
 
-    should "query a stat from StatArchive" do
-      @cass_client.expects(:multi_get).with(:StatArchive, [ "#{FAKE_UUID}-#{ROW_TS}" ],
+    should "query a gauge from GaugeArchive" do
+      @cass_client.expects(:multi_get).with(:GaugeArchive, [ "#{FAKE_UUID}-#{ROW_TS}" ],
                                             :count => 10_000,
-                                            :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
-                                            :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+                                            :start => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :finish => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
         returns({})
-      out = Hastur::Cassandra.get_stat(@cass_client, FAKE_UUID, "this.is.a.mark", nil,
-                                       1329858724285438, 1329858724285440)
+      out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "gauge",
+                                       1329858724285438, 1329858724285440, :name => "this.is.a.gauge")
       assert_equal({}, out)
     end
 
@@ -202,8 +210,8 @@ class CassandraSchemaTest < Scope::TestCase
         @coded_ts_41 = [1329858724285441].pack("Q>")
       end
 
-      should "prepare a stat from Cassandra representation with get_stat" do
-        @cass_client.expects(:multi_get).with(:StatMark, [ "#{FAKE_UUID}-#{ROW_TS}" ],
+      should "prepare a stat from Cassandra representation with get" do
+        @cass_client.expects(:multi_get).with(:StatMark, [ "#{FAKE_UUID}-#{ROW_HOUR_TS}" ],
                                               :count => 10_000,
                                               :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                               :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
@@ -218,8 +226,9 @@ class CassandraSchemaTest < Scope::TestCase
                       "this.is.a.mark-#{@coded_ts_41}" => "".to_msgpack,
                     }
                   })
-        out = Hastur::Cassandra.get_stat(@cass_client, FAKE_UUID, "this.is.a.mark", :mark,
-                                         1329858724285438, 1329858724285440)
+        out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "mark",
+                                    1329858724285438, 1329858724285440,
+                                    :name => "this.is.a.mark", :value_only => true)
 
         assert_equal({
                        "this.is.a.mark" => {
@@ -231,7 +240,7 @@ class CassandraSchemaTest < Scope::TestCase
       end
 
       should "prepare stats from Cassandra representation with get_all_stats" do
-        @cass_client.expects(:multi_get).with(:StatMark, [ "#{FAKE_UUID}-#{ROW_TS}" ], :count => 10_000).
+        @cass_client.expects(:multi_get).with(:StatMark, [ "#{FAKE_UUID}-#{ROW_HOUR_TS}" ], :count => 10_000).
           returns({
                     "uuid1-1234567890" => { },   # Delete row with empty hash
                     "uuid2-0987654321" => nil,   # Delete row with nil
@@ -247,8 +256,13 @@ class CassandraSchemaTest < Scope::TestCase
                       "this.mark-#{@coded_ts_41}" => "".to_msgpack,
                     }
                   })
+        @cass_client.expects(:multi_get).with(:StatGauge, [ "#{FAKE_UUID}-#{ROW_TS}" ], :count => 10_000).
+          returns({})
+        @cass_client.expects(:multi_get).with(:StatCounter, [ "#{FAKE_UUID}-#{ROW_TS}" ], :count => 10_000).
+          returns({})
         out = Hastur::Cassandra.get_all_stats(@cass_client, FAKE_UUID,
-                                              1329858724285438, 1329858724285440, :type => :mark)
+                                              1329858724285438, 1329858724285440,
+                                              :value_only => true)
 
         # get_all_stats filters rows by date
         assert_equal({

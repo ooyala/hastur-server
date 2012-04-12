@@ -36,14 +36,14 @@ scraper = Thread.new do
         start_time = end_time.to_i - 60*5*1_000_000  # 5 minutes before
         uuids = Set.new
         # retrieve all agent UUIDs
-        client.each_key(:RegistrationArchive) do |key|
+        client.each_key(:RegAgentArchive) do |key|
           uuids.add( key[0..35] )
         end
 
         # fetch all of the jobs since 5 minutes ago
         curr_time = Time.now
         uuids.each do |uuid|
-          hash = Hastur::Cassandra.get(client, uuid, "registration", start_time, end_time)
+          hash = Hastur::Cassandra.get(client, uuid, "reg_agent", start_time, end_time)
           # for registration, there is not a 'name' as a key into the returned hash from Hastur::Cassandra.get()
           ordered_hash = hash[""]
           ordered_hash.keys.each do |key|

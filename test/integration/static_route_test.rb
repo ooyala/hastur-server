@@ -42,15 +42,22 @@ class StaticRouteTest < Test::Unit::TestCase
 
     # test a selection of types, injecting a message on the ROUTER socket, then check
     # the receiver sockets to make sure they got routed and routed to the right socket
-    @types_to_test = [:error, :heartbeat, :registration, :event, :stat, :log]
-    @message_count = @types_to_test.count
+    @types_to_test = {
+      :error => :error,
+      :hb_process => :heartbeat,
+      :reg_agent => :registration,
+      :event => :event,
+      :counter => :stat,
+      :log => :log
+    }
+    @message_count = @types_to_test.size
 
     # run the tests inside handler blocks
     @count = 0
     # the symbols used in the topology setup above must match the hastur type symbols for this to work
-    @types_to_test.each do |type_symbol|
+    @types_to_test.each do |type_symbol, socket_symbol|
       klass = Hastur::Message.symbol_to_class(type_symbol)
-      @topology[type_symbol].add_reader do |messages|
+      @topology[socket_symbol].add_reader do |messages|
         @count += 1 
         e = Hastur::Envelope.parse(messages[-2])
         assert_not_nil e
@@ -70,7 +77,7 @@ class StaticRouteTest < Test::Unit::TestCase
   end
 
   def test_routes
-    @types_to_test.each do |type_symbol|
+    @types_to_test.each do |type_symbol, _|
       klass = Hastur::Message.symbol_to_class(type_symbol)
       msg = klass.new(:payload => "{}", :from => A1UUID)
       rc = msg.send @topology[:agent].socket
@@ -78,9 +85,9 @@ class StaticRouteTest < Test::Unit::TestCase
     end
 
     messages = {}
-    @types_to_test.each do |type_symbol|
-      @topology.wait type_symbol, 1
-      messages[type_symbol] = @topology[type_symbol].output
+    @types_to_test.each do |type_symbol, socket_symbol|
+      @topology.wait socket_symbol, 1
+      messages[type_symbol] = @topology[socket_symbol].output
     end
 
     assert_equal @message_count, @count, "should have seen #{@message_count} messages"

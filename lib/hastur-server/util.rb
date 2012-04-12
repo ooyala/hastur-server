@@ -21,7 +21,7 @@ module Hastur
     # 1, 1970 at midnight UTC.  Default to giving Time.now as a Hastur
     # timestamp.
     #
-    def self.timestamp(ts=Time.now)
+    def timestamp(ts=Time.now)
       case ts
         when nil, ""
           (Time.now.to_f * 1_000_000).to_i
@@ -46,7 +46,7 @@ module Hastur
     #
     # return the current uptime in microseconds
     #
-    def self.uptime(time=Time.now)
+    def uptime(time=Time.now)
       now = timestamp(time)
       time - BOOT_TIME
     end
@@ -55,13 +55,13 @@ module Hastur
     # keep a single, global counter for the :sequence field
     #
     @counter = 0
-    def self.next_seq
+    def next_seq
       @counter+=1
     end
 
     UUID_RE = /\A[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12}\Z/i
 
-    def self.valid_uuid?(uuid)
+    def valid_uuid?(uuid)
       if UUID_RE.match(uuid)
         true
       else
@@ -70,7 +70,7 @@ module Hastur
     end
 
     # not really thorough yet
-    def self.valid_zmq_uri?(uri)
+    def valid_zmq_uri?(uri)
       case uri
         when %r{ipc://.};         true
         when %r{tcp://[^:]+:\d+}; true
@@ -85,7 +85,7 @@ module Hastur
     # @param [ZMQ::Socket] socket to identify
     # @return [String] id
     #
-    def self.sockid(socket)
+    def sockid(socket)
       if socket.kind_of? ZMQ::Socket
         rc = socket.getsockopt(ZMQ::IDENTITY, id=[])
         if ZMQ::Util.resultcode_ok?(rc) and id[0]
@@ -100,7 +100,7 @@ module Hastur
       end
     end
 
-    def self.setsockopts(socks, opts = {})
+    def setsockopts(socks, opts = {})
       [socks].flatten.each do |sock|
         rc = sock.setsockopt(::ZMQ::LINGER, opts[:linger] || -1)
         raise "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
@@ -109,17 +109,59 @@ module Hastur
       end
     end
 
-    def self.bind(socks, uri)
+    def bind(socks, uri)
       [socks].flatten.each do |sock|
         rc = sock.bind(uri)
         raise "Could not bind socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
       end
     end
 
-    def self.connect(socks, uri)
+    def connect(socks, uri)
       [socks].flatten.each do |sock|
         rc = sock.connect(uri)
         raise "Could not connect socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
+      end
+    end
+
+    def read_msgs(socket)
+      message = []
+      rc = socket.recvmsgs message
+      if ::ZMQ::Util.resultcode_ok? rc
+        message
+      else
+        send_error ::ZMQ::Util.error_string
+        false
+      end
+    end
+
+    def send_msgs(socket, message)
+      rc = socket.sendmsgs message
+      if ::ZMQ::Util.resultcode_ok? rc
+        true
+      else
+        send_error ::ZMQ::Util.error_string
+        false
+      end
+    end
+
+    def read_strings(socket)
+      message = []
+      rc = socket.recv_strings message
+      if ::ZMQ::Util.resultcode_ok? rc
+        message
+      else
+        send_error ::ZMQ::Util.error_string
+        false
+      end
+    end
+
+    def send_strings(socket, message)
+      rc = socket.send_strings message
+      if ::ZMQ::Util.resultcode_ok? rc
+        true
+      else
+        send_error ::ZMQ::Util.error_string
+        false
       end
     end
 

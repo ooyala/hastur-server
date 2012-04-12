@@ -1,112 +1,121 @@
 require "ffi-rzmq"
 require "cassandra-queue"
+require_relative "../util"
 
 module Hastur
   module Service
     class Queue
-
-      INPROC_URI = "inproc://queue_inproc"
 
       attr_reader :uri
       #
       # Sets up a persistent cassandra-backed zmq queue.
       # @param [String] The queueUUID for the queue to use
       # @param [Hash{Symbol => String}] opts
-      # @option [String] :uri required
+      # @option [String] :incoming_uri required
+      # @option [String] :outgoing_uri required
       #
       def initialize(qid, opts = {})
         # Make sure required options are defined
-        raise "URIs not defined in opts" unless opts.has_key? :uri
-
-        @qid = qid
-        @uri = opt[:uri]
-        @ctx = opt[:ctx] || ::ZMQ::Context.new
+        raise "URIs not defined in opts" unless opts.has_key? :incoming_uri && opts.has_key? :outgoing_uri
 
         # Create the queue client for the cassandra-backed queue
-        @queue = CassandraQueue::Queue.get_queue(@qid)
+        @qid = qid
+        @queue = opts[:queue] || CassandraQueue::Queue.get_queue(@qid)
 
-        @done = true
+        @ctx = opts[:ctx] || ::ZMQ::Context.new
 
-        # Setup outbound communication socket
-        @socket = @ctx.socket(::ZMQ::ROUTER)
-        Hastur::Util.setsockopts(@socket)
-        Hastur::Util.bind(@socket, @uri)
+        @incoming_uri = opts[:incoming_uri]
+        @incoming_socket = @ctx.socket(::ZMQ::PULL)
+        Hastur::Util.setsockopts(@incoming_socket)
+        Hastur::Util.bind(@incoming_socket, @incoming_uri)
 
-        # Setup inproc socket
-        @ssock = @ctx.socket(ZMQ::PAIR)
-        @rsock = @ctx.socket(ZMQ::PAIR)
-        Hastur::Util.setsockopts([@rsock, @ssock], :hwm => 0)
-        Hastur::Util.connect(@ssock, INPROC_URI)
-        Hastur::Util.bind(@rsock, INPROC_URI)
+        @outgoing_uri = opts[:outgoing_uri]
+        @outgoing_socket = @ctx.socket(::ZMQ::PUSH)
+        Hastur::Util.setsockopts(@outgoing_socket)
+        Hastur::Util.bind(@outgoing_socket, @outgoing_uri)
+
+        @poller = ZMQ::Poller.new
+        @poller.register_readable @incoming_socket
+
+        _replay_queue
+        @running = true
       end
 
       def run
-        @running = true
         while @running
-          @socket.recv_strings message=[]
-          pick_method message
+          poll
         end
       end
 
       def stop
         @running = false
-        @socket.close
+        @incoming_socket.close
+        @outgoing_socket.close
         @ctx.terminate
       end
 
       private
 
-      #
-      # This is the method that is called to submit something to the queue
-      #
-      def method_submit(message)
-        marsh = Marshal.dump message
-        tuuid = @queue.push marsh
-        # Add tuuid as the first part, and then pass the message on the inproc
-        @ssock.send_strings message.unshift tuuid
-        @socket.send_strings [tuuid, "OK"]
+      def poll
+        rc = @poller.poll 1
+        if ::ZMQ::Util.resultcode_ok? rc
+          @poller.readables.each do |r|
+            if r == @incoming_socket
+              message = Hastur::Util.read_strings(@incoming_socket)
+              method_submit message
+            end
+          end
+        else
+          send_error ::ZMQ::Util.error_string
+        end
       end
 
       #
-      # This is the method to get an element from the queue
-      # On the backend, it will take the first message off the inproc, and forward it to the worker
+      # This is the method that is called to submit something to the queue
+      # it will then call the method to forward the message to the push socket, and then delete it
+      def method_submit(message)
+        marsh = Marshal.dump message
+        tuuid = @queue.push(marsh).to_s
+        method_send tuuid, message
+      end
+
       #
-      def method_get(message)
-        if @done
-          @rsock.recv_strings message=[]
-          @message = message
-          @done = false
+      # This is the method that tries to push the message out the outgoing socket
+      #
+      def method_send(tuuid, message, replay_mode = false)
+        rv = Hastur::Util.send_strings message
+        if rv
+          method_remove(tuuid)
+        elsif replay_mode
+          method_send(tuuid, message, true)
+        else
+          _replay_queue
         end
-        # Send along the message with the tuuid as the first part
-        @socket.send_strings @message
       end
 
       #
       # This is the method that is called to say you are done processing a message,
       # so that it can be deleted from the queue
       #
-      def method_done(message)
-        tuuid = message.shift
+      def method_remove(tuuid)
         @queue.remove(tuuid)
-        @done = true
-        @socket.send_strings [tuuid, "OK"]
       end
 
+      private
+
       #
-      # Figure out with type of request is being made,
-      # and then call the approrpiate function, after stripping it from the message.
+      # Get all the messages out of cassandra, and send them all out over the outgoing socket
       #
-      def pick_method(message)
-        case message.shift
-        when "submit"
-          method_submit message
-        when "get"
-          method_get message
-        when "done"
-          method_done message
+      # TODO: Need to worry about cases where there are too many messages in C* to
+      #       completely store in memory.
+      #
+      def _replay_queue
+        messages = @queue.list(true)
+        messages.each do |tuuid, marsh|
+          message = Marshal.load marsh
+          method_send(tuuid, message, true)
         end
       end
-
     end
   end
 end

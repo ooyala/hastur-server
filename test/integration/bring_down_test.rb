@@ -100,7 +100,7 @@ public
     @topology.start_all
     # wait for the row to show up in Cassandra
     client = @topology[:cassandra].client
-    wait_for_cassandra_rows(client, "RegistrationArchive", 1, 30) do
+    wait_for_cassandra_rows(client, "RegAgentArchive", 1, 30) do
       flunk "Gave up waiting for registrations in cassandra."
     end
 
@@ -111,7 +111,7 @@ public
     @topology.stop_all
   end
 
-  def test_plugin
+  def test_bring_down
     # send heartbeat to both agents
     send_2_heartbeat(@agent_udp_port1, @agent_udp_port2, @heartbeat_agent1, @heartbeat_agent2)
 

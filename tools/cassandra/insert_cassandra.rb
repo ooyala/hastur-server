@@ -42,7 +42,7 @@ opts[:batches].times do |batch|
 EOM
 
     puts "Generated stat:\n#{message}" if opts[:print]
-    Hastur::Cassandra.insert_stat(agent, message) if opts[:insert]
+    Hastur::Cassandra.insert(agent, message, type) if opts[:insert]
   end
 
   # Sleep, except on the last batch

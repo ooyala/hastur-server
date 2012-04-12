@@ -35,11 +35,11 @@ CASS_CLIENT = Cassandra.new "Hastur", opts[:cassandra].flatten
 # @param [Hash] filter The fuzzy_filter hash to restrict registrations returned
 # @return [Hash] The latest registrations per agent UUID
 #
-def get_last_registrations(filter)
+def get_last_registrations
   last_registrations = {}
   # TODO(noah): Encapsulate this properly in cassanda_schema.rb
   STDERR.puts "Querying Cassandra..."
-  CASS_CLIENT.each(:RegistrationArchive) do |row, columns|
+  CASS_CLIENT.each(:RegAgentArchive) do |row, columns|
     uuid = row[0..35]
     last = last_registrations[uuid]
     last_timestamp = last[:timestamp] if last
@@ -50,7 +50,6 @@ def get_last_registrations(filter)
       timestamp = col_key[-8..-1].unpack("Q>")[0]
       if !last_timestamp || timestamp > last_timestamp
         hash = MultiJson.decode(value)
-        next if [hash].fuzzy_filter(filter) == []
 
         last_timestamp = timestamp
         last_value = hash
@@ -66,7 +65,7 @@ end
 t = Thread.new do
   begin
     loop do
-      @registrations = get_last_registrations("type" => "agent")
+      @registrations = get_last_registrations
 
       @initialized = true
       sleep 5 * 60

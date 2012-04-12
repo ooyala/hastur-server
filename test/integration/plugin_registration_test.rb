@@ -90,7 +90,7 @@ class FullPluginTest < Test::Unit::TestCase
     client = @topology[:cassandra].client
 
     # wait for the row to show up in Cassandra
-    wait_for_cassandra_rows(client, "RegistrationArchive", 1, 30) do
+    wait_for_cassandra_rows(client, "RegAgentArchive", 1, 30) do
       flunk "Gave up waiting for registrations in cassandra."
     end
 
@@ -100,7 +100,7 @@ class FullPluginTest < Test::Unit::TestCase
     @topology[:heartbeat].require_read_count 1, 1
 
     # make sure the cassandra schema is at least loaded
-    hash = client.get(:RegistrationArchive, "kye")
+    hash = client.get(:RegAgentArchive, "kye")
     assert_not_nil hash
     assert_equal "Hastur", @topology[:cassandra].keyspace
 

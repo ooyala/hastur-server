@@ -56,7 +56,7 @@ class RegistrationRollupTest < MiniTest::Unit::TestCase
     client = @topology[:cassandra].client
 
     # make sure the cassandra schema is at least loaded
-    assert client.get(:RegistrationArchive, "key") != nil
+    assert client.get(:RegAgentArchive, "key") != nil
     assert client.get(:RegistrationDay, "key") != nil
     assert_equal "Hastur", @topology[:cassandra].keyspace
 
