@@ -233,11 +233,18 @@ module Hastur
       # bind or connect.
 
       # flush messages before shutdown
-      socket.setsockopt(ZMQ::LINGER, opts[:linger]) if opts[:linger]
+      socket.setsockopt(::ZMQ::LINGER, opts[:linger]) if opts[:linger]
+
       # high water mark, the number of buffered messages
-      socket.setsockopt(ZMQ::HWM,    opts[:hwm])    if opts[:hwm]
+      if ZMQ::LibZMQ.version2?
+        socket.setsockopt(::ZMQ::HWM, opts[:hwm]) if opts[:hwm]
+      elsif ZMQ::LibZMQ.version3?
+        socket.setsockopt(::ZMQ::RCVHWM, opts[:hwm]) if opts[:hwm]
+        socket.setsockopt(::ZMQ::SNDHWM, opts[:hwm]) if opts[:hwm]
+      end
+
       # Identity for router, req and sub sockets
-      socket.setsockopt(ZMQ::IDENTITY, opts[:identity]) if opts[:identity]
+      socket.setsockopt(::ZMQ::IDENTITY, opts[:identity]) if opts[:identity]
 
       status = 0
       if opts[:bind]
