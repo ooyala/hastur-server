@@ -241,16 +241,17 @@ module Hastur
 
       status = 0
       if opts[:bind]
-        rc = socket.bind uri
-        raise "Error when binding socket to #{uri}!" unless ZMQ::Util.resultcode_ok?(rc)
+        ok = ZMQ::Util.resultcode_ok?(socket.bind uri)
+        raise "Error #{::ZMQ::Util.error_string} when binding socket to #{uri}!" unless ok
       elsif opts[:connect]
         if uri.respond_to?(:each)
-          uri.each do |single_uri|
-            rc = socket.connect single_uri
-            raise "Error when connecting socket to #{single_uri}!" if rc < 0
+          uri.each do |one_uri|
+            rc = socket.connect one_uri
+            raise "Error #{::ZMQ::Util.error_string} when connecting socket to #{one_uri.inspect}!" if rc < 0
           end
         else
-          status = socket.connect uri
+          rc = socket.connect uri
+          raise "Error #{::ZMQ::Util.error_string} when connecting socket to #{uri.inspect}!" if rc < 0
         end
       else
         raise "Must provide either bind or connect option to bind_or_connect_socket!"
