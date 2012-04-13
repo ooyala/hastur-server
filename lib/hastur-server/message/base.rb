@@ -95,6 +95,8 @@ module Hastur
         rc
       end
 
+      alias transmit send
+
       #
       # Close all of the related ZMQ::Message objects in msg.zmq_parts.
       #
