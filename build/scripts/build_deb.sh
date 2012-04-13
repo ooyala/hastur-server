@@ -11,6 +11,7 @@ HASTUR_SERVER_INST=$HASTUR_ROOT/server
 HASTUR_API=$HASTUR_ROOT/api
 WORKSPACE=`pwd`
 
+rm -rf $HASTUR_ROOT
 mkdir -p $HASTUR_ROOT
 
 # install ruby-build
@@ -22,6 +23,7 @@ ruby-build 1.9.3-p125 $HASTUR_RUBY_INST
 
 $HASTUR_GEM_CMD install bundler
 
+rm -rf $HASTUR_SERVER_INST
 git clone --depth 1 ssh://git@git.corp.ooyala.com/hastur-server.git $HASTUR_SERVER_INST
 cd $HASTUR_SERVER_INST
 
