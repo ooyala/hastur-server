@@ -104,7 +104,13 @@ module Hastur
       [socks].flatten.each do |sock|
         rc = sock.setsockopt(::ZMQ::LINGER, opts[:linger] || -1)
         raise "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
-        rc = sock.setsockopt(::ZMQ::HWM, opts[:hwm] || 1)
+
+        if ZMQ::LibZMQ.version2?
+          rc = socket.setsockopt(::ZMQ::HWM, opts[:hwm]) if opts[:hwm]
+        elsif ZMQ::LibZMQ.version3?
+          rc = socket.setsockopt(::ZMQ::RCVHWM, opts[:hwm]) if opts[:hwm]
+          socket.setsockopt(::ZMQ::SNDHWM, opts[:hwm]) if opts[:hwm] unless rc < 0
+        end
         raise "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
       end
     end
