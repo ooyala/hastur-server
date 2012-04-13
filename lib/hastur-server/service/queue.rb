@@ -40,8 +40,18 @@ module Hastur
         @poller = ZMQ::Poller.new
         @poller.register_readable @incoming_socket
 
-        @undelivered_messages = !_replay_queue
+        # Setup inproc socket
+        @ssock = @ctx.socket(ZMQ::PAIR)
+        @rsock = @ctx.socket(ZMQ::PAIR)
+        Hastur::Util.setsockopts([@rsock, @ssock], :hwm => 0)
+        Hastur::Util.bind(@rsock, INPROC_URI)
+        Hastur::Util.connect(@ssock, INPROC_URI)
+
         @running = true
+
+        # TODO: Move this to the other thread (replay on startup)
+        @undelivered_messages = !_replay_queue
+
       end
 
       def run
