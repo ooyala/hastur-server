@@ -22,7 +22,7 @@ EOS
   opt :uuid,      "Router UUID",                    :type => :string
   opt :router,    "Router (agent) URI    (ROUTER)", :default => "tcp://*:8126"
   opt :return,    "Direct routing URI      (PULL)", :default => "tcp://*:8127"
-  opt :firehose,  "Registration sink URI    (PUB)", :default => "tcp://*:8128"
+  opt :firehose,  "Agent event URI          (PUB)", :default => "tcp://*:8128"
   opt :cassandra, "Cassandra server list", :default => ["127.0.0.1:9160"], :type => :strings, :multi => true
 end
 
@@ -66,6 +66,7 @@ end
   Signal.trap(sig) do
     router.stop
     sink.stop
+    Signal.trap(sig, "DEFAULT")
   end
 end
 
