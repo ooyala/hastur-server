@@ -129,7 +129,7 @@ module Hastur
       if ::ZMQ::Util.resultcode_ok? rc
         message
       else
-        send_error ::ZMQ::Util.error_string
+        raise "Could not read messages: #{::ZMQ::Util.error_string}"
         false
       end
     end
@@ -139,7 +139,7 @@ module Hastur
       if ::ZMQ::Util.resultcode_ok? rc
         true
       else
-        send_error ::ZMQ::Util.error_string
+        raise "Could not send messages: #{::ZMQ::Util.error_string}"
         false
       end
     end
@@ -150,7 +150,7 @@ module Hastur
       if ::ZMQ::Util.resultcode_ok? rc
         message
       else
-        send_error ::ZMQ::Util.error_string
+        raise "Could not read strings: #{::ZMQ::Util.error_string}"
         false
       end
     end
@@ -160,7 +160,7 @@ module Hastur
       if ::ZMQ::Util.resultcode_ok? rc
         true
       else
-        send_error ::ZMQ::Util.error_string
+        raise "Could not send strings: #{::ZMQ::Util.error_string}"
         false
       end
     end
