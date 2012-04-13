@@ -102,7 +102,7 @@ module Hastur
           rv = Timeout::timeout(TIMEOUT) { Hastur::Util.send_strings @outgoing_socket, message }
           if rv
             method_remove(tuuid)
-            return true
+            true
           else
             _replay_queue(replay_tries)
             false
@@ -131,18 +131,18 @@ module Hastur
       # TODO: Move this into the second thread and use if we get sequence number mismatch
       #
       def _replay_queue(tries = 1)
-        return if tries == 0
+        @undelivered_messages = true
+        return false if tries == 0
         messages = @queue.list(true)
         messages.each do |tuuid, marsh|
           message = Marshal.load marsh
           rv = method_send(tuuid, message, tries - 1)
           unless rv
-            @undelivered_messages = true
             return false
           end
         end
         @undelivered_messages = false
-        return true
+        true
       end
     end
   end
