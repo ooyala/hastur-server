@@ -15,6 +15,7 @@ rm -rf $HASTUR_ROOT
 mkdir -p $HASTUR_ROOT
 
 # install ruby-build
+rm -rf ruby-build
 git clone git://github.com/sstephenson/ruby-build.git
 cd ruby-build
 PREFIX=$HASTUR_ROOT ./install.sh # install in /opt/hastur instead of /usr/local
