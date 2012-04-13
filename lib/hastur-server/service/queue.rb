@@ -79,11 +79,13 @@ module Hastur
       def method_submit(message)
         marsh = Marshal.dump message
         tuuid = @queue.push(marsh).to_s
+        # TODO: move this work to another thread, and deliver the message to it via internal queue (inproc)
         @undelivered_messages ? _replay_queue : method_send(tuuid, message)
       end
 
       #
       # This is the method that tries to push the message out the outgoing socket
+      # TODO: This should run in its own process and read off of an internal queue
       #
       def method_send(tuuid, message, replay_tries = 1)
         begin
@@ -116,6 +118,7 @@ module Hastur
       #
       # TODO: Need to worry about cases where there are too many messages in C* to
       #       completely store in memory.
+      # TODO: Move this into the second thread and use if we get sequence number mismatch
       #
       def _replay_queue(tries = 1)
         return if tries == 0
