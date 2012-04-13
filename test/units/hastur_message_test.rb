@@ -67,7 +67,7 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
       e = Hastur::Envelope.new(ENVELOPE)
       m = Hastur::Message::Log.new(ENVELOPE.merge(:payload => "a b c d e f g"))
 
-      m.send(@ssock, :secret => SECRET)
+      m.transmit(@ssock, :secret => SECRET)
       @ssock.close
     end
 
