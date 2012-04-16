@@ -18,7 +18,7 @@ module Hastur
     NANO_SECS_1971  = 31536000000000000
 
     def hastur_internal_logger
-      @__hastur_internal_logger ||= Termite.logger(:component => "Hastur")
+      @__hastur_internal_logger ||= ::Termite::Logger.new(:component => "Hastur")
     end
 
     #
@@ -318,7 +318,7 @@ module Hastur
 
       status = 0
       if opts[:bind]
-        ok = socket.bind to_valid_zmq_uri(uri) < 0
+        ok = socket.bind(to_valid_zmq_uri(uri)) >= 0
         hastur_internal_logger.error "Error #{::ZMQ::Util.error_string} when binding socket to #{uri}!" unless ok
       elsif opts[:connect]
         if uri.respond_to?(:each)
