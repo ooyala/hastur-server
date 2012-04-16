@@ -25,13 +25,14 @@ class UtilTest < Scope::TestCase
   context "to_valid_zmq_uri" do
     should "Allow valid URIs" do
       # Check 0.0.0.0, * and localhost
-      assert_equal "ipc://0.0.0.0", to_valid_zmq_uri("ipc://localhost")
-      assert_equal "ipc://0.0.0.0:8888", to_valid_zmq_uri("ipc://*:8888")
+      assert_equal "ipc://127.0.0.1", to_valid_zmq_uri("ipc://localhost")
+      assert_equal "tcp://0.0.0.0:8888", to_valid_zmq_uri("tcp://*:8888")
       assert_equal "ipc://0.0.0.0:4999", to_valid_zmq_uri("ipc://0.0.0.0:4999")
+      assert_equal "tcp://0.0.0.0:4999", to_valid_zmq_uri("tcp://0.0.0.0:4999")
 
       # Test unmodified URIs of various forms
       assert_equal "inproc://1.2.3.4:1777", to_valid_zmq_uri("inproc://1.2.3.4:1777")
-      assert_equal "epgm://subdomain.bob.co.uk:64234", to_valid_zmq_uri("epgm://subdomain.bob.co.uk:64234")
+      assert_equal "tcp://subdomain.bob.co.uk:64234", to_valid_zmq_uri("tcp://subdomain.bob.co.uk:64234")
       assert_equal "tcp://bob.com", to_valid_zmq_uri("tcp://bob.com")
     end
 
@@ -50,6 +51,14 @@ class UtilTest < Scope::TestCase
 
       assert_raises RuntimeError do
         to_valid_zmq_uri "trans://"
+      end
+
+      assert_raises RuntimeError do
+        to_valid_zmq_uri "epgm://0.0.0.0:8888/epgm_not_allowed"
+      end
+
+      assert_raises RuntimeError do
+        to_valid_zmq_uri "epgm://0.0.0.0:8888"
       end
     end
 
@@ -70,9 +79,9 @@ class UtilTest < Scope::TestCase
       socket = mock("ZMQ socket")
       ctx.expects(:socket).returns(socket)
 
-      url1 = "http://host1:1234"
-      url2 = "http://host2:5678"
-      url3 = "http://host3.com"
+      url1 = "tcp://host1:1234"
+      url2 = "tcp://host2:5678"
+      url3 = "tcp://host3.com"
 
       socket.stubs(:setsockopt).returns(0)
       socket.expects(:connect).with(url1).returns(0)

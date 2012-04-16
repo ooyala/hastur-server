@@ -89,6 +89,8 @@ module Hastur
       end
     end
 
+    SUPPORTED_PROTOCOLS = [ "tcp", "inproc", "ipc" ]
+
     #
     # Convert to a Hastur-usable URI.  This is called automatically on
     # URIs that we bind and connect on.  It's important because some
@@ -106,8 +108,12 @@ module Hastur
       port = match[3]      # example: ":374"
       path = match[4]      # example: "/parsnip_in_a/pear_tree"
 
-      hostname = "0.0.0.0" if hostname == "localhost"
-      hostname = "0.0.0.0" if hostname == "*"
+      unless SUPPORTED_PROTOCOLS.include?(protocol)
+        raise "Unsupported protocol! (must be in #{SUPPORTED_PROTOCOLS.inspect})"
+      end
+
+      hostname = "127.0.0.1" if hostname == "localhost"
+      hostname = "0.0.0.0" if hostname == "*" if protocol == "tcp"
 
       "#{protocol}://#{hostname}#{port}#{path}"
     end
