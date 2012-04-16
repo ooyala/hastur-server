@@ -184,7 +184,7 @@ module Hastur
     def read_msgs(socket)
       message = []
       rc = socket.recvmsgs message
-      if ::ZMQ::Util.resultcode_ok? rc
+      if rc < 0
         message
       else
         hastur_internal_logger.error "Could not read messages: #{::ZMQ::Util.error_string}"
@@ -194,7 +194,7 @@ module Hastur
 
     def send_msgs(socket, message)
       rc = socket.sendmsgs message
-      if ::ZMQ::Util.resultcode_ok? rc
+      if rc < 0
         true
       else
         hastur_internal_logger.error "Could not send messages: #{::ZMQ::Util.error_string}"
@@ -211,7 +211,7 @@ module Hastur
     def read_strings(socket)
       message = []
       rc = socket.recv_strings message
-      if ::ZMQ::Util.resultcode_ok? rc
+      if rc < 0
         message
       else
         hastur_internal_logger.error "Could not read strings: #{::ZMQ::Util.error_string}"
@@ -228,7 +228,7 @@ module Hastur
     #
     def send_strings(socket, message)
       rc = socket.send_strings message
-      if ::ZMQ::Util.resultcode_ok? rc
+      if rc < 0
         true
       else
         hastur_internal_logger.error "Could not send strings: #{::ZMQ::Util.error_string}"
@@ -318,7 +318,7 @@ module Hastur
 
       status = 0
       if opts[:bind]
-        ok = ZMQ::Util.resultcode_ok?(socket.bind to_valid_zmq_uri(uri))
+        ok = socket.bind to_valid_zmq_uri(uri) < 0
         hastur_internal_logger.error "Error #{::ZMQ::Util.error_string} when binding socket to #{uri}!" unless ok
       elsif opts[:connect]
         if uri.respond_to?(:each)
