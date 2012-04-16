@@ -20,24 +20,51 @@ class UtilTest < Scope::TestCase
     should "allow hostname with port" do
       check_uri "https://jim-bob.com:4791"
     end
+  end
 
-    # Right now, URIs with paths are disallowed.
-    # That's fine, given how we're using them.
+  context "to_valid_zmq_uri" do
+    should "Allow valid URIs" do
+      # Check 0.0.0.0, * and localhost
+      assert_equal "ipc://0.0.0.0", to_valid_zmq_uri("ipc://localhost")
+      assert_equal "ipc://0.0.0.0:8888", to_valid_zmq_uri("ipc://*:8888")
+      assert_equal "ipc://0.0.0.0:4999", to_valid_zmq_uri("ipc://0.0.0.0:4999")
 
-    context "with ZMQ version 2" do
-      setup do
-        ZMQ::LibZMQ.stubs("version2?".to_sym).returns(true)
+      # Test unmodified URIs of various forms
+      assert_equal "inproc://1.2.3.4:1777", to_valid_zmq_uri("inproc://1.2.3.4:1777")
+      assert_equal "epgm://subdomain.bob.co.uk:64234", to_valid_zmq_uri("epgm://subdomain.bob.co.uk:64234")
+      assert_equal "tcp://bob.com", to_valid_zmq_uri("tcp://bob.com")
+    end
+
+    should "Reject invalid URIs" do
+      assert_raises RuntimeError do
+        to_valid_zmq_uri "trans:/bob.com/a_path"
       end
 
-      should "reject a hostname based on localhost" do
-        assert_raises(RuntimeError) do
-          check_uri "zmq://localhost:174"
-        end
+      assert_raises RuntimeError do
+        to_valid_zmq_uri "trans://bob.com:abcd/non_numeric_port"
+      end
+
+      assert_raises RuntimeError do
+        to_valid_zmq_uri "trans:///hostless_path"
+      end
+
+      assert_raises RuntimeError do
+        to_valid_zmq_uri "trans://"
       end
     end
 
-    # TODO(noah): make sure we allow localhost with ZMQ version 3.X
+    should "Reject bad transports" do
+      assert_raises RuntimeError do
+        to_valid_zmq_uri "tr://bob.com/some_path"
+      end
 
+      assert_raises RuntimeError do
+        to_valid_zmq_uri "too_long://bob.com/some_path"
+      end
+    end
+  end
+
+  context "connect" do
     should "allow multiple connect on a new socket" do
       ctx = mock("ZMQ context")
       socket = mock("ZMQ socket")
@@ -54,6 +81,5 @@ class UtilTest < Scope::TestCase
 
       connect_socket(ctx, :pull, [ url1, url2, url3 ])
     end
-
   end
 end

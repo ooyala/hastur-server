@@ -1,7 +1,9 @@
-# A collection of useful functions, including thise for
-# working with ZeroMQ, specifically with the ffi-rzmq gem.
+# A collection of useful functions, including for the ffi-rzmq gem.
+
 require "multi_json"
 require "ffi-rzmq"
+require "termite"
+
 module Hastur
   module Util
     extend self  # Allows calling as Util.blah
@@ -14,6 +16,10 @@ module Hastur
     MILLI_SECS_1971 = 31536000000
     MICRO_SECS_1971 = 31536000000000
     NANO_SECS_1971  = 31536000000000000
+
+    def hastur_internal_logger
+      @__hastur_internal_logger ||= Termite.logger(:component => "Hastur")
+    end
 
     #
     # Best effort to make all timestamps be Hastur timestamps, 64 bit
@@ -69,13 +75,39 @@ module Hastur
       end
     end
 
-    # not really thorough yet
+    # This is not really thorough.  It's also just a true/false, and
+    # doesn't try to check for things we fix up automatically.
+    #
+    # @param uri [String] The URI to check
+    #
     def valid_zmq_uri?(uri)
       case uri
         when %r{ipc://.};         true
         when %r{tcp://[^:]+:\d+}; true
         else;                     false
       end
+    end
+
+    # Convert to a Hastur-usable URI.  This is called automatically on
+    # URIs that we bind and connect on.  It's important because some
+    # versions of ZeroMQ don't handle "*" or "localhost" properly as a
+    # hostname, or have other slight quirks, and we don't know in
+    # advance which version of ZeroMQ we're connecting to.
+    #
+    # @param uri [String] The URI to convert
+    #
+    def to_valid_zmq_uri(uri)
+      match = uri.match %r{\A([a-zA-Z]{3,6})://([^/:]+)(:\d+)?(/.*)?\Z}
+      raise "URI must be of the form: transport://hostname or transport://hostname/path" unless match
+      protocol = match[1]  # example: "ipc"
+      hostname = match[2]  # example: "subdomain.bob.com"
+      port = match[3]      # example: ":374"
+      path = match[4]      # example: "/parsnip_in_a/pear_tree"
+
+      hostname = "0.0.0.0" if hostname == "localhost"
+      hostname = "0.0.0.0" if hostname == "*"
+
+      "#{protocol}://#{hostname}#{port}#{path}"
     end
 
     #
@@ -103,7 +135,7 @@ module Hastur
     def setsockopts(socks, opts = {})
       [socks].flatten.each do |sock|
         rc = sock.setsockopt(::ZMQ::LINGER, opts[:linger] || -1)
-        raise "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
+        hastur_internal_logger.error "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
 
         if ZMQ::LibZMQ.version2?
           rc = socket.setsockopt(::ZMQ::HWM, opts[:hwm]) if opts[:hwm]
@@ -111,21 +143,21 @@ module Hastur
           rc = socket.setsockopt(::ZMQ::RCVHWM, opts[:hwm]) if opts[:hwm]
           socket.setsockopt(::ZMQ::SNDHWM, opts[:hwm]) if opts[:hwm] unless rc < 0
         end
-        raise "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
+        hastur_internal_logger.error "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
       end
     end
 
     def bind(socks, uri)
       [socks].flatten.each do |sock|
         rc = sock.bind(uri)
-        raise "Could not bind socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
+        hastur_internal_logger.error "Could not bind socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
       end
     end
 
     def connect(socks, uri)
       [socks].flatten.each do |sock|
         rc = sock.connect(uri)
-        raise "Could not connect socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
+        hastur_internal_logger.error "Could not connect socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
       end
     end
 
@@ -135,7 +167,7 @@ module Hastur
       if ::ZMQ::Util.resultcode_ok? rc
         message
       else
-        raise "Could not read messages: #{::ZMQ::Util.error_string}"
+        hastur_internal_logger.error "Could not read messages: #{::ZMQ::Util.error_string}"
         false
       end
     end
@@ -145,7 +177,7 @@ module Hastur
       if ::ZMQ::Util.resultcode_ok? rc
         true
       else
-        raise "Could not send messages: #{::ZMQ::Util.error_string}"
+        hastur_internal_logger.error "Could not send messages: #{::ZMQ::Util.error_string}"
         false
       end
     end
@@ -156,7 +188,7 @@ module Hastur
       if ::ZMQ::Util.resultcode_ok? rc
         message
       else
-        raise "Could not read strings: #{::ZMQ::Util.error_string}"
+        hastur_internal_logger.error "Could not read strings: #{::ZMQ::Util.error_string}"
         false
       end
     end
@@ -166,14 +198,13 @@ module Hastur
       if ::ZMQ::Util.resultcode_ok? rc
         true
       else
-        raise "Could not send strings: #{::ZMQ::Util.error_string}"
+        hastur_internal_logger.error "Could not send strings: #{::ZMQ::Util.error_string}"
         false
       end
     end
 
     #
     # Check a URI for validity before passing onto ZMQ.
-    # We explicitly disallow "localhost" because ZMQ will break silently on IPv6 enabled systems.
     #
     def check_uri(uri)
       result = /\A(?<protocol>\w+):\/\/(?<hostname>[^:]+):(?<port>\d+)\Z/.match(uri)
@@ -181,9 +212,8 @@ module Hastur
         raise "URI's must be in: protocol://hostname:port format"
       end
 
-      if result[:hostname] == "localhost"
-        raise "'localhost' is not allowed, since ZMQ will silently fail on IPv6-enabled hosts"
-      end
+      # We used to prevent using "localhost" here since it fails for some versions
+      # of ZMQ with ipv6, but now we auto-convert to prevent problems.
     end
 
     #
@@ -224,6 +254,9 @@ module Hastur
     #  Hastur::Util.bind_socket(ctx, ZMQ::PULL, "tcp://127.0.0.1:1234")
     #
     def bind_or_connect_socket(ctx, type, uri, opts = {})
+      # Prevent modifying original opts object
+      opts = opts.clone
+
       if type.kind_of?(Symbol) || type.kind_of?(String)
         type = ZMQ.const_get(type.to_s.upcase)
       end
@@ -255,16 +288,16 @@ module Hastur
       status = 0
       if opts[:bind]
         ok = ZMQ::Util.resultcode_ok?(socket.bind uri)
-        raise "Error #{::ZMQ::Util.error_string} when binding socket to #{uri}!" unless ok
+        hastur_internal_logger.error "Error #{::ZMQ::Util.error_string} when binding socket to #{uri}!" unless ok
       elsif opts[:connect]
         if uri.respond_to?(:each)
           uri.each do |one_uri|
             rc = socket.connect one_uri
-            raise "Error #{::ZMQ::Util.error_string} when connecting socket to #{one_uri.inspect}!" if rc < 0
+            hastur_internal_logger.error "Error #{::ZMQ::Util.error_string} when connecting socket to #{one_uri.inspect}!" if rc < 0
           end
         else
           rc = socket.connect uri
-          raise "Error #{::ZMQ::Util.error_string} when connecting socket to #{uri.inspect}!" if rc < 0
+          hastur_internal_logger.error "Error #{::ZMQ::Util.error_string} when connecting socket to #{uri.inspect}!" if rc < 0
         end
       else
         raise "Must provide either bind or connect option to bind_or_connect_socket!"
