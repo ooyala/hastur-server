@@ -162,7 +162,7 @@ module Hastur
         end
         hastur_internal_logger.error "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
 
-        rc = sock.setsockopt(::ZMQ::IDENTITY, opts[identity]) if opts[:identity]
+        rc = sock.setsockopt(::ZMQ::IDENTITY, opts[:identity]) if opts[:identity]
         hastur_internal_logger.error "Error setting ZMQ::IDENTITY: #{::ZMQ::Util.error_string}" unless rc > -1
       end
     end
