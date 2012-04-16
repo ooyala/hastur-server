@@ -10,6 +10,7 @@ require 'termite'
 
 require "hastur-server/message"
 require "hastur-server/router"
+require "hastur-server/util"
 
 Ecology.read("hastur-router.ecology")
 MultiJson.engine = :yajl
@@ -49,9 +50,8 @@ sockets = {
 }
 
 sockets.each do |key,sock|
-  sock.setsockopt(ZMQ::LINGER, -1)
-  sock.setsockopt(ZMQ::HWM, opts[:hwm])
-  sock.setsockopt(ZMQ::IDENTITY, "#{opts[:uuid]}:#{key}")
+  # TODO(noah): Stop setting socket identity
+  Hastur::Util.setsockopts(sock, :linger => -1, :hwm => opts[:hwm], :identity => "#{opts[:uuid]}:#{key}")
   rc = sock.bind(opts[key])
   abort "Error binding #{key} socket: #{ZMQ::Util.error_string}" unless rc > -1
 end
