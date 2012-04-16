@@ -13,7 +13,7 @@ module Hastur
       
       get "/" do
         res = get("/hostnames").body
-        hostnames = MultiJson.decode(res)
+        hostnames = MultiJson.load(res)
         erb :index, :locals => { :hostnames => hostnames }
       end
 
