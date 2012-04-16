@@ -1,0 +1,39 @@
+<html>
+  <head>
+    <title>Hastur Stats</title>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.js"></script>
+    <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.navigate.js"></script>
+    <script type="text/javascript" src="/js/flot.js"></script>
+
+    <style type="text/css">
+      #placeholder .button {
+        position: absolute;
+        cursor: pointer;
+      }
+      #placeholder div.button {
+        font-size: smaller;
+        color: #999;
+        background-color: #eee;
+        padding: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <!--<h1>Hastur Stats for <span id="hostname_span"></span> </h1>-->
+    <h1>Hastur Stats for
+      <select id="hostname_ddl">
+        <% hostnames.each do |hostname| %>
+          <option value=<%= "\"#{hostname}\"" %>><%= "\"#{hostname}\"" %></option>
+        <% end%>
+      </select>
+    </h1>
+    <div id="placeholder" style="width:1000px;height:500px"></div>
+  	<p><input id="enableTooltip" type="checkbox" checked="checked">Enable tooltip</p>
+  	<div>
+      <button id="full_refresh">Full Refresh</button>
+      <button id="replot">Re-plot</button>
+    </div>
+  </body>
+</html>

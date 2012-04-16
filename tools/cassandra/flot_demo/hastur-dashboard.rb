@@ -12,13 +12,13 @@ module Hastur
       end
       
       get "/" do
-        [200, "Flot Dashboard"]
+        uuids = get("/uuids")
+        
+        erb :index, :locals => {  }
       end
 
       get "/uuids_proxy" do
-        url = "http://#{@retrieval_uri}/uuids?start=#{params[:start]}&end=#{params[:end]}"
-
-        response = HTTParty.get(url)
+        response = get("/uuids?start=#{params[:start]}&end=#{params[:end]}")
         [ response.code, response.body ]
       end
 
@@ -28,6 +28,16 @@ module Hastur
 
         response = HTTParty.get(url)
         [ response.code, response.body ]
+      end
+
+      helpers do
+        #
+        # Calls out to the retrieval service by appending 'path' to http://<retrieval_uri>
+        #
+        def get( path )
+          url = "http://#{@retrieval_uri}/#{path}"
+          HTTParty.get(url)
+        end
       end
       
     end
