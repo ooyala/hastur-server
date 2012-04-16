@@ -74,7 +74,7 @@ class UtilTest < Scope::TestCase
       url2 = "http://host2:5678"
       url3 = "http://host3.com"
 
-      socket.stubs(:setsockopt)
+      socket.stubs(:setsockopt).returns(0)
       socket.expects(:connect).with(url1).returns(0)
       socket.expects(:connect).with(url2).returns(0)
       socket.expects(:connect).with(url3).returns(0)

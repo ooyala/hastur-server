@@ -149,12 +149,15 @@ module Hastur
         hastur_internal_logger.error "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
 
         if ZMQ::LibZMQ.version2?
-          rc = socket.setsockopt(::ZMQ::HWM, opts[:hwm]) if opts[:hwm]
+          rc = sock.setsockopt(::ZMQ::HWM, opts[:hwm]) if opts[:hwm]
         elsif ZMQ::LibZMQ.version3?
-          rc = socket.setsockopt(::ZMQ::RCVHWM, opts[:hwm]) if opts[:hwm]
-          rc = socket.setsockopt(::ZMQ::SNDHWM, opts[:hwm]) if opts[:hwm] unless rc < 0
+          rc = sock.setsockopt(::ZMQ::RCVHWM, opts[:hwm]) if opts[:hwm]
+          rc = sock.setsockopt(::ZMQ::SNDHWM, opts[:hwm]) if opts[:hwm] unless rc < 0
         end
         hastur_internal_logger.error "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
+
+        rc = sock.setsockopt(::ZMQ::IDENTITY, opts[identity]) if opts[:identity]
+        hastur_internal_logger.error "Error setting ZMQ::IDENTITY: #{::ZMQ::Util.error_string}" unless rc > -1
       end
     end
 
@@ -272,7 +275,7 @@ module Hastur
     #
     # @param ctx [::ZMQ::Context] ZeroMQ Context
     # @param type The ZeroMQ socket type, like ZMQ::PULL, or a symbol like :PULL
-    # @param uri The ZeroMQ URI, or an Array of same
+    # @param uri [String] The ZeroMQ URI
     # @param opts [Hash] Options
     # @option opts [Fixnum] :linger The number of seconds to linger for the ZeroMQ socket
     # @option opts [Fixnum] :hwm The send and receive high water mark for the ZeroMQ socket
@@ -309,16 +312,16 @@ module Hastur
 
       status = 0
       if opts[:bind]
-        ok = ZMQ::Util.resultcode_ok?(socket.bind uri)
+        ok = ZMQ::Util.resultcode_ok?(socket.bind to_valid_zmq_uri(uri))
         hastur_internal_logger.error "Error #{::ZMQ::Util.error_string} when binding socket to #{uri}!" unless ok
       elsif opts[:connect]
         if uri.respond_to?(:each)
           uri.each do |one_uri|
-            rc = socket.connect one_uri
+            rc = socket.connect to_valid_zmq_uri(one_uri)
             hastur_internal_logger.error "Error #{::ZMQ::Util.error_string} when connecting socket to #{one_uri.inspect}!" if rc < 0
           end
         else
-          rc = socket.connect uri
+          rc = socket.connect to_valid_zmq_uri(uri)
           hastur_internal_logger.error "Error #{::ZMQ::Util.error_string} when connecting socket to #{uri.inspect}!" if rc < 0
         end
       else
