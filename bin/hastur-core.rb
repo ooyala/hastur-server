@@ -39,7 +39,7 @@ router = Hastur::Service::CoreRouter.new(
   opts[:uuid],
   :router_uri   => opts[:router],
   :return_uri   => opts[:return],
-  :firehose_uri => opts[:firehose],
+  :firehose_uri => opts[:firehose]
 )
 
 sink = Hastur::Service::CassandraSink.new(
@@ -47,7 +47,7 @@ sink = Hastur::Service::CassandraSink.new(
   :data_uri  => opts[:firehose],
   :keyspace  => 'Hastur',
   :cassandra => opts[:cassandra],
-  :socktype  => ZMQ::SUB,
+  :socktype  => ZMQ::SUB
 )
 
 # must subscribe to empty string to get everything
