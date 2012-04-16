@@ -75,6 +75,7 @@ module Hastur
       end
     end
 
+    #
     # This is not really thorough.  It's also just a true/false, and
     # doesn't try to check for things we fix up automatically.
     #
@@ -88,6 +89,7 @@ module Hastur
       end
     end
 
+    #
     # Convert to a Hastur-usable URI.  This is called automatically on
     # URIs that we bind and connect on.  It's important because some
     # versions of ZeroMQ don't handle "*" or "localhost" properly as a
@@ -114,6 +116,7 @@ module Hastur
     # Find a useful socket identity, falling back to the memory address of the socket
     # if it no identity was assigned with setsockopt(ZMQ::IDENTITY, ""). Since identity
     # can't be changed after connect/bind, it's unlikely this will ever change during runtime.
+    #
     # @param [ZMQ::Socket] socket to identify
     # @return [String] id
     #
@@ -132,6 +135,14 @@ module Hastur
       end
     end
 
+    #
+    # Set a variety of socket options in a ZMQ-version-appropriate way.
+    #
+    # @param opts [Hash] an Options array
+    # @option opts [String] :linger The socket linger option
+    # @option opts [String] :hwm The socket high water mark for send and receive
+    # @option opts [String] :identity The socket identity for router, req and sub sockets
+    #
     def setsockopts(socks, opts = {})
       [socks].flatten.each do |sock|
         rc = sock.setsockopt(::ZMQ::LINGER, opts[:linger] || -1)
@@ -141,7 +152,7 @@ module Hastur
           rc = socket.setsockopt(::ZMQ::HWM, opts[:hwm]) if opts[:hwm]
         elsif ZMQ::LibZMQ.version3?
           rc = socket.setsockopt(::ZMQ::RCVHWM, opts[:hwm]) if opts[:hwm]
-          socket.setsockopt(::ZMQ::SNDHWM, opts[:hwm]) if opts[:hwm] unless rc < 0
+          rc = socket.setsockopt(::ZMQ::SNDHWM, opts[:hwm]) if opts[:hwm] unless rc < 0
         end
         hastur_internal_logger.error "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
       end
@@ -182,6 +193,12 @@ module Hastur
       end
     end
 
+    #
+    # Read an array of Strings on a ZeroMQ socket.
+    #
+    # @param socket [ZMQ::Socket] The socket
+    # @return [Array or false] The array of strings from a multipart message or false for failure.
+    #
     def read_strings(socket)
       message = []
       rc = socket.recv_strings message
@@ -193,6 +210,13 @@ module Hastur
       end
     end
 
+    #
+    # Send an array of Strings on a ZeroMQ socket.
+    #
+    # @param socket [ZMQ::Socket] The socket
+    # @param message [Array of String] The Strings to send
+    # @return [Boolean] Whether the send succeeded
+    #
     def send_strings(socket, message)
       rc = socket.send_strings message
       if ::ZMQ::Util.resultcode_ok? rc
@@ -222,8 +246,16 @@ module Hastur
     # * ZMQ::LINGER => 1
     # * ZMQ::HWM    => 1
     #
-    # Example:
+    # @example Connect on loopback port 1234 with a PUSH socket
     #  Hastur::Util.connect_socket(ctx, ZMQ::PUSH, "tcp://127.0.0.1:1234")
+    #
+    # @param ctx [::ZMQ::Context] ZeroMQ Context
+    # @param type The ZeroMQ socket type, like ZMQ::PULL, or a symbol like :PULL
+    # @param uri The ZeroMQ URI, or an Array of same
+    # @param opts [Hash] Options
+    # @option opts [Fixnum] :linger The number of seconds to linger for the ZeroMQ socket
+    # @option opts [Fixnum] :hwm The send and receive high water mark for the ZeroMQ socket
+    # @option opts [String] :identity The socket identity for router, req and sub sockets
     #
     def connect_socket(ctx, type, uri, opts = {})
       bind_or_connect_socket(ctx, type, uri, opts.merge(:connect => true, :bind => false))
@@ -235,8 +267,16 @@ module Hastur
     # * ZMQ::LINGER => 1
     # * ZMQ::HWM    => 1
     #
-    # Example:
+    # @example Bind on loopback port 1234 with a PULL socket
     #  Hastur::Util.bind_socket(ctx, ZMQ::PULL, "tcp://127.0.0.1:1234")
+    #
+    # @param ctx [::ZMQ::Context] ZeroMQ Context
+    # @param type The ZeroMQ socket type, like ZMQ::PULL, or a symbol like :PULL
+    # @param uri The ZeroMQ URI, or an Array of same
+    # @param opts [Hash] Options
+    # @option opts [Fixnum] :linger The number of seconds to linger for the ZeroMQ socket
+    # @option opts [Fixnum] :hwm The send and receive high water mark for the ZeroMQ socket
+    # @option opts [String] :identity The socket identity for router, req and sub sockets
     #
     def bind_socket(ctx, type, uri, opts = {})
       bind_or_connect_socket(ctx, type, uri, opts.merge(:connect => false, :bind => true))
@@ -246,12 +286,7 @@ module Hastur
 
     #
     # Create a socket and bind or connect in one go, setting sane defaults for sockopts.
-    # Defaults:
-    # * ZMQ::LINGER => 1
-    # * ZMQ::HWM    => 1
-    #
-    # Example:
-    #  Hastur::Util.bind_socket(ctx, ZMQ::PULL, "tcp://127.0.0.1:1234")
+    # This is used by bind_socket and connect_socket internally.
     #
     def bind_or_connect_socket(ctx, type, uri, opts = {})
       # Prevent modifying original opts object
@@ -263,27 +298,14 @@ module Hastur
 
       socket = ctx.socket(type)
 
-      opts[:linger] = 1 unless opts.has_key?(:linger)
-      opts[:hwm]    = 1 unless opts.has_key?(:hwm)
-
       # Linger and HWM aren't strictly necessary, but the behavior
       # they enable is what we usually expect.  For now, have all
       # sockets use the same options.  Set socket options *before*
       # bind or connect.
+      opts[:linger] = 1 unless opts.has_key?(:linger)
+      opts[:hwm]    = 1 unless opts.has_key?(:hwm)
 
-      # flush messages before shutdown
-      socket.setsockopt(::ZMQ::LINGER, opts[:linger]) if opts[:linger]
-
-      # high water mark, the number of buffered messages
-      if ZMQ::LibZMQ.version2?
-        socket.setsockopt(::ZMQ::HWM, opts[:hwm]) if opts[:hwm]
-      elsif ZMQ::LibZMQ.version3?
-        socket.setsockopt(::ZMQ::RCVHWM, opts[:hwm]) if opts[:hwm]
-        socket.setsockopt(::ZMQ::SNDHWM, opts[:hwm]) if opts[:hwm]
-      end
-
-      # Identity for router, req and sub sockets
-      socket.setsockopt(::ZMQ::IDENTITY, opts[:identity]) if opts[:identity]
+      setsockopts(socket, opts)
 
       status = 0
       if opts[:bind]
