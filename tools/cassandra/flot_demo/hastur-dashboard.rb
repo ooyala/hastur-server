@@ -12,9 +12,9 @@ module Hastur
       end
       
       get "/" do
-        uuids = get("/uuids")
-        
-        erb :index, :locals => {  }
+        res = get("/hostnames").body
+        hostnames = MultiJson.decode(res)
+        erb :index, :locals => { :hostnames => hostnames }
       end
 
       get "/uuids_proxy" do

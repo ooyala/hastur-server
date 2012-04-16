@@ -24,8 +24,8 @@
     <!--<h1>Hastur Stats for <span id="hostname_span"></span> </h1>-->
     <h1>Hastur Stats for
       <select id="hostname_ddl">
-        <% hostnames.each do |hostname| %>
-          <option value=<%= "\"#{hostname}\"" %>><%= "\"#{hostname}\"" %></option>
+        <% hostnames.each do |uuid, hostname| %>
+          <option value=<%= "\"#{uuid}\"" %>><%= "\"#{hostname}\"" %></option>
         <% end%>
       </select>
     </h1>
