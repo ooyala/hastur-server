@@ -17,7 +17,7 @@ NOTIFICATION_INTERVAL = 5   # Hardcode for now
 UUID_FILE = "/etc/uuid" # Default location of the system's UUID
 
 opts = Trollop::options do
-  opt :router,      "Router URI",         :type => String, :default => "tcp://*:8126", :multi => true
+  opt :router,      "Router URI",         :type => String, :default => "tcp://127.0.0.1:8126", :multi => true
   opt :uuid,        "System UUID",        :type => String
   opt :port,        "Local socket port",  :default => 8125
   opt :unix,        "UNIX domain socket", :type => String
