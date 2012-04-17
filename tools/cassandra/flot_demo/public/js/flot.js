@@ -102,7 +102,10 @@ $(function () {
           oldSeries[ts] = point.value;
         }
 
-        if(!last_ts || ts > last_ts) { last_ts = ts; }
+        if(!last_ts || ts > last_ts) {
+          // ts is in microseconds
+          last_ts = Math.round(ts / 1000);
+        }
       }
     }
 
@@ -188,9 +191,9 @@ $(function () {
     }
     
     if(!last_ts || fullUpdate) {
-      start_ts = now_ts - 24 * 60 * 60 * 1000;
+      start_ts = now_ts - (24 * 60 * 60 * 1000);
     } else {
-      start_ts = last_ts - 10 * 1000;  // Re-get last 10 seconds of data
+      start_ts = last_ts - (10 * 1000);  // Re-get last 10 seconds of data
     }
 
     // Query for two minutes later than now.  Normally
