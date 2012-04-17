@@ -39,7 +39,7 @@ EOS
   s.add_runtime_dependency "sinatra"
   s.add_runtime_dependency "httparty"
   s.add_runtime_dependency "yajl-ruby"
-  s.add_runtime_dependency "multi_json"
+  s.add_runtime_dependency "multi_json", "~>1.3.0"
   s.add_runtime_dependency "ffi-rzmq"
   s.add_runtime_dependency "trollop"
   s.add_runtime_dependency "uuid"

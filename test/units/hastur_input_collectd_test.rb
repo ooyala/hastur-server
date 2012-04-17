@@ -104,9 +104,9 @@ class TestHasturInputCollectd < MiniTest::Unit::TestCase
 
       stat = Hastur::Input::Collectd.decode(packet)
       refute_nil stat, "Should be able to decode packets containing NaN"
-      json = MultiJson.encode(stat)
+      json = MultiJson.dump(stat)
       refute_nil json, "Should be able to JSON encode packets containing NaN"
-      data = MultiJson.decode(json)
+      data = MultiJson.load(json)
       refute_nil data, "Should be able to decode JSON that was once data continaing NaN"
   end
 end

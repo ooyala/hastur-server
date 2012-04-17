@@ -148,7 +148,7 @@ module Hastur
       # decode a json data structure into an object
       #
       def self.from_json(json)
-        hash = MultiJson.decode json, :symbolize_keys => true
+        hash = MultiJson.load json, :symbolize_keys => true
         hash[:zmq_parts] = hash.delete(:zmq_parts).map { |p| ZMQ::Message.new([p].pack('H*')) }
         hash[:envelope] = Envelope.new hash.delete(:envelope)
         self.new(hash)
@@ -167,7 +167,7 @@ module Hastur
       # @return [Hash] data structure
       #
       def decode
-        MultiJson.decode @payload, :symbolize_keys => true
+        MultiJson.load @payload, :symbolize_keys => true
       end
 
       #
