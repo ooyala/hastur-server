@@ -19,7 +19,8 @@ cd $REPO_ROOT/hastur-server
 rvm --create use 1.9.3@hastur-server
 gem uninstall bundler -v 1.1.1
 gem install --no-rdoc --no-ri bundler
-bundle install
+bundle update   # Update to latest versions since this is a gem
+#bundle install
 gem build hastur-server.gemspec
 gem install hastur-server-*.gem
 
