@@ -21,14 +21,27 @@
     </style>
   </head>
   <body>
-    <!--<h1>Hastur Stats for <span id="hostname_span"></span> </h1>-->
-    <h1>Hastur Stats for
-      <select id="hostname_ddl">
-        <% hostnames.each do |uuid, hostname| %>
-          <option value=<%= "\"#{uuid}\"" %>><%= "\"#{hostname}\"" %></option>
-        <% end%>
-      </select>
-    </h1>
+    <table>
+      <tr>
+        <td>
+          <span>Machines</span>
+        </td>
+        <td>
+          <select id="hostname_ddl">
+            <% hostnames.each do |uuid, hostname| %>
+              <option value=<%= "\"#{uuid}\"" %>><%= "\"#{hostname}\"" %></option>
+            <% end%>
+          </select>
+        </td>
+        <td>
+          <span>Stats</span>
+        </td>
+        <td>
+          <select id="statNameDdl"></select>
+        </td>
+      </tr>
+    </table>
+    
     <div id="placeholder" style="width:1000px;height:500px"></div>
   	<p><input id="enableTooltip" type="checkbox" checked="checked">Enable tooltip</p>
   	<div>

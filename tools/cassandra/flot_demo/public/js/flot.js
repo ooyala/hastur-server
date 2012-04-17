@@ -18,6 +18,27 @@ var flot_data = [];
 // This is the most recent list of labels
 var old_labels = [];
 
+function refreshDropDowns() {
+  uuid = $("#hostname_ddl")[0].value;
+  $.ajax({
+    method: "get",
+    url: "/statNames?uuid=" + uuid,
+    dataType: 'json',
+    success:function(statNames, status) {
+      // clear the drop down
+      $("select#statNameDdl").find('option').remove();
+      // add the new options
+      for( i = 0 ; i < statNames[uuid].length; i++ ) {
+        name = statNames[uuid][i];
+        $("select#statNameDdl").append("<option value=\"" + name + "\"" + ">" + name + "</option>")
+      }
+    },
+    error:function(xhr, error, exception) {
+      console.debug("AJAX failed on " + url + ": " + exception)
+    }
+  });
+}
+
 $(function () {
 
   (function () {
@@ -31,9 +52,10 @@ $(function () {
          urlParams[d(e[1])] = d(e[2]);
   })();
 
-//  uuid = urlParams["uuid"];
-  uuid = $("#hostname_ddl")[0].value;
-  $("#hostname_span").html(uuid);
+  refreshDropDowns();
+  $("select#hostname_ddl").change(function() {
+    refreshDropDowns();
+  });
 
   function hash_size(obj) {
     var size = 0, key;

@@ -14,6 +14,7 @@ module Hastur
       get "/" do
         res = get("/hostnames").body
         hostnames = MultiJson.load(res)
+        hostnames["fjadlkfjas"] = "All"
         erb :index, :locals => { :hostnames => hostnames }
       end
 
@@ -31,6 +32,15 @@ module Hastur
         response.body
       end
 
+      get "/statNames" do
+        [ :uuid ].each { |p| check_present p }
+
+        res = get("/statNames?uuid=#{params[:uuid]}")
+
+        content_type :json
+        res.body
+      end
+
       helpers do
         #
         # Calls out to the retrieval service by appending 'path' to http://<retrieval_uri>
@@ -38,6 +48,12 @@ module Hastur
         def get( path )
           url = "http://#{@retrieval_uri}/#{path}"
           HTTParty.get(url)
+        end
+
+        def check_present(param_name, human_name = nil)
+          unless params[param_name]
+            halt 404, "{ \"msg\": \"#{human_name || param_name} param is required!\" }"
+          end
         end
       end
       
