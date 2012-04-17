@@ -23,11 +23,12 @@ module Hastur
       end
 
       get "/data_proxy/*" do
-        url = "http://#{@retrieval_uri}/data/stat/values?start=#{params[:start]}&end=#{params[:end]}&uuid=#{params[:uuid]}"
+        url = "/data/stat/json?start=#{params[:start]}&end=#{params[:end]}&uuid=#{params[:uuid]}"
         url += "&name=#{params[:name]}" if params[:name]
-
-        response = HTTParty.get(url)
-        [ response.code, response.body ]
+        response = get(url)
+       
+        content_type :json
+        response.body
       end
 
       helpers do

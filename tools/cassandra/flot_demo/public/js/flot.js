@@ -31,7 +31,8 @@ $(function () {
          urlParams[d(e[1])] = d(e[2]);
   })();
 
-  uuid = urlParams["uuid"];
+//  uuid = urlParams["uuid"];
+  uuid = $("#hostname_ddl")[0].value;
   $("#hostname_span").html(uuid);
 
   function hash_size(obj) {
@@ -67,8 +68,11 @@ $(function () {
   function mergePlotData(newData) {
     var statName;
 
+    console.debug("Merging plot data...");
+
     // For each stat name
     for(statName in newData) {
+      console.debug("Stat name: " + statName);
       if(!newData.hasOwnProperty(statName)) { next; }
 
       console.debug("Stat name " + statName + ", points: " + hash_size(newData[statName]));
@@ -94,13 +98,15 @@ $(function () {
         var point = newPoints[ts];
 
         if(!oldSeries[ts]) {
-          flotData.push([ Math.round(ts / 1000.0), point ])
-          oldSeries[ts] = point;
+          flotData.push([ Math.round(ts / 1000.0), point.value ])
+          oldSeries[ts] = point.value;
         }
 
         if(!last_ts || ts > last_ts) { last_ts = ts; }
       }
     }
+
+    console.debug("Done merging plot data");
   }
 
   function drawWithData(theData) {
@@ -192,7 +198,7 @@ $(function () {
     // accounts for clock skew, request delay and whatnot.
     now_ts += 2 * 60 * 1000;
 
-    url = '/data_proxy/stat/values?start=' + start_ts + '&end=' + now_ts;
+    url = '/data_proxy/stat/json?start=' + start_ts + '&end=' + now_ts;
     url += '&uuid=' + uuid
 
     var q = $.ajax({
