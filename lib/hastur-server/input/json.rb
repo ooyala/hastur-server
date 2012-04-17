@@ -2,13 +2,13 @@ require 'multi_json'
 require 'yajl'
 require 'hastur-server/exception'
 
-MultiJson.engine = :yajl
+MultiJson.use :yajl
 
 module Hastur
   module Input
     module JSON
       def self.decode_packet(data)
-        hash = MultiJson.decode(data, :symbolize_keys => true)
+        hash = MultiJson.load(data, :symbolize_keys => true)
 
         unless hash.has_key? :type
           raise Hastur::PacketDecodingError.new "missing :type key in JSON" 

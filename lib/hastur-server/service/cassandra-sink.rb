@@ -66,6 +66,7 @@ module Hastur
             message = Hastur::Message.recv(@data_socket)
             envelope = message.envelope
             uuid = message.envelope.from
+            STDERR.puts "[#{envelope.type_symbol.to_s}] #{message.payload}"
             Hastur::Cassandra.insert(@client, message.payload, envelope.type_symbol.to_s, :uuid => uuid)
             envelope.to_ack.send(@ack_socket) if envelope.ack?
           rescue Hastur::ZMQError => e

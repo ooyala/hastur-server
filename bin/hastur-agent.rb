@@ -12,7 +12,7 @@ require 'termite'
 require "hastur-server/util"
 require "hastur-server/service/agent"
 
-MultiJson.engine = :yajl
+MultiJson.use :yajl
 NOTIFICATION_INTERVAL = 5   # Hardcode for now
 UUID_FILE = "/etc/uuid" # Default location of the system's UUID
 

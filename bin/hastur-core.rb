@@ -11,7 +11,7 @@ require "hastur-server/service/core-router"
 require "hastur-server/service/cassandra-sink"
 
 Ecology.read("hastur-core.ecology")
-MultiJson.engine = :yajl
+MultiJson.use :yajl
 
 opts = Trollop::options do
   banner <<-EOS

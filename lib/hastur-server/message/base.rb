@@ -141,7 +141,7 @@ module Hastur
       def to_json
         hash = to_hash
         hash[:zmq_parts] = hash.delete(:zmq_parts).map { |p| p.copy_out_string.unpack('H*')[0] }
-        MultiJson.encode hash
+        MultiJson.dump hash
       end
 
       #
@@ -177,7 +177,7 @@ module Hastur
       #
       def encode(data)
         raise ArgumentError.new "argument must respond to :to_hash" unless data.respond_to?(:to_hash)
-        @payload = MultiJson.encode data
+        @payload = MultiJson.dump data
       end
     end
 

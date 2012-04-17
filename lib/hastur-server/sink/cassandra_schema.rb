@@ -124,7 +124,7 @@ module Hastur
     #   :uuid - agent UUID
     #   :msg_type - data type from the hastur message (required)
     def insert(cass_client, json_string, msg_type, options = {})
-      hash = MultiJson.decode(json_string, :symbolize_keys => true)
+      hash = MultiJson.load(json_string, :symbolize_keys => true)
       raise "Cannot deserialize JSON string!" unless hash
       uuid = options.delete(:uuid) || hash[:uuid] || hash[:from]
       raise "No UUID given!" unless uuid
