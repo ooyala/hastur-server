@@ -14,7 +14,7 @@ module Hastur
       get "/" do
         res = get("/hostnames").body
         hostnames = MultiJson.load(res)
-        hostnames["fjadlkfjas"] = "All"
+        hostnames["all"] = "All"
         erb :index, :locals => { :hostnames => hostnames }
       end
 
@@ -56,7 +56,6 @@ module Hastur
           end
         end
       end
-      
     end
   end
 end
