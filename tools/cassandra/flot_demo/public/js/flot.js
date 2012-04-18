@@ -233,6 +233,9 @@ function drawGraph(url) {
     success: function(data, status) {
       mergePlotData(data);
       drawWithData(flot_data);
+      if(plot) {
+        plot.draw();
+      }
     },
     error: function (xhr, error, exception) {
       console.debug("AJAX failed on " + url + ": " + exception);
