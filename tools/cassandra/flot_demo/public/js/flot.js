@@ -79,6 +79,9 @@ function clearPlotData() {
   flot_data = [];
   last_ts = false;
   do_grid_change = true;
+  if(plot) {
+    plot.draw();
+  }
 }
 
 // Add data to plot_data, update as new samples come in.
@@ -171,7 +174,6 @@ function drawWithData(theData) {
 */
   // and add panning buttons
 
-/**
   // little helper for taking the repetitive work out of placing
   // panning arrows
   function addArrow(dir, right, bottom, offset) {
@@ -185,7 +187,6 @@ function drawWithData(theData) {
   addArrow('right', 25, 60, { left: 100 });
   addArrow('up', 40, 75, { top: -100 });
   addArrow('down', 40, 45, { top: 100 });
-  */
 
   $("#full_refresh").click(function() { updateGraphData(true); });
   $("#replot").click(function() { do_replot = true; updateGraphData(false); });
@@ -272,13 +273,23 @@ $(function () {
   refreshDropDowns();
   $("select#hostname_ddl").change(function() {
     refreshDropDowns();
+    var now = new Date();
+    var now_ts = now.getTime();
+    var start_ts;
+    //if(!last_ts) {
+      start_ts = now_ts - (24 * 60 * 60 * 1000);
+    //} else {
+    //  start_ts = last_ts - (10 * 1000);  // Re-get last 10 seconds of data
+    //}
+    uuid = $("#hostname_ddl").val();
+    drawGraph("/data_proxy/stat/json?start="+start_ts+"&end="+now_ts+"&uuid="+uuid);
   });
 
   // Every 10 minutes do a full refresh
 //  setInterval(function() { updateGraphData(true); }, 10 * 60 * 1000)
 
-  // Every 2 seconds do a get-recent
-//  ajaxGetInterval = setInterval(function() { updateGraphData(false); }, 2 * 1000)
+  // Every 10 seconds do a get-recent
+  ajaxGetInterval = setInterval(function() { updateGraphData(false); }, 10 * 1000)
   updateGraphData(true);
 
   var previousPoint = null;
@@ -308,12 +319,18 @@ $(function () {
     var now = new Date();
     var now_ts = now.getTime();
     var start_ts;
-    if(!last_ts || fullUpdate) {
+    //if(!last_ts || fullUpdate) {
       start_ts = now_ts - (24 * 60 * 60 * 1000);
-    } else {
-      start_ts = last_ts - (10 * 1000);  // Re-get last 10 seconds of data
+    //} else {
+    //  start_ts = last_ts - (10 * 1000);  // Re-get last 10 seconds of data
+    //}
+    clearInterval(ajaxGetInterval);
+    ajaxGetInterval = setInterval(function() { updateGraphData(false); }, 10 * 1000)
+    stat_url = "/data_proxy/stat/json?start="+start_ts+"&end="+now_ts+"&uuid="+uuid;
+    if(statName != "All") {
+      stat_url += "&name="+statName;
     }
-    drawGraph("/data_proxy/stat/json?start="+start_ts+"&end="+now_ts+"&uuid="+uuid+"&name="+statName);
+    drawGraph(stat_url);
   });
 
   // register the binding for zooming

@@ -37,8 +37,12 @@ module Hastur
 
         res = get("/statNames?uuid=#{params[:uuid]}")
 
+        hash = ::MultiJson.load(res.body)
+        hash[params[:uuid]] << "All"
+        hash[params[:uuid]].sort!
+
         content_type :json
-        res.body
+        ::MultiJson.dump(hash)
       end
 
       helpers do
