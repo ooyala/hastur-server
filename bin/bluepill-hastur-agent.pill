@@ -1,3 +1,4 @@
+dns_routers = []
 DEFAULT_ROUTERS = %w[ 10.255.146.177 10.242.255.137 ] # us-east-1
 ROUTER_PORT="8126"
 
@@ -14,7 +15,9 @@ Bluepill.application("hastur_agent", :log_file => "/var/log/bluepill.log") do |a
       "LD_LIBRARY_PATH" => "/opt/hastur/lib",
     }
     # TODO: change --router args to be built from / set from DNS RR records
-    process.start_command = "/opt/hastur/bin/hastur-agent.rb --router tcp://10.255.146.177:8126 --router tcp://10.242.255.137:8126"
+    routers = dns_routers.empty? ? DEFAULT_ROUTERS : dns_routers
+    router_string = routers.map{ |router| "--router tcp://#{router}:#{ROUTER_PORT}" }.join(" ")
+    process.start_command = "/opt/hastur/bin/hastur-agent.rb #{router_string}"
     process.stop_signals = [:quit, 15.seconds, :term, 5.seconds, :kill]
     process.working_dir = "/"
 
