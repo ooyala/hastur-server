@@ -39,9 +39,6 @@ var flot_opts = {
   selection: {
     mode:"x"
   }
-//  pan: {
-//    interactive: true
-//  }
 };
 
 function refreshDropDowns() {
@@ -77,6 +74,7 @@ function hash_size(obj) {
 function clearPlotData() {
   plot_data = {};
   flot_data = [];
+  graph_data = [];
   last_ts = false;
   do_grid_change = true;
   if(plot) {
@@ -99,14 +97,12 @@ function clearPlotData() {
 //
 function mergePlotData(newData) {
   var statName;
-
   console.debug("Merging plot data...");
 
   // For each stat name
   for(statName in newData) {
     console.debug("Stat name: " + statName);
     if(!newData.hasOwnProperty(statName)) { next; }
-
     console.debug("Stat name " + statName + ", points: " + hash_size(newData[statName]));
     // Add new series to plot_data if it isn't there
     if(!plot_data[statName]) {
@@ -114,7 +110,6 @@ function mergePlotData(newData) {
       flot_data_series = { "label": statName, "data": [] };
       flot_data.push(flot_data_series);
       plot_data[statName].flot_data = flot_data_series.data;
-
       // The labels changed, redraw
       do_grid_change = true;
     }
@@ -126,17 +121,13 @@ function mergePlotData(newData) {
 
     for(ts in newPoints) {
       if(!newPoints.hasOwnProperty(ts)) { next; }
-
       var point = newPoints[ts];
-
       if(!oldSeries[ts]) {
         flotData.push([ Math.round(ts / 1000.0), point.value ])
         oldSeries[ts] = point.value;
       }
-
       if(!last_ts || ts > last_ts) {
-        // ts is in microseconds
-        last_ts = Math.round(ts / 1000);
+        last_ts = Math.round(ts / 1000);    // ts is in microseconds
       }
     }
   }
@@ -163,19 +154,7 @@ function drawWithData(theData) {
     do_grid_change = false;
   }
 
-/**
-  // Navigation - Panning and Zooming
-  // add zoom out button 
-  $('<div class="button" style="right:20px;bottom:100px">zoom out</div>')
-    .appendTo(placeholder).click(function (e) {
-      e.preventDefault();
-      plot.zoomOut();
-  });
-*/
-  // and add panning buttons
-
-  // little helper for taking the repetitive work out of placing
-  // panning arrows
+  // little helper for taking the repetitive work out of placing panning arrows
   function addArrow(dir, right, bottom, offset) {
     $('<img class="button" src="arrow-' + dir + '.gif" style="right:' + right + 'px;bottom:' + bottom + 'px">').appendTo(placeholder).click(function (e) {
       e.preventDefault();
@@ -202,11 +181,7 @@ function updateGraphData(fullUpdate) {
     clearPlotData();
   }
   
-  if(!last_ts || fullUpdate) {
-    start_ts = now_ts - (24 * 60 * 60 * 1000);
-  } else {
-    start_ts = last_ts - (10 * 1000);  // Re-get last 10 seconds of data
-  }
+  start_ts = now_ts - (24 * 60 * 60 * 1000);
 
   // Query for two minutes later than now.  Normally
   // there shouldn't be any data, but this (more than)
@@ -217,7 +192,15 @@ function updateGraphData(fullUpdate) {
     url = '/data_proxy/stat/json?start=' + start_ts + '&end=' + now_ts;
     url += '&uuid=' + uuid;
   } else {
-    url = graph_url;
+    params = graph_url.split("?")[1].split("&");
+    url = graph_url.split("?")[0] + "?";
+    for(i=0; i<params.length; i++) {
+      param_name = params[i].split("=")[0];
+      if(param_name != "start" && param_name != "end") {
+        url += params[i] + "&";
+      }
+    }
+    url += "start="+start_ts+"&end="+now_ts;
   }
 
   drawGraph(url);
@@ -279,17 +262,10 @@ $(function () {
     var now = new Date();
     var now_ts = now.getTime();
     var start_ts;
-    //if(!last_ts) {
-      start_ts = now_ts - (24 * 60 * 60 * 1000);
-    //} else {
-    //  start_ts = last_ts - (10 * 1000);  // Re-get last 10 seconds of data
-    //}
+    start_ts = now_ts - (24 * 60 * 60 * 1000);
     uuid = $("#hostname_ddl").val();
     drawGraph("/data_proxy/stat/json?start="+start_ts+"&end="+now_ts+"&uuid="+uuid);
   });
-
-  // Every 10 minutes do a full refresh
-//  setInterval(function() { updateGraphData(true); }, 10 * 60 * 1000)
 
   // Every 10 seconds do a get-recent
   ajaxGetInterval = setInterval(function() { updateGraphData(false); }, 10 * 1000)
@@ -322,11 +298,7 @@ $(function () {
     var now = new Date();
     var now_ts = now.getTime();
     var start_ts;
-    //if(!last_ts || fullUpdate) {
-      start_ts = now_ts - (24 * 60 * 60 * 1000);
-    //} else {
-    //  start_ts = last_ts - (10 * 1000);  // Re-get last 10 seconds of data
-    //}
+    start_ts = now_ts - (24 * 60 * 60 * 1000);
     clearInterval(ajaxGetInterval);
     ajaxGetInterval = setInterval(function() { updateGraphData(false); }, 10 * 1000)
     stat_url = "/data_proxy/stat/json?start="+start_ts+"&end="+now_ts+"&uuid="+uuid;
@@ -341,9 +313,7 @@ $(function () {
     plot = $.plot($("#placeholder"), graph_data,
               $.extend(true, {}, flot_opts, {
                 xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to }
-              }));
+           }));
   });
-
-
 });
 
