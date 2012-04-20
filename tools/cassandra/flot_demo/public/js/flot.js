@@ -176,10 +176,7 @@ function updateGraphData(fullUpdate) {
   var now_ts = now.getTime();
   var start_ts;
 
-  if(fullUpdate) {
-    console.debug("Clear plot data for full update");
-    clearPlotData();
-  }
+  clearPlotData();
   
   start_ts = now_ts - (24 * 60 * 60 * 1000);
 
