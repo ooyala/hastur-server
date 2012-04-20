@@ -1,0 +1,50 @@
+require 'bluepill'
+require 'logger'
+
+HASTUR_ROOT="/opt/hastur"
+
+cassandra_servers = []
+File.readlines("#{HASTUR_ROOT}/conf/cassandra-servers.txt") do |line|
+  line.chomp!
+  line.gsub /\s+#.*$/, ''
+  cassandra_servers << line unless line.empty?
+end
+
+HASTUR_CORE_COMMAND = [
+  "#{HASTUR_ROOT}/bin/hastur-core.rb",
+  "--router",    "tcp://0.0.0.0:8126",
+  "--return",    "tcp://0.0.0.0:8127",
+  "--firehose",  "tcp://0.0.0.0:8128",
+  "--cassandra", cassandra_servers,
+].flatten.join(" ")
+
+# for our current purposes, it's OK for bluepill to be in hastur-core
+if File.exists?("/cgroup/hastur-core/tasks")
+  File.open("/cgroup/hastur-core/tasks", "w") do |tasks|
+    tasks.puts $$
+  end
+end
+
+Bluepill.application("hastur_core", :log_file => "/var/log/bluepill.log") do |app|
+  app.process("hastur_core") do |process|
+    process.environment = {
+      "PATH" => "#{HASTUR_ROOT}/bin:/opt/local/bin:/usr/local/bin:/usr/local/sbin:/bin:/usr/bin:/sbin:/usr/sbin",
+      "LD_LIBRARY_PATH" => "#{HASTUR_ROOT}/lib",
+    }
+    process.start_command = HASTUR_CORE_COMMAND
+    process.stop_signals = [:quit, 15.seconds, :term, 5.seconds, :kill]
+    process.working_dir = HASTUR_ROOT
+    process.pid_file = "/run/hastur/hastur-core.pid"
+    process.uid = "role-hastur"
+    process.gid = "role-hastur"
+
+    process.daemonize = true
+    process.start_grace_time = 15.seconds
+    process.stop_grace_time = 30.seconds
+    process.restart_grace_time = 45.seconds
+    process.checks :mem_usage, :every => 10.seconds, :below => 100.megabytes, :times => [3,5]
+    process.checks :flapping, :times => 2, :within => 30.seconds, :retry_in => 15.seconds
+  end
+end
+
+# vim: ft=ruby

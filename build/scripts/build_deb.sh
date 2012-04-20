@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+ZMQ_TARBALL="zeromq-2.2.0.tar.gz"
+ZMQ_URL="http://download.zeromq.org/$ZMQ_TARBALL"
+
 HASTUR_ROOT=/opt/hastur
 HASTUR_RUBY_INST=$HASTUR_ROOT/ruby
 HASTUR_RUBY_CMD=$HASTUR_RUBY_INST/bin/ruby
@@ -46,6 +49,16 @@ rm -rf $HASTUR_RUBY_INST/share $HASTUR_RUBY_INST/lib/ruby/gems/1.9.1/doc
 find $HASTUR_ROOT -type f -name "*.so" -exec strip {} \;
 strip $HASTUR_RUBY_CMD
 
+[ -r $ZMQ_TARBALL ] || wget -O $ZMQ_TARBALL $ZMQ_URL
+tar -xzvf $ZMQ_TARBALL
+dir=$(basename $ZMQ_TARBALL |sed 's/\.tar\.gz//')
+pushd $dir
+./configure --prefix=/opt/hastur
+make -j2
+make install
+popd
+[ "$dir" != "/" ] && rm -rf $dir
+
 # use fpm to create the package
 $HASTUR_GEM_CMD install fpm
 
@@ -61,6 +74,7 @@ $HASTUR_FPM_CMD --provides hastur-server \
   -v $HASTUR_VERSION \
   --license MIT \
   --vendor Ooyala \
+  --after-install $HASTUR_SERVER_INST/build/scripts/after-install.sh \
   -s dir \
   $HASTUR_ROOT
 
