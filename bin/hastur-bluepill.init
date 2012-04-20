@@ -1,0 +1,51 @@
+#!/bin/bash
+#
+# Instructions:
+# Symlink this script to /etc/init.d/hastur-$APP.init where $APP matches
+# the bluepill name, for example if I have bluepill-hastur-agent.pill,
+# ln -nfs /opt/hastur/bin/hastur-bluepill.init /etc/init.d/hastur-agent.init
+# Or, for hastur-core.rb using bluepill-hastur-core.pill:
+# ln -nfs /opt/hastur/bin/hastur-bluepill.init /etc/init.d/hastur-core.init
+#
+### BEGIN INIT INFO
+# Provides:          hastur-service
+# Required-Start:    $network
+# Required-Stop:     $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      1 0 6
+# Short-Description: Start Hastur Bluepill Application
+### END INIT INFO
+
+die () { echo "$*" ; exit 1 ; }
+
+BLUEPILL="/opt/hastur/bin/bluepill"
+APP=$(basename $0 |sed -r -e 's/\.init$//')
+PILL="/opt/hastur/bin/bluepill-${APP}.pill"
+
+[ -e $BLUEPILL ] || die "$BLUEPILL does not exist - is your installation complete?"
+[ -e $PILL ] || die "$PILL does not exist"
+
+ulimit -l unlimited # no limits on amount of locked memory
+ulimit -n 1048576   # dramatically increase max file descriptors
+
+case "$1" in
+  start)
+    $BLUEPILL load $PILL
+    $BLUEPILL start hastur_core
+    ;;
+  stop)
+    $BLUEPILL stop hastur_core
+    ;;
+  restart)
+    $BLUEPILL restart hastur_core
+    ;;
+  status)
+    $BLUEPILL status hastur_core
+    ;;
+  *)
+    echo "Usage: $0 start|stop|restart|status"
+    ;;
+esac
+
+exit $RETVAL
+
