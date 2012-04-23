@@ -5,6 +5,7 @@ var plot = false;
 var do_replot = true;
 var do_grid_change = true;
 var last_ts = false;
+var timeRange = 0;    // the number of milliseconds to graph from the current time
 
 var urlParams = {};
 var uuid = '';
@@ -171,14 +172,36 @@ function drawWithData(theData) {
   $("#replot").click(function() { do_replot = true; updateGraphData(false); });
 }
 
+// Replaces the 'start' and 'end' query string params with an update to date
+// timestamp that uses the current system time and the 'timeRange' value
+function replaceStartAndEndTimes(url, range) {
+  var now_ts = getEndTime();
+  var start_ts = getStartTime(now_ts);
+  var params = url.split("?")[1].split("&");
+  var retval = url.split("?")[0] + "?";
+  for(i = 0; i < params.length; i++) {
+    var param_name = params[i].split("=")[0];
+    if(param_name != "start" && param_name != "end") {
+      retval += params[i] + "&";
+    }
+  }
+  retval += "start="+start_ts+"&end="+now_ts;
+  return retval;
+}
+
+function getStartTime(endTime) {
+  return endTime - timeRange;
+}
+
+function getEndTime() {
+  return (new Date()).getTime();
+}
+
 function updateGraphData(fullUpdate) {
-  var now = new Date();
-  var now_ts = now.getTime();
-  var start_ts;
+  var now_ts = getEndTime();
+  var start_ts = getStartTime(now_ts);
 
   clearPlotData();
-  
-  start_ts = now_ts - (24 * 60 * 60 * 1000);
 
   // Query for two minutes later than now.  Normally
   // there shouldn't be any data, but this (more than)
@@ -189,15 +212,7 @@ function updateGraphData(fullUpdate) {
     url = '/data_proxy/stat/json?start=' + start_ts + '&end=' + now_ts;
     url += '&uuid=' + uuid;
   } else {
-    params = graph_url.split("?")[1].split("&");
-    url = graph_url.split("?")[0] + "?";
-    for(i=0; i<params.length; i++) {
-      param_name = params[i].split("=")[0];
-      if(param_name != "start" && param_name != "end") {
-        url += params[i] + "&";
-      }
-    }
-    url += "start="+start_ts+"&end="+now_ts;
+    url = replaceStartAndEndTimes(graph_url, timeRange);
   }
 
   drawGraph(url);
@@ -312,5 +327,20 @@ $(function () {
                 xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to }
            }));
   });
+
+  $("span#oneHour").click(function() {
+    timeRange = 60*60*24;   // make range 1 hour
+    graph_url = replaceStartAndEndTimes(graph_url, timeRange);
+    drawGraph(graph_url);
+  });
+  $("span#threeHour").click(function() {
+    timeRange = 3*60*60*24;   // make range 3 hour
+    graph_url = replaceStartAndEndTimes(graph_url, timeRange);
+    drawGraph(graph_url);
+  });
+  $("span#sixHour")
+  $("span#twelveHour")
+  $("span#day")
+  $("span#week")
 });
 
