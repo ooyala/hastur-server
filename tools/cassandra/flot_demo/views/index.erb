@@ -22,27 +22,27 @@
     </style>
   </head>
   <body>
-    <table>
-      <tr>
-        <td>
-          <span>Hosts</span>
-        </td>
-        <td>
-          <select id="hostname_ddl">
-            <% hostnames.each do |uuid, hostname| %>
-              <option value=<%= "\"#{uuid}\"" %>><%= "\"#{hostname}\"" %></option>
-            <% end%>
-          </select>
-        </td>
-        <td>
-          <span>Stats</span>
-        </td>
-        <td>
-          <select id="statNameDdl"></select>
-        </td>
-      </tr>
-    </table>
-    
+    <div>
+      <span>Hosts</span>
+      <select id="hostname_ddl">
+        <% hostnames.each do |uuid, hostname| %>
+          <option value=<%= "\"#{uuid}\"" %>><%= "\"#{hostname}\"" %></option>
+        <% end%>
+      </select>
+      <span>Stats</span>
+      <select id="statNameDdl"></select>
+    </div>
+   
+    <div>
+      <span>Zoom </span>
+      <span id="oneHour">1h</span>
+      <span id="threeHour">3h</span>
+      <span id="sixHour">6h</span>
+      <span id="twelveHour">12h</span>
+      <span id="day">1d</span>
+      <span id="week">1w</span>
+    </div>
+
     <div id="placeholder" style="width:1000px;height:500px"></div>
   	<p><input id="enableTooltip" type="checkbox" checked="checked">Enable tooltip</p>
   	<div>
