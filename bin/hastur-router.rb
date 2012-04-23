@@ -13,7 +13,7 @@ require "hastur-server/router"
 require "hastur-server/util"
 
 Ecology.read("hastur-router.ecology")
-MultiJson.engine = :yajl
+MultiJson.use :yajl
 logger = Termite::Logger.new
 
 opts = Trollop::options do
@@ -86,7 +86,7 @@ R.route :from => :direct, :src => sockets[:direct], :dest => sockets[:router], :
 R.handle sockets[:control] do |sock|
   begin
     rc = sock.recv_string json=""
-    config = MultiJson.decode json, :symbolize_keys => true
+    config = MultiJson.load json, :symbolize_keys => true
     # TODO: route_del
     result = case config.delete(:method)
       when "shutdown";   R.shutdown; "Shutting down."
@@ -95,7 +95,7 @@ R.handle sockets[:control] do |sock|
       else
         raise ArgumentError.new "invalid command on control socket: #{json}"
     end
-    sock.send_string MultiJson.encode({:result => result, :error => "", :id => config[:id]})
+    sock.send_string MultiJson.dump({:result => result, :error => "", :id => config[:id]})
   rescue
   # TODO: log bad/unparsable commands
   end
