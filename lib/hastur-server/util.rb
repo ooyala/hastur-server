@@ -218,6 +218,8 @@ module Hastur
         false
       end
     end
+    # Also allow ZeroMQ naming
+    alias recv_strings read_strings
 
     #
     # Send an array of Strings on a ZeroMQ socket.
