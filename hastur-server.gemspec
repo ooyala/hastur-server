@@ -46,11 +46,9 @@ EOS
   s.add_runtime_dependency "termite"
   s.add_runtime_dependency "bluepill"
   s.add_runtime_dependency "cassandra"
-  s.add_runtime_dependency "thrift_client", "~>0.7.0"
+  s.add_runtime_dependency "thrift_client"
   s.add_runtime_dependency "rainbow"
   s.add_runtime_dependency "msgpack"
   s.add_runtime_dependency "hastur", "~>1.0.5"
   s.add_runtime_dependency "algorithms"
-  s.add_runtime_dependency "celluloid"
-  s.add_runtime_dependency "dcell"
 end
