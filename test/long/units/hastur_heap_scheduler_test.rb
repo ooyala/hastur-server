@@ -20,7 +20,7 @@ class HasturHeapSchedulerTest < Test::Unit::TestCase
     scheduler.add_jobs jobs
 
     # wait for the jobs to execute
-    sleep 60*5 + 1
+    sleep 60*8 + 1
     
     # stop scheduling jobs
     scheduler.stop

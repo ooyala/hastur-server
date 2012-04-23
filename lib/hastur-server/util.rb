@@ -17,7 +17,7 @@ module Hastur
     MICRO_SECS_1971 = 31536000000000
     NANO_SECS_1971  = 31536000000000000
 
-    def hastur_internal_logger
+    def hastur_logger
       @__hastur_internal_logger ||= ::Termite::Logger.new(:component => "Hastur")
     end
 
@@ -152,7 +152,7 @@ module Hastur
     def setsockopts(socks, opts = {})
       [socks].flatten.each do |sock|
         rc = sock.setsockopt(::ZMQ::LINGER, opts[:linger] || -1)
-        hastur_internal_logger.error "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
+        hastur_logger.error "Error setting ZMQ::LINGER: #{::ZMQ::Util.error_string}" unless rc > -1
 
         if ZMQ::LibZMQ.version2?
           rc = sock.setsockopt(::ZMQ::HWM, opts[:hwm]) if opts[:hwm]
@@ -160,24 +160,24 @@ module Hastur
           rc = sock.setsockopt(::ZMQ::RCVHWM, opts[:hwm]) if opts[:hwm]
           rc = sock.setsockopt(::ZMQ::SNDHWM, opts[:hwm]) if opts[:hwm] unless rc < 0
         end
-        hastur_internal_logger.error "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
+        hastur_logger.error "Error setting ZMQ::HWM: #{::ZMQ::Util.error_string}" unless rc > -1
 
         rc = sock.setsockopt(::ZMQ::IDENTITY, opts[:identity]) if opts[:identity]
-        hastur_internal_logger.error "Error setting ZMQ::IDENTITY: #{::ZMQ::Util.error_string}" unless rc > -1
+        hastur_logger.error "Error setting ZMQ::IDENTITY: #{::ZMQ::Util.error_string}" unless rc > -1
       end
     end
 
     def bind(socks, uri)
       [socks].flatten.each do |sock|
         rc = sock.bind(uri)
-        hastur_internal_logger.error "Could not bind socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
+        hastur_logger.error "Could not bind socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
       end
     end
 
     def connect(socks, uri)
       [socks].flatten.each do |sock|
         rc = sock.connect(uri)
-        hastur_internal_logger.error "Could not connect socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
+        hastur_logger.error "Could not connect socket to URI '#{uri}': #{::ZMQ::Util.error_string}" unless rc > -1
       end
     end
 
@@ -187,7 +187,7 @@ module Hastur
       if rc < 0
         message
       else
-        hastur_internal_logger.error "Could not read messages: #{::ZMQ::Util.error_string}"
+        hastur_logger.error "Could not read messages: #{::ZMQ::Util.error_string}"
         false
       end
     end
@@ -197,7 +197,7 @@ module Hastur
       if rc < 0
         true
       else
-        hastur_internal_logger.error "Could not send messages: #{::ZMQ::Util.error_string}"
+        hastur_logger.error "Could not send messages: #{::ZMQ::Util.error_string}"
         false
       end
     end
@@ -214,10 +214,12 @@ module Hastur
       if rc < 0
         message
       else
-        hastur_internal_logger.error "Could not read strings: #{::ZMQ::Util.error_string}"
+        hastur_logger.error "Could not read strings: #{::ZMQ::Util.error_string}"
         false
       end
     end
+    # Also allow ZeroMQ naming
+    alias recv_strings read_strings
 
     #
     # Send an array of Strings on a ZeroMQ socket.
@@ -231,7 +233,7 @@ module Hastur
       if rc < 0
         true
       else
-        hastur_internal_logger.error "Could not send strings: #{::ZMQ::Util.error_string}"
+        hastur_logger.error "Could not send strings: #{::ZMQ::Util.error_string}"
         false
       end
     end
@@ -319,16 +321,16 @@ module Hastur
       status = 0
       if opts[:bind]
         ok = socket.bind(to_valid_zmq_uri(uri)) >= 0
-        hastur_internal_logger.error "Error #{::ZMQ::Util.error_string} when binding socket to #{uri}!" unless ok
+        hastur_logger.error "Error #{::ZMQ::Util.error_string} when binding socket to #{uri}!" unless ok
       elsif opts[:connect]
         if uri.respond_to?(:each)
           uri.each do |one_uri|
             rc = socket.connect to_valid_zmq_uri(one_uri)
-            hastur_internal_logger.error "Error #{::ZMQ::Util.error_string} when connecting socket to #{one_uri.inspect}!" if rc < 0
+            hastur_logger.error "Error #{::ZMQ::Util.error_string} when connecting socket to #{one_uri.inspect}!" if rc < 0
           end
         else
           rc = socket.connect to_valid_zmq_uri(uri)
-          hastur_internal_logger.error "Error #{::ZMQ::Util.error_string} when connecting socket to #{uri.inspect}!" if rc < 0
+          hastur_logger.error "Error #{::ZMQ::Util.error_string} when connecting socket to #{uri.inspect}!" if rc < 0
         end
       else
         raise "Must provide either bind or connect option to bind_or_connect_socket!"

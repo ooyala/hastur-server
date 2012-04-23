@@ -1,6 +1,8 @@
 require "bundler/gem_tasks"
 require "rake/testtask"
 
+Dir["build/tasks/*.rake"].each { |task| load task }
+
 namespace "test" do
   desc "Unit tests for Hastur"
   Rake::TestTask.new(:units) do |t|
