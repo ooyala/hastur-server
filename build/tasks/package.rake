@@ -369,11 +369,11 @@ namespace :hastur do
   end
 
   task :fpm_hastur_agent do
-    #Rake::Task["hastur:clean_build"].invoke
-    #Rake::Task["hastur:setup"].invoke
-    #Rake::Task["hastur:build"].invoke
-    #Rake::Task["hastur:safe_strip"].invoke
-    #Rake::Task["hastur:install_gems"].invoke
+    Rake::Task["hastur:clean_build"].invoke
+    Rake::Task["hastur:setup"].invoke
+    Rake::Task["hastur:build"].invoke
+    Rake::Task["hastur:safe_strip"].invoke
+    Rake::Task["hastur:install_gems"].invoke
     Rake::Task["hastur:install_hastur"].invoke
     Rake::Task["hastur:build_strip"].invoke
     Rake::Task["hastur:strip_ruby"].invoke
