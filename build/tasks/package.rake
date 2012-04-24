@@ -46,14 +46,24 @@ namespace :hastur do
 
   dirs = {} # filled in when the tarballs are opened up, or with find_dirs
 
+  # make sure the compiler really knows what size to compile for
+  case `uname -m`.chomp # linux32 fakes uname response
+  when /\Ai\d86\Z/
+    archflag = "-m32"
+  when /\Ax86_64\Z/
+    archflag = "-m64"
+  else
+    abort "Could not determine architecture to set -m32 / -m64. Check 'uname -m'."
+  end
+
   # Linux only for now
   # For OSX CC will probably need to be forced to gcc and rpath stuff probably doesn't work
   # Set rpath on build / link to make sure /opt/hastur/lib works even if LD_LIBRARY_PATH isn't set
   BUILD_ENV = {
     "PATH"     => "#{PATHS[:bindir]}:/opt/local/bin:/bin:/usr/bin:/usr/local/bin",
-    "LDFLAGS"  => "-Wl,-rpath -Wl,#{PATHS[:libdir]} -L#{PATHS[:libdir]} -I#{PATHS[:incdir]}",
-    "CFLAGS"   => "-O2 -mtune=generic -pipe -Wl,-rpath -Wl,#{PATHS[:libdir]} -L#{PATHS[:libdir]} -I#{PATHS[:incdir]}",
-    "CXXFLAGS" => "-O2 -mtune=generic -pipe -Wl,-rpath -Wl,#{PATHS[:libdir]} -L#{PATHS[:libdir]} -I#{PATHS[:incdir]}",
+    "LDFLAGS"  => "-Wl,-rpath -Wl,#{PATHS[:libdir]} -L#{PATHS[:libdir]}",
+    "CPPFLAGS" => "-I#{PATHS[:incdir]} #{archflag}",
+    "CFLAGS"   => "-O2 -mtune=generic -pipe #{archflag}",
     "LIBRPATH" => PATHS[:libdir], # for openssl, others probably ignore it
   }
 
