@@ -73,23 +73,31 @@ description=Hastur Build: $SCHROOT
 type=directory
 directory=$path
 root-groups=root
-script-config=/dev/null
+script-config=none/config
 personality=$personality
 EOF
 }
 
 build_hastur () {
   target=$1
+  path=$2
 
-  cd /tmp
-  git clone $GIT_REPO
+  cd $path/tmp
+  if [ ! -d "$path/tmp/hastur-server" ] ; then
+    git clone $GIT_REPO
+  else
+    cd "$path/tmp/hastur-server"
+    git pull
+  fi
 
   # bundle / rake are placed in the path with update-alternatives in the root setup
-  schroot -c $SCHROOT bash -c "cd /tmp/hastur-server && bundle install"
-  schroot -c $SCHROOT bash -c "cd /tmp/hastur-server && bundle exec rake $target"
+  schroot -c $SCHROOT -d /tmp/hastur-server bundle install
+  schroot -c $SCHROOT -d /tmp/hastur-server bundle exec rake $target
 }
 
 [ -x /usr/bin/schroot ] || die "schroot must be installed on the host system"
+mkdir -p /etc/schroot/none
+touch /etc/schroot/none/config
 
 for arch in i386 amd64
 do
@@ -104,7 +112,7 @@ do
 
       setup_schroot $dist $arch $SNAP_SUFFIX $snapshot
 
-      build_hastur "hastur:fpm_hastur_$pkg"
+      build_hastur "hastur:fpm_hastur_$pkg" $snapshot
       # TODO: cleanup
     done
   done
