@@ -19,11 +19,12 @@ namespace :hastur do
     :incdir => "/opt/hastur/include",
   }
 
-  PACKAGES = [ :zlib, :openssl, :yaml, :ruby, :zeromq ]
+  PACKAGES = [ :zlib, :openssl, :yaml, :libffi, :ruby, :zeromq ]
   VERSIONS = {
     :zlib    => "http://zlib.net/zlib-1.2.6.tar.gz",
     :openssl => "http://www.openssl.org/source/openssl-1.0.1a.tar.gz",
     :yaml    => "http://pyyaml.org/download/libyaml/yaml-0.1.4.tar.gz",
+    :libffi  => "https://github.com/atgreen/libffi/tarball/v3.0.11", # sourceware doesn't offer http downloads
     :ruby    => "http://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.3-p194.tar.gz",
     :zeromq  => "http://download.zeromq.org/zeromq-2.2.0.tar.gz",
   }
@@ -31,6 +32,7 @@ namespace :hastur do
     :zlib    => "618e944d7c7cd6521551e30b32322f4a",
     :openssl => "a0104320c0997cd33e18b8ea798609d1",
     :yaml    => "36c852831d02cf90508c29852361d01b",
+    :libffi  => "e1d1093eb2aa94bedf5b2dcdd9a580bc",
     :ruby    => "bc0c715c69da4d1d8bd57069c19f6c0e",
     :zeromq  => "1b11aae09b19d18276d0717b2ea288f6",
   }
@@ -113,7 +115,11 @@ namespace :hastur do
     run_required command
 
     # openssl parallel build is broken, so just build everything serially
-    run_required "make"
+    if package == :openssl
+      run_required "make"
+    else
+      run_required "make -j4"
+    end
 
     # maybe add "make test" for packages that support it later?
     run_required "make install"
@@ -187,6 +193,11 @@ namespace :hastur do
     confmakeinstall(:yaml, dirs[:yaml], "./configure", CONFIGURE)
   end
 
+  task :install_libffi do
+    Rake::Task["hastur:find_dirs"].invoke unless dirs[:libffi]
+    confmakeinstall(:libffi, dirs[:libffi], "./configure", CONFIGURE, "--enable-portable-binary")
+  end
+
   task :install_ruby do
     Rake::Task["hastur:find_dirs"].invoke unless dirs[:ruby]
     confmakeinstall(:ruby, dirs[:ruby], "./configure", CONFIGURE,
@@ -254,17 +265,6 @@ namespace :hastur do
     moves.each do |old,new|
       FileUtils.mv new, old
     end
-  end
-
-  task :build do
-    Rake::Task["hastur:install_zlib"].invoke
-    Rake::Task["hastur:install_openssl"].invoke
-    Rake::Task["hastur:install_yaml"].invoke
-    Rake::Task["hastur:install_ruby"].invoke
-    Rake::Task["hastur:install_zeromq"].invoke
-
-    # update scripts installed so far to point at the new ruby
-    Rake::Task["hastur:rewrite_shebangs"].invoke
   end
 
   # remove only stuff that's safe to remove and keep developing
@@ -336,13 +336,25 @@ namespace :hastur do
     Rake::Task["hastur:rewrite_shebangs"].invoke
   end
 
+  task :build do
+    Rake::Task["hastur:install_zlib"].invoke
+    Rake::Task["hastur:install_openssl"].invoke
+    Rake::Task["hastur:install_yaml"].invoke
+    Rake::Task["hastur:install_libffi"].invoke
+    Rake::Task["hastur:install_ruby"].invoke
+    Rake::Task["hastur:install_zeromq"].invoke
+
+    # update scripts installed so far to point at the new ruby
+    Rake::Task["hastur:rewrite_shebangs"].invoke
+  end
+
   task :fpm_hastur_server do
-    #Rake::Task["hastur:clean_build"].invoke
-    #Rake::Task["hastur:setup"].invoke
-    #Rake::Task["hastur:build"].invoke
-    #Rake::Task["hastur:install_gems"].invoke
+    Rake::Task["hastur:clean_build"].invoke
+    Rake::Task["hastur:setup"].invoke
+    Rake::Task["hastur:build"].invoke
+    Rake::Task["hastur:install_gems"].invoke
     Rake::Task["hastur:install_hastur"].invoke
-    #Rake::Task["hastur:rewrite_shebangs"].invoke
+    Rake::Task["hastur:rewrite_shebangs"].invoke
 
     command = %w[
       --provides hastur-server
