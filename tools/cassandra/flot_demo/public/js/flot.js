@@ -341,7 +341,8 @@ $(function () {
   $("#placeholder").bind("plotselected", function (event, ranges) {
     plot = $.plot($("#placeholder"), graph_data,
               $.extend(true, {}, flot_opts, {
-                xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to }
+                xaxis: { min: 0, max: ranges.xaxis.to },
+                yaxis: { min: 0, max: ranges.yaxis.to }
            }));
   });
 
