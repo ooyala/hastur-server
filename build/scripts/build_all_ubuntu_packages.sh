@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -x
-set -e
 
 # this script assumes:
 #  * running on Linux
@@ -48,34 +47,25 @@ die () {
   exit 1
 }
 
+require () {
+  if [ $? != 0 ] ; then
+    set +x
+    echo "FAILED: $*"
+    caller -1
+    echo "Variables: "
+    echo "arch:     $arch"
+    echo "dist:     $dist"
+    echo "pkg:      $pkg"
+    echo "snapshot: $snapshot"
+    echo "root:     $root"
+    echo "CWD:      $(pwd)"
+    exit 1
+  fi
+}
+
 build_script () {
   location=$1
   build=$2
-}
-
-setup_schroot () {
-  dist=$1
-  arch=$2
-  snap=$3
-  path=$4
-
-  SCHROOT="hastur-$dist-$arch-$snap"
-
-  if [ "$arch" == "i386" ] ; then
-    personality="linux32"
-  else
-    personality="linux64"
-  fi
-
-  cat > /etc/schroot/chroot.d/$SCHROOT.conf <<EOF
-[$SCHROOT]
-description=Hastur Build: $SCHROOT
-type=directory
-directory=$path
-root-groups=root
-script-config=none/config
-personality=$personality
-EOF
 }
 
 build_hastur () {
@@ -90,14 +80,22 @@ build_hastur () {
     git pull
   fi
 
-  # bundle / rake are placed in the path with update-alternatives in the root setup
-  schroot -c $SCHROOT -d /tmp/hastur-server bundle install
-  schroot -c $SCHROOT -d /tmp/hastur-server bundle exec rake $target
-}
+  if [ "$arch" == "i386" ] ; then
+    personality=$(which linux32)
+    [ -n "$personality" ] || die "could not find 'linux32' utility"
+    export CFLAGS="-m32" # or configure fails to set everything up correctly
+  else
+    personality=$(which linux64)
+    # don't worry about it if it's not there, don't really need it on 64-bit systems
+    export CFLAGS="-m64" # for giggles / consistency
+  fi
 
-[ -x /usr/bin/schroot ] || die "schroot must be installed on the host system"
-mkdir -p /etc/schroot/none
-touch /etc/schroot/none/config
+  # bundle / rake are placed in the path with update-alternatives in the root setup
+  $personality chroot $path bash -c "cd /tmp/hastur-server && bundle install"
+  require $personality chroot $path bash -c "cd /tmp/hastur-server && bundle install"
+  $personality chroot $path bash -c "cd /tmp/hastur-server && bundle exec rake --trace $target"
+  require $personality chroot $path bash -c "cd /tmp/hastur-server && bundle exec rake --trace $target"
+}
 
 for arch in i386 amd64
 do
@@ -108,9 +106,8 @@ do
     for pkg in agent server
     do
       snapshot="$SNAP_ROOT/$dist-$arch-$pkg-$SNAP_SUFFIX"
-      btrfs subvolume snapshot $root $snapshot || die "Could not create snapshot."
-
-      setup_schroot $dist $arch $SNAP_SUFFIX $snapshot
+      btrfs subvolume snapshot $root $snapshot
+      require btrfs subvolume snapshot $root $snapshot
 
       build_hastur "hastur:fpm_hastur_$pkg" $snapshot
       # TODO: cleanup
