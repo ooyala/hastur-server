@@ -252,6 +252,12 @@ function showTooltip(x, y, contents) {
   }).appendTo("body").fadeIn(200);
 }
 
+// Sets the timeRange value and updates the graph with the current time range data
+function changeTimeRange(range) {
+  timeRange = range;
+  graph_url = replaceStartAndEndTimes(graph_url, timeRange);
+  drawGraph(graph_url);
+}
 
 // Document ready
 $(function () {
@@ -262,13 +268,11 @@ $(function () {
     var r = /([^&=]+)=?([^&]*)/g;
     var d = function (s) { return decodeURIComponent(s.replace(a, " ")); };
     var q = window.location.search.substring(1);
-
     while (e = r.exec(q))
       urlParams[d(e[1])] = d(e[2]);
   })();
 
   // Add the interaction for the drop downs
-  refreshDropDowns();
   $("select#hostname_ddl").change(function() {
     refreshDropDowns();
     var now = new Date();
@@ -279,12 +283,8 @@ $(function () {
     drawGraph("/data_proxy/stat/json?start="+start_ts+"&end="+now_ts+"&uuid="+uuid);
   });
 
-  // Every 10 seconds do a get-recent
-  ajaxGetInterval = setInterval(function() { updateGraphData(false); }, 10 * 1000)
-  updateGraphData(true);
-
-  var previousPoint = null;
   $("#placeholder").bind("plothover", function (event, pos, item) {
+    var previousPoint = null;
     if ($("#enableTooltip:checked").length > 0) {
       if (item) {
         if (previousPoint != item.dataIndex) {
@@ -329,18 +329,28 @@ $(function () {
   });
 
   $("span#oneHour").click(function() {
-    timeRange = 60*60*24;   // make range 1 hour
-    graph_url = replaceStartAndEndTimes(graph_url, timeRange);
-    drawGraph(graph_url);
+    changeTimeRange(60*60*1000);
   });
   $("span#threeHour").click(function() {
-    timeRange = 3*60*60*24;   // make range 3 hour
-    graph_url = replaceStartAndEndTimes(graph_url, timeRange);
-    drawGraph(graph_url);
+    changeTimeRange(3*60*60*1000);
   });
-  $("span#sixHour")
-  $("span#twelveHour")
-  $("span#day")
-  $("span#week")
+  $("span#sixHour").click(function() {
+    changeTimeRange(6*60*60*1000);
+  });
+  $("span#twelveHour").click(function() {
+    changeTimeRange(12*60*60*1000);
+  });
+  $("span#day").click(function() {
+    changeTimeRange(24*60*60*1000);
+  });
+  $("span#week").click(function() {
+    changeTimeRange(7*24*60*60*1000);
+  });
+
+  refreshDropDowns();
+  // Every 10 seconds do a get-recent
+  ajaxGetInterval = setInterval(function() { updateGraphData(false); }, 10 * 1000)
+  updateGraphData(true);
+  changeTimeRange(60*60*1000);
 });
 
