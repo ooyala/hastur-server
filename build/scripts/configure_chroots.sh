@@ -51,13 +51,13 @@ do
   do
     root="$ROOTS/$dist-$arch"
     chroot $root apt-get update
-    chroot $root apt-get install --force-yes -y -o "DPkg::Options::=--force-confold" vim build-essential apt-utils gpgv libssl-dev zlib1g-dev curl
+    chroot $root apt-get install --force-yes -y -o "DPkg::Options::=--force-confold" vim build-essential apt-utils gpgv libssl-dev zlib1g-dev curl git-core
 
     rsync -a /tmp/ruby-build $root/tmp
     [ -x "$root/$RUBY_BUILD" ] || chroot $root bash -c "cd /tmp/ruby-build && bash install.sh"
     [ -x "$root/$RUBY_INST/bin/ruby" ] || chroot $root /usr/local/bin/ruby-build $RUBY $RUBY_INST
 
-    for gem in rake bundler minitest
+    for gem in rake bundler minitest httparty
     do
       chroot $root $RUBY_INST/bin/gem install --no-ri --no-rdoc $gem
     done
