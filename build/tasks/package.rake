@@ -96,8 +96,8 @@ namespace :hastur do
     end
   end
 
-  # typical configure / make / make instal
-  def install(package, dir, *command)
+  # typical configure / make / make install
+  def confmakeinstall(package, dir, *command)
     Dir.chdir(dir)
 
     run_required command
@@ -158,12 +158,12 @@ namespace :hastur do
 
   task :install_zlib do
     Rake::Task["hastur:find_dirs"].invoke unless dirs[:zlib]
-    install(:zlib, dirs[:zlib], "./configure", CONFIGURE)
+    confmakeinstall(:zlib, dirs[:zlib], "./configure", CONFIGURE)
   end
 
   task :install_openssl do
     Rake::Task["hastur:find_dirs"].invoke unless dirs[:openssl]
-    install(:openssl, dirs[:openssl], "./config", CONFIGURE,
+    confmakeinstall(:openssl, dirs[:openssl], "./config", CONFIGURE,
       "--with-zlib-lib=#{PATHS[:libdir]}",
       "--with-zlib-include=#{PATHS[:incdir]}",
       "threads", "shared", "zlib-dynamic", "no-hw",
@@ -174,12 +174,12 @@ namespace :hastur do
 
   task :install_yaml do
     Rake::Task["hastur:find_dirs"].invoke unless dirs[:yaml]
-    install(:yaml, dirs[:yaml], "./configure", CONFIGURE)
+    confmakeinstall(:yaml, dirs[:yaml], "./configure", CONFIGURE)
   end
 
   task :install_ruby do
     Rake::Task["hastur:find_dirs"].invoke unless dirs[:ruby]
-    install(:ruby, dirs[:ruby], "./configure", CONFIGURE,
+    confmakeinstall(:ruby, dirs[:ruby], "./configure", CONFIGURE,
       "--with-opt-dir=#{PATHS[:libdir]}",
       "--enable-shared",
       "--disable-install-doc",
@@ -207,7 +207,7 @@ namespace :hastur do
 
   task :install_zeromq do
     Rake::Task["hastur:find_dirs"].invoke unless dirs[:zeromq]
-    install(:zeromq, dirs[:zeromq], "./configure", CONFIGURE,
+    confmakeinstall(:zeromq, dirs[:zeromq], "./configure", CONFIGURE,
       "--without-documentation",
       "--with-pgm=no"
     )
