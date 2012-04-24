@@ -37,9 +37,16 @@ namespace :hastur do
     :zeromq  => "1b11aae09b19d18276d0717b2ea288f6",
   }
 
-  GEM = File.join(PATHS[:bindir], 'gem')
-  FPM = File.join(PATHS[:bindir], 'fpm')
+  GEM_INSTALL = "#{File.join(PATHS[:bindir], 'gem')} install --bindir #{PATHS[:bindir]} --no-rdoc --no-ri"
   BUNDLER = File.join(PATHS[:bindir], 'bundle')
+  FPM = File.join(PATHS[:bindir], 'fpm')
+
+  # fpm options that are used for both hastur-agent and hastur-server
+  FPM_COMMON_OPTIONS = [
+    %w[-a native -m team-tna@ooyala.com -t deb --license MIT --vendor Ooyala --depends libuuid1 -s dir],
+    "--version", Hastur::VERSION,
+    "--iteration", `lsb_release -c`.strip.split(/:\s+/)[1].gsub(/\W/, '+') || "unknown"
+  ].flatten
 
   PROJECT_TOP = Rake.application.find_rakefile_location[1]
 
@@ -61,6 +68,7 @@ namespace :hastur do
   # Linux only for now
   # For OSX CC will probably need to be forced to gcc and rpath stuff probably doesn't work
   # Set rpath on build / link to make sure /opt/hastur/lib works even if LD_LIBRARY_PATH isn't set
+  # :bindir at the front of PATH is pretty important until rewrite_shebangs runs, don't remove it!
   BUILD_ENV = {
     "PATH"     => "#{PATHS[:bindir]}:/opt/local/bin:/bin:/usr/bin:/usr/local/bin",
     "LDFLAGS"  => "-Wl,-rpath -Wl,#{PATHS[:libdir]} -L#{PATHS[:libdir]}",
@@ -96,7 +104,7 @@ namespace :hastur do
   end
 
   def run_required(*command)
-    pid = Kernel.spawn(BUILD_ENV, *command.flatten)
+    pid = Kernel.spawn(BUILD_ENV, *command.join(' '))
     _, status = Process.waitpid2 pid
 
     if status.exitstatus != 0
@@ -208,20 +216,20 @@ namespace :hastur do
   end
 
   task :install_gems do
-    run_required "#{GEM} install bundler"
-    run_required "#{GEM} install bluepill"
-    Rake::Task["hastur:rewrite_shebangs"].invoke
+    run_required GEM_INSTALL, "rake"
+    run_required GEM_INSTALL, "bundler"
+    run_required GEM_INSTALL, "bluepill"
 
     # gems with native extensions
-    run_required "#{GEM} install ffi"
-    run_required "#{GEM} install msgpack"
-    run_required "#{GEM} install yajl-ruby"
-    run_required "#{GEM} install thrift_client"
-    run_required "#{GEM} install redcarpet"
-    run_required "#{GEM} install msgpack"
+    run_required GEM_INSTALL, "ffi"
+    run_required GEM_INSTALL, "msgpack"
+    run_required GEM_INSTALL, "yajl-ruby"
+    run_required GEM_INSTALL, "thrift_client"
+    run_required GEM_INSTALL, "redcarpet"
+    run_required GEM_INSTALL, "msgpack"
 
     Dir.chdir PROJECT_TOP
-    run_required "#{BUNDLER} install" do
+    run_required BUNDLER, "install" do
       abort "bundle install failed"
     end
   end
@@ -285,7 +293,7 @@ namespace :hastur do
   end
 
   # this will break further builds against /opt/hastur
-  task :hard_strip do
+  task :build_strip do
     %w[include lib/engines lib/pkgconfig bin/testrb].each do |target|
       FileUtils.rm_rf File.join(PATHS[:prefix], target)
     end
@@ -293,15 +301,17 @@ namespace :hastur do
 
   # remove ruby utilities that shouldn't get used after installation
   task :strip_ruby do
-    %w[erb gem httparty irb openssl rackup rake rdoc ri tilt].each do |file|
-      File.unlink File.join(PATHS[:bindir], file)
+    %w[httparty openssl rackup rdoc ri tilt].each do |file|
+      path = File.join(PATHS[:bindir], file)
+      File.unlink(path) if File.exists?(path)
     end
   end
 
   # remove all bin files except the minimum required for hastur-agent
   task :strip_hastur_server do
-    keep = %w[bluepill ruby hastur-agent.rb hastur-bluepill.init bluepill-hastur-agent.pill]
+    keep = %w[ruby rake gem bundle bluepill fpm hastur-agent.rb hastur-bluepill.init bluepill-hastur-agent.pill]
     Dir.foreach PATHS[:bindir] do |file|
+      next if file == "." or file == ".."
       unless keep.include?(File.basename(file))
         File.unlink File.join(PATHS[:bindir], file)
       end
@@ -315,25 +325,19 @@ namespace :hastur do
 
   # build the hastur gem and install it
   task :install_hastur do
-    #Gemfile  Gemfile.lock  README.md  Rakefile  bin  build  ci_jobs  experiments  hastur-server.gemspec  lib  sinks  test  tools
     require "hastur-server/version"
 
-    # temporary for testing before intergation with Rakefile ...
-    #Rake::Task["build"].invoke
-    #top = Rake.application.original_dir
-    top = "/home/al/ooyala/hastur-server"
-    Dir.chdir top
-    run_required("rake build")
+    Dir.chdir PROJECT_TOP
+    run_required "#{File.join(PATHS[:bindir], 'rake')} build"
 
-    gemfile = File.join(top, "pkg", "hastur-server-#{Hastur::VERSION}.gem")
+    gemfile = File.join(PROJECT_TOP, "pkg", "hastur-server-#{Hastur::VERSION}.gem")
     unless File.exists? gemfile
       abort "build failed or paths are not correct: could not find #{gemfile}"
     end
 
-    run_required "#{GEM} install #{gemfile}" do
+    run_required GEM_INSTALL, gemfile do
       abort "Installation of hastur-server gem '#{gemfile}' failed."
     end
-    Rake::Task["hastur:rewrite_shebangs"].invoke
   end
 
   task :build do
@@ -343,9 +347,6 @@ namespace :hastur do
     Rake::Task["hastur:install_libffi"].invoke
     Rake::Task["hastur:install_ruby"].invoke
     Rake::Task["hastur:install_zeromq"].invoke
-
-    # update scripts installed so far to point at the new ruby
-    Rake::Task["hastur:rewrite_shebangs"].invoke
   end
 
   task :fpm_hastur_server do
@@ -356,58 +357,37 @@ namespace :hastur do
     Rake::Task["hastur:install_hastur"].invoke
     Rake::Task["hastur:rewrite_shebangs"].invoke
 
-    command = %w[
-      --provides hastur-server
-      -a native
-      -m team-tna@ooyala.com
-      -t deb
-      -n hastur-server
-      --license MIT
-      --vendor Ooyala
-      -s dir
-    ]
+    command = [FPM_COMMON_OPTIONS,
+      "--name",          "hastur-server",
+      "--provides",      "hastur-server",
+      "--replaces",      "hastur-agent",
+    ].flatten
 
-    more = [
-      "--version",   Hastur::VERSION,
-      "--conflicts", "hastur-agent",
-      "--replaces",  "hastur-agent",
-    ]
-
-    run_required FPM, command, more, PATHS[:prefix] do
+    run_required FPM, command, PATHS[:prefix] do
       abort "hastur-server FPM package build failed."
     end
   end
 
   task :fpm_hastur_agent do
-    Rake::Task["hastur:clean_build"].invoke
-    Rake::Task["hastur:setup"].invoke
-    Rake::Task["hastur:build"].invoke
-    Rake::Task["hastur:install_gems"].invoke
-    Rake::Task["hastur:safe_strip"].invoke
-    Rake::Task["hastur:hard_strip"].invoke
-    Rake::Task["hastur:strip_ruby"].invoke
-    Rake::Task["hastur:rewrite_shebangs"].invoke
+    #Rake::Task["hastur:clean_build"].invoke
+    #Rake::Task["hastur:setup"].invoke
+    #Rake::Task["hastur:build"].invoke
+    #Rake::Task["hastur:safe_strip"].invoke
+    #Rake::Task["hastur:install_gems"].invoke
     Rake::Task["hastur:install_hastur"].invoke
+    Rake::Task["hastur:build_strip"].invoke
+    Rake::Task["hastur:strip_ruby"].invoke
     Rake::Task["hastur:strip_hastur_server"].invoke
+    Rake::Task["hastur:rewrite_shebangs"].invoke
 
-    command = %w[
-      --provides hastur-agent
-      -a native
-      -m team-tna@ooyala.com
-      -t deb
-      -n hastur-agent
-      --license MIT
-      --vendor Ooyala
-      -s dir
-    ]
-
-    more = [
-      "--version",       Hastur::VERSION,
+    command = [FPM_COMMON_OPTIONS,
+      "--name",          "hastur-agent",
+      "--provides",      "hastur-agent",
       "--conflicts",     "hastur-server",
       "--after-install", File.join(PROJECT_TOP, 'build', 'scripts', 'after-install.sh'),
-    ]
+    ].flatten
 
-    run_required FPM, command, more, PATHS[:prefix] do
+    run_required FPM, command, PATHS[:prefix] do
       abort "hastur-agent FPM package build failed."
     end
   end
