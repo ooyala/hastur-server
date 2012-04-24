@@ -255,8 +255,30 @@ function showTooltip(x, y, contents) {
 // Sets the timeRange value and updates the graph with the current time range data
 function changeTimeRange(range) {
   timeRange = range;
+  highlightRange(range);
   graph_url = replaceStartAndEndTimes(graph_url, timeRange);
   drawGraph(graph_url);
+}
+
+// Colors each of the range spans a certain color
+function highlightRange(range) {
+  highlightRangeSpan("span#oneHour", 60*60*1000, range);
+  highlightRangeSpan("span#threeHour", 3*60*60*1000, range);
+  highlightRangeSpan("span#sixHour", 6*60*60*1000, range);
+  highlightRangeSpan("span#twelveHour", 12*60*60*1000, range);
+  highlightRangeSpan("span#day", 24*60*60*1000, range);
+  highlightRangeSpan("span#threeDay", 3*24*60*60*1000, range);
+  //highlightRangeSpan("span#week", 7*24*60*60*1000, range);
+}
+
+// Colors one range span a certain color depending on if the rnage matches the span's value
+function highlightRangeSpan(element_id, spanRange, range) {
+  if(range == spanRange) {
+    color = "darkolivegreen";
+  } else {
+    color = "lightblue";
+  }
+  $(element_id).css("color", color);
 }
 
 // Document ready
@@ -275,12 +297,10 @@ $(function () {
   // Add the interaction for the drop downs
   $("select#hostname_ddl").change(function() {
     refreshDropDowns();
-    var now = new Date();
-    var now_ts = now.getTime();
-    var start_ts;
-    start_ts = now_ts - (24 * 60 * 60 * 1000);
     uuid = $("#hostname_ddl").val();
-    drawGraph("/data_proxy/stat/json?start="+start_ts+"&end="+now_ts+"&uuid="+uuid);
+    url = "/data_proxy/stat/json?uuid="+uuid;
+    url = replaceStartAndEndTimes(url, timeRange);
+    drawGraph( url );
   });
 
   $("#placeholder").bind("plothover", function (event, pos, item) {
@@ -307,13 +327,10 @@ $(function () {
   $("select#statNameDdl").change(function() {
     clearPlotData();
     statName = $("select#statNameDdl").val();
-    var now = new Date();
-    var now_ts = now.getTime();
-    var start_ts;
-    start_ts = now_ts - (24 * 60 * 60 * 1000);
     clearInterval(ajaxGetInterval);
     ajaxGetInterval = setInterval(function() { updateGraphData(false); }, 10 * 1000)
-    stat_url = "/data_proxy/stat/json?start="+start_ts+"&end="+now_ts+"&uuid="+uuid;
+    stat_url = "/data_proxy/stat/json?uuid="+uuid;
+    stat_url = replaceStartAndEndTimes(stat_url, timeRange);
     if(statName != "All") {
       stat_url += "&name="+statName;
     }
@@ -343,8 +360,8 @@ $(function () {
   $("span#day").click(function() {
     changeTimeRange(24*60*60*1000);
   });
-  $("span#week").click(function() {
-    changeTimeRange(7*24*60*60*1000);
+  $("span#threeDay").click(function() {
+    changeTimeRange(3*24*60*60*1000);
   });
 
   refreshDropDowns();
