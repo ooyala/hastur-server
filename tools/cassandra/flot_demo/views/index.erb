@@ -6,7 +6,7 @@
     <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.js"></script>
     <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.selection.js"></script>
     <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.navigate.js"></script>
-    <script type="text/javascript" src="/js/flot.js"></script>
+    <script type="text/javascript" src="/js/flot_utils.js"></script>
 
     <style type="text/css">
       #placeholder .button {
@@ -31,6 +31,7 @@
       </select>
       <span>Stats</span>
       <select id="statNameDdl"></select>
+  	  <input id="enableTooltip" type="checkbox" checked="checked">Tooltip</input>
     </div>
    
     <div>
@@ -44,7 +45,6 @@
     </div>
 
     <div id="placeholder" style="width:1000px;height:500px"></div>
-  	<p><input id="enableTooltip" type="checkbox" checked="checked">Enable tooltip</p>
   	<div>
       <button id="full_refresh">Full Refresh</button>
       <button id="replot">Re-plot</button>
