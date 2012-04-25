@@ -169,6 +169,7 @@ module Hastur
       def decode
         MultiJson.load @payload, :symbolize_keys => true
       end
+      alias load decode
 
       #
       # Set the payload to the serialized JSON of the given data structure.
@@ -177,8 +178,9 @@ module Hastur
       #
       def encode(data)
         raise ArgumentError.new "argument must respond to :to_hash" unless data.respond_to?(:to_hash)
-        @payload = MultiJson.dump data
+        @payload = MultiJson.dump data.to_hash
       end
+      alias dump encode
     end
 
     #
