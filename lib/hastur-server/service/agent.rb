@@ -45,6 +45,7 @@ module Hastur
         @plugins           = {}
         @logger            = Termite::Logger.new
         @ctx               = ZMQ::Context.new
+        @poller            = ZMQ::Poller.new
         @ack_interval      = opts[:ack_interval]
         @noop_interval     = opts[:noop_interval]
         @uuid              = opts[:uuid]
@@ -199,27 +200,6 @@ module Hastur
       end
 
       #
-      # Sets up a socket that can communicate with multiple routers.
-      #
-      def set_up_router
-        @router_socket = @ctx.socket(ZMQ::DEALER)
-        @routers.each do |router_uri|
-          @router_socket.connect(router_uri)
-        end
-      end
-
-      #
-      # Initialize all of the objects needed to perform polling.
-      #
-      def set_up_poller
-        @poller = ZMQ::Poller.new
-        if @router_socket
-          @poller.register_readable @router_socket
-          #@poller.register_writable @router_socket
-        end
-      end
-
-      #
       # Polls the router socket to read messages that come from Hastur. Also polls the UDP
       # socket to read the messages that come from Services.
       #
@@ -336,9 +316,10 @@ module Hastur
       # Run the main loop.
       #
       def run
+        @router_socket = Hastur::Util.connect_socket @ctx, ZMQ::DEALER, @routers, :linger => 1, :hwm => 10_000
+        @poller.register_readable @router_socket
+
         set_up_local_ports
-        set_up_router
-        set_up_poller
 
         @running = true
         while @running
@@ -367,6 +348,9 @@ module Hastur
       def shutdown
         @logger.debug "Setting running to false."
         @running = false
+        @router_socket.close
+        @udp_socket.close
+        @ctx.terminate
       end
     end
   end
