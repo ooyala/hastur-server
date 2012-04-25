@@ -100,7 +100,7 @@ function HasturFlot(parentElementId, containerId) {
     timeContainer = "timeContainer-" + t;
 
     // parent adds container
-    getElement(parentElementId).append("<div id='"+ containerId +"'></div>");
+    getElement(parentElementId).append("<li><div id='"+ containerId +"'></div></li>");
 
     // container adds time range options, drop downs
     getElement(container).append("<span>Hosts</span>");
@@ -110,6 +110,7 @@ function HasturFlot(parentElementId, containerId) {
     getElement(container).append("<div id='" + timeContainer + "'></div>");
 
     // timeContainer adds time range options
+    getElement(timeContainer).append("<span>Zoom</span>");
     getElement(timeContainer).append("<span id='" + oneHour + "' style='color:lightblue'>1h</span>");
     getElement(timeContainer).append("<span id='" + threeHour + "' style='color:lightblue'>3h</span>");
     getElement(timeContainer).append("<span id='" + sixHour + "' style='color:lightblue'>6h</span>");
@@ -119,8 +120,8 @@ function HasturFlot(parentElementId, containerId) {
 
     // container adds graph
     getElement(container).append("<div id='" + graph + "'></div>");
-    getElement(graph).css("width", "850px");
-    getElement(graph).css("height", "500px");
+    getElement(graph).css("width", "500px");
+    getElement(graph).css("height", "300px");
   }
 
   function setupListeners() {

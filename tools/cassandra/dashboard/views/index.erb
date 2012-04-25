@@ -2,10 +2,13 @@
   <head>
     <title>Hastur Stats</title>
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+   
     <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.js"></script>
     <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.selection.js"></script>
     <script type="text/javascript" src="http://people.iola.dk/olau/flot/jquery.flot.navigate.js"></script>
+    
     <script type="text/javascript" src="/js/flot_utils.js"></script>
 
     <style type="text/css">
@@ -13,17 +16,49 @@
         position: absolute;
         cursor: pointer;
       }
+
       #placeholder div.button {
         font-size: smaller;
         color: #999;
         background-color: #eee;
         padding: 2px;
       }
+
+      ul li { 
+        padding: 0.5em 0.5em 0.5em 0.5em; 
+        list-style: none;
+        border: dotted 1px gray; 
+        margin: 0.2em 0.2em 0.2em 0.2em;
+        width: 500px;
+        float: left;
+        list-style-type: none; 
+      }
+      ul { 
+        padding-left:0.25em; 
+      }
+
+      .ui-state-highlight {
+        height: 325px;
+        line-height: 1.2em;
+        background-color: yellow;
+      }
     </style>
+
+    <script>
+      $(function() {
+        $( "#graphDiv" ).sortable( {
+          placeholder: "ui-state-highlight",
+          forcePlaceholderSize: true
+        } );
+        $( "#graphDiv" ).disableSelection();
+      });
+    </script>
   </head>
   <body>
     <span onclick="addGraph( 'graphDiv' )"> + </span>
-    <div id="graphDiv"></div>
+    <ul id="graphDiv">
+      
+    </ul>
   <!--
     <div id="flotWidget">
       <span>Hosts</span>
