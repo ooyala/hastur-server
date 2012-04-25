@@ -36,7 +36,7 @@ unless opts[:uuid]
   else
     opts[:uuid] = UUID.new.generate
     if File.writable?(UUID_FILE) or File.writable?(File.dirname(UUID_FILE))
-      File.open(UUID_FILE, "w+") { |file| file.puts opts[:uuid] }
+      File.open(UUID_FILE, "w") { |file| file.puts opts[:uuid] }
     end
   end
 end
@@ -47,7 +47,7 @@ opts[:port] = opts[:port].to_i
 agent = Hastur::Service::Agent.new(opts)
 
 if opts[:pidfile]
-  File.open(opts[:pidfile], "w+") { |file| file.puts Process.pid }
+  File.open(opts[:pidfile], "w") { |file| file.puts Process.pid }
 end
 
 %w(INT TERM KILL).each do | sig |
