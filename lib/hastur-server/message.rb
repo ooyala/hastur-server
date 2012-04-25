@@ -175,9 +175,18 @@ module Hastur
       options.keys.each { |k| options[k.to_s] = options[k] if k.is_a?(Symbol) }
       data_hash.keys.each { |k| data_hash[k.to_s] = data_hash[k] if k.is_a?(Symbol) }
 
+      type_option = options["type_id"] || options["type"] || data_hash["type_id"] || data_hash["type"]
+      if Hastur::Message.symbol?(type_option.to_sym)
+        type_id = Hastur::Message.symbol_to_type_id(type_option.to_sym)
+      elsif Hastur::Message.type_id?(type_option)
+        type_id = type_option
+      else
+        raise ArgumentError.new "Argument is neither a type_id nor symbol: #{type_option.inspect}!"
+      end
+
       envelope = Hastur::Envelope.new \
         :version   => ::Hastur::Envelope::VERSION,
-        :type_id   => options["type_id"] || options["type"] || data_hash["type_id"] || data_hash["type"],
+        :type_id   => type_id,
         :to        => options["to"] || data_hash["to"],
         :from      => options["from"] || data_hash["from"],
         :ack       => options["ack"] || data_hash["ack"],
@@ -187,6 +196,12 @@ module Hastur
         :uptime    => options["uptime"] || data_hash["uptime"],
         :hmac      => options["hmac"] || data_hash["hmac"],
         :routers   => []
+
+      payload = options["payload"] || data_hash["payload"]
+      zmq_parts = options["zmq_parts"] || data_hash["zmq_parts"]
+
+      klass = envelope.type_class
+      klass.new :envelope => envelope, :payload => payload, :zmq_parts => zmq_parts
     end
   end
 end

@@ -23,6 +23,7 @@ opts = Trollop::options do
   opt :unix,        "UNIX domain socket", :type => String
   opt :heartbeat,   "Heartbeat interval", :default => 30
   opt :ack_timeout, "Time between unacked message resends", :default => 10
+  opt :pidfile,     "Location of pidfile", :type => String
 end
 
 unless opts[:router].all? { |uri| Hastur::Util.valid_zmq_uri? uri }
@@ -30,12 +31,12 @@ unless opts[:router].all? { |uri| Hastur::Util.valid_zmq_uri? uri }
 end
 
 unless opts[:uuid]
-  if File.readable? UUID_FILE
+  if File.readable?(UUID_FILE) and File.size(UUID_FILE) == 37
     opts[:uuid] = File.read(UUID_FILE).chomp
   else
     opts[:uuid] = UUID.new.generate
     if File.writable?(UUID_FILE) or File.writable?(File.dirname(UUID_FILE))
-      File.open(UUID_FILE, "w") { |file| file.puts uuid }
+      File.open(UUID_FILE, "w+") { |file| file.puts opts[:uuid] }
     end
   end
 end
@@ -44,4 +45,20 @@ opts[:routers] = opts[:router]
 opts[:port] = opts[:port].to_i
 
 agent = Hastur::Service::Agent.new(opts)
+
+if opts[:pidfile]
+  File.open(opts[:pidfile], "w+") { |file| file.puts Process.pid }
+end
+
+%w(INT TERM KILL).each do | sig |
+  Signal.trap(sig) do
+    agent.shutdown
+    Signal.trap(sig, "DEFAULT")
+  end
+end
+
 agent.run
+
+if opts[:pidfile]
+  File.unlink(opts[:pidfile]) if File.exists?(opts[:pidfile])
+end

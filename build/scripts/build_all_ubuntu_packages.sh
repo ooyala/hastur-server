@@ -1,13 +1,13 @@
 #!/bin/bash
 
 set -x
-set -e
 
 # this script assumes:
 #  * running on Linux
 #  * can sudo to root
 #  * ubuntu roots are available on btrfs subvolumes
 #  * can snapshot / destroy snapshots at will
+#  * you probably want 'Defaults env_keep += "SSH_AUTH_SOCK"' in your sudoers
 
 # setup (what I ran on spaceghost.mtv):
 # lvcreate -L 20G -n lv_snapfs vgsg
@@ -48,34 +48,20 @@ die () {
   exit 1
 }
 
-build_script () {
-  location=$1
-  build=$2
-}
-
-setup_schroot () {
-  dist=$1
-  arch=$2
-  snap=$3
-  path=$4
-
-  SCHROOT="hastur-$dist-$arch-$snap"
-
-  if [ "$arch" == "i386" ] ; then
-    personality="linux32"
-  else
-    personality="linux64"
+require () {
+  if [ $? != 0 ] ; then
+    set +x
+    echo "FAILED: $*"
+    caller -1
+    echo "Variables: "
+    echo "arch:     $arch"
+    echo "dist:     $dist"
+    echo "pkg:      $pkg"
+    echo "snapshot: $snapshot"
+    echo "root:     $root"
+    echo "CWD:      $(pwd)"
+    exit 1
   fi
-
-  cat > /etc/schroot/chroot.d/$SCHROOT.conf <<EOF
-[$SCHROOT]
-description=Hastur Build: $SCHROOT
-type=directory
-directory=$path
-root-groups=root
-script-config=none/config
-personality=$personality
-EOF
 }
 
 build_hastur () {
@@ -83,21 +69,31 @@ build_hastur () {
   path=$2
 
   cd $path/tmp
-  if [ ! -d "$path/tmp/hastur-server" ] ; then
+  # while I'm developing, pull my working copy
+  if [ -d "/home/al/ooyala/hastur-server" ] ; then
+    rsync -a /home/al/ooyala/hastur-server $path/tmp
+  # otherwise clone, this should be the usual procedure
+  elif [ ! -d "$path/tmp/hastur-server" ] ; then
     git clone $GIT_REPO
   else
     cd "$path/tmp/hastur-server"
     git pull
   fi
 
-  # bundle / rake are placed in the path with update-alternatives in the root setup
-  schroot -c $SCHROOT -d /tmp/hastur-server bundle install
-  schroot -c $SCHROOT -d /tmp/hastur-server bundle exec rake $target
-}
+  if [ "$arch" == "i386" ] ; then
+    personality=$(which linux32)
+    [ -n "$personality" ] || die "could not find 'linux32' utility"
+  else
+    # don't worry about it if it's not there, don't really need it on 64-bit systems
+    personality=$(which linux64)
+  fi
 
-[ -x /usr/bin/schroot ] || die "schroot must be installed on the host system"
-mkdir -p /etc/schroot/none
-touch /etc/schroot/none/config
+  # bundle / rake are placed in the path with update-alternatives in the root setup
+  # see configure_chroots.sh
+  $personality chroot $path bash -c "cd /tmp/hastur-server && bundle install" # could fail, don't care
+  $personality chroot $path bash -c "cd /tmp/hastur-server && rake --trace $target"
+  require $personality chroot $path bash -c "cd /tmp/hastur-server && rake --trace $target"
+}
 
 for arch in i386 amd64
 do
@@ -108,9 +104,8 @@ do
     for pkg in agent server
     do
       snapshot="$SNAP_ROOT/$dist-$arch-$pkg-$SNAP_SUFFIX"
-      btrfs subvolume snapshot $root $snapshot || die "Could not create snapshot."
-
-      setup_schroot $dist $arch $SNAP_SUFFIX $snapshot
+      btrfs subvolume snapshot $root $snapshot
+      require btrfs subvolume snapshot $root $snapshot
 
       build_hastur "hastur:fpm_hastur_$pkg" $snapshot
       # TODO: cleanup
