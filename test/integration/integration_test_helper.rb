@@ -14,8 +14,6 @@ require "nodule"
 require "nodule/util"
 require "hastur"
 
-require_relative "util/util"
-
 HASTUR_ROOT = File.join(File.dirname(__FILE__), "..", "..")
 
 HASTUR_CORE_BIN="#{HASTUR_ROOT}/bin/hastur-core.rb"

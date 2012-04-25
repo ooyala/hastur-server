@@ -15,6 +15,16 @@ require "hastur-server/input/collectd"
 require "hastur-server/message"
 
 module Hastur
+  # provide a way to get at the (single) instance of the agent class to send messages directly
+  def self.agent=(agent)
+    @agent = agent
+  end
+
+  # monkeypatch Hastur to send directly to ZeroMQ
+  def self.send_to_udp(m)
+    @agent._send @agent.hash_to_message(m)
+  end
+
   module Service
     class Agent
       attr_reader :uuid, :routers, :port, :heartbeat, :ack_interval, :noop_interval
@@ -82,8 +92,9 @@ module Hastur
           :events      => 0,
         }
 
-        # set the hastur agent UDP port to match the listening port
-        Hastur.udp_port = @port
+        # this file monkeypatches Hastur client so it can send directly over ZMQ instead of
+        # sendto UDP -> OS -> itself -> ZMQ
+        Hastur.agent = self
       end
 
       def _fail(message, e)
@@ -186,11 +197,17 @@ module Hastur
         @plugins.each do |pid,plugin|
           if plugin.done?
             plugin_hash = plugin.to_hash
-            Hastur.heartbeat(plugin_hash[:name], nil, nil, nil, plugin_hash)
-            @counters[:zmq_send] += 1
-
+            msg = Hastur::Message::HB::PluginV1.new(
+              :from => @uuid,
+              :data => {
+                :name           => plugin_hash[:name],
+                :value          => nil, # should this be the resultcode?
+                :timestamp      => nil, # take the default
+                :labels         => plugin_hash
+              }
+            )
+            _send msg
             # TODO: call plugin.stat (when it's ready) and send along a stat too
-
             @plugins.delete pid
           end
         end
