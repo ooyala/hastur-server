@@ -19,6 +19,18 @@ module Hastur
     class Agent
       attr_reader :uuid, :routers, :port, :heartbeat, :ack_interval, :noop_interval
 
+      #
+      # Create a new Hastur Agent. This is the guts of the hastur-agent daemon, sans process setup, etc.
+      # @param [Hash{Symbol => String,Fixnum,TrueClass}] opts
+      # @option [String] :uuid required, 36-byte agent UUID (usually read from /etc/uuid, see bin/hastur-agent.rb)
+      # @option [String] :routers required, list of Hastur routers ZeroMQ URI's
+      # @option [Fixnum] :port default 8125 UDP port to listen on localhost
+      # @option [Fixnum] :heartbeat default 30 seconds between heartbeats
+      # @option [Fixnum] :ack_interval default 30 seconds before resending unacked messages
+      # @option [Fixnum] :noop_interval default 30 seconds between noop broadcasts
+      # @option [Fixnum] :stats_interval default 5 send agent stats every n seconds
+      # @option [TrueClass] :no_agent_stats disable sending agent stats when true
+      #
       def initialize(opts)
         raise ArgumentError.new ":uuid is required" unless opts[:uuid]
         raise ArgumentError.new ":uuid must be in 36-byte hex form" unless Hastur::Util.valid_uuid?(opts[:uuid])
@@ -54,6 +66,7 @@ module Hastur
         @unix              = opts[:unix] # can use a unix socket for testing, should never see production
         @heartbeat         = opts[:heartbeat] * 1_000_000 # microseconds
         @stats_interval    = opts[:stats_interval]
+        @no_agent_stats    = opts[:no_agent_stats]
         @last_heartbeat    = Hastur::Util.timestamp - @heartbeat
         @last_ack_check    = Time.now - @ack_interval
         @last_noop_blast   = Time.now - @noop_interval
@@ -330,7 +343,7 @@ module Hastur
           poll_plugin_pids
           poll_udp
           poll_zmq
-          send_agent_stats
+          send_agent_stats unless @no_agent_stats
 
           sleep 0.1 # prevent tight loops from using too much CPU
         end

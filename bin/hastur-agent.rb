@@ -24,6 +24,7 @@ opts = Trollop::options do
   opt :heartbeat,   "Heartbeat interval", :default => 30
   opt :ack_timeout, "Time between unacked message resends", :default => 10
   opt :pidfile,     "Location of pidfile", :type => String
+  opt :no_agent_stats, "disable sending of agent stats, mostly for during tests", :default => false
 end
 
 unless opts[:router].all? { |uri| Hastur::Util.valid_zmq_uri? uri }
