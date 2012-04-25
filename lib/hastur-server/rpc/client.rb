@@ -36,13 +36,13 @@ module Hastur
       #
       def request(method, params)
         req_data = { :method => method, :params => params }
-        req_json = MultiJson.encode req_data
+        req_json = MultiJson.dump req_data
         rc = @socket.send_string req_json
         raise "socket send error: #{ZMQ::Util.error_string}" unless ZMQ::Util.resultcode_ok?(rc)
         rc = @socket.recv_string resp_json=""
         raise "socket recv error: #{ZMQ::Util.error_string}" unless ZMQ::Util.resultcode_ok?(rc)
         # should this handle messages with an error?
-        response = MultiJson.decode resp_json, :symbolize_keys => true
+        response = MultiJson.load resp_json, :symbolize_keys => true
         if response[:error]
           raise response[:error]
         else

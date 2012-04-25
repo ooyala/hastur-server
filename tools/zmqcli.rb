@@ -118,7 +118,7 @@ def to_console(data)
   if SPARK && data.kind_of?(Array)
     # TODO(viet): major hack! clean this up after the demo
     @values ||= {}
-    stat_hash = (MultiJson.decode (MultiJson.decode data[-1])['stdout'][0])
+    stat_hash = (MultiJson.load (MultiJson.load data[-1])['stdout'][0])
     @values[stat_hash['name']] ||= []
     @values[stat_hash['name']] << stat_hash['value']
     @values[stat_hash['name']].delete_at(0) if @values[stat_hash['name']].size > 30
@@ -173,14 +173,14 @@ def send_string(sock, data)
 
   if NORMALIZE || ROUTE
     # Decode, re-encode
-    hash = MultiJson.decode(data)
+    hash = MultiJson.load(data)
     destination = hash["method"] || "error"
 
     if ROUTE
       envelope.unshift "v1\n#{destination}\nack:none"
     end
 
-    data = MultiJson.encode(hash)
+    data = MultiJson.dump(hash)
   end
 
   messages = envelope + [ data ]

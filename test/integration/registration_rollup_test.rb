@@ -84,7 +84,7 @@ class RegistrationRollupTest < MiniTest::Unit::TestCase
     times.each do |time|
       hash[:timestamp] = time
       p hash
-      data = MultiJson.encode(hash)
+      data = MultiJson.dump(hash)
       ::Hastur::Cassandra.insert(client, data, "registration", { :uuid => FAKE_UUID })
     end
 

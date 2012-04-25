@@ -15,7 +15,7 @@ class RegistrationTest < Test::Unit::TestCase
     messages = @topology[:registration].output
     assert_equal 1, messages.count
 
-    payload = MultiJson.decode messages[0][-1] rescue nil
+    payload = MultiJson.load messages[0][-1] rescue nil
     assert_not_nil payload
     assert_kind_of Hash, payload
 

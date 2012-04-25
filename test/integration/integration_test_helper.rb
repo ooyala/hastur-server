@@ -50,7 +50,7 @@ EVENT = {
   :labels    => { :fake => true, :maybe => "what is 6 times 7?" }
 }
 
-EVENT_JSON = MultiJson.encode EVENT
+EVENT_JSON = MultiJson.dump EVENT
 
 def set_test_alarm(timeout=30)
   # cassandra migrations are /really/ slow in jenkins

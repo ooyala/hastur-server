@@ -21,8 +21,8 @@ def ensure_heartbeats(both, msg1, msg2, num_msgs_1, num_msgs_2, sinatra_port)
   assert_json_not_empty a2_messages
  
   # attempt to parse the data
-  a1_hashes = MultiJson.decode(a1_messages)
-  a2_hashes = MultiJson.decode(a2_messages)
+  a1_hashes = MultiJson.load(a1_messages)
+  a2_hashes = MultiJson.load(a2_messages)
 
   # check for accurate data
   assert_not_nil(a1_hashes[msg1])

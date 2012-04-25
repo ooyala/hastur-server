@@ -47,7 +47,7 @@ scraper = Thread.new do
           # for registration, there is not a 'name' as a key into the returned hash from Hastur::Cassandra.get()
           ordered_hash = hash[""]
           ordered_hash.keys.each do |key|
-            payload = MultiJson.decode ordered_hash[key]
+            payload = MultiJson.load ordered_hash[key]
             if payload["type"] == "plugin"
               jobs << Hastur::Job.new(ordered_hash[key], curr_time, uuid)
             end
