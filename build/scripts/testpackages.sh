@@ -1,4 +1,12 @@
 #!/bin/bash
+#
+# This is a quick & dirty smoke test. It expects to run on a set of chroots under /snapfs
+# like the other build scripts, and will run fine on the snapshots used by the build itself.
+# It is destructive and will remove /opt/hastur and any hastur packages before testing the new
+# package. It also kills processes on the host.
+# That said, I did discover a few quirks in the packages using this and have fixed them
+# in the other scripts / tasks already.
+#
 
 die () {
   echo "$*"
@@ -7,10 +15,13 @@ die () {
 
 buildid=$1
 
-[ -n "$buildid" ] || die "must specify a buildid (it's a unix timestamp, check out /snapfs/snapshots"
+[ -n "$buildid" ] || die "must specify a buildid (it's a unix timestamp, check out /snapfs/snapshots)"
 
 ps -ef |grep -q '[h]astur-agent.rb'
 [ $? -eq 0 ] && die "hastur-agent is running on the host. Kill it before trying this."
+
+ps -ef |grep -q '[b]luepill'
+[ $? -eq 0 ] && die "bluepill is running on the host. Kill it before trying this."
 
 cd /snapfs/snapshots
 for snap in *-$buildid
@@ -28,6 +39,13 @@ do
   echo "# Package: $file"
   echo "# Root: $root"
   echo "#"
+
+  # when testing in a chroot, binary testing on Precise will often break due to missing
+  # /lib/ld-linux-x86-64.so.2.  this is only a problem on 64-bit precise, which does not
+  # appear to create the symlink by default, 32-bit does.
+  if [ -x "$root/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2" ] ; then
+    chroot $root ln -nfs /lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 /lib
+  fi
 
   rm -f $root/run/hastur*.pid $root/var/run/hastur*.pid
   chroot $root bash -c "dpkg -r hastur-agent ; dpkg -r hastur-server" 2>&1 >/dev/null
