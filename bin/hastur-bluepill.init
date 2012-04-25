@@ -18,15 +18,31 @@
 
 die () { echo "$*" ; exit 1 ; }
 
+GEM="/opt/hastur/bin/gem"
 BLUEPILL="/opt/hastur/bin/bluepill"
 APP=$(basename $0 |sed -r -e 's/\.init$//')
-PILL="/opt/hastur/bin/bluepill-${APP}.pill"
+# gem blindly wraps all binfiles in ruby so we have to find where it's installed manually
+PILL=$($GEM contents hastur-server |grep "bluepill-$APP.pill" |head -n 1)
 
 [ -e $BLUEPILL ] || die "$BLUEPILL does not exist - is your installation complete?"
 [ -e $PILL ] || die "$PILL does not exist"
 
-ulimit -l unlimited # no limits on amount of locked memory
-ulimit -n 1048576   # dramatically increase max file descriptors
+case "$APP" in
+  hastur-agent)
+    # limit resources for hastur-agent, we must never crash production
+    # 256MB is a totally unreasonable amount of memory for hastur-agent to use
+    # but it is safe and much more reasonable than unlimited
+    # Future note: if anybody foolishly asks hastur-agent to launch, say, java
+    # processes with a heap over 128MB or so, it will fail to launch.
+    ulimit -l 134217728 -d 134217728 -m 134217728 -v 268435456 -n 5000 -u 100
+    ;;
+  hastur-core)
+    ulimit -l unlimited # no limits on amount of locked memory (let bluepill handle it)
+    ulimit -n 1048576   # dramatically increase max file descriptors
+    ;;
+  *)
+    ;;
+esac
 
 case "$1" in
   start)

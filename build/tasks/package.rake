@@ -24,7 +24,7 @@ namespace :hastur do
     :zlib    => "http://zlib.net/zlib-1.2.6.tar.gz",
     :openssl => "http://www.openssl.org/source/openssl-1.0.1a.tar.gz",
     :yaml    => "http://pyyaml.org/download/libyaml/yaml-0.1.4.tar.gz",
-    :libffi  => "https://github.com/atgreen/libffi/tarball/v3.0.11", # sourceware doesn't offer http downloads
+    :libffi  => "http://al-dev1.sv2/libffi-3.0.11.tar.gz", # temporary, upstream does not have an http url
     :ruby    => "http://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.3-p194.tar.gz",
     :zeromq  => "http://download.zeromq.org/zeromq-2.2.0.tar.gz",
   }
@@ -32,18 +32,18 @@ namespace :hastur do
     :zlib    => "618e944d7c7cd6521551e30b32322f4a",
     :openssl => "a0104320c0997cd33e18b8ea798609d1",
     :yaml    => "36c852831d02cf90508c29852361d01b",
-    :libffi  => "e1d1093eb2aa94bedf5b2dcdd9a580bc",
+    :libffi  => "f69b9693227d976835b4857b1ba7d0e3",
     :ruby    => "bc0c715c69da4d1d8bd57069c19f6c0e",
     :zeromq  => "1b11aae09b19d18276d0717b2ea288f6",
   }
 
-  GEM_INSTALL = "#{File.join(PATHS[:bindir], 'gem')} install --bindir #{PATHS[:bindir]} --no-rdoc --no-ri"
+  GEM_INSTALL = "#{File.join(PATHS[:bindir], 'gem')} install --bindir #{PATHS[:bindir]} --no-rdoc --no-ri --conservative"
   BUNDLER = File.join(PATHS[:bindir], 'bundle')
   FPM = File.join(PATHS[:bindir], 'fpm')
 
   # fpm options that are used for both hastur-agent and hastur-server
   FPM_COMMON_OPTIONS = [
-    %w[-a native -m team-tna@ooyala.com -t deb --license MIT --vendor Ooyala --depends libuuid1 -s dir],
+    %w[-a native -m team-tna@ooyala.com -t deb --license MIT --vendor Ooyala --depends libuuid1 --depends libffi -s dir],
     "--version", Hastur::VERSION,
     "--iteration", `lsb_release -c`.strip.split(/:\s+/)[1].gsub(/\W/, '+') || "unknown"
   ].flatten
@@ -70,11 +70,12 @@ namespace :hastur do
   # Set rpath on build / link to make sure /opt/hastur/lib works even if LD_LIBRARY_PATH isn't set
   # :bindir at the front of PATH is pretty important until rewrite_shebangs runs, don't remove it!
   BUILD_ENV = {
-    "PATH"     => "#{PATHS[:bindir]}:/opt/local/bin:/bin:/usr/bin:/usr/local/bin",
-    "LDFLAGS"  => "-Wl,-rpath -Wl,#{PATHS[:libdir]} -L#{PATHS[:libdir]}",
-    "CPPFLAGS" => "-I#{PATHS[:incdir]} #{archflag}",
-    "CFLAGS"   => "-O2 -mtune=generic -pipe #{archflag}",
-    "LIBRPATH" => PATHS[:libdir], # for openssl, others probably ignore it
+    "PATH"            => "#{PATHS[:bindir]}:/opt/local/bin:/bin:/usr/bin:/usr/local/bin",
+    "LDFLAGS"         => "-Wl,-rpath -Wl,#{PATHS[:libdir]} -L#{PATHS[:libdir]}",
+    "CPPFLAGS"        => "-I#{PATHS[:incdir]} #{archflag}",
+    "CFLAGS"          => "-O2 -mtune=generic -pipe #{archflag}",
+    "LIBRPATH"        => PATHS[:libdir], # for openssl, others probably ignore it
+    "PKG_CONFIG_PATH" => "#{PATHS[:libdir]}/pkgconfig", # to find libffi
   }
 
   CONFIGURE = ["--prefix=#{PATHS[:prefix]}"]
@@ -122,9 +123,10 @@ namespace :hastur do
 
     run_required command
 
-    # openssl parallel build is broken, so just build everything serially
+    # openssl parallel build is broken, so cheat
     if package == :openssl
-      run_required "make"
+      system("make -j4")  # this one will run for a bit and fail
+      run_required "make" # finish up serially
     else
       run_required "make -j4"
     end
@@ -135,7 +137,7 @@ namespace :hastur do
 
   task :check_deps do
     if File.exists?("/usr/bin/apt-get")
-      run_required('apt-get install  --force-yes -y -o "DPkg::Options::=--force-confold" build-essential dpkg-dev uuid-dev zlib1g-dev libssl-dev')
+      run_required('apt-get install  --force-yes -y -o "DPkg::Options::=--force-confold" build-essential dpkg-dev uuid-dev zlib1g-dev libssl-dev pkg-config')
     end
   end
 
@@ -208,6 +210,7 @@ namespace :hastur do
 
   task :install_ruby do
     Rake::Task["hastur:find_dirs"].invoke unless dirs[:ruby]
+
     confmakeinstall(:ruby, dirs[:ruby], "./configure", CONFIGURE,
       "--with-opt-dir=#{PATHS[:libdir]}",
       "--enable-shared",
@@ -218,6 +221,7 @@ namespace :hastur do
   task :install_gems do
     run_required GEM_INSTALL, "rake"
     run_required GEM_INSTALL, "bundler"
+    run_required GEM_INSTALL, "fpm"
     run_required GEM_INSTALL, "bluepill"
 
     # gems with native extensions
@@ -293,28 +297,9 @@ namespace :hastur do
   end
 
   # this will break further builds against /opt/hastur
-  task :build_strip do
+  task :strip_build do
     %w[include lib/engines lib/pkgconfig bin/testrb].each do |target|
       FileUtils.rm_rf File.join(PATHS[:prefix], target)
-    end
-  end
-
-  # remove ruby utilities that shouldn't get used after installation
-  task :strip_ruby do
-    %w[httparty openssl rackup rdoc ri tilt].each do |file|
-      path = File.join(PATHS[:bindir], file)
-      File.unlink(path) if File.exists?(path)
-    end
-  end
-
-  # remove all bin files except the minimum required for hastur-agent
-  task :strip_hastur_server do
-    keep = %w[ruby rake gem bundle bluepill fpm hastur-agent.rb hastur-bluepill.init bluepill-hastur-agent.pill]
-    Dir.foreach PATHS[:bindir] do |file|
-      next if file == "." or file == ".."
-      unless keep.include?(File.basename(file))
-        File.unlink File.join(PATHS[:bindir], file)
-      end
     end
   end
 
@@ -356,6 +341,7 @@ namespace :hastur do
     Rake::Task["hastur:install_gems"].invoke
     Rake::Task["hastur:install_hastur"].invoke
     Rake::Task["hastur:rewrite_shebangs"].invoke
+    FileUtils.rm_rf PATHS[:build] # remove source directories
 
     command = [FPM_COMMON_OPTIONS,
       "--name",          "hastur-server",
@@ -375,10 +361,9 @@ namespace :hastur do
     Rake::Task["hastur:safe_strip"].invoke
     Rake::Task["hastur:install_gems"].invoke
     Rake::Task["hastur:install_hastur"].invoke
-    Rake::Task["hastur:build_strip"].invoke
-    Rake::Task["hastur:strip_ruby"].invoke
-    Rake::Task["hastur:strip_hastur_server"].invoke
+    Rake::Task["hastur:strip_build"].invoke
     Rake::Task["hastur:rewrite_shebangs"].invoke
+    FileUtils.rm_rf PATHS[:build] # remove source directories
 
     command = [FPM_COMMON_OPTIONS,
       "--name",          "hastur-agent",

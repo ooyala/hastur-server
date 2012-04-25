@@ -51,7 +51,7 @@ do
   do
     root="$ROOTS/$dist-$arch"
     chroot $root apt-get update
-    chroot $root apt-get install --force-yes -y -o "DPkg::Options::=--force-confold" vim build-essential apt-utils gpgv libssl-dev zlib1g-dev curl git-core lsb-release
+    chroot $root apt-get install --force-yes -y -o "DPkg::Options::=--force-confold" vim build-essential apt-utils gpgv libssl-dev zlib1g-dev curl git-core lsb-release uuid-dev libreadline-dev pkg-config
 
     rsync -a /tmp/ruby-build $root/tmp
     [ -x "$root/$RUBY_BUILD" ] || chroot $root bash -c "cd /tmp/ruby-build && bash install.sh"
@@ -70,4 +70,5 @@ do
       --slave /usr/bin/bundle bundle $RUBY_INST/bin/bundle
   done
 done
-#
+
+exit 0

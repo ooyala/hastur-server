@@ -7,6 +7,7 @@ set -x
 #  * can sudo to root
 #  * ubuntu roots are available on btrfs subvolumes
 #  * can snapshot / destroy snapshots at will
+#  * you probably want 'Defaults env_keep += "SSH_AUTH_SOCK"' in your sudoers
 
 # setup (what I ran on spaceghost.mtv):
 # lvcreate -L 20G -n lv_snapfs vgsg
@@ -63,17 +64,16 @@ require () {
   fi
 }
 
-build_script () {
-  location=$1
-  build=$2
-}
-
 build_hastur () {
   target=$1
   path=$2
 
   cd $path/tmp
-  if [ ! -d "$path/tmp/hastur-server" ] ; then
+  # while I'm developing, pull my working copy
+  if [ -d "/home/al/ooyala/hastur-server" ] ; then
+    rsync -a /home/al/ooyala/hastur-server $path/tmp
+  # otherwise clone, this should be the usual procedure
+  elif [ ! -d "$path/tmp/hastur-server" ] ; then
     git clone $GIT_REPO
   else
     cd "$path/tmp/hastur-server"
@@ -83,18 +83,16 @@ build_hastur () {
   if [ "$arch" == "i386" ] ; then
     personality=$(which linux32)
     [ -n "$personality" ] || die "could not find 'linux32' utility"
-    export CFLAGS="-m32" # or configure fails to set everything up correctly
   else
-    personality=$(which linux64)
     # don't worry about it if it's not there, don't really need it on 64-bit systems
-    export CFLAGS="-m64" # for giggles / consistency
+    personality=$(which linux64)
   fi
 
   # bundle / rake are placed in the path with update-alternatives in the root setup
-  $personality chroot $path bash -c "cd /tmp/hastur-server && bundle install"
-  require $personality chroot $path bash -c "cd /tmp/hastur-server && bundle install"
-  $personality chroot $path bash -c "cd /tmp/hastur-server && bundle exec rake --trace $target"
-  require $personality chroot $path bash -c "cd /tmp/hastur-server && bundle exec rake --trace $target"
+  # see configure_chroots.sh
+  $personality chroot $path bash -c "cd /tmp/hastur-server && bundle install" # could fail, don't care
+  $personality chroot $path bash -c "cd /tmp/hastur-server && rake --trace $target"
+  require $personality chroot $path bash -c "cd /tmp/hastur-server && rake --trace $target"
 }
 
 for arch in i386 amd64
