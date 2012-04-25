@@ -44,4 +44,12 @@ opts[:routers] = opts[:router]
 opts[:port] = opts[:port].to_i
 
 agent = Hastur::Service::Agent.new(opts)
+
+%w(INT TERM KILL).each do | sig |
+  Signal.trap(sig) do
+    agent.shutdown
+    Signal.trap(sig, "DEFAULT")
+  end
+end
+
 agent.run
