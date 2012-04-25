@@ -330,6 +330,7 @@ module Hastur
 
       status = 0
       if opts[:bind]
+        uri = uri[0] if uri.is_a?(Array) && uri.size == 1
         rc = socket.bind(to_valid_zmq_uri(uri))
         ok = ZMQ::Util.resultcode_ok?(rc)
         hastur_logger.error "Error #{zmq_error} when binding socket to #{uri}!" unless ok
