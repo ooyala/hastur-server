@@ -2,13 +2,20 @@ dns_routers = []
 DEFAULT_ROUTERS = %w[ 10.255.146.177 10.242.255.137 ] # us-east-1
 ROUTER_PORT="8126"
 
+# modern Linux boxes use /run
+if File.exists? "/run"
+  PIDFILE = "/run/hastur-agent.pid"
+else
+  PIDFILE = "/var/run/hastur-agent.pid"
+end
+
 # TODO: lookup DNS RR record ... into an array
 # e.g. nslookup hastur-core.ooyala.com
 
 # TODO: (eventually), determine region / AZ and look up e.g. hastur-core.sv2.ooyala.com / hastur-core.us-east-1, etc.
 
 # If we don't specify a log file, we get syslog logging to LOCAL6 by default.
-Bluepill.application("hastur_agent", :log_file => "/var/log/bluepill.log") do |app|
+Bluepill.application("hastur_agent") do |app|
   app.process("hastur_agent") do |process|
     process.environment = {
       "PATH" => "/opt/hastur/bin:/opt/local/bin:/usr/local/bin:/usr/local/sbin:/bin:/usr/bin:/sbin:/usr/sbin",
@@ -17,17 +24,10 @@ Bluepill.application("hastur_agent", :log_file => "/var/log/bluepill.log") do |a
     # TODO: change --router args to be built from / set from DNS RR records
     routers = dns_routers.empty? ? DEFAULT_ROUTERS : dns_routers
     router_string = routers.map{ |router| "--router tcp://#{router}:#{ROUTER_PORT}" }.join(" ")
-    process.start_command = "/opt/hastur/bin/hastur-agent.rb #{router_string}"
+    process.start_command = "/opt/hastur/bin/hastur-agent.rb --pidfile #{PIDFILE} #{router_string}"
     process.stop_signals = [:quit, 15.seconds, :term, 5.seconds, :kill]
     process.working_dir = "/"
-
-    # modern Linux boxes use /run
-    if File.exists? "/run"
-      process.pid_file = "/var/run/hastur-agent.pid"
-    else
-      process.pid_file = "/var/run/hastur-agent.pid"
-    end
-
+    process.pid_file = PIDFILE
     process.daemonize = true
     process.start_grace_time = 15.seconds
     process.stop_grace_time = 30.seconds

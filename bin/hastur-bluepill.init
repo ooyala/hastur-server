@@ -23,6 +23,7 @@ BLUEPILL="/opt/hastur/bin/bluepill"
 APP=$(basename $0 |sed -r -e 's/\.init$//')
 # gem blindly wraps all binfiles in ruby so we have to find where it's installed manually
 PILL=$($GEM contents hastur-server |grep "bluepill-$APP.pill" |head -n 1)
+PILL_APP=$(echo $APP |sed 's/-/_/g')
 
 [ -e $BLUEPILL ] || die "$BLUEPILL does not exist - is your installation complete?"
 [ -e $PILL ] || die "$PILL does not exist"
@@ -47,16 +48,19 @@ esac
 case "$1" in
   start)
     $BLUEPILL load $PILL
-    $BLUEPILL start hastur_core
+    $BLUEPILL start $PILL_APP
     ;;
   stop)
-    $BLUEPILL stop hastur_core
+    $BLUEPILL stop $PILL_APP
+    $BLUEPILL quit
     ;;
   restart)
-    $BLUEPILL restart hastur_core
+    $BLUEPILL load $PILL
+    $BLUEPILL stop $PILL_APP
+    $BLUEPILL start $PILL_APP
     ;;
   status)
-    $BLUEPILL status hastur_core
+    $BLUEPILL status $PILL_APP
     ;;
   *)
     echo "Usage: $0 start|stop|restart|status"

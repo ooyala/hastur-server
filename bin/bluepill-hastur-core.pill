@@ -2,6 +2,7 @@ require 'bluepill'
 require 'logger'
 
 HASTUR_ROOT="/opt/hastur"
+PIDFILE = "/run/hastur/hastur-core.pid"
 
 cassandra_servers = []
 File.readlines("#{HASTUR_ROOT}/conf/cassandra-servers.txt") do |line|
@@ -12,6 +13,7 @@ end
 
 HASTUR_CORE_COMMAND = [
   "#{HASTUR_ROOT}/bin/hastur-core.rb",
+  "--pidfile",   PIDFILE,
   "--router",    "tcp://0.0.0.0:8126",
   "--return",    "tcp://0.0.0.0:8127",
   "--firehose",  "tcp://0.0.0.0:8128",
@@ -34,10 +36,9 @@ Bluepill.application("hastur_core", :log_file => "/var/log/bluepill.log") do |ap
     process.start_command = HASTUR_CORE_COMMAND
     process.stop_signals = [:quit, 15.seconds, :term, 5.seconds, :kill]
     process.working_dir = HASTUR_ROOT
-    process.pid_file = "/run/hastur/hastur-core.pid"
+    process.pid_file = PIDFILE
     process.uid = "role-hastur"
     process.gid = "role-hastur"
-
     process.daemonize = true
     process.start_grace_time = 15.seconds
     process.stop_grace_time = 30.seconds

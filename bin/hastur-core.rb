@@ -23,6 +23,7 @@ EOS
   opt :router,    "Router (agent) URI    (ROUTER)", :default => "tcp://*:8126"
   opt :return,    "Direct routing URI      (PULL)", :default => "tcp://*:8127"
   opt :firehose,  "Agent event URI          (PUB)", :default => "tcp://*:8128"
+  opt :pidfile,   "Location of pidfile",            :type => :string
   opt :cassandra, "Cassandra server list", :default => ["127.0.0.1:9160"], :type => :strings, :multi => true
 end
 
@@ -53,6 +54,10 @@ sink = Hastur::Service::CassandraSink.new(
 # must subscribe to empty string to get everything
 sink.subscribe ""
 
+if opts[:pidfile]
+  File.open(opts[:pidfile], "w+") { |file| file.puts Process.pid }
+end
+
 router_thread = Termite::Thread.new logger do
   router.run
 end
@@ -72,3 +77,7 @@ end
 
 router_thread.join
 sink_thread.join
+
+if opts[:pidfile]
+  File.unlink(opts[:pidfile]) if File.exists?(opts[:pidfile])
+end

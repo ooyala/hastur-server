@@ -43,7 +43,7 @@ namespace :hastur do
 
   # fpm options that are used for both hastur-agent and hastur-server
   FPM_COMMON_OPTIONS = [
-    %w[-a native -m team-tna@ooyala.com -t deb --license MIT --vendor Ooyala --depends libuuid1 --depends libffi -s dir],
+    %w[-a native -m team-tna@ooyala.com -t deb --license MIT --vendor Ooyala --depends libuuid1 -s dir],
     "--version", Hastur::VERSION,
     "--iteration", `lsb_release -c`.strip.split(/:\s+/)[1].gsub(/\W/, '+') || "unknown"
   ].flatten

@@ -23,6 +23,7 @@ opts = Trollop::options do
   opt :unix,        "UNIX domain socket", :type => String
   opt :heartbeat,   "Heartbeat interval", :default => 30
   opt :ack_timeout, "Time between unacked message resends", :default => 10
+  opt :pidfile,     "Location of pidfile", :type => String
 end
 
 unless opts[:router].all? { |uri| Hastur::Util.valid_zmq_uri? uri }
@@ -45,6 +46,10 @@ opts[:port] = opts[:port].to_i
 
 agent = Hastur::Service::Agent.new(opts)
 
+if opts[:pidfile]
+  File.open(opts[:pidfile], "w+") { |file| file.puts Process.pid }
+end
+
 %w(INT TERM KILL).each do | sig |
   Signal.trap(sig) do
     agent.shutdown
@@ -53,3 +58,7 @@ agent = Hastur::Service::Agent.new(opts)
 end
 
 agent.run
+
+if opts[:pidfile]
+  File.unlink(opts[:pidfile]) if File.exists?(opts[:pidfile])
+end
