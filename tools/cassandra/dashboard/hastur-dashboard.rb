@@ -18,6 +18,11 @@ module Hastur
         erb :index, :locals => { :hostnames => hostnames }
       end
 
+      get "/hostnames" do
+        res = get("/hostnames").body
+        [200, res]
+      end
+
       get "/uuids_proxy" do
         response = get("/uuids?start=#{params[:start]}&end=#{params[:end]}")
         [ response.code, response.body ]
