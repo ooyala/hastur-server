@@ -23,7 +23,7 @@ EOS
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.executables   = `git ls-files -- bin/*`.split("\n").
-                      delete_if { |f| f =~ /\.ecology$/ }.map{ |f| File.basename(f) }
+                      delete_if { |f| f =~ /\.(ecology|init|pill)$/ }.map{ |f| File.basename(f) }
   s.require_paths = ["lib"]
 
   # specify any dependencies here; for example:
