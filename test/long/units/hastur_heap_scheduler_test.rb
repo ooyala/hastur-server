@@ -30,10 +30,10 @@ class HasturHeapSchedulerTest < Test::Unit::TestCase
 
     assert_equal 4, msgs.size
 
-    assert_equal "A OK", MultiJson.decode(msgs[0])["plugin_args"]
-    assert_equal "OK", MultiJson.decode(msgs[1])["plugin_args"]
-    assert_equal "A OK", MultiJson.decode(msgs[2])["plugin_args"]
-    assert_equal "OK", MultiJson.decode(msgs[3])["plugin_args"]
+    assert_equal "A OK", MultiJson.load(msgs[0])["plugin_args"]
+    assert_equal "OK", MultiJson.load(msgs[1])["plugin_args"]
+    assert_equal "A OK", MultiJson.load(msgs[2])["plugin_args"]
+    assert_equal "OK", MultiJson.load(msgs[3])["plugin_args"]
 
   end
 end

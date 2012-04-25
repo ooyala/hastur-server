@@ -66,7 +66,7 @@ class HeartbeatTest < Test::Unit::TestCase
 
     messages = @topology[:heartbeat].output
     # work with raw messages for now
-    payloads  = messages.map { |m| MultiJson.decode(m[-1]) }
+    payloads  = messages.map { |m| MultiJson.load(m[-1]) }
     envelopes = messages.map { |m| m[-2].unpack("H*") }
     #puts messages.flatten.map { |i| i.unpack("H*") }
 

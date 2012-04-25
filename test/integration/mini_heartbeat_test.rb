@@ -37,7 +37,7 @@ class MiniHeartbeatTest < Test::Unit::TestCase
     messages = @topology[:router].output
 
     # work with raw messages for now
-    payloads  = messages.map { |m| MultiJson.decode(m[-1]) }
+    payloads  = messages.map { |m| MultiJson.load(m[-1]) }
     heartbeat_payloads = payloads.fuzzy_filter("name" => "hastur.agent.heartbeat")
     envelopes = messages.map { |m| m[-2].unpack("H*") }
 

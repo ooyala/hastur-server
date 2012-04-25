@@ -82,7 +82,7 @@ EOJSON
     end
 
     messages = @topology[:router].output
-    payloads = messages.map { |m| MultiJson.decode(m[-1]) }
+    payloads = messages.map { |m| MultiJson.load(m[-1]) }
 
     assert_equal ITERATIONS, payloads.size
     assert_equal 604800, payloads[0]["sla"]

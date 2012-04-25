@@ -10,6 +10,30 @@ module HTTParty
   end
 end
 
+# fpm options that are used for both hastur-agent and hastur-server
+def fpm_common_options
+  [
+    %w[-a native -m team-tna@ooyala.com -t deb --license MIT --vendor Ooyala --depends libuuid1 -s dir],
+    "--version", Hastur::VERSION,
+    "--iteration", `lsb_release -c`.strip.split(/:\s+/)[1].gsub(/\W/, '+') || "unknown"
+  ].flatten
+end
+
+# make sure the compiler really knows what size to compile for
+# Don't use rbconfig because it can lie. For example, if a 32-bit ruby is built
+# in a chroot that is not wrapped with linux32, rbconfig will report it is an
+# x86_64 ruby even though it's a 32-bit binary because uname -m returned x86_64.
+def archflag
+  case `uname -m`.chomp # linux32 fakes uname response
+  when /\Ai\d86\Z/
+    "-m32"
+  when /\Ax86_64\Z/
+    "-m64"
+  else
+    abort "Could not determine architecture to set -m32 / -m64. Check 'uname -m'."
+  end
+end
+
 namespace :hastur do
   PATHS = {
     :prefix => "/opt/hastur",
@@ -41,29 +65,12 @@ namespace :hastur do
   BUNDLER = File.join(PATHS[:bindir], 'bundle')
   FPM = File.join(PATHS[:bindir], 'fpm')
 
-  # fpm options that are used for both hastur-agent and hastur-server
-  FPM_COMMON_OPTIONS = [
-    %w[-a native -m team-tna@ooyala.com -t deb --license MIT --vendor Ooyala --depends libuuid1 -s dir],
-    "--version", Hastur::VERSION,
-    "--iteration", `lsb_release -c`.strip.split(/:\s+/)[1].gsub(/\W/, '+') || "unknown"
-  ].flatten
-
   PROJECT_TOP = Rake.application.find_rakefile_location[1]
 
   HOME_DOWNLOADS = File.join ENV["HOME"], "Downloads"
   TGZ_CACHE = File.exists?(HOME_DOWNLOADS) ? HOME_DOWNLOADS : PATHS[:build]
 
   dirs = {} # filled in when the tarballs are opened up, or with find_dirs
-
-  # make sure the compiler really knows what size to compile for
-  case `uname -m`.chomp # linux32 fakes uname response
-  when /\Ai\d86\Z/
-    archflag = "-m32"
-  when /\Ax86_64\Z/
-    archflag = "-m64"
-  else
-    abort "Could not determine architecture to set -m32 / -m64. Check 'uname -m'."
-  end
 
   # Linux only for now
   # For OSX CC will probably need to be forced to gcc and rpath stuff probably doesn't work
@@ -343,7 +350,7 @@ namespace :hastur do
     Rake::Task["hastur:rewrite_shebangs"].invoke
     FileUtils.rm_rf PATHS[:build] # remove source directories
 
-    command = [FPM_COMMON_OPTIONS,
+    command = [fpm_common_options,
       "--name",          "hastur-server",
       "--provides",      "hastur-server",
       "--replaces",      "hastur-agent",
@@ -365,7 +372,7 @@ namespace :hastur do
     Rake::Task["hastur:rewrite_shebangs"].invoke
     FileUtils.rm_rf PATHS[:build] # remove source directories
 
-    command = [FPM_COMMON_OPTIONS,
+    command = [fpm_common_options,
       "--name",          "hastur-agent",
       "--provides",      "hastur-agent",
       "--conflicts",     "hastur-server",

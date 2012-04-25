@@ -54,10 +54,12 @@ module Hastur
       filter = {}
       id = UUID.generate
 
-      if opts[:uuid] and Hastur::Util.valid_uuid?(opts[:uuid])
-        filter[:uuid] = opts[:uuid]
-      else
-        raise ArgumentError.new ":uuid must be a valid 36-byte hex UUID (#{opts[:uuid]})"
+      if opts[:uuid]
+        if Hastur::Util.valid_uuid?(opts[:uuid])
+          filter[:uuid] = opts[:uuid]
+        else
+          raise ArgumentError.new ":uuid must be a valid 36-byte hex UUID (#{opts[:uuid]})"
+        end
       end
 
       if opts[:type]
@@ -140,10 +142,11 @@ module Hastur
     #
     # The only method called on sockets in this class is sendmsgs, so if you
     # want to mock a socket, that's all you need. It will be given two
-    # ZMQ::Message objects that you should probably copy_out_string.
+    # ZMQ::Message objects.  You should probably call copy_out_string on
+    # them.
     #
     def add_socket(socket, filter_id)
-      raise ArgumentError.new "First arg must respond to :sendmsgs." unless subsock.respond_to? :sendmsgs
+      raise ArgumentError.new "First arg must respond to :sendmsgs." unless socket.respond_to? :sendmsgs
       unless Hastur::Util.valid_uuid? filter_id
         raise ArgumentError.new "Second arg must be a 36-byte filter ID (uuid)."
       end

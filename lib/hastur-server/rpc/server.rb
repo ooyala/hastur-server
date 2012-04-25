@@ -57,7 +57,7 @@ module Hastur
           end
 
           begin
-            data = MultiJson.decode(messages[-1], :symbolize_keys => true)
+            data = MultiJson.load(messages[-1], :symbolize_keys => true)
             raise "Received JSON but it does not look like JSON-RPC!" unless data[:method]
           rescue Exception => e
             @logger.error "invalid message: #{messages.inspect}\n#{e}"
@@ -99,7 +99,7 @@ module Hastur
       #
       def respond(data, error=nil)
         resdata = { :result => data, :error => error }
-        json = MultiJson.encode resdata
+        json = MultiJson.dump resdata
         rc = socket.send_strings [json]
         raise "socket send error: #{ZMQ::Util.error_string}" unless ZMQ::Util.resultcode_ok?(rc)
         json

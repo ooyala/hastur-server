@@ -12,6 +12,6 @@ report = {
   :tags => ["version_0.1", "ruby", "hastur"],
 }
 
-puts MultiJson.encode(report)
+puts MultiJson.dump(report)
 exit 0
 

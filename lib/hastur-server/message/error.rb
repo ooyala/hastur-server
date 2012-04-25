@@ -47,7 +47,7 @@ module Hastur
             data = data.inspect
         end
 
-        @payload = MultiJson.encode({:error => error, :data  => data})
+        @payload = MultiJson.dump({:error => error, :data  => data})
       end
     end
   end

@@ -122,7 +122,7 @@ class FullPluginTest < Test::Unit::TestCase
     heartbeat_msgs = @topology[:heartbeat].output
     heartbeat_payloads = heartbeat_msgs.map do |m|
       assert_equal 2, m.size
-      MultiJson.decode m[1]
+      MultiJson.load m[1]
     end
     plugin_result = heartbeat_payloads.fuzzy_filter("name" => "my.plugin.echo")
     assert_equal 1, plugin_result.size

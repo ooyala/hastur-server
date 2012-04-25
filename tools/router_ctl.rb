@@ -23,8 +23,8 @@ ctx = ZMQ::Context.new
 sock = ctx.socket(ZMQ::REQ)
 sock.connect(opts[:uri])
 
-sock.send_string(MultiJson.encode(command))
+sock.send_string(MultiJson.dump(command))
 rc = sock.recv_string json=""
-hash = MultiJson.decode(json)
-puts MultiJson.encode(hash, :pretty => true)
+hash = MultiJson.load(json)
+puts MultiJson.dump(hash, :pretty => true)
 

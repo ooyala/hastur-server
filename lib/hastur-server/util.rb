@@ -330,9 +330,17 @@ module Hastur
 
       status = 0
       if opts[:bind]
-        rc = socket.bind(to_valid_zmq_uri(uri))
-        ok = ZMQ::Util.resultcode_ok?(rc)
-        hastur_logger.error "Error #{zmq_error} when binding socket to #{uri}!" unless ok
+        if uri.respond_to?(:each)
+          uri.each do |one_uri|
+            rc = socket.bind to_valid_zmq_uri(one_uri)
+            ok = ZMQ::Util.resultcode_ok?(rc)
+            hastur_logger.error "Error #{zmq_error} when binding socket to #{one_uri.inspect}!" unless ok
+          end
+        else
+          rc = socket.bind to_valid_zmq_uri(uri)
+          ok = ZMQ::Util.resultcode_ok?(rc)
+          hastur_logger.error "Error #{zmq_error} when binding socket to #{uri.inspect}!" unless ok
+        end
       elsif opts[:connect]
         if uri.respond_to?(:each)
           uri.each do |one_uri|

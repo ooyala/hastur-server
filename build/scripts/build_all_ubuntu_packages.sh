@@ -69,11 +69,7 @@ build_hastur () {
   path=$2
 
   cd $path/tmp
-  # while I'm developing, pull my working copy
-  if [ -d "/home/al/ooyala/hastur-server" ] ; then
-    rsync -a /home/al/ooyala/hastur-server $path/tmp
-  # otherwise clone, this should be the usual procedure
-  elif [ ! -d "$path/tmp/hastur-server" ] ; then
+  if [ ! -d "$path/tmp/hastur-server" ] ; then
     git clone $GIT_REPO
   else
     cd "$path/tmp/hastur-server"
@@ -103,6 +99,11 @@ do
 
     for pkg in agent server
     do
+      # only build hastur-server for precise
+      if [ "$pkg" == "server" -a "$dist" != "precise" ] ; then
+        continue
+      fi
+
       snapshot="$SNAP_ROOT/$dist-$arch-$pkg-$SNAP_SUFFIX"
       btrfs subvolume snapshot $root $snapshot
       require btrfs subvolume snapshot $root $snapshot

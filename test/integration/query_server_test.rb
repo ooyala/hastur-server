@@ -104,7 +104,7 @@ class QueryServerTest < Test::Unit::TestCase
     assert a1_html.length > 10, "got at least 10 bytes of data for the agent 1 heartbeat query"
     assert a1_html.length < 4096, "got no more than 4096 bytes of data for the agent 1 heartbeat query"
     assert a1_html.match(/^\s*{.*}\s*$/), "looks like JSON"
-    a1_messages = MultiJson.decode a1_html
+    a1_messages = MultiJson.load a1_html
 
     # always run two tests - we've seen cases where the first works but the second doesn't
     url2 = "http://127.0.0.1:#{@sinatra_port}/data/heartbeat/values?uuid=#{A2UUID}&start=#{start_ts}&end=#{end_ts}"
@@ -112,6 +112,6 @@ class QueryServerTest < Test::Unit::TestCase
     assert a2_html.length > 10, "got at least 10 bytes of data for the agent 2 heartbeat query"
     assert a2_html.length < 4096, "got no more than 4096 bytes of data for the agent 2 heartbeat query"
     assert a2_html.match(/^\s*{.*}\s*$/), "looks like JSON"
-    a2_messages = MultiJson.decode a2_html
+    a2_messages = MultiJson.load a2_html
   end
 end

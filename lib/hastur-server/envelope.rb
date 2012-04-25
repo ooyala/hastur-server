@@ -204,14 +204,14 @@ module Hastur
     # Return the envelope as a JSON string.
     #
     def to_json
-      MultiJson.encode to_hash
+      MultiJson.dump to_hash
     end
 
     #
     # Construct a Hastur::Envelope from a JSON string.
     #
     def self.from_json(json)
-      data = MultiJson.decode json, :symbolize_keys => true
+      data = MultiJson.load json, :symbolize_keys => true
       self.new(data)
     end
 

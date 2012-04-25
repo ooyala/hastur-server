@@ -138,7 +138,7 @@ module Hastur
       @uuid = uuid
       @json = json
       @time_to_execute = Hastur::Util.timestamp( time_to_execute )
-      interval = MultiJson.decode(@json)["interval"].to_sym
+      interval = MultiJson.load(@json)["interval"].to_sym
       case interval
       when :five_minutes
         @interval = 5*60
