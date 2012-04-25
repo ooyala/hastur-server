@@ -146,7 +146,7 @@ module Hastur
     # them.
     #
     def add_socket(socket, filter_id)
-      raise ArgumentError.new "First arg must respond to :sendmsgs." unless subsock.respond_to? :sendmsgs
+      raise ArgumentError.new "First arg must respond to :sendmsgs." unless socket.respond_to? :sendmsgs
       unless Hastur::Util.valid_uuid? filter_id
         raise ArgumentError.new "Second arg must be a 36-byte filter ID (uuid)."
       end
