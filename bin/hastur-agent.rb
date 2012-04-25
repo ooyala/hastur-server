@@ -30,12 +30,12 @@ unless opts[:router].all? { |uri| Hastur::Util.valid_zmq_uri? uri }
 end
 
 unless opts[:uuid]
-  if File.readable? UUID_FILE
+  if File.readable?(UUID_FILE) and File.size(UUID_FILE) == 37
     opts[:uuid] = File.read(UUID_FILE).chomp
   else
     opts[:uuid] = UUID.new.generate
     if File.writable?(UUID_FILE) or File.writable?(File.dirname(UUID_FILE))
-      File.open(UUID_FILE, "w") { |file| file.puts uuid }
+      File.open(UUID_FILE, "w+") { |file| file.puts opts[:uuid] }
     end
   end
 end
