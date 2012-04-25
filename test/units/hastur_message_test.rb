@@ -55,6 +55,24 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     assert_equal json2, e2.to_json, "re-encode decoded message should be exact same json"
   end
 
+  def test_from_hash
+    m1 = Hastur::Message.from_hash({
+      :type => "event",
+      :to => "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+      "from" => "fad92a20-7095-012f-e469-64ce8f3a9dc2",
+      :ack => 1,
+      :payload => '{ "type": "event", "name": "fake" }',
+      :zmq_parts => [ "one", "two", "three" ]
+    })
+
+    assert_equal [ "one", "two", "three" ], m1.zmq_parts
+    assert_equal Hastur::Message.symbol_to_type_id(:event), m1.type_id
+    assert_equal "fad92a20-7095-012f-e469-64ce8f3a9dc2", m1.envelope.from
+    assert_equal "8e58af00-708c-012f-e468-64ce8f3a9dc2", m1.envelope.to
+    assert_equal true, m1.envelope.ack?
+    assert_equal '{ "type": "event", "name": "fake" }', m1.payload
+  end
+
   def test_over_zmq
     @ctx = ZMQ::Context.new
     @rsock = @ctx.socket(ZMQ::PAIR)
