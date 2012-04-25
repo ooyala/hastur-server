@@ -22,7 +22,10 @@
     </style>
   </head>
   <body>
-    <div>
+    <span onclick="addGraph( 'graphDiv' )"> + </span>
+    <div id="graphDiv"></div>
+  <!--
+    <div id="flotWidget">
       <span>Hosts</span>
       <select id="hostname_ddl">
         <% hostnames.each do |uuid, hostname| %>
@@ -49,5 +52,7 @@
       <button id="full_refresh">Full Refresh</button>
       <button id="replot">Re-plot</button>
     </div>
+    -->
+
   </body>
 </html>
