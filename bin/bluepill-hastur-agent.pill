@@ -1,5 +1,9 @@
-dns_routers = []
-DEFAULT_ROUTERS = %w[ 10.255.146.177 10.242.255.137 ] # us-east-1
+# hastur-agent bluepill
+#
+# TODO: lookup DNS RR record ... into an array
+# e.g. nslookup hastur-core.ooyala.com
+# TODO: (eventually), determine region / AZ and look up e.g. hastur-core.sv2.ooyala.com / hastur-core.us-east-1, etc.
+DEFAULT_ROUTERS = %w[ 23.21.133.158 23.21.133.161 50.19.111.183 ]
 ROUTER_PORT="8126"
 
 # modern Linux boxes use /run
@@ -8,11 +12,6 @@ if File.exists? "/run"
 else
   PIDFILE = "/var/run/hastur-agent.pid"
 end
-
-# TODO: lookup DNS RR record ... into an array
-# e.g. nslookup hastur-core.ooyala.com
-
-# TODO: (eventually), determine region / AZ and look up e.g. hastur-core.sv2.ooyala.com / hastur-core.us-east-1, etc.
 
 # If we don't specify a log file, we get syslog logging to LOCAL6 by default.
 Bluepill.application("hastur_agent") do |app|
