@@ -103,20 +103,20 @@ function HasturFlot(parentElementId, containerId) {
     getElement(parentElementId).append("<li><div id='"+ containerId +"'></div></li>");
 
     // container adds time range options, drop downs
-    getElement(container).append("<span>Hosts</span>");
+    getElement(container).append("<span class='headerSpan'>Hosts</span>");
     getElement(container).append("<select id='"+ hostnameDdl +"'></select>");
-    getElement(container).append("<span>Stats</span>");
+    getElement(container).append("<span class='headerSpan'>Stats</span>");
     getElement(container).append("<select id='"+ statNameDdl +"'></select>");
     getElement(container).append("<div id='" + timeContainer + "'></div>");
 
     // timeContainer adds time range options
-    getElement(timeContainer).append("<span>Zoom</span>");
-    getElement(timeContainer).append("<span id='" + oneHour + "' style='color:lightblue'>1h</span>");
-    getElement(timeContainer).append("<span id='" + threeHour + "' style='color:lightblue'>3h</span>");
-    getElement(timeContainer).append("<span id='" + sixHour + "' style='color:lightblue'>6h</span>");
-    getElement(timeContainer).append("<span id='" + twelveHour + "' style='color:lightblue'>12h</span>");
-    getElement(timeContainer).append("<span id='" + day + "' style='color:lightblue'>1d</span>");
-    getElement(timeContainer).append("<span id='" + threeDay + "' style='color:lightblue'>3d</span>");
+    getElement(timeContainer).append("<span class='headerSpan'>Zoom</span>");
+    getElement(timeContainer).append("<span class='headerSpan' id='" + oneHour + "' style='color:lightblue'>1h</span>");
+    getElement(timeContainer).append("<span class='headerSpan' id='" + threeHour + "' style='color:lightblue'>3h</span>");
+    getElement(timeContainer).append("<span class='headerSpan' id='" + sixHour + "' style='color:lightblue'>6h</span>");
+    getElement(timeContainer).append("<span class='headerSpan' id='" + twelveHour + "' style='color:lightblue'>12h</span>");
+    getElement(timeContainer).append("<span class='headerSpan' id='" + day + "' style='color:lightblue'>1d</span>");
+    getElement(timeContainer).append("<span class='headerSpan' id='" + threeDay + "' style='color:lightblue'>3d</span>");
 
     // container adds graph
     getElement(container).append("<div id='" + graph + "'></div>");
@@ -431,7 +431,7 @@ function HasturFlot(parentElementId, containerId) {
     } else {
       color = "lightblue";
     }
-    $(element_id).css("color", color);
+    getElement(element_id).css("color", color);
   }
 
 }
