@@ -10,6 +10,15 @@ module HTTParty
   end
 end
 
+# fpm options that are used for both hastur-agent and hastur-server
+def fpm_common_options
+  [
+    %w[-a native -m team-tna@ooyala.com -t deb --license MIT --vendor Ooyala --depends libuuid1 -s dir],
+    "--version", Hastur::VERSION,
+    "--iteration", `lsb_release -c`.strip.split(/:\s+/)[1].gsub(/\W/, '+') || "unknown"
+  ].flatten
+end
+
 namespace :hastur do
   PATHS = {
     :prefix => "/opt/hastur",
@@ -40,13 +49,6 @@ namespace :hastur do
   GEM_INSTALL = "#{File.join(PATHS[:bindir], 'gem')} install --bindir #{PATHS[:bindir]} --no-rdoc --no-ri --conservative"
   BUNDLER = File.join(PATHS[:bindir], 'bundle')
   FPM = File.join(PATHS[:bindir], 'fpm')
-
-  # fpm options that are used for both hastur-agent and hastur-server
-  FPM_COMMON_OPTIONS = [
-    %w[-a native -m team-tna@ooyala.com -t deb --license MIT --vendor Ooyala --depends libuuid1 -s dir],
-    "--version", Hastur::VERSION,
-    "--iteration", `lsb_release -c`.strip.split(/:\s+/)[1].gsub(/\W/, '+') || "unknown"
-  ].flatten
 
   PROJECT_TOP = Rake.application.find_rakefile_location[1]
 
@@ -343,7 +345,7 @@ namespace :hastur do
     Rake::Task["hastur:rewrite_shebangs"].invoke
     FileUtils.rm_rf PATHS[:build] # remove source directories
 
-    command = [FPM_COMMON_OPTIONS,
+    command = [fpm_common_options,
       "--name",          "hastur-server",
       "--provides",      "hastur-server",
       "--replaces",      "hastur-agent",
@@ -365,7 +367,7 @@ namespace :hastur do
     Rake::Task["hastur:rewrite_shebangs"].invoke
     FileUtils.rm_rf PATHS[:build] # remove source directories
 
-    command = [FPM_COMMON_OPTIONS,
+    command = [fpm_common_options,
       "--name",          "hastur-agent",
       "--provides",      "hastur-agent",
       "--conflicts",     "hastur-server",
