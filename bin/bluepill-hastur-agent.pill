@@ -3,7 +3,7 @@
 # TODO: lookup DNS RR record ... into an array
 # e.g. nslookup hastur-core.ooyala.com
 # TODO: (eventually), determine region / AZ and look up e.g. hastur-core.sv2.ooyala.com / hastur-core.us-east-1, etc.
-DEFAULT_ROUTERS = %w[ 23.21.133.158 23.21.133.161 50.19.111.183 ]
+ROUTERS = %w[ 23.21.133.158 23.21.133.161 50.19.111.183 ]
 ROUTER_PORT="8126"
 
 # modern Linux boxes use /run
@@ -21,8 +21,7 @@ Bluepill.application("hastur_agent") do |app|
       "LD_LIBRARY_PATH" => "/opt/hastur/lib",
     }
     # TODO: change --router args to be built from / set from DNS RR records
-    routers = dns_routers.empty? ? DEFAULT_ROUTERS : dns_routers
-    router_string = routers.map{ |router| "--router tcp://#{router}:#{ROUTER_PORT}" }.join(" ")
+    router_string = ROUTERS.map{ |router| "--router tcp://#{router}:#{ROUTER_PORT}" }.join(" ")
     process.start_command = "/opt/hastur/bin/hastur-agent.rb --pidfile #{PIDFILE} #{router_string}"
     process.stop_signals = [:quit, 15.seconds, :term, 5.seconds, :kill]
     process.working_dir = "/"
