@@ -7,7 +7,7 @@ ROUTERS = %w[ 23.21.133.158 23.21.133.161 50.19.111.183 ]
 ROUTER_PORT="8126"
 
 # modern Linux boxes use /run
-if File.exists? "/run"
+if File.directory? "/run"
   PIDFILE = "/run/hastur-agent.pid"
 else
   PIDFILE = "/var/run/hastur-agent.pid"
