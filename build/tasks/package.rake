@@ -19,6 +19,21 @@ def fpm_common_options
   ].flatten
 end
 
+# make sure the compiler really knows what size to compile for
+# Don't use rbconfig because it can lie. For example, if a 32-bit ruby is built
+# in a chroot that is not wrapped with linux32, rbconfig will report it is an
+# x86_64 ruby even though it's a 32-bit binary because uname -m returned x86_64.
+def archflag
+  case `uname -m`.chomp # linux32 fakes uname response
+  when /\Ai\d86\Z/
+    "-m32"
+  when /\Ax86_64\Z/
+    "-m64"
+  else
+    abort "Could not determine architecture to set -m32 / -m64. Check 'uname -m'."
+  end
+end
+
 namespace :hastur do
   PATHS = {
     :prefix => "/opt/hastur",
@@ -56,16 +71,6 @@ namespace :hastur do
   TGZ_CACHE = File.exists?(HOME_DOWNLOADS) ? HOME_DOWNLOADS : PATHS[:build]
 
   dirs = {} # filled in when the tarballs are opened up, or with find_dirs
-
-  # make sure the compiler really knows what size to compile for
-  case `uname -m`.chomp # linux32 fakes uname response
-  when /\Ai\d86\Z/
-    archflag = "-m32"
-  when /\Ax86_64\Z/
-    archflag = "-m64"
-  else
-    abort "Could not determine architecture to set -m32 / -m64. Check 'uname -m'."
-  end
 
   # Linux only for now
   # For OSX CC will probably need to be forced to gcc and rpath stuff probably doesn't work
