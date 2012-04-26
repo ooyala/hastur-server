@@ -19,7 +19,7 @@ module Hastur
     # @example syndicator = Hastur::Syndicator.new
     #
     def initialize
-      @filters                = [] # array of filter hashes
+      @filters                = {} # filter hashes
       @sockets                = {}
       @logger                 = Termite::Logger.new
       @messages_processed     = 0
@@ -33,7 +33,17 @@ module Hastur
     #
     def filters
       # make it difficult to mess with the list directly
-      @filters.map(&:dup)
+      @filters.dup
+    end
+
+    #
+    # Return the (frozen) filter for this filter ID.
+    # Used for apply_one_filter.
+    #
+    # @param [String] id The ID of this filter
+    #
+    def filter_for_id(id)
+      @filters[id]
     end
 
     #
@@ -129,8 +139,14 @@ module Hastur
         end
       end
 
+      # If these are both frozen, then a simple .dup on the Hash
+      # will keep callers from being able to modify @filters
+      # when it gets returned.
+      #
+      filter.freeze
+      id.freeze
       @sockets[id] = []
-      @filters << [ id, filter ]
+      @filters[id] = filter
 
       id
     end
@@ -221,7 +237,7 @@ module Hastur
         end
       end
 
-      if do_forward and labels_matched
+      if labels_matched
         yield message
       end
     end
