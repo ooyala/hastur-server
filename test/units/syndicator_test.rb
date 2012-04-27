@@ -181,4 +181,40 @@ class SyndicatorTest < Scope::TestCase
     end
   end
 
+  context "checking a label's value" do
+    setup do
+      @filter = { :labels => { :a => "b" } }
+    end
+
+    should "match a hash with that label" do
+      assert_equal true, @syndicator.apply_one_filter(@filter, { "labels" => { "a" => "b" } }),
+        "{ :labels => { :a => \"b\" } } must match a hash with the label set"
+    end
+
+    should "not match a hash with that label set to false" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, { "labels" => { "a" => false } }),
+        "{ :labels => { :a => \"b\" } } must not match a hash with the label set to false"
+    end
+
+    should "not match a hash with no labels" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, { "a" => "b" }),
+        "{ :labels => { :a => \"b\" } } must not match a hash with no labels"
+    end
+
+    should "not match a hash with that label set to nil" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, { "labels" => { "a" => nil } }),
+        "{ :labels => { :a => \"b\" } } must not match a hash with the label set to nil"
+    end
+
+    should "not match a hash without that label" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, { "labels" => { "c" => "b" } }),
+        "{ :labels => { :a => \"b\" } } must not match a hash without that label set"
+    end
+
+    should "not match the empty hash" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, {}),
+        "{ :labels => { :a => \"b\" } } must not match the empty hash"
+    end
+  end
+
 end
