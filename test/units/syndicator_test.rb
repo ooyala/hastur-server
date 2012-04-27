@@ -35,6 +35,16 @@ class SyndicatorTest < Scope::TestCase
       assert_equal true, @syndicator.apply_one_filter(@filter, { "a" => "b" }),
         "The filter must match the same hash"
     end
+
+    should "allow symbol message keys" do
+      assert_equal true, @syndicator.apply_one_filter(@filter, { :a => "b" }),
+        "The filter must match symbol message keys"
+    end
+
+    should "not allow symbol message values" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, { :a => :b }),
+        "The filter must not match symbol message values"
+    end
   end
 
   context "checking that a key is present" do
@@ -44,7 +54,58 @@ class SyndicatorTest < Scope::TestCase
 
     should "match a hash with that value" do
       assert_equal true, @syndicator.apply_one_filter(@filter, { "a" => "b" }),
-        "{ :a => true } must match a hash with the value set"
+        "{ :a => true } must match a hash with the key set"
+    end
+
+    should "match a hash with that value set to false" do
+      assert_equal true, @syndicator.apply_one_filter(@filter, { "a" => false }),
+        "{ :a => true } must match a hash with the key set to false"
+    end
+
+    should "match a hash with that value set to nil" do
+      assert_equal true, @syndicator.apply_one_filter(@filter, { "a" => nil }),
+        "{ :a => true } must match a hash with the key set to nil"
+    end
+
+    should "not match a hash without that value" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, { "c" => "b" }),
+        "{ :a => true } must not match a hash without that key set"
+    end
+
+    should "not match the empty hash" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, {}),
+        "{ :a => true } must not match the empty hash"
+    end
+  end
+
+  context "checking that a key is absent" do
+    setup do
+      @filter = { :a => false }
+    end
+
+    should "not match a hash with that value" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, { "a" => "b" }),
+        "{ :a => false } must not match a hash with the key set"
+    end
+
+    should "not match a hash with that value set to false" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, { "a" => false }),
+        "{ :a => false } must match a hash with the key set to false"
+    end
+
+    should "not match a hash with that value set to nil" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, { "a" => nil }),
+        "{ :a => false } must match a hash with the key set to nil"
+    end
+
+    should "match a hash without that value" do
+      assert_equal true, @syndicator.apply_one_filter(@filter, { "c" => "b" }),
+        "{ :a => false } must not match a hash without that key set"
+    end
+
+    should "match the empty hash" do
+      assert_equal true, @syndicator.apply_one_filter(@filter, {}),
+        "{ :a => false } must not match the empty hash"
     end
   end
 end
