@@ -171,16 +171,17 @@ module Hastur
     end
 
     #
-    # run exactly one filter
+    # run exactly one filter.  Return true if the filter matches, and
+    # yield the message to the block if one is given.
+    #
     # @param [Hash] filter
     # @param [Hash] message
     # @yield [Hash] call the block with the message if the filter passes
     #
     def apply_one_filter(filter, message)
-      do_forward = true
-      labels_matched = false
-
       filter.each do |key, value|
+        next if key == :labels  # Labels are a separate pass
+
         mkey = nil
 
         # message keys may not be symbols, check for both sym & str
@@ -193,33 +194,28 @@ module Hastur
           # message does not have the key in either string or symbol form
           if mkey.nil?
             # the only way to proceed is if the filter's value is false
-            unless filter[key] == false
-              do_forward = false
-              next
-            end
+            return false unless filter[key] == false
           # the message has the key
           else
             # success unless the filter says the key should not be there with value of false
-            if filter[key] == false
-              do_forward = false
-              next
-            end
+            return false if filter[key] == false
           end
         end
 
-        # filter requires the key is present, value is ignored
-        if filter[key] == true and mkey.nil?
-          do_forward = false
-        # filter requires the key is NOT present, value is ignored
-        elsif filter[key] == false and not mkey.nil?
-          do_forward = false
-        # filter requires the key is present and the values match exactly
-        elsif message[mkey] != filter[key]
-          do_forward = false
+        case filter[key]
+        when true
+          # filter requires the key is present, value is ignored
+          return false if mkey.nil?
+        when false
+          # filter requires the key is NOT present, value is ignored
+          return false unless mkey.nil?
+        else
+          # filter requires the key is present and the values match exactly
+          return false if message[mkey] != filter[key]
         end
       end
 
-      return false unless do_forward
+      labels_matched = true
 
       # process labels separately, using a recursive call, it should only ever be one level
       # unhandled (stupid) case: user specifies a >= 1 filter labels all set to false
@@ -232,16 +228,10 @@ module Hastur
           raise "BUG! Should not have gotten to this point if message has no labels but the filter requires them."
         end
 
-        apply_one_filter filter[:labels], message[lkey] do |m|
-          labels_matched = true
-        end
-      else
-        labels_matched = true
+        labels_matched = apply_one_filter filter[:labels], message[lkey]
       end
 
-      if labels_matched
-        yield message if block_given?
-      end
+      yield message if block_given? && labels_matched
 
       labels_matched
     end
