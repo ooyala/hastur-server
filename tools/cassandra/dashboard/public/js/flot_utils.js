@@ -1,40 +1,20 @@
 
-function HasturFlot(parentElementId, containerId) {
+function HasturFlot(parentElementId, containerId, opts) {
   // Eventually we'll have various ways to mess with the
   // interval on this and/or pause it
   var ajaxGetInterval = false;
   var plot = false;
-  var do_replot = true;
+  var do_replot;
   var do_grid_change = true;
   var last_ts = false;
   var timeRange = 0;    // the number of milliseconds to graph from the current time
-  var urlParams = {};
   var uuid = '';
   var graph_data = [];
   var graph_url = '';
   var plot_data = {}; // Plot data is a hash of the data we've seen
   var flot_data = []; // This is the plot_data in flot format
   var old_labels = []; // This is the most recent list of labels
-  var flot_opts = {
-    series: {
-      points: { show: true },
-      lines: { show: true }
-    },
-    grid: {
-      hoverable: true
-    },
-    xaxis: {
-      mode: "time",
-    },
-    yaxis: {
-    },
-    zoom: {
-      interactive: true
-    },
-    selection: {
-      mode:"x"
-    }
-  };
+  var flot_opts;
 
   // ID of the HTML components in the HasturFlot widget
   var hostnameDdl;
@@ -48,16 +28,45 @@ function HasturFlot(parentElementId, containerId) {
   var threeDay;
   var container;
   var timeContainer;
-
-  setupDiv();         // setup the HasturFlot components
-  setupListeners();
-  init();
-
-  function init() {
-    populateHostnames();
+  
+  this.init = function() {
+    if(opts) {
+      var key;
+      for(key in opts) {
+        if( opts.hasOwnProperty(key) ) {
+          this[key] = opts[key];
+        }
+      }
+    } else {
+      this.flot_opts = {
+        series: {
+          points: { show: true },
+          lines: { show: true }
+        },
+        grid: {
+          hoverable: true
+        },
+        xaxis: {
+          mode: "time",
+        },
+        yaxis: {
+        },
+        zoom: {
+          interactive: true
+        },
+        selection: {
+          mode:"x"
+        }
+      };
+    }
+    this.do_replot = true;
+    this.setupDiv();         // setup the HasturFlot components
+    this.populateHostnames();
   }
 
-  function populateHostnames() {
+  this.populateHostnames = function () {
+    var hostnameDdl = this.hostnameDdl;
+    var hf = this;
     $.ajax({
       method: "get",
       url: "/hostnames",
@@ -72,11 +81,14 @@ function HasturFlot(parentElementId, containerId) {
           }
         }
 
-        refreshDropDowns();            // update the statname drop downs
+        hf.setupListeners();
+        hf.refreshDropDowns();            // update the statname drop downs
         // Every 10 seconds do a get-recent
-        ajaxGetInterval = setInterval(function() { updateGraphData(false); }, 10 * 1000)
-        updateGraphData(true);
-        changeTimeRange(60*60*1000);
+        hf.ajaxGetInterval = setInterval(function() { hf.updateGraphData(false); }, 10 * 1000)
+        hf.updateGraphData(true);
+        
+        // TODO(viet): only default ot 1h if the opts was not set
+        hf.changeTimeRange(60*60*1000);
       },
       error:function(xhr, error, exception) {
         console.debug("AJAX failed on " + url + ": " + exception)
@@ -85,114 +97,113 @@ function HasturFlot(parentElementId, containerId) {
 
   }
 
-  function setupDiv() {
-    t = (new Date()).getTime();
-    hostnameDdl = "hostnameDdl-" + t;
-    statNameDdl = "statNameDdl-" + t;
-    graph = "graph-" + t;
-    oneHour = "oneHour-" + t;
-    threeHour = "threeHour-" + t;
-    sixHour = "sixHour-" + t;
-    twelveHour = "twelveHour-" + t;
-    day = "day-" + t;
-    threeDay = "threeDay-" + t;
-    container = containerId;
-    timeContainer = "timeContainer-" + t;
-
+  this.setupDiv = function () {
+    var t = (new Date()).getTime();
+    this.hostnameDdl = "hostnameDdl-" + t;
+    this.statNameDdl = "statNameDdl-" + t;
+    this.graph = "graphArea-" + t;
+    this.oneHour = "oneHour-" + t;
+    this.threeHour = "threeHour-" + t;
+    this.sixHour = "sixHour-" + t;
+    this.twelveHour = "twelveHour-" + t;
+    this.day = "day-" + t;
+    this.threeDay = "threeDay-" + t;
+    this.timeContainer = "timeContainer-" + t;
+    this.container = containerId;
     // parent adds container
     getElement(parentElementId).append("<li><div id='"+ containerId +"'></div></li>");
 
     // container adds time range options, drop downs
-    getElement(container).append("<span class='headerSpan'>Hosts</span>");
-    getElement(container).append("<select id='"+ hostnameDdl +"'></select>");
-    getElement(container).append("<span class='headerSpan'>Stats</span>");
-    getElement(container).append("<select id='"+ statNameDdl +"'></select>");
-    getElement(container).append("<div id='" + timeContainer + "'></div>");
+    getElement(this.container).append("<span class='headerSpan'>Hosts</span>");
+    getElement(this.container).append("<select id='"+ this.hostnameDdl +"'></select>");
+    getElement(this.container).append("<span class='headerSpan'>Stats</span>");
+    getElement(this.container).append("<select id='"+ this.statNameDdl +"'></select>");
+    getElement(this.container).append("<div id='" + this.timeContainer + "'></div>");
 
     // timeContainer adds time range options
-    getElement(timeContainer).append("<span class='headerSpan'>Zoom</span>");
-    getElement(timeContainer).append("<span class='headerSpan' id='" + oneHour + "' style='color:lightblue'>1h</span>");
-    getElement(timeContainer).append("<span class='headerSpan' id='" + threeHour + "' style='color:lightblue'>3h</span>");
-    getElement(timeContainer).append("<span class='headerSpan' id='" + sixHour + "' style='color:lightblue'>6h</span>");
-    getElement(timeContainer).append("<span class='headerSpan' id='" + twelveHour + "' style='color:lightblue'>12h</span>");
-    getElement(timeContainer).append("<span class='headerSpan' id='" + day + "' style='color:lightblue'>1d</span>");
-    getElement(timeContainer).append("<span class='headerSpan' id='" + threeDay + "' style='color:lightblue'>3d</span>");
+    getElement(this.timeContainer).append("<span class='headerSpan'>Zoom</span>");
+    getElement(this.timeContainer).append("<span class='headerSpan' id='" + this.oneHour + "' style='color:lightblue'>1h</span>");
+    getElement(this.timeContainer).append("<span class='headerSpan' id='" + this.threeHour + "' style='color:lightblue'>3h</span>");
+    getElement(this.timeContainer).append("<span class='headerSpan' id='" + this.sixHour + "' style='color:lightblue'>6h</span>");
+    getElement(this.timeContainer).append("<span class='headerSpan' id='" + this.twelveHour + "' style='color:lightblue'>12h</span>");
+    getElement(this.timeContainer).append("<span class='headerSpan' id='" + this.day + "' style='color:lightblue'>1d</span>");
+    getElement(this.timeContainer).append("<span class='headerSpan' id='" + this.threeDay + "' style='color:lightblue'>3d</span>");
 
     // container adds graph
-    getElement(container).append("<div id='" + graph + "'></div>");
-    getElement(graph).css("width", "500px");
-    getElement(graph).css("height", "300px");
+    getElement(this.container).append("<div id='" + this.graph + "'></div>");
+    getElement(this.graph).css("width", "500px");
+    getElement(this.graph).css("height", "300px");
   }
 
-  function setupListeners() {
-    // Add the interaction for the drop downs
-    getElement(hostnameDdl).change(function() {
-      refreshDropDowns();
-      uuid = getElement(hostnameDdl).val();
-      url = "/data_proxy/stat/json?uuid="+uuid;
-      url = replaceStartAndEndTimes(url, timeRange);
-      drawGraph( url );
+  this.setupListeners = function () {
+    var hf = this;
+    getElement(this.oneHour).click( function() {
+      hf.changeTimeRange(60*60*1000);
+    });
+    getElement(this.threeHour).click( function() {
+      hf.changeTimeRange(3*60*60*1000);
+    });
+    getElement(this.sixHour).click( function() {
+      hf.changeTimeRange(6*60*60*1000);
+    });
+    getElement(this.twelveHour).click( function() {
+      hf.changeTimeRange(12*60*60*1000);
+    });
+    getElement(this.day).click( function() {
+      hf.changeTimeRange(24*60*60*1000);
+    });
+    getElement(this.threeDay).click( function() {
+      hf.changeTimeRange(3*24*60*60*1000);
     });
 
-/*
-    graph.bind("plothover", function (event, pos, item) {
-      var previousPoint = null;
-      if ($("#enableTooltip:checked").length > 0) {
-        if (item) {
-          if (previousPoint != item.dataIndex) {
-            previousPoint = item.dataIndex;
-            $("#tooltip").remove();
-            var x = new Date(item.datapoint[0]).toUTCString();
-            var y = item.datapoint[1].toFixed(2);
-            showTooltip(item.pageX, item.pageY,
-                        item.series.label + " of " + x + " = " + y);
-          }
-        }
-        else {
-          $("#tooltip").remove();
-          previousPoint = null;
-        }
-      }
+    // Add the interaction for the drop downs
+    getElement(this.hostnameDdl).change(function() {
+      hf.refreshDropDowns();
+      hf.uuid = getElement(hf.hostnameDdl).val();
+      var url = "/data_proxy/stat/json?uuid="+hf.uuid;
+      url = replaceStartAndEndTimes(url, hf.timeRange);
+      hf.drawGraph( url );
     });
-*/
+
+//    graph.bind("plothover", function (event, pos, item) {
+//      var previousPoint = null;
+//      if ($("#enableTooltip:checked").length > 0) {
+//        if (item) {
+//          if (previousPoint != item.dataIndex) {
+//            previousPoint = item.dataIndex;
+//            $("#tooltip").remove();
+//            var x = new Date(item.datapoint[0]).toUTCString();
+//            var y = item.datapoint[1].toFixed(2);
+//            showTooltip(item.pageX, item.pageY,
+//                        item.series.label + " of " + x + " = " + y);
+//          }
+//        }
+//        else {
+//          $("#tooltip").remove();
+//          previousPoint = null;
+//        }
+//      }
+//    });
+    
     // each time the stats drop down changes, attempt to redraw the graph
-    getElement(statNameDdl).change(function() {
-      clearPlotData();
-      statName = getElement(statNameDdl).val();
-      stat_url = "/data_proxy/stat/json?uuid="+uuid;
-      stat_url = replaceStartAndEndTimes(stat_url, timeRange);
-      if(statName != "All") {
+    getElement(this.statNameDdl).change(function() {
+      hf.clearPlotData();
+      var statName = getElement(hf.statNameDdl).val();
+      var stat_url = "/data_proxy/stat/json?uuid="+hf.uuid;
+      stat_url = replaceStartAndEndTimes(stat_url, hf.timeRange);
+      if(statName != "All" && statName != undefined) {
         stat_url += "&name="+statName;
       }
-      drawGraph(stat_url);
+      hf.drawGraph(stat_url);
     });
 
     // register the binding for zooming
-    getElement(graph).bind("plotselected", function (event, ranges) {
-      plot = $.plot(getElement(graph), graph_data,
-                $.extend(true, {}, flot_opts, {
+    getElement(this.graph).bind("plotselected", function (event, ranges) {
+      this.plot = $.plot(getElement(this.graph), this.graph_data,
+                $.extend(true, {}, this.flot_opts, {
                   xaxis: { max: ranges.xaxis.to },
                   yaxis: { max: ranges.yaxis.to }
              }));
-    });
-
-    getElement(oneHour).click(function() {
-      changeTimeRange(60*60*1000);
-    });
-    getElement(threeHour).click(function() {
-      changeTimeRange(3*60*60*1000);
-    });
-    getElement(sixHour).click(function() {
-      changeTimeRange(6*60*60*1000);
-    });
-    getElement(twelveHour).click(function() {
-      changeTimeRange(12*60*60*1000);
-    });
-    getElement(day).click(function() {
-      changeTimeRange(24*60*60*1000);
-    });
-    getElement(threeDay).click(function() {
-      changeTimeRange(3*24*60*60*1000);
     });
   }
 
@@ -200,9 +211,11 @@ function HasturFlot(parentElementId, containerId) {
     return $("#"+elementId);
   }
 
-  function refreshDropDowns() {
-    uuid = getElement(hostnameDdl).val();
-    statUrl = "/statNames?uuid=" + uuid;
+  this.refreshDropDowns = function () {
+    var uuid = getElement(this.hostnameDdl).val();
+    this.uuid = uuid;
+    var statNameDdl = this.statNameDdl;
+    var statUrl = "/statNames?uuid=" + uuid;
     $.ajax({
       method: "get",
       url: statUrl,
@@ -231,14 +244,14 @@ function HasturFlot(parentElementId, containerId) {
   };
 
   // Create and Plot Data
-  function clearPlotData() {
-    plot_data = {};
-    flot_data = [];
-    graph_data = [];
-    last_ts = false;
-    do_grid_change = true;
-    if(plot) {
-      plot.draw();
+  this.clearPlotData = function() {
+    this.plot_data = {};
+    this.flot_data = [];
+    this.graph_data = [];
+    this.last_ts = false;
+    this.do_grid_change = true;
+    if(this.plot && this.plot.draw) {
+      this.plot.draw();
     }
   }
 
@@ -255,27 +268,27 @@ function HasturFlot(parentElementId, containerId) {
   //   "series2": { "t1": data1, "t2": data2 }
   // }
   //
-  function mergePlotData(newData) {
+  this.mergePlotData = function (newData) {
     var statName;
-    console.debug("Merging plot data...");
+    //console.debug("Merging plot data...");
 
     // For each stat name
     for(statName in newData) {
-      console.debug("Stat name: " + statName);
+      //console.debug("Stat name: " + statName);
       if(!newData.hasOwnProperty(statName)) { next; }
-      console.debug("Stat name " + statName + ", points: " + hash_size(newData[statName]));
+      //console.debug("Stat name " + statName + ", points: " + hash_size(newData[statName]));
       // Add new series to plot_data if it isn't there
-      if(!plot_data[statName]) {
-        plot_data[statName] = {};
-        flot_data_series = { "label": statName, "data": [] };
-        flot_data.push(flot_data_series);
-        plot_data[statName].flot_data = flot_data_series.data;
+      if(!this.plot_data[statName]) {
+        this.plot_data[statName] = {};
+        this.flot_data_series = { "label": statName, "data": [] };
+        this.flot_data.push(this.flot_data_series);
+        this.plot_data[statName].flot_data = this.flot_data_series.data;
         // The labels changed, redraw
-        do_grid_change = true;
+        this.do_grid_change = true;
       }
 
-      var oldSeries = plot_data[statName];
-      var flotData = plot_data[statName].flot_data;
+      var oldSeries = this.plot_data[statName];
+      var flotData = this.plot_data[statName].flot_data;
       var newPoints = newData[statName];
       var ts;
 
@@ -292,31 +305,31 @@ function HasturFlot(parentElementId, containerId) {
       }
     }
 
-    console.debug("Done merging plot data");
+    //console.debug("Done merging plot data");
   }
 
-  function drawWithData(theData) {
-    graph_data = theData;
+  this.drawWithData = function(theData) {
+    this.graph_data = theData;
     
     // Start with empty data, schedule an AJAX update
-    if(do_replot) {
-      plot = $.plot(getElement(graph), theData, flot_opts);
-      do_replot = false;
+    if(this.do_replot) {
+      this.plot = $.plot(getElement(this.graph), theData, this.flot_opts);
+      this.do_replot = false;
     } else {
-      plot.setData(theData);
-      plot.draw();
+      this.plot.setData(theData);
+      this.plot.draw();
     }
 
-    if(do_grid_change) {
-      plot.setupGrid();
-      do_grid_change = false;
+    if(this.do_grid_change) {
+      this.plot.setupGrid();
+      this.do_grid_change = false;
     }
 
     // little helper for taking the repetitive work out of placing panning arrows
     function addArrow(dir, right, bottom, offset) {
       $('<img class="button" src="arrow-' + dir + '.gif" style="right:' + right + 'px;bottom:' + bottom + 'px">').appendTo(graph).click(function (e) {
         e.preventDefault();
-        plot.pan(offset);
+        this.plot.pan(offset);
       });
     }
 
@@ -330,7 +343,7 @@ function HasturFlot(parentElementId, containerId) {
   // timestamp that uses the current system time and the 'timeRange' value
   function replaceStartAndEndTimes(url, range) {
     var now_ts = getEndTime();
-    var start_ts = getStartTime(now_ts);
+    var start_ts = getStartTime(now_ts, range);
     var params = url.split("?")[1].split("&");
     var retval = url.split("?")[0] + "?";
     for(i = 0; i < params.length; i++) {
@@ -343,47 +356,49 @@ function HasturFlot(parentElementId, containerId) {
     return retval;
   }
 
-  function getStartTime(endTime) {
-    return endTime - timeRange;
+  function getStartTime(endTime, range) {
+    return endTime - range;
   }
 
   function getEndTime() {
     return (new Date()).getTime();
   }
 
-  function updateGraphData(fullUpdate) {
+  this.updateGraphData = function(fullUpdate) {
     var now_ts = getEndTime();
-    var start_ts = getStartTime(now_ts);
+    var start_ts = getStartTime(now_ts, this.timeRange);
 
-    clearPlotData();
+    this.clearPlotData();
 
     // Query for two minutes later than now.  Normally
     // there shouldn't be any data, but this (more than)
     // accounts for clock skew, request delay and whatnot.
     now_ts += 2 * 60 * 1000;
-
-    if(graph_url.length == 0) {
+    var url;
+    if(this.graph_url == undefined || this.graph_url.length == 0) {
       url = '/data_proxy/stat/json?start=' + start_ts + '&end=' + now_ts;
-      url += '&uuid=' + uuid;
+      url += '&uuid=' + this.uuid;
     } else {
-      url = replaceStartAndEndTimes(graph_url, timeRange);
+      url = replaceStartAndEndTimes(this.graph_url, this.timeRange);
     }
 
-    drawGraph(url);
+    this.drawGraph(url);
   }
 
-  function drawGraph(url) {
-    graph_url = url;
-    clearPlotData();
+  this.drawGraph = function(url) {
+    this.graph_url = url;
+    console.debug(url + " => " + this.timeRange);
+    this.clearPlotData();
+    var hf = this;
     var q = $.ajax({
       method : 'get',
-      url : graph_url,
+      url : url,
       dataType : 'json',
       success: function(data, status) {
-        mergePlotData(data);
-        drawWithData(flot_data);
-        if(plot) {
-          plot.draw();
+        hf.mergePlotData(data);
+        hf.drawWithData(hf.flot_data);
+        if(hf.plot) {
+          hf.plot.draw();
         }
       },
       error: function (xhr, error, exception) {
@@ -407,25 +422,26 @@ function HasturFlot(parentElementId, containerId) {
   }
 
   // Sets the timeRange value and updates the graph with the current time range data
-  function changeTimeRange(range) {
-    timeRange = range;
-    highlightRange(range);
-    graph_url = replaceStartAndEndTimes(graph_url, timeRange);
-    drawGraph(graph_url);
+  this.changeTimeRange = function (range) {
+    this.timeRange = range;
+    this.highlightRange(range);
+    this.graph_url = replaceStartAndEndTimes(this.graph_url, this.timeRange);
+    this.drawGraph(this.graph_url);
   }
 
   // Colors each of the range spans a certain color
-  function highlightRange(range) {
-    highlightRangeSpan(oneHour, 60*60*1000, range);
-    highlightRangeSpan(threeHour, 3*60*60*1000, range);
-    highlightRangeSpan(sixHour, 6*60*60*1000, range);
-    highlightRangeSpan(twelveHour, 12*60*60*1000, range);
-    highlightRangeSpan(day, 24*60*60*1000, range);
-    highlightRangeSpan(threeDay, 3*24*60*60*1000, range);
+  this.highlightRange = function(range) {
+    highlightRangeSpan(this.oneHour, 60*60*1000, range);
+    highlightRangeSpan(this.threeHour, 3*60*60*1000, range);
+    highlightRangeSpan(this.sixHour, 6*60*60*1000, range);
+    highlightRangeSpan(this.twelveHour, 12*60*60*1000, range);
+    highlightRangeSpan(this.day, 24*60*60*1000, range);
+    highlightRangeSpan(this.threeDay, 3*24*60*60*1000, range);
   }
 
-  // Colors one range span a certain color depending on if the rnage matches the span's value
+  // Colors one range span a certain color depending on if the range matches the span's value
   function highlightRangeSpan(element_id, spanRange, range) {
+    var color;
     if(range == spanRange) {
       color = "darkolivegreen";
     } else {
@@ -433,10 +449,10 @@ function HasturFlot(parentElementId, containerId) {
     }
     getElement(element_id).css("color", color);
   }
-
 }
 
 // Document ready
+var urlParams = {};
 $(function () {
 
   (function () {
@@ -450,10 +466,4 @@ $(function () {
   })();
 
 });
-
-var graphArray = new Array();
-
-function addGraph(parentId) {
-  graphArray[ graphArray.length ] = new HasturFlot(parentId, "graph-" + (graphArray.length+1));
-}
 

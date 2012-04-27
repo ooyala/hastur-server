@@ -33,6 +33,7 @@
         float: left;
         list-style-type: none; 
       }
+
       ul { 
         padding-left:0.25em; 
       }
@@ -47,23 +48,59 @@
         padding-right: 5px;
         padding-left: 5px;
       }
+
+      input.text {
+        margin-bottom:12px;
+        width:95%;
+        padding: 0.4em;
+      }
     </style>
 
     <script>
+      var graphArray = new Array();
+      function addGraph(parentId) {
+        var hf = new HasturFlot(parentId, "graph-"+(new Date()).getTime());
+        hf.init();
+        graphArray[ graphArray.length ] = hf;
+      }
+
       $(function() {
         $( "#graphDiv" ).sortable( {
           placeholder: "ui-state-highlight",
           forcePlaceholderSize: true
         } );
         $( "#graphDiv" ).disableSelection();
+
+        $("#save-form").hide();
+        $("#saveImg").click(function() {
+          $("#save-form").show(1000);
+        });
+        $("#saveButton").click(function() {
+          var dashboard = $("#dashboard").val();
+          var serial = JSON.stringify(graphArray);
+          var arry = JSON.parse(serial);
+          for(e in arry) {
+            var hf = new HasturFlot('graphDiv2', "graph2-"+(new Date()).getTime(), arry[e]);
+            hf.init();
+          }
+        });
       });
     </script>
   </head>
   <body>
-    <span onclick="addGraph( 'graphDiv' )"> + </span>
-    <ul id="graphDiv">
-      
-    </ul>
+    <div id="dashboardControlsDiv">
+      <span onclick="addGraph( 'graphDiv' )"> <b>+</b> </span>
+      <img id="saveImg" name="Save", src="/images/save.jpg" border=0 width=10px height=10px />
+
+      <div id='save-form' title="Save Dashboard">
+        <label for="name">Name</label>
+        <input type="text" id="dashboardName" name="name" maxLength="128" size="64" />
+        <button id="saveButton">Save Dashboard</button>
+      </div>
+    </div>
+
+    <ul id="graphDiv"></ul>
+    <ul id="graphDiv2"></ul>
   <!--
     <div id="flotWidget">
       <span>Hosts</span>
