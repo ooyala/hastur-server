@@ -225,10 +225,13 @@ module Hastur
         elsif message.has_key?("labels")
           lkey = "labels"
         else
-          raise "BUG! Should not have gotten to this point if message has no labels but the filter requires them."
+          # Do we just require that there *be* labels?  That seems unlikely.
+          return false if filter[:labels] == true
+
+          lkey = nil
         end
 
-        labels_matched = apply_one_filter filter[:labels], message[lkey]
+        labels_matched = apply_one_filter filter[:labels], lkey ? message[lkey] : {}
       end
 
       yield message if block_given? && labels_matched
