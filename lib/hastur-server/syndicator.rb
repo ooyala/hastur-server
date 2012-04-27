@@ -218,7 +218,6 @@ module Hastur
       labels_matched = true
 
       # process labels separately, using a recursive call, it should only ever be one level
-      # unhandled (stupid) case: user specifies a >= 1 filter labels all set to false
       if filter[:labels]
         if message.has_key?(:labels)
           lkey = :labels
