@@ -219,7 +219,7 @@ module Hastur
         end
       end
 
-      return unless do_forward
+      return false unless do_forward
 
       # process labels separately, using a recursive call, it should only ever be one level
       # unhandled (stupid) case: user specifies a >= 1 filter labels all set to false
@@ -235,11 +235,15 @@ module Hastur
         apply_one_filter filter[:labels], message[lkey] do |m|
           labels_matched = true
         end
+      else
+        labels_matched = true
       end
 
       if labels_matched
-        yield message
+        yield message if block_given?
       end
+
+      labels_matched
     end
 
     #
