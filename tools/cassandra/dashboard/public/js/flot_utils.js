@@ -87,8 +87,12 @@ function HasturFlot(parentElementId, containerId, opts) {
         hf.ajaxGetInterval = setInterval(function() { hf.updateGraphData(false); }, 10 * 1000)
         hf.updateGraphData(true);
         
-        // TODO(viet): only default ot 1h if the opts was not set
-        hf.changeTimeRange(60*60*1000);
+        // only default to 1h if the opts was not set
+        if(opts) {
+          hf.changeTimeRange(hf.timeRange);
+        } else {
+          hf.changeTimeRange(60*60*1000);
+        }
       },
       error:function(xhr, error, exception) {
         console.debug("AJAX failed on " + url + ": " + exception)
