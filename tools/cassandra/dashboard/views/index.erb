@@ -72,22 +72,47 @@
         $( "#graphDiv" ).disableSelection();
 
         $("#save-form").hide();
+        $("#messageDiv").hide();
         $("#saveImg").click(function() {
           $("#save-form").show(1000);
         });
         $("#saveButton").click(function() {
-          var dashboard = $("#dashboard").val();
-          var serial = JSON.stringify(graphArray);
-          var arry = JSON.parse(serial);
-          for(e in arry) {
-            var hf = new HasturFlot('graphDiv2', "graph2-"+(new Date()).getTime(), arry[e]);
-            hf.init();
-          }
+          var dashboardName = escape($("#dashboardName").val());
+          var serializedData = JSON.stringify(graphArray);
+          var arry = JSON.parse(serializedData);
+          $.ajax({
+            type:"post",
+            url: "/dashboard/"+dashboardName,
+//            dataType: 'json',
+            data: { 'data': arry },
+            success:function(data, status) {
+              // TODO(viet): refresh list of available dashboards
+
+              // fade in successful message
+              fadeMessage($("#dashboardName").val() + " successfully saved", "green");
+            },
+            error: function(xhr, error, exception) {
+              console.debug("AJAX failed on " + url + ":" + exception);
+            }
+          });
+//          for(e in arry) {
+//            var hf = new HasturFlot('graphDiv2', "graph2-"+(new Date()).getTime(), arry[e]);
+//            hf.init();
+//          }  
         });
       });
+
+      function fadeMessage(message, color) {
+        $("#message").text(message);
+        $("#message").css("color", color);
+        $("#messageDiv").show(1000).delay(2000).hide(500);
+      }
     </script>
   </head>
   <body>
+    <div id="messageDiv" style="text-align:center">
+      <span id="message"></span>
+    </div>
     <div id="dashboardControlsDiv">
       <span onclick="addGraph( 'graphDiv' )"> <b>+</b> </span>
       <img id="saveImg" name="Save", src="/images/save.jpg" border=0 width=10px height=10px />

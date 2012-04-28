@@ -6,12 +6,15 @@ module Hastur
   module Flot
     class Dashboard < Sinatra::Base
 
+      DASHBOARD_DATA_LOCATION="#{File.dirname(__FILE__)}/data"
+
       def initialize(retrieval_service_uri)
         @retrieval_uri = retrieval_service_uri
         super
       end
       
       get "/" do
+        STDERR.puts "********************\n#{File.dirname(__FILE__)}"
         res = get("/hostnames").body
         hostnames = MultiJson.load(res)
         hostnames["all"] = "All"
@@ -48,6 +51,32 @@ module Hastur
 
         content_type :json
         ::MultiJson.dump(hash)
+      end
+
+      get "/dashboard/:name" do
+        f = File.new("#{DASHBOARD_DATA_LOCATION}/#{params[:name]}", "r")
+        dashboard_data = ""
+        while(line = f.gets)
+          dashboard_data << line
+        end
+
+        content_type :json
+        dashboard_data
+      end
+
+      post "/dashboard/:name" do
+        raw_data = request.body.read
+        STDERR.puts raw_data
+        begin
+          # save this data
+          File.open("#{DASHBOARD_DATA_LOCATION}/#{params[:name]}", 'w+') do |f|
+            f.write(raw_data)
+          end
+          [200]
+        rescue Exception => e
+          STDERR.puts e.message
+          [500, e.message]
+        end
       end
 
       helpers do
