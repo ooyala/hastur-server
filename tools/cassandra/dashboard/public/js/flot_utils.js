@@ -452,6 +452,20 @@ function HasturFlot(parentElementId, containerId, opts) {
     }
     getElement(element_id).css("color", color);
   }
+
+  this.hideControls = function() {
+    $("#" + this.container + " span.headerSpan").hide();
+    getElement(this.hostnameDdl).hide();
+    getElement(this.statNameDdl).hide();
+    getElement(this.timeContainer).hide();
+  }
+
+  this.showControls = function() {
+    $("#" + this.container + " span.headerSpan").show();
+    getElement(this.hostnameDdl).show();
+    getElement(this.statNameDdl).show();
+    getElement(this.timeContainer).show();
+  }
 }
 
 // Document ready

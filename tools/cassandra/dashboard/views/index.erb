@@ -58,6 +58,8 @@
 
     <script>
       var graphArray = new Array();
+      var hideControls = true;
+
       function addGraph(parentId, graphId, opts) {
         var graphId = graphId ? graphId : "graph-"+(new Date()).getTime();
         var hf = new HasturFlot(parentId, graphId, opts);
@@ -174,6 +176,29 @@
         $("#message").css("color", color);
         $("#messageDiv").show(1000).delay(2000).hide(500);
       }
+
+      function toggleControls() {
+        if(hideControls) {
+          hideAllControls();
+        } else {
+          showAllControls();
+        }
+        hideControls = !hideControls;
+      }
+
+      function showAllControls() {
+        for(var i = 0 ; i < graphArray.length; i++) {
+          graphArray[i].showControls();
+        }
+        $("#controlSpan").text("Hide Controls");
+      }
+
+      function hideAllControls() {
+        for(var i = 0 ; i < graphArray.length; i++) {
+          graphArray[i].hideControls();
+        }
+        $("#controlSpan").text("Show Controls");
+      }
     </script>
   </head>
   <body>
@@ -183,7 +208,7 @@
     <div id="dashboardControlsDiv">
       <span onclick="addGraph( 'graphDiv' )"> <b>+</b> </span>
       <img id="saveImg" name="Save", src="/images/save.jpg" border=0 width=10px height=10px />
-
+      <span id="controlSpan" style="float:right; font-size: 10pt" onclick="toggleControls();">Hide Controls</span>
       <div id='save-form' title="Save Dashboard">
         <label for="name">Name</label>
         <input type="text" id="dashboardName" name="name" maxLength="128" size="64" />
