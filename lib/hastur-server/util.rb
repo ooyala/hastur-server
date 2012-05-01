@@ -201,6 +201,7 @@ module Hastur
         false
       end
     end
+    alias recv_msgs read_msgs
 
     def send_msgs(socket, message)
       rc = socket.sendmsgs message

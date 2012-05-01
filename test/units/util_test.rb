@@ -119,5 +119,25 @@ class UtilTest < Scope::TestCase
       @socket.expects(:sendmsgs).with(@msgs).returns(0)
       assert_equal true, Hastur::Util.send_msgs(@socket, @msgs)
     end
+
+    should "fail correctly when ZMQ read_strings fails" do
+      @socket.expects(:recv_strings).returns(-1)
+      assert_equal false, Hastur::Util.read_strings(@socket)
+    end
+
+    should "fail correctly when ZMQ read_msgs fails" do
+      @socket.expects(:recvmsgs).returns(-1)
+      assert_equal false, Hastur::Util.read_msgs(@socket)
+    end
+
+    should "succeed correctly when ZMQ read_strings succeeds" do
+      @socket.expects(:recv_strings).returns(0)
+      assert_equal [], Hastur::Util.read_strings(@socket)
+    end
+
+    should "succeed correctly when ZMQ read_msgs succeeds" do
+      @socket.expects(:recvmsgs).returns(0)
+      assert_equal [], Hastur::Util.read_msgs(@socket)
+    end
   end
 end
