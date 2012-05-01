@@ -98,7 +98,6 @@ function HasturFlot(parentElementId, containerId, opts) {
         console.debug("AJAX failed on " + url + ": " + exception)
       }
     });
-
   }
 
   this.setupDiv = function () {

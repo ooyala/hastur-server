@@ -58,10 +58,16 @@
 
     <script>
       var graphArray = new Array();
-      function addGraph(parentId) {
-        var hf = new HasturFlot(parentId, "graph-"+(new Date()).getTime());
+      function addGraph(parentId, graphId, opts) {
+        var graphId = graphId ? graphId : "graph-"+(new Date()).getTime();
+        var hf = new HasturFlot(parentId, graphId, opts);
         hf.init();
         graphArray[ graphArray.length ] = hf;
+      }
+
+      function clearGraphs( parentId ) {
+        $("#" + parentId).find("li").remove();
+        graphArray = new Array();
       }
 
       $(function() {
@@ -73,6 +79,8 @@
 
         $("#save-form").hide();
         $("#messageDiv").hide();
+//        $("#availableDashboardDiv").hide();
+
         $("#saveImg").click(function() {
           $("#save-form").show(1000);
         });
@@ -84,7 +92,7 @@
             type:"post",
             url: "/dashboard/"+dashboardName,
 //            dataType: 'json',
-            data: { 'data': arry },
+            data: { 'data': serializedData },
             success:function(data, status) {
               // TODO(viet): refresh list of available dashboards
 
@@ -95,12 +103,72 @@
               console.debug("AJAX failed on " + url + ":" + exception);
             }
           });
-//          for(e in arry) {
-//            var hf = new HasturFlot('graphDiv2', "graph2-"+(new Date()).getTime(), arry[e]);
-//            hf.init();
-//          }  
+        });
+        
+        // retrieve the available dashboards
+        refreshDashboardList();
+        // load the dashboard if possible
+        loadDashboard();
+
+        $("#dashboardList").change(function() {
+          var dashboardName = escape($("#dashboardList").val());
+          window.location.replace("/?dashboardname="+dashboardName);
         });
       });
+
+      function loadDashboard() {
+        var tokens = window.location.href.split("/");
+        tokens = tokens[tokens.length - 1].split("?")
+        var fullParams = tokens[tokens.length - 1].split("&");
+        var dashboardName = false;
+        for(var i = 0 ; i < fullParams.length; i++) {
+          var key = fullParams[i].split("=")[0];
+          if(key == "dashboardname") {
+            dashboardName = fullParams[i].split("=")[1];
+          }
+        }
+        // update the dashboard with the graphs if a saved dashboard is specified in the query string param
+        if(dashboardName) {
+          var url = "/dashboard/" + dashboardName;
+          $.ajax({
+            type: "get",
+            url: url,
+            dataType: "json",
+            success:function(data, status) {
+              var arry = JSON.parse(JSON.parse(data['data']));
+              clearGraphs("graphDiv");
+              for(e in arry) {
+                addGraph("graphDiv", "graph-"+(new Date()).getTime(), arry[e]);
+              }  
+            },
+            error:function(xhr, error, exception) {
+              console.error("AJAX failed on " + url + ":" + exception);
+            }
+          });
+        }
+      }
+
+      function refreshDashboardList() {
+        $.ajax({
+          type:"get",
+          url:"/dashboardnames",
+          dataType: "json",
+          success:function(data, status) {
+            // clear the drop down list
+            $("#dashboardList").find('option').remove();
+            $("#dashboardList").append("<option>----</option>");
+
+            // populate the drop down with the dashboard names
+            var dashboardNames = data["dashboardNames"]
+            for(var i = 0 ; i < dashboardNames.length; i++) {
+              $("#dashboardList").append("<option value=\"" + dashboardNames[i] + "\">" + dashboardNames[i] + "</option>");
+            }
+          },
+          error:function(xhr, error, exception) {
+            console.debug("AJAX failed on " + url + ":" + exception);
+          }
+        });
+      }
 
       function fadeMessage(message, color) {
         $("#message").text(message);
@@ -121,6 +189,11 @@
         <label for="name">Name</label>
         <input type="text" id="dashboardName" name="name" maxLength="128" size="64" />
         <button id="saveButton">Save Dashboard</button>
+      </div>
+
+      <div id="availableDashboardDiv">
+        <select id="dashboardList">
+        </select>
       </div>
     </div>
 

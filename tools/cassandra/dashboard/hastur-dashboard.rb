@@ -1,5 +1,6 @@
 require "sinatra/base"
 
+require "cgi"
 require "httparty"
 
 module Hastur
@@ -14,7 +15,6 @@ module Hastur
       end
       
       get "/" do
-        STDERR.puts "********************\n#{File.dirname(__FILE__)}"
         res = get("/hostnames").body
         hostnames = MultiJson.load(res)
         hostnames["all"] = "All"
@@ -61,11 +61,21 @@ module Hastur
         end
 
         content_type :json
-        dashboard_data
+        ::MultiJson.dump({ :data => dashboard_data })
+      end
+
+      get "/dashboardnames" do
+        entries = Dir.entries(DASHBOARD_DATA_LOCATION)
+        entries.shift   # remove '.'
+        entries.shift   # remove '..'
+        entries.shift   # remove '.gitkeep'
+        content_type :json
+        ::MultiJson.dump({ :dashboardNames => entries })
       end
 
       post "/dashboard/:name" do
-        raw_data = request.body.read
+        body = ::CGI.unescape(params[:data])
+        raw_data = MultiJson.dump(body)
         STDERR.puts raw_data
         begin
           # save this data
