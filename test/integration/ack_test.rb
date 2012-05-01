@@ -52,6 +52,7 @@ class AckTest < Test::Unit::TestCase
     end
 
     @topology.start_all
+    sleep 0.5
 
     @topology[:mock_agent].heartbeat
     @topology[:heartbeat].require_read_count 1
@@ -67,10 +68,10 @@ class AckTest < Test::Unit::TestCase
     EVENT_REPLAYS.times do
       rc = event.send @topology[:mock_agent].socket
       assert ZMQ::Util.resultcode_ok? rc
-      sleep 0.1
+      sleep 0.2
     end
 
-    @topology[:mock_agent].require_read_count EVENT_REPLAYS, 10
+    @topology[:mock_agent].require_read_count EVENT_REPLAYS, 30
 
     assert_equal EVENT_REPLAYS, @topology[:mock_agent].output.count, "should have gotten #{EVENT_REPLAYS} messages"
   end

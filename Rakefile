@@ -46,7 +46,7 @@ namespace "test" do
 
   shameful_integration_tests = integration_tests
 
-  LIST_OF_SHAME = [ 'rpc', 'bring_router_down', 'bring_down', 'bring_sink_down', 'bring_up', 'query_server', 'plugin_registration', 'registration_rollup', 'core_router', 'mini_heartbeat', 'heartbeat', 'ack', 'registration', 'event', 'plugin', 'static_route' ]
+  LIST_OF_SHAME = [ 'rpc', 'bring_router_down', 'bring_down', 'bring_sink_down', 'bring_up', 'query_server', 'plugin_registration', 'registration_rollup', 'core_router', 'mini_heartbeat', 'heartbeat', 'registration', 'event', 'plugin', 'static_route' ]
 
   unless LIST_OF_SHAME.nil? || LIST_OF_SHAME.empty?
     puts "****************************************************"
@@ -57,6 +57,7 @@ namespace "test" do
   end
 
   task :integrations => integration_tests.map { |t| "test:integration:#{t}" }
+  desc "Tests including the LIST_OF_SHAME"
   task :shameful => shameful_integration_tests.map { |t| "test:integration:#{t}" }
 end
 

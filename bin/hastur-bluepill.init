@@ -9,8 +9,8 @@
 #
 ### BEGIN INIT INFO
 # Provides:          hastur-service
-# Required-Start:    $network
-# Required-Stop:     $network
+# Required-Start:    $local_fs $network $syslog
+# Required-Stop:     $local_fs $network $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      1 0 6
 # Short-Description: Start Hastur Bluepill Application
@@ -48,22 +48,25 @@ esac
 case "$1" in
   start)
     $BLUEPILL load $PILL
-    $BLUEPILL start $PILL_APP
+    $BLUEPILL $PILL_APP start
     ;;
   stop)
-    $BLUEPILL stop $PILL_APP
+    $BLUEPILL $PILL_APP stop
+    ;;
+  quit)
+    $BLUEPILL $PILL_APP stop
     $BLUEPILL quit
     ;;
   restart)
     $BLUEPILL load $PILL
-    $BLUEPILL stop $PILL_APP
-    $BLUEPILL start $PILL_APP
+    $BLUEPILL $PILL_APP stop
+    $BLUEPILL $PILL_APP start
     ;;
   status)
-    $BLUEPILL status $PILL_APP
+    $BLUEPILL $PILL_APP status
     ;;
   *)
-    echo "Usage: $0 start|stop|restart|status"
+    echo "Usage: $0 start|stop|restart|status|quit"
     ;;
 esac
 

@@ -27,7 +27,7 @@ if File.exists?("/cgroup/hastur-core/tasks")
   end
 end
 
-Bluepill.application("hastur_core", :log_file => "/var/log/bluepill.log") do |app|
+Bluepill.application("hastur_core") do |app|
   app.process("hastur_core") do |process|
     process.environment = {
       "PATH" => "#{HASTUR_ROOT}/bin:/opt/local/bin:/usr/local/bin:/usr/local/sbin:/bin:/usr/bin:/sbin:/usr/sbin",

@@ -153,8 +153,6 @@ module Hastur
           _fail "error reading from UDP socket", e
         end
 
-        @logger.debug "Received UDP message: #{data.inspect}"
-
         begin
           raw_to_hastur_message(data)
         rescue
