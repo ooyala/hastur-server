@@ -2,6 +2,7 @@
 # This must be first, before anything else
 require_relative "../hastur_simplecov"
 
+require "minitest/unit"
 require "multi_json"
 require "hastur-server/libc_ffi"
 require 'hastur-server/sink/cassandra_schema'
@@ -20,7 +21,6 @@ HASTUR_CORE_BIN="#{HASTUR_ROOT}/bin/hastur-core.rb"
 HASTUR_ROUTER_BIN="#{HASTUR_ROOT}/bin/hastur-router.rb"
 HASTUR_AGENT_BIN="#{HASTUR_ROOT}/bin/hastur-agent.rb"
 HASTUR_MSGTOOL_BIN="#{HASTUR_ROOT}/tools/msgtool.rb"
-HASTUR_QUERY_SERVER_BIN="#{HASTUR_ROOT}/bin/hastur-query-server.rb"
 HASTUR_CASS_SINK_BIN="#{HASTUR_ROOT}/bin/cass-sink.rb"
 HASTUR_SCHEDULER="#{HASTUR_ROOT}/bin/run-scheduler.rb"
 HASTUR_REGISTRATION_ROLLUP_BIN="#{HASTUR_ROOT}/bin/registration-rollups.rb"
@@ -92,7 +92,7 @@ def create_all_column_families(cassandra)
   sleep 60 if ENV["IS_JENKINS"]
 end
 
-def wait_for_cassandra_rows(client, cf, count, max_iterations=30)
+def wait_for_cassandra_rows(client, cf, count, max_iterations=30, flunk_on_timeout=false)
   max_iterations.times do
     sleep 1
     client.each_key(cf) do |key|
@@ -100,5 +100,23 @@ def wait_for_cassandra_rows(client, cf, count, max_iterations=30)
     end
   end
   yield if block_given?
+  if flunk_on_timeout
+    flunk "timeout waiting for #{count} rows in cassandra column family '#{cf}'"
+  end
   false
+end
+
+# counts total entries in all cols in a CF across all rows, returns the count
+def cassandra_cf_value_count(client, cf)
+  count = 0
+  client.each_key(cf) do |key|
+    count += client.count_columns(cf, key)
+    STDERR.puts "#{count} += client.count_columns(#{cf}, #{key})"
+  end
+  count
+end
+
+def hastur_proxy(port=HASTUR_UDP_PORT, method, message)
+  Hastur.udp_port = port
+  Hastur.send method, message
 end
