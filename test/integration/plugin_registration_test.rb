@@ -100,7 +100,7 @@ class FullPluginTest < Test::Unit::TestCase
     @topology[:heartbeat].require_read_count 1, 1
 
     # make sure the cassandra schema is at least loaded
-    hash = client.get(:RegAgentArchive, "kye")
+    hash = client.get(:RegAgentArchive, "key")
     assert_not_nil hash
     assert_equal "Hastur", @topology[:cassandra].keyspace
 
