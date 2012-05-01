@@ -5,7 +5,7 @@ HASTUR_ROOT="/opt/hastur"
 PIDFILE = "/run/hastur/hastur-core.pid"
 
 cassandra_servers = []
-File.readlines("#{HASTUR_ROOT}/conf/cassandra-servers.txt") do |line|
+File.foreach("#{HASTUR_ROOT}/conf/cassandra-servers.txt") do |line|
   line.chomp!
   line.gsub /\s+#.*$/, ''
   cassandra_servers << line unless line.empty?
