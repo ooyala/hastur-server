@@ -91,11 +91,10 @@
           $.ajax({
             type:"post",
             url: "/dashboard/"+dashboardName,
-//            dataType: 'json',
             data: { 'data': serializedData },
             success:function(data, status) {
-              // TODO(viet): refresh list of available dashboards
-
+              // refresh list of available dashboards
+              refreshDashboardList();
               // fade in successful message
               fadeMessage($("#dashboardName").val() + " successfully saved", "green");
             },
