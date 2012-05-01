@@ -57,6 +57,7 @@ namespace "test" do
   end
 
   task :integrations => integration_tests.map { |t| "test:integration:#{t}" }
+  desc "Tests including the LIST_OF_SHAME"
   task :shameful => shameful_integration_tests.map { |t| "test:integration:#{t}" }
 end
 
