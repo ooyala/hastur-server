@@ -9,8 +9,8 @@
 #
 ### BEGIN INIT INFO
 # Provides:          hastur-service
-# Required-Start:    $network
-# Required-Stop:     $network
+# Required-Start:    $local_fs $network $syslog
+# Required-Stop:     $local_fs $network $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      1 0 6
 # Short-Description: Start Hastur Bluepill Application
