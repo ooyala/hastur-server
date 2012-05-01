@@ -22,7 +22,7 @@ class CoreRouterTest < Test::Unit::TestCase
       :firehose      => Nodule::ZeroMQ.new(:connect => ZMQ::SUB, :uri => :gen, :reader => :capture),
       :return        => Nodule::ZeroMQ.new(:uri => :gen),
       :cassandra     => Nodule::Cassandra.new(:keyspace => "Hastur"),
-      :routersvc     => Nodule::Process.new(
+      :coresvc       => Nodule::Process.new(
         HASTUR_CORE_BIN,
         '--uuid',          R1UUID,
         '--router',        :mock_agent,
@@ -43,7 +43,9 @@ class CoreRouterTest < Test::Unit::TestCase
     @topology[:firehose].subscribe ""
 
     @topology[:mock_agent].heartbeat
-    @topology[:firehose].require_read_count 1, 10
+
+    sleep 1
+    @topology[:firehose].require_read_count 1, 30
   end
 
   def teardown
@@ -52,7 +54,7 @@ class CoreRouterTest < Test::Unit::TestCase
 
   def test_core_router_ack
     @topology[:mock_agent].heartbeat
-    @topology[:firehose].require_read_count 2, 10
+    @topology[:firehose].require_read_count 2, 30
 
     # why does this take so long, even on my fast box?
     # TODO: figure out why this is timing out even on nice machines (al, 2012-04-12)
@@ -64,6 +66,8 @@ class CoreRouterTest < Test::Unit::TestCase
     event = Hastur::Message::Event.new(:payload => EVENT_JSON, :from => A1UUID)
     rc = event.send @topology[:mock_agent].socket
     assert ZMQ::Util.resultcode_ok?(rc)
+
+    sleep 1
 
     @topology[:mock_agent].require_read_count 1
 
