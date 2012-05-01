@@ -65,3 +65,8 @@ end
 task :test => ["test:units", "test:integrations"] do
   puts "All tests completed..."
 end
+
+task :evil_deploy => ["build"] do
+  system "cl-sendfile.pl --list hastur -l pkg/hastur-server-#{Hastur::VERSION}.gem -r #{ENV['HOME']}"
+  system "cl-run.pl --list hastur -c 'sudo /opt/hastur/bin/gem install --local --no-ri --no-rdoc ~/hastur-server-#{Hastur::VERSION}.gem'"
+end
