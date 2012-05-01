@@ -2,6 +2,7 @@ require "hastur-server/util"
 require "hastur-server/message"
 require "hastur-server/sink/cassandra_schema"
 require "cassandra"
+require "cassandra/1.0"
 
 module Hastur
   module Service
@@ -41,6 +42,10 @@ module Hastur
 
         @client = ::Cassandra.new(opts[:keyspace], opts[:cassandra].flatten)
 
+        # TEMPORARY 2012-05-01 node discovery seems to be broken on our cluster
+        # We provide the correct list anyways, so it's fine for a short time.
+        @client.disable_node_auto_discovery!
+
         @data_socket = Hastur::Util.connect_socket @ctx, @socktype, @data_uri, sopt
         @ack_socket  = Hastur::Util.connect_socket @ctx, ZMQ::PUSH, @ack_uri,  sopt
 
@@ -66,13 +71,12 @@ module Hastur
             message = Hastur::Message.recv(@data_socket)
             envelope = message.envelope
             uuid = message.envelope.from
-            STDERR.puts "[#{envelope.type_symbol.to_s}] #{message.payload}"
             Hastur::Cassandra.insert(@client, message.payload, envelope.type_symbol.to_s, :uuid => uuid)
             envelope.to_ack.send(@ack_socket) if envelope.ack?
           rescue Hastur::ZMQError => e
             @logger.error "Error reading from ZeroMQ socket.", { :exception => e }
           rescue Exception => e
-            @logger.error e.message, { :exception => e }
+            @logger.error e.to_s, { :exception => e }
           end
         end
       end

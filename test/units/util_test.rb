@@ -91,4 +91,53 @@ class UtilTest < Scope::TestCase
       connect_socket(ctx, :pull, [ url1, url2, url3 ])
     end
   end
+
+  context "send and receive" do
+    setup do
+      @socket = mock "socket"
+      @strings = [ "a", "b", "c" ]
+      @msgs = [ Object.new, Object.new, Object.new ]  # Random objs for testing
+      Hastur::Util.hastur_logger.stubs(:error)
+    end
+
+    should "fail correctly when ZMQ send_strings fails" do
+      @socket.expects(:send_strings).with(@strings).returns(-1)
+      assert_equal false, Hastur::Util.send_strings(@socket, @strings)
+    end
+
+    should "fail correctly when ZMQ send_msgs fails" do
+      @socket.expects(:sendmsgs).with(@msgs).returns(-1)
+      assert_equal false, Hastur::Util.send_msgs(@socket, @msgs)
+    end
+
+    should "succeed correctly when ZMQ send_strings succeeds" do
+      @socket.expects(:send_strings).with(@strings).returns(0)
+      assert_equal true, Hastur::Util.send_strings(@socket, @strings)
+    end
+
+    should "succeed correctly when ZMQ send_msgs succeeds" do
+      @socket.expects(:sendmsgs).with(@msgs).returns(0)
+      assert_equal true, Hastur::Util.send_msgs(@socket, @msgs)
+    end
+
+    should "fail correctly when ZMQ read_strings fails" do
+      @socket.expects(:recv_strings).returns(-1)
+      assert_equal false, Hastur::Util.read_strings(@socket)
+    end
+
+    should "fail correctly when ZMQ read_msgs fails" do
+      @socket.expects(:recvmsgs).returns(-1)
+      assert_equal false, Hastur::Util.read_msgs(@socket)
+    end
+
+    should "succeed correctly when ZMQ read_strings succeeds" do
+      @socket.expects(:recv_strings).returns(0)
+      assert_equal [], Hastur::Util.read_strings(@socket)
+    end
+
+    should "succeed correctly when ZMQ read_msgs succeeds" do
+      @socket.expects(:recvmsgs).returns(0)
+      assert_equal [], Hastur::Util.read_msgs(@socket)
+    end
+  end
 end
