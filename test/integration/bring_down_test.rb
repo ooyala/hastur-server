@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'multi_json'
-require "test/unit"
+require 'minitest/autorun'
 
 require_relative "./integration_test_helper"
 
@@ -16,10 +16,20 @@ require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'nodule/util'
 
-class BringDownTest < Test::Unit::TestCase
+class BringDownTest < MiniTest::Unit::TestCase
+private
+  def hb_in_cassandra?(uuid, key)
+    hb = Hastur::Cassandra.get @cass, uuid, "hb_process", @start_ts, @end_ts
+    refute_nil hb
+    assert hb.has_key?(key)
+  end
+
+  def send_heartbeats
+    hastur_proxy @agent_udp_port1, :heartbeat, @heartbeat_agent1
+    hastur_proxy @agent_udp_port2, :heartbeat, @heartbeat_agent2
+  end
 
 public
-
   def setup
     set_test_alarm(100) # helper
 
@@ -27,39 +37,25 @@ public
     @agent_udp_port2 = Nodule::Util.random_udp_port
     @heartbeat_agent1 = "heartbeat-agent1"
     @heartbeat_agent2 = "heartbeat-agent2"
-
-    sinatra_ready = false
-    sinatra_ready_proc = proc do |line|
-      sinatra_ready = true if line =~ /== Sinatra.* has taken the stage/
-    end
-
-    @sinatra_port = Nodule::Util.random_tcp_port
+    @start_ts         = Hastur::Util.timestamp
+    @end_ts           = @start_ts + 150_000_000
+    @cf               = "HBProcessArchive"
 
     @topology = Nodule::Topology.new(
       :greenio       => Nodule::Console.new(:fg => :green),
       :redio         => Nodule::Console.new(:fg => :red),
       :cyanio        => Nodule::Console.new(:fg => :cyan),
       :router        => Nodule::ZeroMQ.new(:uri => :gen),
-      :registration  => Nodule::ZeroMQ.new(:uri => :gen),
-      :heartbeat     => Nodule::ZeroMQ.new(:uri => :gen),
-      :event         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :stat          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
-      :direct        => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen, :reader => :drain),
-      :cassandra     => Nodule::Cassandra.new( :keyspace => "Hastur", :verbose => :greenio ),
-      :routersvc     => Nodule::Process.new(
-        HASTUR_ROUTER_BIN,
+      :firehose      => Nodule::ZeroMQ.new(:uri => :gen),
+      :return        => Nodule::ZeroMQ.new(:uri => :gen, :connect => ZMQ::PUSH),
+      :cassandra     => Nodule::Cassandra.new(:keyspace => "Hastur", :verbose => :greenio),
+      :coresvc       => Nodule::Process.new(
+        HASTUR_CORE_BIN,
         '--uuid',          R1UUID,
         '--router',        :router,
-        '--event',         :event,
-        '--heartbeat',     :heartbeat,
-        '--registration',  :registration,
-        '--stat',          :stat,
-        '--log',           :log,
-        '--error',         :error,
-        '--direct',        :direct,
-        '--hwm',           100,
+        '--firehose',      :firehose,
+        '--return',        :return,
+        '--cassandra',     :cassandra,
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
       :agent1svc    => Nodule::Process.new(
@@ -69,6 +65,7 @@ public
         '--ack-timeout',  1,
         '--heartbeat',    300,
         '--port',         @agent_udp_port1,
+        '--no-agent-stats',
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
       :agent2svc    => Nodule::Process.new(
@@ -78,19 +75,8 @@ public
         '--ack-timeout',  1,
         '--heartbeat',    300,
         '--port',         @agent_udp_port2,
+        '--no-agent-stats',
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
-      ),
-      :regsvc       => Nodule::Process.new(
-        HASTUR_CASS_SINK_BIN,
-        '--sinks',       :heartbeat, :registration,
-        '--cassandra',   :cassandra,
-        '--acks-to',     :direct,
-        '--hwm',         100,
-        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
-      ),
-      :query_server => Nodule::Process.new(HASTUR_QUERY_SERVER_BIN,
-        '--cassandra', :cassandra, '--port', @sinatra_port.to_s,
-        :stdout => :greenio, :stderr => [sinatra_ready_proc, :greenio], :verbose => :cyanio
       ),
     )
     # start cassandra
@@ -99,12 +85,8 @@ public
     # start everything else but the scheduler
     @topology.start_all
     # wait for the row to show up in Cassandra
-    client = @topology[:cassandra].client
-    wait_for_cassandra_rows(client, "RegAgentArchive", 1, 30) do
-      flunk "Gave up waiting for registrations in cassandra."
-    end
-
-    sleep 0.01 until sinatra_ready
+    @cass = @topology[:cassandra].client
+    wait_for_cassandra_rows @cass, "RegAgentArchive", 1, 30, true
   end
 
   def teardown
@@ -113,29 +95,34 @@ public
 
   def test_bring_down
     # send heartbeat to both agents
-    send_2_heartbeat(@agent_udp_port1, @agent_udp_port2, @heartbeat_agent1, @heartbeat_agent2)
+    send_heartbeats
 
-    # ensure that both heartbeats were received
-    ensure_heartbeats(true, @heartbeat_agent1, @heartbeat_agent2, 1, 1, @sinatra_port)
-    
+    # wait for the row to show up in Cassandra
+    wait_for_cassandra_rows(@cass, @cf, 2, 30) do
+      flunk "Gave up waiting for heartbeats in cassandra."
+    end
+
+    hb_in_cassandra? A1UUID, @heartbeat_agent1
+    hb_in_cassandra? A2UUID, @heartbeat_agent2
+
     # shut an agent down
     @topology.stop :agent2svc
     sleep 5
-    
-    # resend heartbeats to both agents
-    send_2_heartbeat(@agent_udp_port1, @agent_udp_port2, @heartbeat_agent1, @heartbeat_agent2)
 
-    # ensure that only one heartbeat was received
-    ensure_heartbeats(true, @heartbeat_agent1, @heartbeat_agent2, 2, 1, @sinatra_port)
+    send_heartbeats
 
-    # start an agent
+    wait_for_cassandra_rows @cass, @cf, 3, 30, true
+
+    assert_equal 3, cassandra_cf_value_count(@cass, @cf)
+
     @topology.start :agent2svc
-    ENV["IS_JENKINS"].nil? ? (sleep 1) : (sleep 10)
+
+    wait_for_cassandra_rows @cass, @cf, 7, 30, true
 
     # resend heartbeats to both agents
-    send_2_heartbeat(@agent_udp_port1, @agent_udp_port2, @heartbeat_agent1, @heartbeat_agent2)
+    send_heartbeats
 
     # ensure that both heartbeats were received
-    ensure_heartbeats(true, @heartbeat_agent1, @heartbeat_agent2, 3, 2, @sinatra_port)
+    wait_for_cassandra_rows @cass, @cf, 6, 30, true
   end
 end
