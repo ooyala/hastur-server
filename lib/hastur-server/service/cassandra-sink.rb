@@ -42,10 +42,6 @@ module Hastur
 
         @client = ::Cassandra.new(opts[:keyspace], opts[:cassandra].flatten)
 
-        # TEMPORARY 2012-05-01 node discovery seems to be broken on our cluster
-        # We provide the correct list anyways, so it's fine for a short time.
-        @client.disable_node_auto_discovery!
-
         @data_socket = Hastur::Util.connect_socket @ctx, @socktype, @data_uri, sopt
         @ack_socket  = Hastur::Util.connect_socket @ctx, ZMQ::PUSH, @ack_uri,  sopt
 
