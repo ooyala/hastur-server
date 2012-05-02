@@ -65,7 +65,7 @@ module Hastur
 
         @acks              = {}
         @plugins           = {}
-        @logger            = Termite::Logger.new
+        @logger            = opts[:logger] || Termite::Logger.new
         @ctx               = ZMQ::Context.new
         @poller            = ZMQ::Poller.new
         @ack_interval      = opts[:ack_interval]

@@ -44,6 +44,8 @@ end
 
 opts[:routers] = opts[:router]
 opts[:port] = opts[:port].to_i
+opts[:logger] = Termite::Logger.new
+opts[:logger].level = :info # TODO: make this configurable (al, 2012-05-02)
 
 agent = Hastur::Service::Agent.new(opts)
 
