@@ -93,7 +93,7 @@ module Hastur
       end
 
       if opts[:attn] or opts[:subject]
-        if opts[:type] and opts[:type] != Hastur::Message::Event.type_id
+        if filter[:type] and filter[:type] != Hastur::Message::Event.type_id
           raise ArgumentError.new ":attn only works for events"
         end
         filter[:type] = Hastur::Message::Event.type_id
