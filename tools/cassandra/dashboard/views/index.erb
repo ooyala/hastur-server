@@ -81,7 +81,6 @@
 
         $("#save-form").hide();
         $("#messageDiv").hide();
-//        $("#availableDashboardDiv").hide();
 
         $("#saveImg").click(function() {
           $("#save-form").show(1000);
@@ -207,17 +206,19 @@
     </div>
     <div id="dashboardControlsDiv">
       <span onclick="addGraph( 'graphDiv' )"> <b>+</b> </span>
-      <img id="saveImg" name="Save", src="/images/save.jpg" border=0 width=10px height=10px />
-      <span id="controlSpan" style="float:right; font-size: 10pt" onclick="toggleControls();">Hide Controls</span>
+      <img id="saveImg" alt="Save" src="/images/save.jpg" border=0 width=10px height=10px />
+
+      <div id="availableDashboardDiv" style="float:right">
+        <select id="dashboardList">
+        </select>
+      </div>
+
+      <span id="controlSpan" style="float:right; font-size: 10pt; padding-right: 10px" onclick="toggleControls();">Hide Controls</span>
+
       <div id='save-form' title="Save Dashboard">
         <label for="name">Name</label>
         <input type="text" id="dashboardName" name="name" maxLength="128" size="64" />
         <button id="saveButton">Save Dashboard</button>
-      </div>
-
-      <div id="availableDashboardDiv">
-        <select id="dashboardList">
-        </select>
       </div>
     </div>
 
