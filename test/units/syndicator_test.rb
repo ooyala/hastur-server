@@ -14,9 +14,17 @@ class SyndicatorTest < Scope::TestCase
     should "allow the empty message" do
       assert_equal true, @syndicator.apply_one_filter(@filter, {})
     end
+
+    should "allow a non-empty message" do
+      assert_equal true, @syndicator.apply_one_filter(@filter, { "a" => "b", :labels => { "c" => "d" } })
+    end
+
+    should "allow a non-empty message with symbol keys" do
+      assert_equal true, @syndicator.apply_one_filter(@filter, { :a => "b", :labels => { :c => "d" } })
+    end
   end
 
-  context "checking non-labels" do
+  context "checking non-labels by value" do
     setup do
       @filter = { :a => "b" }
     end
@@ -107,6 +115,39 @@ class SyndicatorTest < Scope::TestCase
       assert_equal true, @syndicator.apply_one_filter(@filter, {}),
         "{ :a => false } must not match the empty hash"
     end
+  end
+
+  context "checking that attn entries exist" do
+    setup do
+      @filter = { :attn => [ "item1" ] }
+    end
+
+    should "not match a message with empty attn" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, { "a" => "b", "attn" => [] }),
+        "{ :attn => [ \"item1\" ] } must not match a message with empty attn"
+    end
+
+    should "not match a message with no attn" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, { "a" => "b" }),
+        "{ :attn => [ \"item1\" ] } must not match a message with no attn"
+    end
+
+    should "match a message with identical attn" do
+      assert_equal true, @syndicator.apply_one_filter(@filter, { "attn" => [ "item1" ] }),
+        "{ :attn => [ \"item1\" ] } must match a message with the same attn"
+    end
+
+    should "not match a message with different attn" do
+      assert_equal false, @syndicator.apply_one_filter(@filter, { "attn" => [ "item2" ] }),
+        "{ :attn => [ \"item1\" ] } must not match a message with only item2 in attn"
+    end
+
+    should "match a message with more in attn" do
+      assert_equal true, @syndicator.apply_one_filter(@filter, { "attn" => [ "item1", "item2" ] }),
+        "{ :attn => [ \"item1\" ] } must match a message with more in attn"
+    end
+
+
   end
 
   context "checking that a label is present" do

@@ -180,7 +180,7 @@ module Hastur
     #
     def apply_one_filter(filter, message)
       filter.each do |key, value|
-        next if key == :labels  # Labels are a separate pass
+        next if [:labels, :attn].include?(key) # Special cases
 
         mkey = nil
 
@@ -215,7 +215,20 @@ module Hastur
         end
       end
 
-      labels_matched = true
+      # process attn separately, make sure specified values are included
+      if filter[:attn]
+        if message.has_key?(:attn)
+          lkey = :attn
+        elsif message.has_key?("attn")
+          lkey = "attn"
+        else
+          return false if filter[:attn] == true
+
+          lkey = nil
+        end
+
+        return false unless (lkey ? message[lkey] : []) & filter[:attn] == filter[:attn]
+      end
 
       # process labels separately, using a recursive call, it should only ever be one level
       if filter[:labels]
@@ -230,12 +243,12 @@ module Hastur
           lkey = nil
         end
 
-        labels_matched = apply_one_filter filter[:labels], lkey ? message[lkey] : {}
+        return false unless apply_one_filter filter[:labels], lkey ? message[lkey] : {}
       end
 
-      yield message if block_given? && labels_matched
+      yield message if block_given?
 
-      labels_matched
+      true
     end
 
     #
