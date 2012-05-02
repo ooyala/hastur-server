@@ -112,18 +112,27 @@ module Hastur
         message = read_from @router_socket
 
         if message
-          # cache the ZMQ envelope to route messages back to agents
-          envelope = Hastur::Envelope.parse message[-2].copy_out_string
-          if envelope.type_id == @noop_type_id
-            @agents[envelope.from] = message[0].copy_out_string
-          else
-            # forward the message, sans the ZMQ envelope
-            message.shift
-            send_to @firehose_socket, message
+          begin
+            # cache the ZMQ envelope to route messages back to agents
+            content = message[-2].copy_out_string
+            envelope = Hastur::Envelope.parse content
+            if envelope.type_id == @noop_type_id
+              @agents[envelope.from] = message[0].copy_out_string
+            else
+              # forward the message, sans the ZMQ envelope
+              message.shift
+              send_to @firehose_socket, message
+            end
+          rescue Exception => e
+            @logger.warn "Exception while forwarding message: #{e.inspect}"
+            @logger.warn "Envelope: #{envelope.to_hash}" if envelope
+            @logger.warn "Envelope Raw: #{content.inspect}" if content
+            payload = message[-1].copy_out_string rescue "<error>"
+            @logger.warn "Payload: #{payload}"
+          ensure
+            # close all of the zmq messages or we might leak C memory
+            message.each do |m| m.close end
           end
-
-          # close all of the zmq messages or we might leak C memory
-          message.each do |m| m.close end
         end
       end
 

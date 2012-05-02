@@ -357,7 +357,7 @@ module Hastur
           poll_ack_timeouts
           poll_plugin_pids
           poll_udp
-          poll_zmq
+          poll_zmq rescue nil # Temp: 2012-05-02, should properly detect & log bad messages
           send_agent_stats unless @no_agent_stats
 
           sleep 0.1 # prevent tight loops from using too much CPU
