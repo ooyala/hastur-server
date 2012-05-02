@@ -114,7 +114,11 @@ function HasturFlot(parentElementId, containerId, opts) {
     this.threeDay = "threeDay-" + t;
     this.timeContainer = "timeContainer-" + t;
     this.titleId = "title-" + t;
-    this.title = "Untitled";
+    if(opts) {
+      this.title = opts["title"];
+    } else {
+      this.title = "Untitled";
+    }
     this.container = containerId;
     // parent adds container
     getElement(parentElementId).append("<li><div id='"+ containerId +"'></div></li>");
@@ -126,7 +130,7 @@ function HasturFlot(parentElementId, containerId, opts) {
     getElement(this.container).append("<select id='"+ this.statNameDdl +"'></select>");
     getElement(this.container).append("<div id='" + this.timeContainer + "'></div>");
 
-    getElement(this.container).append("<div style='text-align:center'><span id='" + this.titleId + "' style='font-size: 14pt;'>" + this.title + "</span></div>");
+    getElement(this.container).append("<div style='text-align:center'><input id='" + this.titleId + "' style='font-size: 14pt; border:0pt; text-align: center' value='" + this.title + "'></input></div>");
 
     // timeContainer adds time range options
     getElement(this.timeContainer).append("<span class='headerSpan'>Zoom</span>");
@@ -165,6 +169,11 @@ function HasturFlot(parentElementId, containerId, opts) {
     });
 
     getElement(this.titleId).dblclick(function() {
+      this.removeAttribute('readonly');
+    });
+    getElement(this.titleId).blur(function() {
+      this.setAttribute('readonly');
+      hf.title = this.value;
     });
 
     // Add the interaction for the drop downs
