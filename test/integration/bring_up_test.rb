@@ -3,6 +3,7 @@
 require_relative "./integration_test_helper"
 require "test/unit"
 require 'nodule'
+require 'nodule/alarm'
 require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'nodule/cassandra'

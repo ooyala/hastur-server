@@ -8,6 +8,7 @@ require_relative "./integration_test_helper"
 require 'hastur/api'
 require 'hastur-server/message'
 
+require 'nodule/alarm'
 require 'nodule/cassandra'
 require 'nodule/console'
 require 'nodule/process'

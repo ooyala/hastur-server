@@ -9,6 +9,7 @@ require 'hastur/api'
 require 'hastur-server/message'
 require 'hastur-server/util'
 
+require 'nodule/alarm'
 require 'nodule/cassandra'
 require 'nodule/console'
 require 'nodule/process'
