@@ -5,7 +5,7 @@ require 'multi_json'
 
 require_relative "./integration_test_helper"
 
-require 'hastur'
+require 'hastur/api'
 require 'hastur-server/message'
 require 'hastur-server/util'
 

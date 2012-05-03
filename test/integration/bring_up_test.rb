@@ -6,7 +6,7 @@ require 'nodule'
 require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'nodule/cassandra'
-require 'hastur'
+require 'hastur/api'
 require 'open-uri'
 
 class BringUpTest < Test::Unit::TestCase

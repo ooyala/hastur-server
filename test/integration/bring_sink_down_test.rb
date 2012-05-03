@@ -5,7 +5,7 @@ require "test/unit"
 
 require_relative "./integration_test_helper"
 
-require 'hastur'
+require 'hastur/api'
 require 'hastur-server/message'
 
 require 'nodule/cassandra'
