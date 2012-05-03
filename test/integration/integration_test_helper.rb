@@ -13,7 +13,7 @@ $LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..", "..", "lib")
 
 require "nodule"
 require "nodule/util"
-require "hastur"
+require "hastur/api"
 
 HASTUR_ROOT = File.join(File.dirname(__FILE__), "..", "..")
 
@@ -111,7 +111,6 @@ def cassandra_cf_value_count(client, cf)
   count = 0
   client.each_key(cf) do |key|
     count += client.count_columns(cf, key)
-    STDERR.puts "#{count} += client.count_columns(#{cf}, #{key})"
   end
   count
 end
