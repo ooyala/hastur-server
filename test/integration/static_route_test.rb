@@ -11,7 +11,7 @@ require 'hastur-server/message'
 class StaticRouteTest < Test::Unit::TestCase
   def setup
     @topology = Nodule::Topology.new(
-      :alarm         => Nodule::Alarm.new(:timeout => 30),
+      :alarm            => Nodule::Alarm.new(:timeout => 30),
       :greenio          => Nodule::Console.new(:fg => :green),
       :redio            => Nodule::Console.new(:fg => :red),
       :cyanio           => Nodule::Console.new(:fg => :cyan),
