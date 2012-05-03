@@ -5,9 +5,10 @@ require 'minitest/autorun'
 
 require_relative "./integration_test_helper"
 
-require 'hastur'
+require 'hastur/api'
 require 'hastur-server/message'
 
+require 'nodule/alarm'
 require 'nodule/cassandra'
 require 'nodule/console'
 require 'nodule/process'
@@ -29,10 +30,18 @@ private
     hastur_proxy @agent_udp_port2, :heartbeat, @heartbeat_agent2
   end
 
+  # counts total entries in all cols in a CF across all rows, returns the count
+  def cassandra_cf_value_count(client, cf)
+    count = 0
+    client.each_key(cf) do |key|
+      count += client.count_columns(cf, key)
+      STDERR.puts "#{count} += client.count_columns(#{cf}, #{key})"
+    end
+    count
+  end
+
 public
   def setup
-    set_test_alarm(100) # helper
-
     @agent_udp_port1 = Nodule::Util.random_udp_port
     @agent_udp_port2 = Nodule::Util.random_udp_port
     @heartbeat_agent1 = "heartbeat-agent1"
@@ -42,6 +51,7 @@ public
     @cf               = "HBProcessArchive"
 
     @topology = Nodule::Topology.new(
+      :alarm         => Nodule::Alarm.new(:timeout => 100),
       :greenio       => Nodule::Console.new(:fg => :green),
       :redio         => Nodule::Console.new(:fg => :red),
       :cyanio        => Nodule::Console.new(:fg => :cyan),
@@ -66,6 +76,7 @@ public
         '--heartbeat',    300,
         '--port',         @agent_udp_port1,
         '--no-agent-stats',
+        '--no-proc-stats',
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
       :agent2svc    => Nodule::Process.new(
@@ -76,6 +87,7 @@ public
         '--heartbeat',    300,
         '--port',         @agent_udp_port2,
         '--no-agent-stats',
+        '--no-proc-stats',
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
     )
@@ -94,13 +106,20 @@ public
   end
 
   def test_bring_down
+    initial_hb_count = cassandra_cf_value_count(@cass, @cf)
+
     # send heartbeat to both agents
     send_heartbeats
 
     # wait for the row to show up in Cassandra
-    wait_for_cassandra_rows(@cass, @cf, 2, 30) do
+    wait_for_cassandra_rows(@cass, @cf, 2 + initial_hb_count, 30) do
       flunk "Gave up waiting for heartbeats in cassandra."
     end
+
+    assert_equal 2 + initial_hb_count, cassandra_cf_value_count(@cass, @cf),
+      "We must see exactly two more heartbeats in Cassandra than the initial #{initial_hb_count}"
+
+    hb_count = cassandra_cf_value_count(@cass, @cf)
 
     hb_in_cassandra? A1UUID, @heartbeat_agent1
     hb_in_cassandra? A2UUID, @heartbeat_agent2
@@ -109,11 +128,16 @@ public
     @topology.stop :agent2svc
     sleep 5
 
+    hb_count = cassandra_cf_value_count(@cass, @cf)
+
+    # Send 2 hearbeats
     send_heartbeats
 
-    wait_for_cassandra_rows @cass, @cf, 3, 30, true
+    # Wait for 2 more heartbeats
+    wait_for_cassandra_rows @cass, @cf, 2 + hb_count, 30, true
+    assert_equal 2 + hb_count, cassandra_cf_value_count(@cass, @cf)
 
-    assert_equal 3, cassandra_cf_value_count(@cass, @cf)
+    hb_count = cassandra_cf_value_count(@cass, @cf)
 
     @topology.start :agent2svc
 
