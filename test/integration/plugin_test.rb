@@ -10,7 +10,6 @@ require 'hastur-server/message'
 
 class PluginTest < Test::Unit::TestCase
   def setup
-    set_test_alarm(30) # helper
     @plugin_text = MultiJson.dump("{\"status\": 0, \"message\": \"OK - plugin success!\"}")
     @plugin_request = <<EOJSON
 {
@@ -21,6 +20,7 @@ class PluginTest < Test::Unit::TestCase
 EOJSON
 
     @topology = Nodule::Topology.new(
+      :alarm         => Nodule::Alarm.new(:timeout => 30),
       :greenio       => Nodule::Console.new(:fg => :green),
       :redio         => Nodule::Console.new(:fg => :red),
       :cyanio        => Nodule::Console.new(:fg => :cyan),
@@ -62,9 +62,7 @@ EOJSON
   end
 
   def teardown
-    set_test_alarm(3) # helper
     @topology.stop_all
-    cancel_test_alarm
   end
 
   def test_plugin

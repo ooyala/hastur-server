@@ -21,8 +21,6 @@ class BringSinkDownTest < Test::Unit::TestCase
 public
 
   def setup
-    set_test_alarm(100) # helper
-
     @agent_udp_port1 = Nodule::Util.random_udp_port
     @agent_udp_port2 = Nodule::Util.random_udp_port
     @heartbeat_agent1 = "heartbeat-agent1"
@@ -36,6 +34,7 @@ public
     @sinatra_port = Nodule::Util.random_tcp_port
 
     @topology = Nodule::Topology.new(
+      :alarm         => Nodule::Alarm.new(:timeout => 100),
       :greenio       => Nodule::Console.new(:fg => :green),
       :redio         => Nodule::Console.new(:fg => :red),
       :cyanio        => Nodule::Console.new(:fg => :cyan),

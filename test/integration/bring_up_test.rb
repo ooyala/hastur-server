@@ -11,7 +11,6 @@ require 'open-uri'
 
 class BringUpTest < Test::Unit::TestCase
   def setup
-    set_test_alarm(100)
     sinatra_ready = false
     sinatra_ready_proc = proc do |line|
       sinatra_ready = true if line =~ /== Sinatra.* has taken the stage/
@@ -20,6 +19,7 @@ class BringUpTest < Test::Unit::TestCase
     @agent1_port = Nodule::Util.random_udp_port
     @agent2_port = Nodule::Util.random_udp_port
     @topology = Nodule::Topology.new(
+      :alarm         => Nodule::Alarm.new(:timeout => 100),
       :greenio      => Nodule::Console.new(:fg => :green),
       :redio        => Nodule::Console.new(:fg => :red),
       :yellowio     => Nodule::Console.new(:fg => :yellow),

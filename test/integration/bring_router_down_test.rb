@@ -21,8 +21,6 @@ class BringRouterDownTest < Test::Unit::TestCase
 public
 
   def setup
-    set_test_alarm(100) # helper
-
     @client_udp_port1 = Nodule::Util.random_udp_port
     @client_udp_port2 = Nodule::Util.random_udp_port
     @heartbeat_client1 = "heartbeat-client1"
@@ -36,6 +34,7 @@ public
     @sinatra_port = Nodule::Util.random_tcp_port
 
     @topology = Nodule::Topology.new(
+      :alarm         => Nodule::Alarm.new(:timeout => 100),
       :greenio       => Nodule::Console.new(:fg => :green),
       :redio         => Nodule::Console.new(:fg => :red),
       :cyanio        => Nodule::Console.new(:fg => :cyan),

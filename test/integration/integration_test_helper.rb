@@ -50,24 +50,6 @@ EVENT = {
 
 EVENT_JSON = MultiJson.dump EVENT
 
-def set_test_alarm(timeout=30)
-  # cassandra migrations are /really/ slow in jenkins
-  # HACK / TODO: this is a dirty, dirty hack to get our tests to at least run in Jenkins
-  # the right fix is to do a block/wait like wait_for_cassandra_rows below, but there's a bunch
-  # of stuff that will need to churn to make it work consistently. We'll get to it, just not right now.
-  timeout += 60 if ENV["IS_JENKINS"]
-  Signal.trap("ALRM") do
-    assert false, "Timed out."
-    Thread.list.each { |t| t.kill unless t == Thread.current }
-    exit
-  end
-  LibC.alarm(timeout)
-end
-
-def cancel_test_alarm
-  LibC.alarm(0)
-end
-
 def assert_json_not_empty(*strs)
   strs.flatten.each do |str|
     assert_not_nil str, "Json returned is nil"
