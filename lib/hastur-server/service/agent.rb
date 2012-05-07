@@ -21,8 +21,16 @@ module Hastur
   end
 
   # monkeypatch Hastur to send directly to ZeroMQ
+  # hastur/api tries to register before agent= is called but after this monkeypatch
+  # gets loaded, try to detect that and fall back to the original method
+  # this monkeypatch should be deleted as soon as the block API is available (around 2012-05-10)
+  alias _send_to_udp send_to_udp
   def self.send_to_udp(m)
-    @agent._send @agent.hash_to_message(m)
+    begin
+      @agent._send @agent.hash_to_message(m)
+    rescue
+      _send_to_udp(m)
+    end
   end
 
   module Service
