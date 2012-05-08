@@ -18,7 +18,6 @@ module Hastur
   module Message
     # these classes don't have any extra logic, so they don't get their own files
     class Log        < Simple ; end
-    class ProcessInfo< Simple; end
     module Reg
       class Agent    < Simple ; end
       class Process  < Simple ; end
@@ -35,6 +34,10 @@ module Hastur
       class Gauge    < Simple ; end
       class Counter  < Simple ; end
     end
+    module Info
+      class Process  < Simple ; end
+      class Agent    < Simple ; end
+    end
 
     CLASS_TYPE_IDS = {
       # basic types
@@ -43,7 +46,6 @@ module Hastur
       Hastur::Message::Ack            => 3,
       Hastur::Message::Error          => 4,
       Hastur::Message::Noop           => 5,
-      Hastur::Message::ProcessInfo    => 6,
       # stats
       Hastur::Message::Stat::Mark     => 10,
       Hastur::Message::Stat::Gauge    => 11,
@@ -59,6 +61,9 @@ module Hastur
       Hastur::Message::HB::PluginV1   => 32,
       # commands
       Hastur::Message::Cmd::PluginV1  => 40,
+      # info
+      Hastur::Message::Info::Process  => 50,
+      Hastur::Message::Info::Agent    => 51,
     }.freeze
 
     TYPE_ID_CLASSES = CLASS_TYPE_IDS.invert.freeze
@@ -75,11 +80,12 @@ module Hastur
       :reg_agent    => Hastur::Message::Reg::Agent,
       :reg_process  => Hastur::Message::Reg::Process,
       :reg_pluginv1 => Hastur::Message::Reg::PluginV1,
-      :process_info => Hastur::Message::ProcessInfo,
       :hb_agent     => Hastur::Message::HB::Agent,
       :hb_process   => Hastur::Message::HB::Process,
       :hb_pluginv1  => Hastur::Message::HB::PluginV1,
       :cmd_pluginv1 => Hastur::Message::Cmd::PluginV1,
+      :info_agent   => Hastur::Message::Info::Agent,
+      :info_process => Hastur::Message::Info::Process,
     }.freeze
 
     CLASS_SYMBOLS = SYMBOL_CLASSES.invert.freeze
