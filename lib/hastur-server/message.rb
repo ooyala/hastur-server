@@ -18,6 +18,7 @@ module Hastur
   module Message
     # these classes don't have any extra logic, so they don't get their own files
     class Log        < Simple ; end
+    class ProcessInfo< Simple; end
     module Reg
       class Agent    < Simple ; end
       class Process  < Simple ; end
@@ -42,6 +43,7 @@ module Hastur
       Hastur::Message::Ack            => 3,
       Hastur::Message::Error          => 4,
       Hastur::Message::Noop           => 5,
+      Hastur::Message::ProcessInfo    => 6,
       # stats
       Hastur::Message::Stat::Mark     => 10,
       Hastur::Message::Stat::Gauge    => 11,
@@ -73,6 +75,7 @@ module Hastur
       :reg_agent    => Hastur::Message::Reg::Agent,
       :reg_process  => Hastur::Message::Reg::Process,
       :reg_pluginv1 => Hastur::Message::Reg::PluginV1,
+      :process_info => Hastur::Message::ProcessInfo,
       :hb_agent     => Hastur::Message::HB::Agent,
       :hb_process   => Hastur::Message::HB::Process,
       :hb_pluginv1  => Hastur::Message::HB::PluginV1,
