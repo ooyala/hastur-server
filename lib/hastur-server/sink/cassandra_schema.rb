@@ -103,6 +103,16 @@ module Hastur
         :granularity => ONE_DAY,
         :name => nil,
       },
+      "info_process" => {
+        :cf => :InfoProcessArchive,
+        :granularity => ONE_DAY,
+        :name => nil,
+      },
+      "info_agent" => {
+        :cf => :InfoProcessArchive,
+        :granularity => ONE_DAY,
+        :name => nil,
+      },
     }.freeze
 
     #

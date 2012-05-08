@@ -1,7 +1,0 @@
-{
-  "application": "hastur-router",
-  "logging": {
-    "console_print":"on",
-    "stdout_level":"debug"
-  }
-}

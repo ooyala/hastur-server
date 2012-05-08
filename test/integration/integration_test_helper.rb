@@ -18,7 +18,6 @@ require "hastur/api"
 HASTUR_ROOT = File.join(File.dirname(__FILE__), "..", "..")
 
 HASTUR_CORE_BIN="#{HASTUR_ROOT}/bin/hastur-core.rb"
-HASTUR_ROUTER_BIN="#{HASTUR_ROOT}/bin/hastur-router.rb"
 HASTUR_AGENT_BIN="#{HASTUR_ROOT}/bin/hastur-agent.rb"
 HASTUR_MSGTOOL_BIN="#{HASTUR_ROOT}/tools/msgtool.rb"
 HASTUR_CASS_SINK_BIN="#{HASTUR_ROOT}/bin/cass-sink.rb"
