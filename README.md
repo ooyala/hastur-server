@@ -35,6 +35,12 @@ Development
 
 Install ZeroMQ & bundle install from the root directory. Look at the integration specs in tests/integration-*.json.
 
+Debugging Tips
+--------------
+
+    sudo tcpdump -ni lo -vX -s 65536 port 8125
+    sudo tcpdump -ni eth0 -vX -s 1500 port 8126
+
 Dependencies
 ------------
 
