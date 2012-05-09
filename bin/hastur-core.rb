@@ -24,6 +24,7 @@ EOS
   opt :return,    "Direct routing URI      (PULL)", :default => "tcp://*:8127"
   opt :firehose,  "Agent event URI          (PUB)", :default => "tcp://*:8128"
   opt :pidfile,   "Location of pidfile",            :type => :string
+  opt :no_sink,   "Turn off sink for debugging"
   opt :cassandra, "Cassandra server list", :default => ["127.0.0.1:9160"], :type => :strings, :multi => true
 end
 
@@ -49,10 +50,10 @@ sink = Hastur::Service::CassandraSink.new(
   :keyspace  => 'Hastur',
   :cassandra => opts[:cassandra],
   :socktype  => ZMQ::SUB
-)
+) unless opts[:no_sink]
 
 # must subscribe to empty string to get everything
-sink.subscribe ""
+sink.subscribe "" unless opts[:no_sink]
 
 if opts[:pidfile]
   File.open(opts[:pidfile], "w+") { |file| file.puts Process.pid }
@@ -62,21 +63,23 @@ router_thread = Termite::Thread.new logger do
   router.run
 end
 
-sink_thread = Termite::Thread.new logger do
-  sink.run
+unless opts[:no_sink]
+  sink_thread = Termite::Thread.new logger do
+    sink.run
+  end
 end
 
 # set up signal handlers and hope to be able to get a clean shutdown
 %w(INT TERM KILL).each do |sig|
   Signal.trap(sig) do
     router.stop
-    sink.stop
+    sink.stop unless opts[:no_sink]
     Signal.trap(sig, "DEFAULT")
   end
 end
 
 router_thread.join
-sink_thread.join
+sink_thread.join unless opts[:no_sink]
 
 if opts[:pidfile]
   File.unlink(opts[:pidfile]) if File.exists?(opts[:pidfile])
