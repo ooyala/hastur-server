@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require_relative "./integration_test_helper"
-require "test/unit"
+require "minitest/autorun"
 require 'nodule'
 require 'nodule/zeromq'
 require 'nodule/cassandra'
@@ -9,7 +9,7 @@ require 'multi_json'
 require 'hastur-server/message'
 require 'hastur-server/mock/nodule_agent'
 
-class CoreRouterTest < Test::Unit::TestCase
+class CoreRouterTest < MiniTest::Unit::TestCase
   EVENT_REPLAYS = 10
 
   def setup
