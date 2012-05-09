@@ -170,6 +170,20 @@ module Hastur
       @sockets[filter_id] << socket
     end
 
+    private
+
+    def mkey_for(message, key_sym)
+      if message.has_key?(key_sym)
+        key_sym
+      elsif message.has_key?(key_sym.to_s)
+        key_sym.to_s
+      else
+        nil
+      end
+    end
+
+    public
+
     #
     # run exactly one filter.  Return true if the filter matches, and
     # yield the message to the block if one is given.
@@ -180,26 +194,18 @@ module Hastur
     #
     def apply_one_filter(filter, message)
       filter.each do |key, value|
-        next if [:labels, :attn].include?(key) # Special cases
+        next if [:labels, :attn, :data].include?(key) # Special cases
 
-        mkey = nil
+        mkey = mkey_for(message, key.to_sym)
 
-        # message keys may not be symbols, check for both sym & str
-        if message.has_key?(key)
-          mkey = key
-        # convert to string
-        elsif message.has_key?(key.to_s)
-          mkey = key.to_s
-        else
-          # message does not have the key in either string or symbol form
-          if mkey.nil?
-            # the only way to proceed is if the filter's value is false
-            return false unless filter[key] == false
+        # message does not have the key in either string or symbol form
+        if mkey.nil?
+          # the only way to proceed is if the filter's value is false
+          return false unless filter[key] == false
           # the message has the key
-          else
-            # success unless the filter says the key should not be there with value of false
-            return false if filter[key] == false
-          end
+        else
+          # success unless the filter says the key should not be there with value of false
+          return false if filter[key] == false
         end
 
         case filter[key]
@@ -217,33 +223,26 @@ module Hastur
 
       # process attn separately, make sure specified values are included
       if filter[:attn]
-        if message.has_key?(:attn)
-          lkey = :attn
-        elsif message.has_key?("attn")
-          lkey = "attn"
-        else
-          return false if filter[:attn] == true
+        mkey = mkey_for(message, :attn)
 
-          lkey = nil
-        end
-
-        return false unless (lkey ? message[lkey] : []) & filter[:attn] == filter[:attn]
+        return false if mkey.nil? && filter[:attn] == true
+        return false unless (mkey ? message[mkey] : []) & filter[:attn] == filter[:attn]
       end
 
       # process labels separately, using a recursive call, it should only ever be one level
       if filter[:labels]
-        if message.has_key?(:labels)
-          lkey = :labels
-        elsif message.has_key?("labels")
-          lkey = "labels"
-        else
-          # Do we just require that there *be* labels?  That seems unlikely.
-          return false if filter[:labels] == true
+        mkey = mkey_for(message, :labels)
 
-          lkey = nil
-        end
+        return false if mkey.nil? && filter[:labels] == true
+        return false unless apply_one_filter filter[:labels], mkey ? message[mkey] : {}
+      end
 
-        return false unless apply_one_filter filter[:labels], lkey ? message[lkey] : {}
+      # TODO(noah): combine checking :labels and :data since the logic is the same
+      if filter[:data]
+        mkey = mkey_for(message, :data)
+
+        return false if mkey.nil? && filter[:data] == true
+        return false unless apply_one_filter filter[:data], mkey ? message[mkey] : {}
       end
 
       yield message if block_given?
