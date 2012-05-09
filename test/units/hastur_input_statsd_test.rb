@@ -61,5 +61,15 @@ class TestHasturInputStatsd < MiniTest::Unit::TestCase
     assert_equal 320,     stat[:value], "value matches input: '#{msg}'"
     assert_equal "ms",    stat[:labels][:units], "unit matches input: '#{msg}'"
   end
+
+  def test_ots_real_data
+    msg = "ots.worker.count:375|c"
+    stat = Hastur::Input::Statsd.decode_packet(msg)
+    refute_nil stat, "should match and return data  '#{msg}'"
+    assert_equal "ots.worker.count",   stat[:name], "name matches input: '#{msg}'"
+    assert_equal 375,                  stat[:value], "value matches input: '#{msg}'"
+    assert_equal "c",                  stat[:labels][:units], "unit matches input: '#{msg}'"
+    assert_equal :counter,            stat[:type], "message type matches input: '#{msg}'"
+  end
 end
 
