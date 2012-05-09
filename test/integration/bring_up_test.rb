@@ -20,7 +20,7 @@ class BringUpTest < Test::Unit::TestCase
     @agent1_port = Nodule::Util.random_udp_port
     @agent2_port = Nodule::Util.random_udp_port
     @topology = Nodule::Topology.new(
-      :alarm        => Nodule::Alarm.new(:timeout => 100),
+      :alarm        => Nodule::Alarm.new(:timeout => test_timeout(100)),
       :greenio      => Nodule::Console.new(:fg => :green),
       :redio        => Nodule::Console.new(:fg => :red),
       :yellowio     => Nodule::Console.new(:fg => :yellow),

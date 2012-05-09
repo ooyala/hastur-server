@@ -21,7 +21,7 @@ class PluginTest < Test::Unit::TestCase
 EOJSON
 
     @topology = Nodule::Topology.new(
-      :alarm         => Nodule::Alarm.new(:timeout => 30),
+      :alarm         => Nodule::Alarm.new(:timeout => test_timeout(30)),
       :greenio       => Nodule::Console.new(:fg => :green),
       :redio         => Nodule::Console.new(:fg => :red),
       :cyanio        => Nodule::Console.new(:fg => :cyan),
