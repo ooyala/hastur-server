@@ -42,6 +42,7 @@ module Hastur
       # @param [Hash{Symbol => String,Fixnum,TrueClass}] opts
       # @option [String] :uuid required, 36-byte agent UUID (usually read from /etc/uuid, see bin/hastur-agent.rb)
       # @option [String] :routers required, list of Hastur routers ZeroMQ URI's
+      # @option [String] :unix optional, a unix-domain socket.  If present, don't open regular socket
       # @option [Fixnum] :port default 8125 UDP port to listen on localhost
       # @option [Fixnum] :heartbeat default 30 seconds between heartbeats
       # @option [Fixnum] :ack_interval default 30 seconds before resending unacked messages
