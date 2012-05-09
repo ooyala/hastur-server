@@ -46,7 +46,7 @@ namespace "test" do
 
   shameful_integration_tests = integration_tests
 
-  LIST_OF_SHAME = [ 'bring_router_down', 'bring_down', 'bring_sink_down', 'bring_up', 'plugin_registration', 'registration_rollup', 'event', 'plugin', 'heartbeat' ]
+  LIST_OF_SHAME = [ 'bring_router_down', 'bring_down', 'bring_sink_down', 'bring_up', 'plugin_registration', 'registration_rollup', 'event', 'plugin', 'heartbeat', 'core_router' ]
 
   unless LIST_OF_SHAME.nil? || LIST_OF_SHAME.empty?
     puts "****************************************************"
