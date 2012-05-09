@@ -1,54 +1,46 @@
 #!/usr/bin/env ruby
 
 require_relative "./integration_test_helper"
-require "test/unit"
+require "minitest/autorun"
 require 'nodule'
 require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'multi_json'
 
-class HeartbeatTest < Test::Unit::TestCase
+class HeartbeatTest < MiniTest::Unit::TestCase
   def setup
     @topology = Nodule::Topology.new(
-      :greenio      => Nodule::Console.new(:fg => :green),
-      :redio        => Nodule::Console.new(:fg => :red),
-      :cyanio       => Nodule::Console.new(:fg => :cyan),
-      :yellowio     => Nodule::Console.new(:fg => :yellow),
-      :agent1unix   => Nodule::UnixSocket.new,
-      :agent2unix   => Nodule::UnixSocket.new,
-      :router       => Nodule::ZeroMQ.new(:uri => :gen),
-      :heartbeat    => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :capture, :limit => 4),
-      :registration => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :stat         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :event        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :log          => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
-      :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REQ,  :uri => :gen),
-      :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
+      :greenio       => Nodule::Console.new(:fg => :green),
+      :redio         => Nodule::Console.new(:fg => :red),
+      :cyanio        => Nodule::Console.new(:fg => :cyan),
+      :yellowio      => Nodule::Console.new(:fg => :yellow),
+      :agent1unix    => Nodule::UnixSocket.new,
+      :agent2unix    => Nodule::UnixSocket.new,
+      :core_router   => Nodule::ZeroMQ.new(:uri => :gen),
+      :core_return   => Nodule::ZeroMQ.new(:uri => :gen),
+      :core_firehose => Nodule::ZeroMQ.new(:uri => :gen, :bind => ZMQ::SUB),
 
       :agent1svc   => Nodule::Process.new(
-        HASTUR_AGENT_BIN, '--uuid', A1UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent1unix,
+        HASTUR_AGENT_BIN, '--uuid', A1UUID, '--heartbeat', 1, '--router', :core_router, '--unix', :agent1unix,
         '--port', HASTUR_UDP_PORT,
+        '--no-agent-stats', '--no-proc-stats',
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
 
       :agent2svc => Nodule::Process.new(
-        HASTUR_AGENT_BIN, '--uuid', A2UUID, '--heartbeat', 1, '--router', :router, '--unix', :agent2unix,
+        HASTUR_AGENT_BIN, '--uuid', A2UUID, '--heartbeat', 1, '--router', :core_router, '--unix', :agent2unix,
         '--port', Nodule::Util.random_udp_port,
+        '--no-agent-stats', '--no-proc-stats',
         :stdout => :greenio, :stderr => :redio, :verbose => :yellowio,
       ),
 
       :routersvc => Nodule::Process.new(
-        HASTUR_ROUTER_BIN,
+        HASTUR_CORE_BIN,
         '--uuid',         R1UUID,
-        '--heartbeat',    :heartbeat,
-        '--registration', :registration,
-        '--event',        :event,
-        '--stat',         :stat,
-        '--log',          :log,
-        '--error',        :error,
-        '--router',       :router,
-        '--direct',       :direct,
+        '--router',       :core_router,
+        '--return',       :core_return,
+        '--firehose',     :core_firehose,
+        '--no-sink',
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio
       ),
     )
@@ -62,9 +54,9 @@ class HeartbeatTest < Test::Unit::TestCase
 
   def test_heartbeat
     # wait for some messages to flow
-    @topology[:heartbeat].require_read_count 4, 10
+    @topology[:core_firehose].require_read_count 4, 20
 
-    messages = @topology[:heartbeat].output
+    messages = @topology[:core_firehose].output
     # work with raw messages for now
     payloads  = messages.map { |m| MultiJson.load(m[-1]) }
     envelopes = messages.map { |m| m[-2].unpack("H*") }
@@ -79,8 +71,8 @@ class HeartbeatTest < Test::Unit::TestCase
     assert_equal 2, messages[1].count, "each message should have 2 parts"
 
     # verify that the messages on the heartbeat shims are heartbeat messages
-    assert_equal(payloads.count, payloads.fuzzy_filter("value" => Fixnum).count)
-    assert_equal(payloads.count, payloads.fuzzy_filter("name" => "hastur.agent.heartbeat").count)
+    assert_equal(payloads.count, payloads.select { |p| p["value"].is_a? Fixnum }.count)
+    assert_equal(payloads.count, payloads.select { |p| p["name"] == "hastur.agent.heartbeat" }.count)
 
     a1uuid = A1UUID.gsub('-', '')
     a2uuid = A2UUID.gsub('-', '')
