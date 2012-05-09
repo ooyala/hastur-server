@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'multi_json'
-require "test/unit"
+require "minitest/autorun"
 
 require_relative "./integration_test_helper"
 
@@ -17,7 +17,7 @@ require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'nodule/util'
 
-class BringSinkDownTest < Test::Unit::TestCase
+class BringSinkDownTest < MiniTest::Unit::TestCase
 
 public
 

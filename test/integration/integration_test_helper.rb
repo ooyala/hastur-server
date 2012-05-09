@@ -55,7 +55,7 @@ end
 
 def assert_json_not_empty(*strs)
   strs.flatten.each do |str|
-    assert_not_nil str, "Json returned is nil"
+    refute_nil str, "Json returned is nil"
     str2 = str.gsub(/\s+/, "")
     assert !str2.empty?, "Json returned is an empty string"
     assert str2 != "{}", "Json returned is empty json {}"

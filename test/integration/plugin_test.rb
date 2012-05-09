@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require_relative "./integration_test_helper"
-require "test/unit"
+require "minitest/autorun"
 require 'multi_json'
 require 'nodule'
 require 'nodule/alarm'
@@ -9,7 +9,7 @@ require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'hastur-server/message'
 
-class PluginTest < Test::Unit::TestCase
+class PluginTest < MiniTest::Unit::TestCase
   def setup
     @plugin_text = MultiJson.dump("{\"status\": 0, \"message\": \"OK - plugin success!\"}")
     @plugin_request = <<EOJSON
@@ -77,13 +77,13 @@ EOJSON
     @topology[:heartbeat].require_read_count 2, 10
 
     messages = @topology[:heartbeat].output.pop
-    assert_not_nil messages, "should have caught some zmq messages"
+    refute_nil messages, "should have caught some zmq messages"
     assert messages.count > 0, "should have caught some zmq messages"
     envelope = Hastur::Envelope.parse messages[-2]
-    assert_not_nil envelope, "should have captured a valid envelope"
+    refute_nil envelope, "should have captured a valid envelope"
 
     message = Hastur::Message::HB::Agent.new :envelope => envelope, :payload => messages[-1]
-    assert_not_nil message, "should have captured a valid message"
+    refute_nil message, "should have captured a valid message"
 
     data = message.decode
     assert_kind_of Hash, data, "message.decode must return a hash"

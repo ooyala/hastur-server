@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'multi_json'
-require "test/unit"
+require "minitest/autorun"
 
 require_relative "./integration_test_helper"
 
@@ -17,7 +17,7 @@ require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'nodule/util'
 
-class FullPluginTest < Test::Unit::TestCase
+class FullPluginTest < MiniTest::Unit::TestCase
   def setup
     @topology = Nodule::Topology.new(
       :alarm         => Nodule::Alarm.new(:timeout => test_timeout(30)),

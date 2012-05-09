@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require_relative "./integration_test_helper"
-require "test/unit"
+require "minitest/autorun"
 require 'nodule'
 require 'nodule/unixsocket'
 require 'nodule/zeromq'
@@ -9,7 +9,7 @@ require 'multi_json'
 require 'hastur-server/message'
 require 'hastur-server/mock/nodule_router'
 
-class EventTest < Test::Unit::TestCase
+class EventTest < MiniTest::Unit::TestCase
   ITERATIONS = 4
 
   def setup

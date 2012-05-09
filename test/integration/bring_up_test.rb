@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require_relative "./integration_test_helper"
-require "test/unit"
+require "minitest/autorun"
 require 'nodule'
 require 'nodule/alarm'
 require 'nodule/unixsocket'
@@ -10,7 +10,7 @@ require 'nodule/cassandra'
 require 'hastur/api'
 require 'open-uri'
 
-class BringUpTest < Test::Unit::TestCase
+class BringUpTest < MiniTest::Unit::TestCase
   def setup
     sinatra_ready = false
     sinatra_ready_proc = proc do |line|
@@ -166,10 +166,10 @@ class BringUpTest < Test::Unit::TestCase
 
     url1 = "http://127.0.0.1:#{@sinatra_port}/data/stat/values?uuid=#{A1UUID}&start=#{start_ts}&end=#{end_ts}"
     a1_messages = open(url1).read
-    assert_not_nil a1_messages =~ /second_countme/
+    refute_nil a1_messages =~ /second_countme/
 
     url2 = "http://127.0.0.1:#{@sinatra_port}/data/stat/values?uuid=#{A2UUID}&start=#{start_ts}&end=#{end_ts}"
     a2_messages = open(url2).read
-    assert_not_nil a2_messages =~ /second_countme/
+    refute_nil a2_messages =~ /second_countme/
   end
 end
