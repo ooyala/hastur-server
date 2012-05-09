@@ -9,14 +9,15 @@ module Hastur
       # Create a new core router.
       # @param [String] uuid the core router's UUID (36 byte hyphenated string)
       # @param [Hash{Symbol => ZMQ::Socket}] opts
-      # @option [String] :router_uri
-      # @option [String] :firehose_uri
-      # @option [String] :return_uri
+      # @option [String] :router_uri Required, the ZMQ URI of the router socket
+      # @option [String] :firehose_uri Required, the ZMQ URI of the firehose PUB socket
+      # @option [String] :return_uri Required, the ZMQ URI of the return/ack PULL socket
       # @option [ZMQ::Context] :ctx
+      # @option [Logger] :logger
       #
       def initialize(uuid, opts={})
         @ctx = opts[:ctx] || ZMQ::Context.new
-        @logger = Termite::Logger.new
+        @logger = opts[:logger] || Termite::Logger.new
 
         sopt = { :hwm => 1_000, :linger => 10 }
 
@@ -118,10 +119,12 @@ module Hastur
             envelope = Hastur::Envelope.parse content
             if envelope.type_id == @noop_type_id
               @agents[envelope.from] = message[0].copy_out_string
+              @logger.debug "Dropping no-op message"
             else
               # forward the message, sans the ZMQ envelope
               message.shift
               send_to @firehose_socket, message
+              @logger.debug "Forwarded message type #{envelope.type_id} to firehose"
             end
           rescue Exception => e
             @logger.warn "Exception while forwarding message: #{e.inspect}"
