@@ -46,7 +46,7 @@ module Hastur
       # @option [Fixnum] :heartbeat default 30 seconds between heartbeats
       # @option [Fixnum] :ack_interval default 30 seconds before resending unacked messages
       # @option [Fixnum] :noop_interval default 30 seconds between noop broadcasts
-      # @option [Fixnum] :stats_interval default 5 send agent stats every n seconds
+      # @option [Fixnum] :stats_interval default 300 send agent stats every n seconds
       # @option [TrueClass] :no_agent_stats disable sending agent stats when true
       #
       def initialize(opts)
@@ -63,7 +63,7 @@ module Hastur
         opts[:heartbeat]      ||= 30
         opts[:ack_interval]   ||= 30
         opts[:noop_interval]  ||= 30
-        opts[:stats_interval] ||= 5
+        opts[:stats_interval] ||= 300
 
         raise ArgumentError.new ":port must be an integer" unless opts[:port].kind_of? Fixnum
         raise ArgumentError.new ":port must be between 1025 and 65535" unless opts[:port].between? 1025, 65535
