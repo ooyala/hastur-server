@@ -95,6 +95,8 @@ package_a_ruby () {
   fpm="$ruby/bin/fpm"
 
   $personality chroot $path $gem install fpm
+  $personality chroot $path $gem install unicorn
+  $personality chroot $path $gem install bundler
 
   distro=$(chroot $path lsb_release -c |awk '{print $2}')
   ffi=$(chroot $path apt-cache search libffi[0-9]*-dev |awk '/libffi/{print $1}')
