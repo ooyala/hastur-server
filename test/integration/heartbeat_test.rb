@@ -54,7 +54,7 @@ class HeartbeatTest < MiniTest::Unit::TestCase
 
   def test_heartbeat
     # wait for some messages to flow
-    @topology[:core_firehose].require_read_count 4, 20
+    @topology[:core_firehose].require_read_count 4, 80
 
     messages = @topology[:core_firehose].output
     # work with raw messages for now
