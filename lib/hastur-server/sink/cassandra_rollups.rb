@@ -19,7 +19,7 @@ module Hastur
     # Given a start time, returns the timestamp for the previous occuring rollup for a particular granularity
     #
     def last_time_segment_for_timestamp(start_ts, granularity)
-      # For example: 
+      # For example:
       #   remainder = start_ts % granularity
       #       1     =    10    %      3
       #   start_ts - remainder = last_time_segment
@@ -34,7 +34,7 @@ module Hastur
     # Given a start time, returns the timestamp for the next occuring rollup for a particular granularity
     #
     def next_time_segment_for_timestamp(start_ts, granularity)
-      # For example: 
+      # For example:
       #   remainder = start_ts % granularity
       #       1     =     10   %       3
       #   start_ts - remainder = last_time_segment
@@ -91,7 +91,7 @@ module Hastur
     # @params [Cassandra] cass_client Cassandra client
     # @params [String] route Hastur ZMQ route used to know which CF to write to
     # @params [Fixnum] timestamp Hastur time in usecs. Used to know which time segment to write to
-    # @params [Fixnum] granularity Number of usecs for a time segment. Must be a valid granularity from 
+    # @params [Fixnum] granularity Number of usecs for a time segment. Must be a valid granularity from
     #                              Hastur::Cassandra::GRANULARITIES
     # @params [OrderedHash] ordered_hash The data is that rolling over from the period segment.
     #
