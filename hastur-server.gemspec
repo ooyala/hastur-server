@@ -48,6 +48,6 @@ EOS
   s.add_runtime_dependency "cassandra", "~>0.12.2"
   s.add_runtime_dependency "rainbow"
   s.add_runtime_dependency "msgpack"
-  s.add_runtime_dependency "hastur", "~>1.0.10"
+  s.add_runtime_dependency "hastur", "~>1.1.4"
   s.add_runtime_dependency "algorithms"
 end
