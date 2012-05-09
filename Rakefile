@@ -85,6 +85,14 @@ task :tail_dev do
   system "ssh hastur-core-dev1.us-east-1.ooyala.com 'tail -f unicorn-*.log'"
 end
 
+# quick test - pull stats for Spaceghost
+desc "push / tail / curl"
+task :test_dev => :push_dev do
+  sleep 1
+  system "curl -m 30 -H \"Accept: application/json\" http://ec2-107-22-157-160.compute-1.amazonaws.com:8888/nodes/6bbaffa0-7140-012f-1b93-001e6713f84b/stats &"
+  system "ssh hastur-core-dev1.us-east-1.ooyala.com 'tail -f unicorn-*.log'"
+end
+
 task :evil_deploy => ["build"] do
   system "cl-sendfile.pl --list hastur -l pkg/hastur-server-#{Hastur::VERSION}.gem -r #{ENV['HOME']}"
   system "cl-run.pl --list hastur -c 'sudo /opt/hastur/bin/gem install --local --no-ri --no-rdoc ~/hastur-server-#{Hastur::VERSION}.gem'"
