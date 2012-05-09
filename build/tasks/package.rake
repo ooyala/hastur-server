@@ -65,8 +65,6 @@ namespace :hastur do
   BUNDLER = File.join(PATHS[:bindir], 'bundle')
   FPM = File.join(PATHS[:bindir], 'fpm')
 
-  PROJECT_TOP = Rake.application.find_rakefile_location[1]
-
   HOME_DOWNLOADS = File.join ENV["HOME"], "Downloads"
   TGZ_CACHE = File.exists?(HOME_DOWNLOADS) ? HOME_DOWNLOADS : PATHS[:build]
 

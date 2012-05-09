@@ -1,6 +1,10 @@
 require "bundler/gem_tasks"
 require "rake/testtask"
 
+# used in build/tasks/package.rake and below
+PROJECT_TOP = Rake.application.find_rakefile_location[1]
+PROJECT_DIR = File.basename(PROJECT_TOP)
+
 Dir["build/tasks/*.rake"].each { |task| load task }
 
 namespace "test" do
@@ -64,6 +68,21 @@ end
 # Put together a test target for Jenkins
 task :test => ["test:units", "test:integrations"] do
   puts "All tests completed..."
+end
+
+#
+# undesirable but useful hacks follow ...
+#
+
+desc "Pushes the local code to hastur-core-dev1.us-east-1.ooyala.com"
+task :push_dev do
+  system "rsync -ave ssh #{PROJECT_TOP} hastur-core-dev1.us-east-1.ooyala.com:"
+  system "ssh hastur-core-dev1.us-east-1.ooyala.com '(cd #{PROJECT_DIR} ; tools/restart_dev_unicorn.sh)'"
+end
+
+desc "tail your logfile on hastur-core-dev1.us-east-1.ooyala.com"
+task :tail_dev do
+  system "ssh hastur-core-dev1.us-east-1.ooyala.com 'tail -f unicorn-*.log'"
 end
 
 task :evil_deploy => ["build"] do
