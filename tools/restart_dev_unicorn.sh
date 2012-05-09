@@ -64,7 +64,7 @@ run Rack::URLMap.new("/" => Hastur::Service::Retrieval.new(cassandra_servers))
 EOF
 
 cat > "${DIR}/${USER}-unicorn.conf" <<EOF
-worker_processes 2
+worker_processes 5
 working_directory "$DIR"
 listen $PORT, :tcp_nodelay => true
 timeout 60
