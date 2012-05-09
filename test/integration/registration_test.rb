@@ -1,16 +1,16 @@
 #!/usr/bin/env ruby
 
 require_relative "./integration_test_helper"
-require "test/unit"
+require "minitest/autorun"
 require "nodule"
 require "nodule/unixsocket"
 require "nodule/zeromq"
 require "multi_json"
 
-class RegistrationTest < Test::Unit::TestCase
+class RegistrationTest < MiniTest::Unit::TestCase
 
   def test_registration
-    @topology[:registration].require_read_count 1, 10
+    @topology[:registration].require_read_count 1, test_timeout(10)
 
     messages = @topology[:registration].output
     assert_equal 1, messages.count
