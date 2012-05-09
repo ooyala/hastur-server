@@ -49,6 +49,10 @@ EVENT = {
 
 EVENT_JSON = MultiJson.dump EVENT
 
+def test_timeout(secs)
+  ENV["IS_JENKINS"] ? secs + 60 : secs
+end
+
 def assert_json_not_empty(*strs)
   strs.flatten.each do |str|
     assert_not_nil str, "Json returned is nil"
