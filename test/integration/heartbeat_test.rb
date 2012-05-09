@@ -18,7 +18,7 @@ class HeartbeatTest < MiniTest::Unit::TestCase
       :agent2unix    => Nodule::UnixSocket.new,
       :core_router   => Nodule::ZeroMQ.new(:uri => :gen),
       :core_return   => Nodule::ZeroMQ.new(:uri => :gen),
-      :core_firehose => Nodule::ZeroMQ.new(:uri => :gen, :bind => ZMQ::SUB),
+      :core_firehose => Nodule::ZeroMQ.new(:uri => :gen, :reader => :capture),
 
       :agent1svc   => Nodule::Process.new(
         HASTUR_AGENT_BIN, '--uuid', A1UUID, '--heartbeat', 1, '--router', :core_router, '--unix', :agent1unix,
@@ -52,11 +52,20 @@ class HeartbeatTest < MiniTest::Unit::TestCase
     @topology.stop_all
   end
 
+  def only_agent_heartbeats(msgs)
+    msgs.select do |m|
+      MultiJson.load(m[-1])["name"] == "hastur.agent.heartbeat"
+    end
+  end
+
   def test_heartbeat
     # wait for some messages to flow
-    @topology[:core_firehose].require_read_count 4, test_timeout(20)
+    @topology[:core_firehose].read_until(:max_sleep => test_timeout(20), :sleep_by => 0.5) do
+      heartbeats = only_agent_heartbeats(@topology[:core_firehose].output)
+      heartbeats.count >= 4
+    end
 
-    messages = @topology[:core_firehose].output
+    messages = only_agent_heartbeats(@topology[:core_firehose].output)
     # work with raw messages for now
     payloads  = messages.map { |m| MultiJson.load(m[-1]) }
     envelopes = messages.map { |m| m[-2].unpack("H*") }
