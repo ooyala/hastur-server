@@ -1,13 +1,13 @@
 #!/usr/bin/env ruby
 
 require_relative "./integration_test_helper"
-require "test/unit"
+require "minitest/autorun"
 require 'nodule'
 require 'nodule/unixsocket'
 require 'nodule/zeromq'
 require 'multi_json'
 
-class MiniHeartbeatTest < Test::Unit::TestCase
+class MiniHeartbeatTest < MiniTest::Unit::TestCase
   def setup
     @topology = Nodule::Topology.new(
       :greenio      => Nodule::Console.new(:fg => :green),
@@ -19,6 +19,7 @@ class MiniHeartbeatTest < Test::Unit::TestCase
       :agent1svc    => Nodule::Process.new(
         HASTUR_AGENT_BIN, '--uuid', A1UUID, '--heartbeat', 1, '--router', :router,
         '--port', HASTUR_UDP_PORT,
+        '--no-agent-stats', '--no-proc-stats',
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
     )
@@ -38,7 +39,7 @@ class MiniHeartbeatTest < Test::Unit::TestCase
 
     # work with raw messages for now
     payloads  = messages.map { |m| MultiJson.load(m[-1]) }
-    heartbeat_payloads = payloads.fuzzy_filter("name" => "hastur.agent.heartbeat")
+    heartbeat_payloads = payloads.select { |p| "name" == "hastur.agent.heartbeat" }
     envelopes = messages.map { |m| m[-2].unpack("H*") }
 
     assert_equal 2, messages.count, "Should have exactly two captured messages"
@@ -54,4 +55,3 @@ class MiniHeartbeatTest < Test::Unit::TestCase
     assert envelopes.flatten.any? { |e| e.include?(a1uuid) }, "No envelope contains agent 1's UUID"
   end
 end
-
