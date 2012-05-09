@@ -109,7 +109,7 @@ module Hastur
         :name => nil,
       },
       "info_agent" => {
-        :cf => :InfoProcessArchive,
+        :cf => :InfoAgentArchive,
         :granularity => ONE_DAY,
         :name => nil,
       },
