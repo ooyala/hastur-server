@@ -33,8 +33,7 @@ class MiniHeartbeatTest < MiniTest::Unit::TestCase
 
   def test_mini_heartbeat
     # wait for some messages to flow
-    sleep 3
-
+    @topology[:router].require_read_count 2, 15
     messages = @topology[:router].output
 
     # work with raw messages for now
