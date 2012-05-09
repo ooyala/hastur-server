@@ -92,12 +92,11 @@ module Hastur
       #
       get "/nodes/:uuid/stats" do
         hostname = get_request_url(request)
-        end_ts = ::Hastur.timestamp
-        start_ts = end_ts - Hastur::Cassandra::ONE_DAY
+        start_ts, end_ts = get_start_end :one_day
 
         # Get with no subtype gives JSON
         h = {}
-        Hastur::Cassandra::SCHEMA.keys do |type|
+        Hastur::Cassandra::SCHEMA.keys.each do |type|
           data = Hastur::Cassandra.get(get_cass_client, params[:uuid], type, start_ts, end_ts)
           data.each do |k, v|
             h[k] = "#{hostname}/nodes/#{params[:uuid]}/stats/#{type}/#{k}" unless k.empty?
@@ -113,19 +112,18 @@ module Hastur
       # Retrieves the values of a particular stat for a particular node
       #
       # @params uuid    UUID to query for (required)
-      # @params start   Starting timestamp
-      # @params end     Ending timestamp
+      # @params start   Starting timestamp, default 5 minutes ago
+      # @params end     Ending timestamp, default now
       # @params stat    Name of the stat to query for (required)
       # @params type    Type of stat (required)
       #
       get "/nodes/:uuid/stats/:type/:stat" do
-        [:start, :end].each { |p| check_present p }
-        # convert the start and end times to Hastur time
-        start_ts = ::Hastur.timestamp(params[:start].to_i)
-        end_ts = ::Hastur.timestamp(params[:end].to_i)
+        start_ts, end_ts = get_start_end :five_minutes
+
         # query cassandra for the data
         opts = { :name => params[:stat] }
         values = ::Hastur::Cassandra.get(get_cass_client, params[:uuid], params[:type], start_ts, end_ts, opts)
+
         # transform the data into an understandable format
         data = Hash.new
         values.each do |key, val|
@@ -161,7 +159,7 @@ module Hastur
         # Turn a string or number into a number of usecs.
         #
         def delta_usec(delta)
-          case delta
+          case delta.to_s
             when "one_minute"   ;     60_000_000
             when "five_minutes" ;    600_000_000
             when "one_hour"     ;  3_600_000_000
@@ -172,6 +170,9 @@ module Hastur
 
         #
         # Get the time range tuple.  Use params or the default period (in seconds).
+        #
+        # @param [Symbol,String,Fixnum] default delta from current time for start_ts
+        # @return Array<Fixnum> start and end epoch usec values
         #
         def get_start_end(default_delta = "five_minutes")
           if params[:end]
