@@ -54,7 +54,7 @@ class CoreRouterTest < MiniTest::Unit::TestCase
 
   def test_core_router_ack
     @topology[:mock_agent].heartbeat
-    @topology[:firehose].require_read_count 2, 30
+    @topology[:firehose].require_read_count 2, test_timeout(30)
 
     # why does this take so long, even on my fast box?
     # TODO: figure out why this is timing out even on nice machines (al, 2012-04-12)
@@ -67,7 +67,7 @@ class CoreRouterTest < MiniTest::Unit::TestCase
     rc = event.send @topology[:mock_agent].socket
     assert ZMQ::Util.resultcode_ok?(rc)
 
-    sleep 1
+    sleep test_timeout(1)
 
     @topology[:mock_agent].require_read_count 1
 
