@@ -189,38 +189,36 @@ namespace :hastur do
 
   task :install_zlib do
     Rake::Task["hastur:find_dirs"].invoke unless dirs[:zlib]
-    confmakeinstall(:zlib, dirs[:zlib], "./configure", CONFIGURE)
+    confmakeinstall :zlib, dirs[:zlib], "./configure", CONFIGURE
   end
 
   task :install_openssl do
     Rake::Task["hastur:find_dirs"].invoke unless dirs[:openssl]
-    confmakeinstall(:openssl, dirs[:openssl], "./config", CONFIGURE,
-      "--with-zlib-lib=#{PATHS[:libdir]}",
-      "--with-zlib-include=#{PATHS[:incdir]}",
-      "threads", "shared", "zlib-dynamic", "no-hw",
-      "-L#{PATHS[:libdir]}",
-      "-I#{PATHS[:incdir]}",
-    )
+    confmakeinstall :openssl, dirs[:openssl], "./config", CONFIGURE, \
+      "--with-zlib-lib=#{PATHS[:libdir]}", \
+      "--with-zlib-include=#{PATHS[:incdir]}", \
+      "threads", "shared", "zlib-dynamic", "no-hw", \
+      "-L#{PATHS[:libdir]}", \
+      "-I#{PATHS[:incdir]}"
   end
 
   task :install_yaml do
     Rake::Task["hastur:find_dirs"].invoke unless dirs[:yaml]
-    confmakeinstall(:yaml, dirs[:yaml], "./configure", CONFIGURE)
+    confmakeinstall :yaml, dirs[:yaml], "./configure", CONFIGURE
   end
 
   task :install_libffi do
     Rake::Task["hastur:find_dirs"].invoke unless dirs[:libffi]
-    confmakeinstall(:libffi, dirs[:libffi], "./configure", CONFIGURE, "--enable-portable-binary")
+    confmakeinstall :libffi, dirs[:libffi], "./configure", CONFIGURE, "--enable-portable-binary"
   end
 
   task :install_ruby do
     Rake::Task["hastur:find_dirs"].invoke unless dirs[:ruby]
 
-    confmakeinstall(:ruby, dirs[:ruby], "./configure", CONFIGURE,
-      "--with-opt-dir=#{PATHS[:libdir]}",
-      "--enable-shared",
-      "--disable-install-doc",
-    )
+    confmakeinstall :ruby, dirs[:ruby], "./configure", CONFIGURE, \
+      "--with-opt-dir=#{PATHS[:libdir]}", \
+      "--enable-shared", \
+      "--disable-install-doc"
   end
 
   task :install_gems do
