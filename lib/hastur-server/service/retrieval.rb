@@ -33,6 +33,12 @@ module Hastur
     #     info_process
     #
     class Retrieval < Sinatra::Base
+      THRIFT_OPTIONS = {
+        :timeout => 300,
+        :connect_timeout => 30,
+        :retries => 10,
+      }
+
       #
       # @!method /
       #
@@ -97,7 +103,7 @@ module Hastur
         # Get with no subtype gives JSON
         h = {}
         Hastur::Cassandra::SCHEMA.keys.each do |type|
-          data = Hastur::Cassandra.get(get_cass_client, params[:uuid], type, start_ts, end_ts)
+          data = Hastur::Cassandra.get(get_cass_client, params[:uuid], type, start_ts, end_ts, :consistency => 1)
           data.each do |k, v|
             h[k] = "#{hostname}/nodes/#{params[:uuid]}/stats/#{type}/#{k}" unless k.empty?
           end
@@ -217,7 +223,7 @@ module Hastur
         # Creates a cassandra client that connects as needed
         #
         def get_cass_client
-          @cass_client ||= ::Cassandra.new("Hastur", @cassandra_uris.flatten)
+          @cass_client ||= ::Cassandra.new("Hastur", @cassandra_uris.flatten, THRIFT_OPTIONS)
         end
 
         #
