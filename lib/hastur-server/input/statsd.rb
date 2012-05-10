@@ -27,7 +27,7 @@ module Hastur
 
         if stat.nil?
           raise Hastur::PacketDecodingError.new("Invalid statsd packet")
-        end 
+        end
 
         name = stat[:name].gsub(/\s+/, '_').gsub(/\//, '-').gsub(/[^a-zA-Z_\-0-9\.]/, '');
         out = nil
