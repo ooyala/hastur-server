@@ -18,6 +18,8 @@ CREATE COLUMN FAMILY HBPluginV1Archive;
 CREATE COLUMN FAMILY RegAgentArchive;
 CREATE COLUMN FAMILY RegProcessArchive;
 CREATE COLUMN FAMILY RegPluginV1Archive;
+CREATE COLUMN FAMILY InfoProcessArchive;
+CREATE COLUMN FAMILY InfoAgentArchive;
 
 # Per-UUID Full-granularity Hastur messages,
 # only name, timestamp and value.
