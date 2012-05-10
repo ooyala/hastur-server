@@ -29,7 +29,7 @@ opts = Trollop::options do
 end
 
 unless opts[:no_proc_stats]
-  require "hastur/default"
+  require "hastur"
 end
 
 unless opts[:router].all? { |uri| Hastur::Util.valid_zmq_uri? uri }
