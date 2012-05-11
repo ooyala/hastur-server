@@ -1,7 +1,7 @@
 # A collection of useful functions, including for the ffi-rzmq gem.
 
 require "multi_json"
-require "ffi-rzmq"
+#require "ffi-rzmq"
 require "termite"
 
 module Hastur
