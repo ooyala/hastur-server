@@ -63,6 +63,13 @@ module Hastur
     # @example F.add_filter { :uuid => uuid }
     #
     def add_filter(opts)
+      opts.each do |key, value|
+        unless key.is_a?(Symbol)
+          opts[key.to_sym] = value
+        end
+      end
+      opts.keep_if { |k, v| k.is_a?(Symbol) }
+
       bad_keys = opts.keys - FILTER_OPTIONS
       raise "Bad keys in syndicator filter: #{bad_keys.map(&:inspect).join(", ")}!" unless bad_keys.empty?
 
@@ -78,12 +85,12 @@ module Hastur
       end
 
       if opts[:type]
-        if Hastur::Message.type_id? opts[:type]
-          filter[:type] = opts[:type]
-        elsif Hastur::Message.symbol? opts[:type]
-          filter[:type] = Hastur::Message.symbol_to_type_id(opts[:type])
+        if opts[:type].respond_to?(:to_i) && Hastur::Message.type_id?(opts[:type].to_i)
+          filter[:type] = opts[:type].to_i
+        elsif opts[:type].respond_to?(:to_sym) && Hastur::Message.symbol?(opts[:type].to_sym)
+          filter[:type] = Hastur::Message.symbol_to_type_id(opts[:type].to_sym)
         else
-          raise ArgumentError.new ":type must be a valid Hastur::Message type"
+          raise ArgumentError.new "Filter :type must be a valid Hastur::Message type, but #{opts[:type].inspect} is not!"
         end
       end
 
