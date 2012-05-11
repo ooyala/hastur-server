@@ -143,7 +143,7 @@ class SyndicatorTest < Scope::TestCase
     end
 
     should "match a message with more in attn" do
-      assert_equal true, @syndicator.apply_one_filter(@filter, { "attn" => [ "item1", "item2" ] }),
+      assert_equal true, @syndicator.apply_one_filter(@filter, { "attn" => [ "item3", "item1", "item2", "item9" ] }),
         "{ :attn => [ \"item1\" ] } must match a message with more in attn"
     end
 
