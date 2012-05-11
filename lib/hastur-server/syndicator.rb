@@ -46,6 +46,8 @@ module Hastur
       @filters[id]
     end
 
+    FILTER_OPTIONS = [ :uuid, :type, :name, :value, :attn, :subject, :labels ]
+
     #
     # Create a filter rule.  Messages are forwarded when all of the filter elements match.
     #
@@ -61,6 +63,9 @@ module Hastur
     # @example F.add_filter { :uuid => uuid }
     #
     def add_filter(opts)
+      bad_keys = opts.keys - FILTER_OPTIONS
+      raise "Bad keys in syndicator filter: #{bad_keys.map(&:inspect).join(", ")}!" unless bad_keys.empty?
+
       filter = {}
       id = UUID.generate
 
