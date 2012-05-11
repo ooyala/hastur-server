@@ -16,13 +16,7 @@ Warbler::Config.new do |config|
 
   # Additional files/directories to include, above those in config.dirs
   # config.includes = FileList["db"]
-  config.includes = FileList[
-    "config.ru",
-    #"lib/hastur-server/service/retrieval.rb",
-    #"lib/hastur-server/sink/cassandra_rollups.rb",
-    #"lib/hastur-server/sink/cassandra_schema.rb",
-    #"lib/hastur-server/util.rb",
-  ]
+  config.includes = FileList[ "config.ru" ]
 
   # Additional files/directories to exclude
   # config.excludes = FileList["lib/tasks/*"]

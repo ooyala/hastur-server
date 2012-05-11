@@ -2,7 +2,7 @@
 require "trollop"
 require "hastur-server/util"
 require "hastur-server/message"
-require "hastur-server/sink/cassandra_schema"
+require "hastur-server/cassandra/schema"
 
 STDOUT.sync = true # make stdout flush immediately
 

@@ -5,8 +5,8 @@ require_relative "../hastur_simplecov"
 require "minitest/unit"
 require "multi_json"
 require "hastur-server/libc_ffi"
-require 'hastur-server/sink/cassandra_schema'
-require 'hastur-server/sink/cassandra_rollups'
+require 'hastur-server/cassandra/schema'
+require 'hastur-server/cassandra/rollups'
 
 # For testing Hastur components, use the local version *first*.
 $LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..", "..", "lib")

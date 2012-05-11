@@ -1,6 +1,6 @@
 require "hastur-server/util"
 require "hastur-server/message"
-require "hastur-server/sink/cassandra_schema"
+require "hastur-server/cassandra/schema"
 require "cassandra"
 require "cassandra/1.0"
 

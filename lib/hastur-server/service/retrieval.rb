@@ -2,8 +2,8 @@
 require "sinatra/base"
 require "cassandra"
 require "hastur/api"
-require "hastur-server/sink/cassandra_rollups"
-require "hastur-server/sink/cassandra_schema"
+require "hastur-server/cassandra/rollups"
+require "hastur-server/cassandra/schema"
 require "multi_json"
 
 module Hastur

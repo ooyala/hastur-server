@@ -1,6 +1,6 @@
 require_relative "../../test_helper"
 
-require "hastur-server/sink/cassandra_rollups"
+require "hastur-server/cassandra/rollups"
 
 # Timestamps to test with
 TESTING_NOW_TS = 1330718485000000

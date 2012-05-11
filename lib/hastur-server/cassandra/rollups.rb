@@ -1,4 +1,4 @@
-require "hastur-server/sink/cassandra_schema"
+require "hastur-server/cassandra/schema"
 
 module Hastur
   module Cassandra

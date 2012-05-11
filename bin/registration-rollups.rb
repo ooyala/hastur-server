@@ -4,8 +4,8 @@ require "cassandra"
 require "trollop"
 
 require "hastur-server/util"
-require "hastur-server/sink/cassandra_schema"
-require "hastur-server/sink/cassandra_rollups"
+require "hastur-server/cassandra/schema"
+require "hastur-server/cassandra/rollups"
 
 #
 # The registration rollup will periodically (daily) perform rollups for the RegAgentArchive column family 
