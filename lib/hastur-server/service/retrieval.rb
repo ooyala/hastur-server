@@ -190,7 +190,7 @@ module Hastur
           if params[:start]
             start_ts = Hastur.timestamp(params[:start].to_i)
           elsif params[:ago]
-            start_ts = Hastur.timesetamp - delta_usec(params[:ago])
+            start_ts = Hastur.timestamp - delta_usec(params[:ago])
           else
             start_ts = end_ts - delta_usec(default_delta)
           end
