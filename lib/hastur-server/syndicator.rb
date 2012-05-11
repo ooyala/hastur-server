@@ -63,12 +63,11 @@ module Hastur
     # @example F.add_filter { :uuid => uuid }
     #
     def add_filter(opts)
-      opts.each do |key, value|
-        unless key.is_a?(Symbol)
-          opts[key.to_sym] = value
-        end
+      non_sym_keys = opts.keys.select { |k| !k.is_a?(Symbol) }
+      non_sym_keys.each do |key|
+        opts[key.to_sym] = opts[key]
+        opts.delete(key)
       end
-      opts.keep_if { |k, v| k.is_a?(Symbol) }
 
       bad_keys = opts.keys - FILTER_OPTIONS
       raise "Bad keys in syndicator filter: #{bad_keys.map(&:inspect).join(", ")}!" unless bad_keys.empty?
