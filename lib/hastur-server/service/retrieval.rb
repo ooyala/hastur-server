@@ -1,6 +1,7 @@
-
 require "sinatra/base"
+
 require "cassandra"
+require "cgi"
 require "hastur/api"
 require "hastur-server/cassandra/rollups"
 require "hastur-server/cassandra/schema"
@@ -153,10 +154,69 @@ module Hastur
       #
       # @!method /apps
       #
-      # @todo TODO(Viet - 5/4/12): Complete this section after v2
+      # Retrieves all of the registered applications.
       #
       get "/apps" do
-        "Not yet implemented."
+        h = {}
+        hostname = get_request_url(request)
+        apps = Set.new
+        get_cass_client.each(:RegProcessArchive) do |r, c|
+          if c.is_a? ::Hash
+            c.each do |col_key, value|
+              begin
+                apps.add(CGI.escape(MultiJson.load(value)["labels"]["app"]))
+              rescue Exception => e
+                
+              end
+            end
+          end
+        end
+
+        apps.each do |app|
+          h[app] = "#{hostname}/apps/#{app}"
+        end
+
+        ::MultiJson.dump(h)
+      end
+
+      #
+      # @!method /apps/:app
+      #
+      # Retrieves meta-data about a specific application name.
+      #
+      get "/apps/:app" do
+        hostname = get_request_url(request)
+        h = {
+          :name            => CGI.unescape(params[:app]),
+#          :number_of_nodes => number_of_nodes,
+          :stats           => "#{hostname}/apps/#{CGI.escape(params[:app])}/stats"
+        }
+
+        ::MultiJson.dump(h)
+      end
+
+      #
+      # @!method /apps/:app/stats
+      #
+      # Retrieves a list of stat name for a particular application
+      #
+      get "/apps/:app/stats" do
+        
+      end
+
+      #
+      # @!method /apps/:app_name/stats/:stat
+      #
+      # Retrieves the values of a particular stat across all apps
+      #
+      # @params uuid    UUID to query for (required)
+      # @params start   Starting timestamp, default 5 minutes ago
+      # @params end     Ending timestamp, default now
+      # @params stat    Name of the stat to query for (required)
+      # @params type    Type of stat (required)
+      #
+      get "/apps/:app/stats/:stat" do
+        
       end
 
       helpers do
@@ -203,9 +263,7 @@ module Hastur
         #
         def get_request_url(request)
           request.url[0..(request.url.length - request.path_info.length - 1)]
-        end
-
-        #
+        end #
         # Retrieves a list of registered agents. Periodically refreshes the registrations
         # depending on how long ago the last refresh was.
         #
