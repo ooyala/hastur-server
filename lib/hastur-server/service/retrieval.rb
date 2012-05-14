@@ -160,11 +160,12 @@ module Hastur
         h = {}
         hostname = get_request_url(request)
         apps = Set.new
+        # Retrieve all registered processes
         get_cass_client.each(:RegProcessArchive) do |r, c|
           if c.is_a? ::Hash
             c.each do |col_key, value|
               begin
-                apps.add(CGI.escape(MultiJson.load(value)["labels"]["app"]))
+                apps.add(MultiJson.load(value)["labels"]["app"])
               rescue Exception => e
                 
               end
@@ -172,8 +173,9 @@ module Hastur
           end
         end
 
+        # Populate the return data object with the appropriate hash values
         apps.each do |app|
-          h[app] = "#{hostname}/apps/#{app}"
+          h[app] = "#{hostname}/apps/#{CGI.escape(app)}"
         end
 
         ::MultiJson.dump(h)
@@ -186,9 +188,10 @@ module Hastur
       #
       get "/apps/:app" do
         hostname = get_request_url(request)
+        uuids = get_uuids_from_app_name(params[:app])
         h = {
           :name            => CGI.unescape(params[:app]),
-#          :number_of_nodes => number_of_nodes,
+          :number_of_nodes => uuids.size,
           :stats           => "#{hostname}/apps/#{CGI.escape(params[:app])}/stats"
         }
 
@@ -201,7 +204,20 @@ module Hastur
       # Retrieves a list of stat name for a particular application
       #
       get "/apps/:app/stats" do
-        
+        hostname = get_request_url(request)
+        uuids = get_uuids_from_app_name(params[:app])
+        start_ts, end_ts = get_start_end :one_day
+
+        # Get with no subtype gives JSON
+        h = {}
+        Hastur::Cassandra::SCHEMA.keys.each do |type|
+          data = Hastur::Cassandra.get(get_cass_client, uuids, type, start_ts, end_ts, :consistency => 1)
+          data.each do |k, v|
+            h[k] = "#{hostname}/apps/#{CGI.escape(params[:app])}/stats/#{type}/#{k}" unless k.empty?
+          end
+        end
+
+        ::MultiJson.dump(h)
       end
 
       #
@@ -215,11 +231,58 @@ module Hastur
       # @params stat    Name of the stat to query for (required)
       # @params type    Type of stat (required)
       #
-      get "/apps/:app/stats/:stat" do
-        
+      get "/apps/:app/stats/:type/:stat" do
+        h = {}
+        hostname = get_request_url(request)
+        uuids = get_uuids_from_app_name(params[:app])
+        start_ts, end_ts = get_start_end :five_minutes
+
+        # query cassandra for the data
+        opts = { :name => params[:stat] }
+        values = ::Hastur::Cassandra.get(get_cass_client, uuids, params[:type], start_ts, end_ts, opts)
+
+        # transform the data into an understandable format
+        data = Hash.new
+        values.each do |key, val|
+          if val.is_a? ::Hash
+            val.each do |ts, json|
+              data[ts] = ::MultiJson.load(json)["value"]
+            end
+          end
+        end
+
+        h = {
+              :name  => params[:stat],
+              :count => data.size,
+              :type  => params[:type],
+              :data  => data
+            }
+
+        ::MultiJson.dump(h)
       end
 
       helpers do
+
+        #
+        # Retrieves a list of node UUIDs that are associated with an application
+        #
+        def get_uuids_from_app_name(app)
+          uuids = Set.new
+          # Scan all of the registered apps to find the set of associated node UUIDs
+          get_cass_client.each(:RegProcessArchive) do |r, c|
+            if c.is_a? ::Hash
+              c.each do |col_key, value|
+                begin
+                  if MultiJson.load(value)["labels"]["app"] == app
+                    uuids.add(r[0..35])
+                  end
+                rescue Exception => e
+                end
+              end
+            end
+          end
+          uuids.to_a
+        end
 
         #
         # Turn a string or number into a number of usecs.
