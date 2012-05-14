@@ -88,12 +88,12 @@ module Hastur
     #
     # Writes a rolled-over rollup from the previous segment to the next.
     #
-    # @params [Cassandra] cass_client Cassandra client
-    # @params [String] route Hastur ZMQ route used to know which CF to write to
-    # @params [Fixnum] timestamp Hastur time in usecs. Used to know which time segment to write to
-    # @params [Fixnum] granularity Number of usecs for a time segment. Must be a valid granularity from
+    # @param [Cassandra] cass_client Cassandra client
+    # @param [String] route Hastur ZMQ route used to know which CF to write to
+    # @param [Fixnum] timestamp Hastur time in usecs. Used to know which time segment to write to
+    # @param [Fixnum] granularity Number of usecs for a time segment. Must be a valid granularity from
     #                              Hastur::Cassandra::GRANULARITIES
-    # @params [OrderedHash] ordered_hash The data is that rolling over from the period segment.
+    # @param [OrderedHash] ordered_hash The data is that rolling over from the period segment.
     #
     def write_ordered_hash_rollup(cass_client, route, timestamp, granularity, ordered_hash)
       ordered_hash.keys.each do |key|

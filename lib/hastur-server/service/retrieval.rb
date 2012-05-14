@@ -72,7 +72,7 @@ module Hastur
       #
       # Retrieves meta-data on a particular node
       #
-      # @params uuid UUID to query for (required)
+      # @param uuid UUID to query for (required)
       #
       get "/nodes/:uuid" do
         hostname = get_request_url(request)
@@ -95,7 +95,7 @@ module Hastur
       #
       # Retrieves a list of available stats on a particular node
       #
-      # @params uuid UUID to query for (required)
+      # @param uuid UUID to query for (required)
       #
       get "/nodes/:uuid/stats" do
         hostname = get_request_url(request)
@@ -118,11 +118,11 @@ module Hastur
       #
       # Retrieves the values of a particular stat for a particular node
       #
-      # @params uuid    UUID to query for (required)
-      # @params start   Starting timestamp, default 5 minutes ago
-      # @params end     Ending timestamp, default now
-      # @params stat    Name of the stat to query for (required)
-      # @params type    Type of stat (required)
+      # @param uuid    UUID to query for (required)
+      # @param start   Starting timestamp, default 5 minutes ago
+      # @param end     Ending timestamp, default now
+      # @param stat    Name of the stat to query for (required)
+      # @param type    Type of stat (required)
       #
       get "/nodes/:uuid/stats/:type/:stat" do
         start_ts, end_ts = get_start_end :five_minutes
@@ -225,11 +225,11 @@ module Hastur
       #
       # Retrieves the values of a particular stat across all apps
       #
-      # @params uuid    UUID to query for (required)
-      # @params start   Starting timestamp, default 5 minutes ago
-      # @params end     Ending timestamp, default now
-      # @params stat    Name of the stat to query for (required)
-      # @params type    Type of stat (required)
+      # @param uuid    UUID to query for (required)
+      # @param start   Starting timestamp, default 5 minutes ago
+      # @param end     Ending timestamp, default now
+      # @param stat    Name of the stat to query for (required)
+      # @param type    Type of stat (required)
       #
       get "/apps/:app/stats/:type/:stat" do
         h = {}
