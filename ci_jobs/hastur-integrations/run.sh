@@ -21,6 +21,7 @@ gem uninstall bundler -v 1.1.1
 gem install --no-rdoc --no-ri bundler
 bundle update   # Update to latest versions since this is a gem
 #bundle install
+rm hastur-server-*.gem
 gem build hastur-server.gemspec
 gem install hastur-server-*.gem
 
