@@ -11,3 +11,4 @@ coverage
 nodule-cassandra*
 .DS_Store
 *.class
+*.war
