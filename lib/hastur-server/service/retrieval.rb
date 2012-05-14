@@ -186,6 +186,8 @@ module Hastur
       #
       # Retrieves meta-data about a specific application name.
       #
+      # @param app URL-encoded application name (required)
+      #
       get "/apps/:app" do
         hostname = get_request_url(request)
         uuids = get_uuids_from_app_name(params[:app])
@@ -202,6 +204,8 @@ module Hastur
       # @!method /apps/:app/stats
       #
       # Retrieves a list of stat name for a particular application
+      #
+      # @param app URL-encoded application name (required)
       #
       get "/apps/:app/stats" do
         hostname = get_request_url(request)
