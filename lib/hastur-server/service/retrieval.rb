@@ -229,7 +229,7 @@ module Hastur
       #
       # Retrieves the values of a particular stat across all apps
       #
-      # @param uuid    UUID to query for (required)
+      # @param app URL-encoded application name (required)
       # @param start   Starting timestamp, default 5 minutes ago
       # @param end     Ending timestamp, default now
       # @param stat    Name of the stat to query for (required)
