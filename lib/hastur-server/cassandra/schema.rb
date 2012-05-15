@@ -121,12 +121,16 @@ module Hastur
       end
     end
 
-    # Options from Twitter Cassandra gem:
-    #   :ttl
-    #   :consistency
-    # Additional options:
-    #   :uuid - agent UUID
-    #   :msg_type - data type from the hastur message (required)
+    #
+    # Insert a column.
+    # @param [Cassandra] cassandra client object, should be connected and in the right keyspace
+    # @param [String] json string, will be parsed & data used for the insert
+    # @param [String] message type string, e.g. the .to_s of the symbols in Hastur::Message
+    # @param [Hash{Symbol=>Fixnum,String}] options
+    # @option options [Fixnum] :ttl, passed to the cassandra client
+    # @option options [Fixnum] :consistency, passed to the cassandra client
+    # @option options [String] :uuid 36-byte agent UUID
+    #
     def insert(cass_client, json_string, msg_type, options = {})
       hash = MultiJson.load(json_string, :symbolize_keys => true)
       raise "Cannot deserialize JSON string!" unless hash
