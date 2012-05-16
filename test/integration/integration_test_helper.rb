@@ -24,6 +24,10 @@ HASTUR_CASS_SINK_BIN="#{HASTUR_ROOT}/bin/cass-sink.rb"
 HASTUR_SCHEDULER="#{HASTUR_ROOT}/bin/run-scheduler.rb"
 HASTUR_REGISTRATION_ROLLUP_BIN="#{HASTUR_ROOT}/bin/registration-rollups.rb"
 
+TRIGGER_SYNDICATOR_BIN = File.join(HASTUR_ROOT, "bin", "trigger-syndicator")
+TRIGGER_WORKER_BIN = File.join(HASTUR_ROOT, "bin", "trigger-worker")
+TRIGGER_REPLAY_BIN = File.join(HASTUR_ROOT, "bin", "replay-from-query-server")
+
 HASTUR_UDP_PORT = Nodule::Util.random_udp_port
 Hastur.udp_port = HASTUR_UDP_PORT
 
