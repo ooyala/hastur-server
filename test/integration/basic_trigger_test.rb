@@ -14,7 +14,7 @@ require "ffi-rzmq"
 
 TEST_TRIGGER = File.join(HASTUR_ROOT, "tools", "trigger", "triggers", "logging_trigger.rb")
 
-TEST_COUNTER_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Stat::Counter, :from => AUUID1, :to => AUUID2
+TEST_COUNTER_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Stat::Counter, :from => A1UUID, :to => A2UUID
 TEST_COUNTER_1 = <<JSON
 {
   "type": "counter",
@@ -26,7 +26,7 @@ TEST_COUNTER_1 = <<JSON
 }
 JSON
 
-TEST_GAUGE_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Stat::Gauge, :from => AUUID1, :to => AUUID2
+TEST_GAUGE_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Stat::Gauge, :from => A1UUID, :to => A2UUID
 TEST_GAUGE_1 = <<JSON
 {
   "type": "gauge",
@@ -48,7 +48,7 @@ TEST_GAUGE_2 = <<JSON
 }
 JSON
 
-TEST_MARK_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Stat::Mark, :from => AUUID1, :to => AUUID2
+TEST_MARK_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Stat::Mark, :from => A1UUID, :to => A2UUID
 TEST_MARK_1 = <<JSON
 {
   "type": "mark",
@@ -70,7 +70,7 @@ TEST_MARK_2 = <<JSON
 }
 JSON
 
-TEST_EVENT_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Event, :from => AUUID1, :to => AUUID2
+TEST_EVENT_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Event, :from => A1UUID, :to => A2UUID
 TEST_EVENT_1 = <<JSON
 {
   "type": "event",
@@ -90,7 +90,7 @@ TEST_EVENT_2 = <<JSON
 }
 JSON
 
-TEST_HB_PROCESS_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::HB::Process, :from => AUUID1, :to => AUUID2
+TEST_HB_PROCESS_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::HB::Process, :from => A1UUID, :to => A2UUID
 TEST_HB_PROCESS_1 = <<JSON
 {
   "type": "hb_process",
