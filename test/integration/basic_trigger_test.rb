@@ -48,7 +48,7 @@ TEST_GAUGE_2 = <<JSON
 }
 JSON
 
-TEST_MARK_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Stat::Mark, :from => UUID1, :to => UUID2
+TEST_MARK_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Stat::Mark, :from => AUUID1, :to => AUUID2
 TEST_MARK_1 = <<JSON
 {
   "type": "mark",
@@ -70,7 +70,7 @@ TEST_MARK_2 = <<JSON
 }
 JSON
 
-TEST_EVENT_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Event, :from => UUID1, :to => UUID2
+TEST_EVENT_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Event, :from => AUUID1, :to => AUUID2
 TEST_EVENT_1 = <<JSON
 {
   "type": "event",
@@ -90,7 +90,7 @@ TEST_EVENT_2 = <<JSON
 }
 JSON
 
-TEST_HB_PROCESS_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::HB::Process, :from => UUID1, :to => UUID2
+TEST_HB_PROCESS_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::HB::Process, :from => AUUID1, :to => AUUID2
 TEST_HB_PROCESS_1 = <<JSON
 {
   "type": "hb_process",
