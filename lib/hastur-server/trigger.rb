@@ -1,10 +1,8 @@
-require "hastur-trigger/version"
-require "hastur-trigger/state_handler"
+require "hastur-server/trigger/state_handler"
 
-require "hastur-trigger/pager_duty"
-require "hastur-trigger/email"
-require "hastur-trigger/web_hook"
-require "hastur-trigger/annotation"
+require "hastur-server/trigger/pager_duty"
+require "hastur-server/trigger/email"
+require "hastur-server/trigger/web_hook"
 
 require "hastur-server/util"
 require "hastur-server/message"
