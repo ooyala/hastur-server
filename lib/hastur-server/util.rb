@@ -1,7 +1,6 @@
 # A collection of useful functions, including for the ffi-rzmq gem.
 
 require "multi_json"
-#require "ffi-rzmq"
 require "termite"
 
 module Hastur
@@ -31,6 +30,9 @@ module Hastur
     # 1, 1970 at midnight UTC.  Default to giving Time.now as a Hastur
     # timestamp.
     #
+    # @param [Time, Fixnum] default Time.now
+    # @return [Fixnum] epoch microseconds
+    #
     def timestamp(ts=Time.now)
       case ts
         when nil, ""
@@ -54,7 +56,11 @@ module Hastur
     BOOT_TIME = timestamp
 
     #
-    # return the current uptime in microseconds
+    # Return the current process's uptime in microseconds. This is the amount of time
+    # that has passed since this module was loaded.
+    #
+    # @param [Time] default Time.now
+    # @return [Fixnum] current process uptime in microseconds
     #
     def uptime(time=Time.now)
       now = timestamp(time)
@@ -62,7 +68,9 @@ module Hastur
     end
 
     #
-    # keep a single, global counter for the :sequence field
+    # Keep a single, global counter for the :sequence field. Not thread safe (yet).
+    #
+    # @return [Fixnum] next sequence number
     #
     @counter = 0
     def next_seq
@@ -71,6 +79,11 @@ module Hastur
 
     UUID_RE = /\A[a-f0-9]{8}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{4}-?[a-f0-9]{12}\Z/i
 
+    #
+    # Check if the provided UUID string is a valid 36-byte hex UUID.
+    # @param [String] string to be tested
+    # @return [TrueClass,FalseClass]
+    #
     def valid_uuid?(uuid)
       if UUID_RE.match(uuid)
         true
@@ -84,6 +97,7 @@ module Hastur
     # doesn't try to check for things we fix up automatically.
     #
     # @param uri [String] The URI to check
+    # @return [TrueClass,FalseClass]
     #
     def valid_zmq_uri?(uri)
       case uri
@@ -103,6 +117,7 @@ module Hastur
     # advance which version of ZeroMQ we're connecting to.
     #
     # @param uri [String] The URI to convert
+    # @return [String] converted URI
     #
     def to_valid_zmq_uri(uri)
       match = uri.match %r{\A([a-zA-Z]{3,6})://([^/:]+)(:\d+)?(/.*)?\Z}
@@ -175,6 +190,12 @@ module Hastur
       end
     end
 
+    #
+    # Bind to a URI or list of URI's on the given socket.
+    #
+    # @param [ZMQ::Socket] ZeroMQ socket to bind
+    # @param [String,Array<String>] a single URI or array of URI's to bind
+    #
     def bind(socks, uri)
       [socks].flatten.each do |sock|
         rc = sock.bind(uri)
@@ -183,6 +204,12 @@ module Hastur
       end
     end
 
+    #
+    # Connect to a URI or list of URI's on the given socket.
+    #
+    # @param [ZMQ::Socket] ZeroMQ socket to connect
+    # @param [String,Array<String>] a single URI or array of URI's to connect to
+    #
     def connect(socks, uri)
       [socks].flatten.each do |sock|
         rc = sock.connect(uri)
@@ -191,6 +218,10 @@ module Hastur
       end
     end
 
+    #
+    # Read raw ZMQ messages from the provided socket, check for errors.
+    # @param [ZMQ::Socket] ZeroMQ socket to connect
+    # @return [Array<ZMQ::Message>,FalseClass] either a list of messages or just false if an error was detected.
     def read_msgs(socket)
       message = []
       rc = socket.recvmsgs message
