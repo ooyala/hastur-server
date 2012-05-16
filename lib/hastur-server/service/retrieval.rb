@@ -10,28 +10,20 @@ require "multi_json"
 module Hastur
   module Service
     #
-    # The Retrieval application.
+    # The Hastur Retrieval REST service.
     #
-    # Message types include:
+    # Conventions:
+    #   * use singular names for resources in all paths & params to be consistent
+    #   * explicitly use the correct HTTP 1.1 status codes
+    #   * support count and limit parameters everywhere sensible
     #
-    #   stat - statistics
-    #     counter
-    #     gauge
-    #     mark
-    #   heartbeat - heartbeats from processes or systems
-    #     hb_process
-    #     hb_agent
-    #     hb_pluginv1
-    #   event
-    #   log
-    #   error
-    #   registration - registrations from processes or systems
-    #     reg_agent
-    #     reg_process
-    #     reg_pluginv1
-    #   info
-    #     info_agent
-    #     info_process
+    # Extensions:
+    #   * parameter values may be comma-delimited lists
+    #
+    # Future:
+    #   * better query size limits / handling
+    #   * add authentication
+    #   * consider JSONP callbacks - github has great examples
     #
     class Retrieval < Sinatra::Base
       THRIFT_OPTIONS = {
@@ -47,42 +39,42 @@ module Hastur
       #
       get "/" do
         hostname = get_request_url(request)
-        h = {:nodes => "#{hostname}/nodes", :apps => "#{hostname}/apps"}
+        h = {:node => "#{hostname}/node", :app => "#{hostname}/app"}
 
         ::MultiJson.dump(h)
       end
 
       #
-      # @!method /nodes
+      # @!method /node
       #
       # Retrieves a list of currently registered Hastur-enabled nodes
       #
-      get "/nodes" do
+      get "/node" do
         hostname = get_request_url(request)
         h = {}
         get_registrations.each do |uuid, reg_hash|
-          h[uuid] = "#{hostname}/nodes/#{uuid}"
+          h[uuid] = "#{hostname}/node/#{uuid}"
         end
 
         ::MultiJson.dump(h)
       end
 
       #
-      # @!method /nodes/:uuid
+      # @!method /node/:uuid
       #
       # Retrieves meta-data on a particular node
       #
       # @param uuid UUID to query for (required)
       #
-      get "/nodes/:uuid" do
+      get "/node/:uuid" do
         hostname = get_request_url(request)
         if get_registrations[params[:uuid]]
           registration_hash = get_registrations[params[:uuid]]
           h = {
                 :hostname => registration_hash["json"]["hostname"],
                 :ipv4     => registration_hash["json"]["ipv4"],
-                :stats    => "#{hostname}/nodes/#{params[:uuid]}/stats",
-                :facts    => "#{hostname}/nodes/#{params[:uuid]}/facts"
+                :stat     => "#{hostname}/node/#{params[:uuid]}/stat",
+                :fact     => "#{hostname}/node/#{params[:uuid]}/fact"
               }
         else
           return [404, ::MultiJson.dump( { :msg => "#{params[:uuid]} is not registered." } )]
@@ -91,13 +83,13 @@ module Hastur
       end
 
       #
-      # @!method /nodes/:uuid/stats
+      # @!method /node/:uuid/stat
       #
       # Retrieves a list of available stats on a particular node
       #
       # @param uuid UUID to query for (required)
       #
-      get "/nodes/:uuid/stats" do
+      get "/node/:uuid/stat" do
         hostname = get_request_url(request)
         start_ts, end_ts = get_start_end :one_day
 
@@ -106,7 +98,7 @@ module Hastur
         Hastur::Cassandra::SCHEMA.keys.each do |type|
           data = Hastur::Cassandra.get(get_cass_client, params[:uuid], type, start_ts, end_ts, :consistency => 1)
           data.each do |k, v|
-            h[k] = "#{hostname}/nodes/#{params[:uuid]}/stats/#{type}/#{k}" unless k.empty?
+            h[k] = "#{hostname}/node/#{params[:uuid]}/stat/#{type}/#{k}" unless k.empty?
           end
         end
 
@@ -114,7 +106,7 @@ module Hastur
       end
 
       #
-      # @!method /nodes/:uuid/stats/:stat
+      # @!method /node/:uuid/stat/:stat
       #
       # Retrieves the values of a particular stat for a particular node
       #
@@ -124,7 +116,7 @@ module Hastur
       # @param stat    Name of the stat to query for (required)
       # @param type    Type of stat (required)
       #
-      get "/nodes/:uuid/stats/:type/:stat" do
+      get "/node/:uuid/stat/:type/:stat" do
         start_ts, end_ts = get_start_end :five_minutes
 
         # query cassandra for the data
@@ -152,11 +144,11 @@ module Hastur
       end
 
       #
-      # @!method /apps
+      # @!method /app
       #
       # Retrieves all of the registered applications.
       #
-      get "/apps" do
+      get "/app" do
         h = {}
         hostname = get_request_url(request)
         apps = Set.new
@@ -167,47 +159,72 @@ module Hastur
               begin
                 apps.add(MultiJson.load(value)["labels"]["app"])
               rescue Exception => e
-                
               end
             end
           end
         end
 
         # Populate the return data object with the appropriate hash values
-        apps.each do |app|
-          h[app] = "#{hostname}/apps/#{CGI.escape(app)}"
+        app.each do |app|
+          h[app] = "#{hostname}/app/#{CGI.escape(app)}/data"
         end
 
         ::MultiJson.dump(h)
       end
 
       #
-      # @!method /apps/:app
+      # @!method /app/:app/data
       #
       # Retrieves meta-data about a specific application name.
       #
       # @param app URL-encoded application name (required)
       #
-      get "/apps/:app" do
+      # @example
+      # GET /app/:app/data/
+      # {
+      #   "stat"    => "/app/:app/data/stat/"
+      #   "gauge"   => "/app/:app/data/gauge/"
+      #   "counter" => "/app/:app/data/counter/"
+      #   "event"   => "/app/:app/data/event/"
+      #   ...
+      # }
+      #
+      get "/app/:app/data" do
         hostname = get_request_url(request)
         uuids = get_uuids_from_app_name(params[:app])
         h = {
           :name            => CGI.unescape(params[:app]),
           :number_of_nodes => uuids.size,
-          :stats           => "#{hostname}/apps/#{CGI.escape(params[:app])}/stats"
+          :stats           => "#{hostname}/app/#{CGI.escape(params[:app])}/stat"
         }
 
         ::MultiJson.dump(h)
       end
 
       #
-      # @!method /apps/:app/stats
+      # @!method /app/:app/node
+      # @note not implmented
+      #
+      # Returns a list of nodes with the application registered.
+      #
+      get "/app/:app/node" do
+        stub! "/app/:app/node"
+      end
+
+      #
+      # @!method /app/:app/node/:node/
+      #
+      # Get application information for a paritcular node.
+      #
+
+      #
+      # @!method /app/:app/stat
       #
       # Retrieves a list of stat name for a particular application
       #
       # @param app URL-encoded application name (required)
       #
-      get "/apps/:app/stats" do
+      get "/app/:app/stat" do
         hostname = get_request_url(request)
         uuids = get_uuids_from_app_name(params[:app])
         start_ts, end_ts = get_start_end :one_day
@@ -217,7 +234,7 @@ module Hastur
         Hastur::Cassandra::SCHEMA.keys.each do |type|
           data = Hastur::Cassandra.get(get_cass_client, uuids, type, start_ts, end_ts, :consistency => 1)
           data.each do |k, v|
-            h[k] = "#{hostname}/apps/#{CGI.escape(params[:app])}/stats/#{type}/#{k}" unless k.empty?
+            h[k] = "#{hostname}/app/#{CGI.escape(params[:app])}/stat/#{type}/#{k}" unless k.empty?
           end
         end
 
@@ -225,7 +242,7 @@ module Hastur
       end
 
       #
-      # @!method /apps/:app_name/stats/:stat
+      # @!method /app/:app_name/stat/:stat
       #
       # Retrieves the values of a particular stat across all apps
       #
@@ -235,7 +252,7 @@ module Hastur
       # @param stat    Name of the stat to query for (required)
       # @param type    Type of stat (required)
       #
-      get "/apps/:app/stats/:type/:stat" do
+      get "/app/:app/stat/:type/:stat" do
         h = {}
         hostname = get_request_url(request)
         uuids = get_uuids_from_app_name(params[:app])
@@ -352,12 +369,28 @@ module Hastur
         end
 
         #
+        # Calls through to Sinatra's halt with an error code with a JSON body containing
+        # {"error": "message"} and the same message in the statusText header.
+        #
+        def error(code, message)
+          headers "statusText" => message
+          halt code, "{\"error\":\"#{message}\"}"
+        end
+
+        #
         # Ensures that a particular param is present. An HTTP 404 is returned otherwise.
         #
         def check_present(p, human_name = nil)
           unless params[p]
-            halt [404, "{ \"msg\" : \"#{human_name || p} param is required!\" }"]
+            error 404, "#{human_name || p} param is required!"
           end
+        end
+
+        #
+        # Returns an error & status code indicating the method is not implemented yet.
+        #
+        def stub!
+          error 405, "this route is just a stub and is not implemented yet"
         end
 
         #
