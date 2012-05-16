@@ -14,7 +14,7 @@ require "ffi-rzmq"
 
 TEST_TRIGGER = File.join(HASTUR_ROOT, "tools", "trigger", "triggers", "logging_trigger.rb")
 
-TEST_COUNTER_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Stat::Counter, :from => UUID1, :to => UUID2
+TEST_COUNTER_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Stat::Counter, :from => AUUID1, :to => AUUID2
 TEST_COUNTER_1 = <<JSON
 {
   "type": "counter",
@@ -26,7 +26,7 @@ TEST_COUNTER_1 = <<JSON
 }
 JSON
 
-TEST_GAUGE_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Stat::Gauge, :from => UUID1, :to => UUID2
+TEST_GAUGE_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Stat::Gauge, :from => AUUID1, :to => AUUID2
 TEST_GAUGE_1 = <<JSON
 {
   "type": "gauge",
