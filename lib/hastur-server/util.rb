@@ -81,7 +81,7 @@ module Hastur
 
     #
     # Check if the provided UUID string is a valid 36-byte hex UUID.
-    # @param [String] string to be tested
+    # @param [String] uuid string to be tested
     # @return [Boolean]
     #
     def valid_uuid?(uuid)
@@ -194,8 +194,8 @@ module Hastur
     #
     # Bind to a URI or list of URI's on the given socket.
     #
-    # @param [ZMQ::Socket] ZeroMQ socket to bind
-    # @param [String,Array<String>] a single URI or array of URI's to bind
+    # @param [ZMQ::Socket] sock ZeroMQ socket to bind
+    # @param [String,Array<String>] uris a single URI or array of URI's to bind
     #
     def bind(sock, uris)
       [uris].flatten.each do |uri|
@@ -208,8 +208,8 @@ module Hastur
     #
     # Connect to a URI or list of URI's on the given socket.
     #
-    # @param [ZMQ::Socket] ZeroMQ socket to connect
-    # @param [String,Array<String>] a single URI or array of URI's to connect to
+    # @param [ZMQ::Socket] sock ZeroMQ socket to connect
+    # @param [String,Array<String>] uris a single URI or array of URI's to connect to
     #
     def connect(sock, uris)
       [uris].flatten.each do |uri|
@@ -244,7 +244,7 @@ module Hastur
     # Messages are _not_ closed after sending.
     #
     # @param [ZMQ::Socket] socket ZeroMQ socket to connect
-    # @param [Array<ZMQ::Message>] list of ZMQ::Messages to send
+    # @param [Array<ZMQ::Message>] message list of ZMQ::Messages to send
     # @return [Boolean] success / failure, errors are logged
     #
     def send_msgs(socket, message)
