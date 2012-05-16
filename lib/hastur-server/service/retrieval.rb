@@ -26,22 +26,47 @@ module Hastur
     #   * consider JSONP callbacks - github has great examples
     #
     class Retrieval < Sinatra::Base
-      THRIFT_OPTIONS = {
-        :timeout => 300,
-        :connect_timeout => 30,
-        :retries => 10,
-      }
+      #
+      # All of the Hastur message types. These are used in various places in the API
+      # usually in the :type field. The keys may be used to indicate that you want all
+      # of the values, so for example, "stat" will get you all counters, gauges, and marks.
+      #
+      TYPES = {
+        :stat         => %w[counter gauge mark],
+        :heartbeat    => %w[hb_process hb_agent hb_pluginv1],
+        :event        => %w[event],
+        :log          => %w[log],
+        :error        => %w[error],
+        :registration => %w[reg_agent reg_process reg_pluginv1],
+        :info         => %w[info_agent info_process],
+      }.freeze
 
       #
       # @!method /
       #
-      # Top-level resources
+      # Top-level resources.
+      #
+      # @return [Hash{String=>String}] keys are names, values are resource URI's
       #
       get "/" do
         hostname = get_request_url(request)
-        h = {:node => "#{hostname}/node", :app => "#{hostname}/app"}
 
-        ::MultiJson.dump(h)
+        MultiJson.dump({
+          :node => "#{hostname}/node",
+          :app  => "#{hostname}/app",
+          :type => "#{hostname}/type",
+        })
+      end
+
+      #
+      # @!method /type
+      #
+      # A structure of all the supported Hastur message types.
+      #
+      # @return [Hash{String=>Array<String>}]
+      #
+      get "/type" do
+        MultiJson.dump TYPES
       end
 
       #
@@ -56,7 +81,7 @@ module Hastur
           h[uuid] = "#{hostname}/node/#{uuid}"
         end
 
-        ::MultiJson.dump(h)
+        MultiJson.dump(h)
       end
 
       #
@@ -77,9 +102,9 @@ module Hastur
                 :fact     => "#{hostname}/node/#{params[:uuid]}/fact"
               }
         else
-          return [404, ::MultiJson.dump( { :msg => "#{params[:uuid]} is not registered." } )]
+          error 404, "#{params[:uuid]} is not registered."
         end
-        ::MultiJson.dump(h)
+        MultiJson.dump(h)
       end
 
       #
@@ -96,13 +121,13 @@ module Hastur
         # Get with no subtype gives JSON
         h = {}
         Hastur::Cassandra::SCHEMA.keys.each do |type|
-          data = Hastur::Cassandra.get(get_cass_client, params[:uuid], type, start_ts, end_ts, :consistency => 1)
+          data = Hastur::Cassandra.get(cass_client, params[:uuid], type, start_ts, end_ts, :consistency => 1)
           data.each do |k, v|
             h[k] = "#{hostname}/node/#{params[:uuid]}/stat/#{type}/#{k}" unless k.empty?
           end
         end
 
-        ::MultiJson.dump(h)
+        MultiJson.dump(h)
       end
 
       #
@@ -121,14 +146,14 @@ module Hastur
 
         # query cassandra for the data
         opts = { :name => params[:stat] }
-        values = ::Hastur::Cassandra.get(get_cass_client, params[:uuid], params[:type], start_ts, end_ts, opts)
+        values = ::Hastur::Cassandra.get(cass_client, params[:uuid], params[:type], start_ts, end_ts, opts)
 
         # transform the data into an understandable format
         data = Hash.new
         values.each do |key, val|
           if val.is_a? ::Hash
             val.each do |ts, json|
-              data[ts] = ::MultiJson.load(json)["value"]
+              data[ts] = MultiJson.load(json)["value"]
             end
           end
         end
@@ -140,7 +165,7 @@ module Hastur
               :data  => data
             }
 
-        ::MultiJson.dump(h)
+        MultiJson.dump(h)
       end
 
       #
@@ -153,13 +178,10 @@ module Hastur
         hostname = get_request_url(request)
         apps = Set.new
         # Retrieve all registered processes
-        get_cass_client.each(:RegProcessArchive) do |r, c|
+        cass_client.each(:RegProcessArchive) do |r, c|
           if c.is_a? ::Hash
             c.each do |col_key, value|
-              begin
-                apps.add(MultiJson.load(value)["labels"]["app"])
-              rescue Exception => e
-              end
+              apps.add(MultiJson.load(value)["labels"]["app"]) rescue nil
             end
           end
         end
@@ -169,7 +191,7 @@ module Hastur
           h[app] = "#{hostname}/app/#{CGI.escape(app)}/data"
         end
 
-        ::MultiJson.dump(h)
+        MultiJson.dump(h)
       end
 
       #
@@ -198,7 +220,7 @@ module Hastur
           :stats           => "#{hostname}/app/#{CGI.escape(params[:app])}/stat"
         }
 
-        ::MultiJson.dump(h)
+        MultiJson.dump(h)
       end
 
       #
@@ -235,13 +257,13 @@ module Hastur
         # Get with no subtype gives JSON
         h = {}
         Hastur::Cassandra::SCHEMA.keys.each do |type|
-          data = Hastur::Cassandra.get(get_cass_client, uuids, type, start_ts, end_ts, :consistency => 1)
+          data = Hastur::Cassandra.get(cass_client, uuids, type, start_ts, end_ts, :consistency => 1)
           data.each do |k, v|
             h[k] = "#{hostname}/app/#{CGI.escape(params[:app])}/stat/#{type}/#{k}" unless k.empty?
           end
         end
 
-        ::MultiJson.dump(h)
+        MultiJson.dump(h)
       end
 
       #
@@ -257,20 +279,19 @@ module Hastur
       #
       get "/app/:app/stat/:type/:stat" do
         h = {}
-        hostname = get_request_url(request)
         uuids = get_uuids_from_app_name(params[:app])
         start_ts, end_ts = get_start_end :five_minutes
 
         # query cassandra for the data
         opts = { :name => params[:stat] }
-        values = ::Hastur::Cassandra.get(get_cass_client, uuids, params[:type], start_ts, end_ts, opts)
+        values = ::Hastur::Cassandra.get(cass_client, uuids, params[:type], start_ts, end_ts, opts)
 
         # transform the data into an understandable format
         data = Hash.new
         values.each do |key, val|
           if val.is_a? ::Hash
             val.each do |ts, json|
-              data[ts] = ::MultiJson.load(json)["value"]
+              data[ts] = MultiJson.load(json)["value"]
             end
           end
         end
@@ -282,8 +303,17 @@ module Hastur
               :data  => data
             }
 
-        ::MultiJson.dump(h)
+        MultiJson.dump(h)
       end
+
+      private
+
+      THRIFT_OPTIONS = {
+        :timeout => 300,
+        :connect_timeout => 30,
+        :retries => 10,
+      }
+
 
       helpers do
 
@@ -293,14 +323,15 @@ module Hastur
         def get_uuids_from_app_name(app)
           uuids = Set.new
           # Scan all of the registered apps to find the set of associated node UUIDs
-          get_cass_client.each(:RegProcessArchive) do |r, c|
+          cass_client.each(:RegProcessArchive) do |r, c|
             if c.is_a? ::Hash
               c.each do |col_key, value|
                 begin
                   if MultiJson.load(value)["labels"]["app"] == app
                     uuids.add(r[0..35])
                   end
-                rescue Exception => e
+                rescue Exception
+                  nil
                 end
               end
             end
@@ -350,14 +381,16 @@ module Hastur
         #
         def get_request_url(request)
           request.url[0..(request.url.length - request.path_info.length - 1)]
-        end #
+        end
+
+        #
         # Retrieves a list of registered agents. Periodically refreshes the registrations
         # depending on how long ago the last refresh was.
         #
         def get_registrations
           @last_registration_update ||= 0
           # periodically update registrations
-          if ::Time.now.to_i - @last_registration_update > 5*60 || @registrations == nil
+          if Time.now.to_i - @last_registration_update > 5*60 || @registrations == nil
             @registrations = get_last_agent_registrations
             @last_registration_update = ::Time.now.to_i
           end
@@ -367,7 +400,7 @@ module Hastur
         #
         # Creates a cassandra client that connects as needed
         #
-        def get_cass_client
+        def cass_client
           @cass_client ||= ::Cassandra.new("Hastur", @cassandra_uris.flatten, THRIFT_OPTIONS)
         end
 
@@ -410,7 +443,7 @@ module Hastur
         #
         def get_last_agent_registrations
           last_registrations = {}
-          get_cass_client.each(:RegAgentArchive) do |r, c|
+          cass_client.each(:RegAgentArchive) do |r, c|
             uuid = r[0..35]
             last = last_registrations[uuid]
             last_timestamp = last[:timestamp] if last
@@ -419,7 +452,7 @@ module Hastur
               next if col_key == "last_access" || col_key == "last_write"
               timestamp = col_key[-8..-1].unpack("Q>")[0]
               if !last_timestamp || timestamp > last_timestamp
-                hash = ::MultiJson.decode(value)
+                hash = MultiJson.decode(value)
                 last_timestamp = timestamp
                 last_value = hash
               end
