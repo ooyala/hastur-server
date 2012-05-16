@@ -1,0 +1,119 @@
+#!/usr/bin/env ruby
+
+require 'trollop'
+require 'termite'
+
+require "hastur"
+require "hastur-trigger"
+
+require "hastur-server/syndicator"
+
+MultiJson.engine = :yajl
+
+# This is a Hastur trigger tester.  It loads one or more triggers and
+# tests, verifies and generally checks whether these triggers are
+# well-behaved.
+
+opts = Trollop::options do
+  opt :triggers,    "Trigger pathname(s)", :type => String,   :multi => true
+  opt :rand_seed,   "Random seed",         :type => Integer
+  opt :n,           "Number of messages",  :type => Integer,  :default => 100
+  opt :types,       "Types to insert",     :type => :strings, :default => [ "gauge", "event" ]
+  opt :labels,      "Labels to mark as",   :type => :strings, :default => [ "tag1" ]
+end
+
+# Seed random number generator
+opts[:rand_seed] = (Time.now.to_f * 1000.0).to_i unless opts[:rand_seed]
+srand(opts[:rand_seed])  # rand and sample use this
+
+trigger_files = opts[:triggers].flatten
+
+syndicator = HasturServer::Syndicator.new
+Hastur::Trigger::Context.syndicator = syndicator
+
+trigger_files.each do |file|
+  require file
+end
+
+contexts = Hastur::Trigger::Context.contexts
+
+if contexts.size != trigger_files.size
+  raise "Each trigger must always create exactly one context!"
+end
+
+def random_event
+  <<EOM
+  {
+    "type": "event",
+    "name": "event.name.7",
+    "subject": "This is a subject",
+    "body": "bodybodybody\nbodybody",
+    "attn": [ "bob@ooyala.com" ],
+    "timestamp": #{(Time.now.to_f * 1_000_000.0).to_i},
+    "labels": {
+  #{opts[:labels].map { |s| "    \"#{s}\": 1" }.join(",\n")}
+    }
+  }
+EOM
+end
+
+def random_stat(type)
+  name = ["test_stat", "stat17", "nstat"].sample
+  value = type == "mark" ? "val#{rand(30)}" : rand() * rand() * 1000.0
+  <<EOM
+  {
+    "type": "#{type}",
+    "name": "#{name}",
+    "value": #{value},
+    "timestamp": #{(Time.now.to_f * 1_000_000.0).to_i},
+    "labels": {
+  #{opts[:labels].map { |s| "    \"#{s}\": 1" }.join(",\n")}
+    }
+  }
+EOM
+end
+
+def random_message
+  type = opts[:types].sample
+
+  case type
+  when "counter"
+    random_stat("counter")
+  when "gauge"
+    random_stat("gauge")
+  when "mark"
+    random_stat("mark")
+  when "event"
+    random_event
+  else
+    raise "Disallowed type #{type}!"
+  end
+
+  name = opts[:names].sample
+  value = rand() * rand() * 1000.0
+  <<EOM
+  {
+    "type": "#{type}",
+    "name": "#{name}",
+    "value": #{value},
+    "timestamp": #{(Time.now.to_f * 1_000_000.0).to_i},
+    "labels": {
+  #{opts[:labels].map { |s| "    \"#{s}\": 1" }.join(",\n")}
+    }
+  }
+EOM
+end
+
+messages = (1..opts[:n]).map { random_message }
+
+srand(1014)
+
+# run through messages
+
+# We seeded the random number generator above.  This is what it will
+# return if nobody has generated a random number at any point during
+# the test run.  If the random number is *not* 277, somebody called
+# the random number generator during the run.
+if rand(1000) != 277
+  raise "Triggers must not depend on random numbers!"
+end
