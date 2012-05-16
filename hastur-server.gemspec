@@ -50,4 +50,5 @@ EOS
   s.add_runtime_dependency "msgpack"
   s.add_runtime_dependency "hastur", "~>1.2.0"
   s.add_runtime_dependency "algorithms"
+  s.add_runtime_dependency "pony"
 end
