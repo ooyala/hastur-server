@@ -112,7 +112,7 @@ module Hastur
     #
     # Return a list of CassandraThrift::CfDef objects that can be used for setup.
     # @param [String] keyspace the cfdefs will be instantiated in.
-    # @param [Hash]  additional options for CassandraThrift::CfDef.new
+    # @param [Hash] opts additional options for CassandraThrift::CfDef.new
     # @return [Array<CassandraThrift::CfDef>]
     #
     def cfdefs(keyspace, opts={})
@@ -123,9 +123,9 @@ module Hastur
 
     #
     # Insert a column.
-    # @param [Cassandra] cassandra client object, should be connected and in the right keyspace
-    # @param [String] json string, will be parsed & data used for the insert
-    # @param [String] message type string, e.g. the .to_s of the symbols in Hastur::Message
+    # @param [Cassandra] cass_client client object, should be connected and in the right keyspace
+    # @param [String] json_string to be parsed & data used for the insert
+    # @param [String] msg_type string, e.g. the .to_s of the symbols in Hastur::Message
     # @param [Hash{Symbol=>Fixnum,String}] options
     # @option options [Fixnum] :ttl, passed to the cassandra client
     # @option options [Fixnum] :consistency, passed to the cassandra client

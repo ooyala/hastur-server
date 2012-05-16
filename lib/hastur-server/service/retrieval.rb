@@ -180,14 +180,14 @@ module Hastur
       # @param app URL-encoded application name (required)
       #
       # @example
-      # GET /app/:app/data/
-      # {
-      #   "stat"    => "/app/:app/data/stat/"
-      #   "gauge"   => "/app/:app/data/gauge/"
-      #   "counter" => "/app/:app/data/counter/"
-      #   "event"   => "/app/:app/data/event/"
-      #   ...
-      # }
+      #   GET /app/:app/data/
+      #   {
+      #     "stat"    => "/app/:app/data/stat/"
+      #     "gauge"   => "/app/:app/data/gauge/"
+      #     "counter" => "/app/:app/data/counter/"
+      #     "event"   => "/app/:app/data/event/"
+      #     ...
+      #   }
       #
       get "/app/:app/data" do
         hostname = get_request_url(request)
@@ -212,10 +212,13 @@ module Hastur
       end
 
       #
-      # @!method /app/:app/node/:node/
+      # @!method /app/:app/node/:node
       #
       # Get application information for a paritcular node.
       #
+      get "/app/:app/node/:node" do
+        stub! "/app/:app/node/:node"
+      end
 
       #
       # @!method /app/:app/stat

@@ -12,7 +12,8 @@ module Hastur
     DEFAULT_COL       = "val"
 
     class StateHandler
-      # @state_handler = Hastur::Trigger::StateHandler.new("trigger_file1")
+      # @example
+      #   @state_handler = Hastur::Trigger::StateHandler.new("trigger_file1")
       def initialize(filename, opts = {})
         @key = StateHandler.filename_to_rowkey(filename)
         @client = opts[:client] || StateHandler.create_client(opts[:keyspace], opts[:servers])
@@ -20,14 +21,16 @@ module Hastur
         @col = opts[:col] || DEFAULT_COL
       end
 
-      # @state_handler.set_state(@context.state)
+      # @example
+      #   @state_handler.set_state(@context.state)
       def set_state(state, options = {})
         raise "Argument must be a Hash" unless state.is_a? Hash
         val = MultiJson.dump state
         @client.insert(@cf, @key, { @col => val }, options)
       end
 
-      # @context.state = @state_handler.get_state
+      # @example
+      #   @context.state = @state_handler.get_state
       def get_state(options = {})
         val = @client.get(@cf, @key, @col, options)
         val ? MultiJson.load(val) : {}

@@ -165,7 +165,7 @@ module Hastur
     #
     # add a destination socket to a filter by ID
     # @param [ZMQ::Socket] socket
-    # @param [String] filter ID (36 byte UUID)
+    # @param [String] filter_id 36 byte UUID of the filter
     #
     # The only method called on sockets in this class is sendmsgs, so if you
     # want to mock a socket, that's all you need. It will be given two

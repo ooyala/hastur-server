@@ -46,7 +46,7 @@ module Hastur
 
       #
       # Serialize the envelope into its binary form and put it in the payload.
-      # @param [Hastur::Envelope] envelope to serialize
+      # @param [Hastur::Envelope] data envelope to serialize
       # @return [String] binary envelope payload
       #
       def encode(data)
@@ -55,8 +55,8 @@ module Hastur
 
       #
       # Deserialize the binary envelope in the message payload.
-      # @param [String] binary envelope payload
-      # @string [Hastur::Envelope] envelope to serialize
+      # @param [String] payload binary envelope payload
+      # @return [Hastur::Envelope] the envelope object
       #
       def decode(payload=@payload)
         Hastur::Envelope.parse payload

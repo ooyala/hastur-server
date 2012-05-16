@@ -19,13 +19,13 @@ module Hastur
       # @option [Fixnum] :socktype ZMQ socket type default ZMQ::PULL (only PULL / SUB really make sense)
       #
       # @example
-      # Hastur::Service::CoreSink.supervise_as(:sink,
-      #   :data_uri  => 'tcp://127.0.0.1:8128',
-      #   :ack_uri   => 'tcp://127.0.0.1:8127',
-      #   :keyspace  => 'Hastur',
-      #   :cassandra => [ '127.0.0.1:9160' ],
-      #   :socktype  => ZMQ::SUB,
-      # )
+      #   Hastur::Service::CoreSink.supervise_as(:sink,
+      #     :data_uri  => 'tcp://127.0.0.1:8128',
+      #     :ack_uri   => 'tcp://127.0.0.1:8127',
+      #     :keyspace  => 'Hastur',
+      #     :cassandra => [ '127.0.0.1:9160' ],
+      #     :socktype  => ZMQ::SUB,
+      #   )
       #
       def initialize(opts={})
         @ctx = opts[:ctx] || ZMQ::Context.new
@@ -50,7 +50,7 @@ module Hastur
 
       #
       # Only valid for ZMQ::SUB sockets: add a subscription to the socket
-      # @param [String] message prefix to subscribe to
+      # @param [String] subscription message prefix to subscribe to
       #
       def subscribe(subscription)
         raise "subscribe is only valid on ZMQ::SUB sockets" unless @socktype == ZMQ::SUB

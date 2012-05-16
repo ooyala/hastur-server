@@ -76,7 +76,7 @@ module Hastur
       #
       # read a message from the zmq socket, check for errors, report on the error
       # socket if something goes wrong
-      # @param [ZMQ::Socket]
+      # @param [ZMQ::Socket] socket
       # @return [Array<ZMQ::Message>, false] a list of messages on success, false on failure
       #
       def read_from(socket)
@@ -92,9 +92,9 @@ module Hastur
 
       #
       # send a message on a zmq socket, check for errors
-      # @param [ZMQ::Socket]
-      # @param [Array<ZMQ::Message>]
-      # @return [boolean]
+      # @param [ZMQ::Socket] socket
+      # @param [Array<ZMQ::Message>] message
+      # @return [Boolean]
       #
       def send_to(socket, message)
         rc = socket.sendmsgs message

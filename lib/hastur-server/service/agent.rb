@@ -121,7 +121,7 @@ module Hastur
 
       #
       # use the type field in a JSON hash to choose a Hastur class
-      # @param [Hash] a hash of options for building a hastur message
+      # @param [Hash] data a hash of options for building a hastur message
       #
       def hash_to_message(data)
         klass = Hastur::Message.symbol_to_class(data[:type])

@@ -104,9 +104,8 @@ module Hastur
       # given filters.  This method requires a block,
       # which will be run on each message in turn.
       #
-      # @param [String, Symbol] type The type of message (event, heartbeat, etc)
       # @param [Hash] filters Filters on events to deliver
-      # @yields A block to call on each message
+      # @yield A block to call on each message
       #
       def message_stream(filters = {}, &block)
         raise "Filter must specify a type!" unless filters[:type]
@@ -196,13 +195,13 @@ module Hastur
     class Message
       ENVELOPE_ATTRS = [ :version, :type_id, :to, :from, :ack, :resend,
                          :sequence, :timestamp, :uptime, :hmac, :routers ]
-      attr_reader *ENVELOPE_ATTRS
+
+      # :nodoc: YARD doesn't like *ENVELOPE_ATTRS so it is copied here
+      attr_reader :version, :type_id, :to, :from, :ack, :resend, :sequence,
+                  :timestamp, :uptime, :hmac, :routers, :body_hash, :envelope_hash
 
       # Alias for "from"
       attr_reader :uuid
-
-      attr_reader :body_hash
-      attr_reader :envelope_hash
 
       def initialize(envelope, body)
         @body_hash = MultiJson.load(body)

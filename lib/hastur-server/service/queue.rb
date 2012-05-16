@@ -12,10 +12,10 @@ module Hastur
       attr_reader :incoming_uri, :outgoing_uri
       #
       # Sets up a persistent cassandra-backed zmq queue.
-      # @param [String] The queueUUID for the queue to use
+      # @param [String] qid The queueUUID for the queue to use
       # @param [Hash{Symbol => String}] opts
-      # @option [String] :incoming_uri required
-      # @option [String] :outgoing_uri required
+      # @option opts [String] :incoming_uri required
+      # @option opts [String] :outgoing_uri required
       #
       def initialize(qid, opts = {})
         # Make sure required options are defined
