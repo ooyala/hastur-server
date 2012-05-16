@@ -54,3 +54,28 @@ CREATE COLUMN FAMILY CounterNameDay;
 CREATE COLUMN FAMILY MarkNameDay;
 CREATE COLUMN FAMILY HBProcessNameDay;
 CREATE COLUMN FAMILY HBPluginV1NameDay;
+
+create keyspace HasturTrigger
+  with placement_strategy = LocalStrategy
+  and strategy_options = [{replication_factor : 1}];
+
+use HasturTrigger;
+
+create column family TriggerState
+  with column_type = Standard
+  and comparator = UTF8Type
+  and default_validation_class = UTF8Type
+  and key_validation_class = UTF8Type
+  and memtable_operations = 0.0328125
+  and memtable_throughput = 7
+  and memtable_flush_after = 1440
+  and rows_cached = 0.0
+  and row_cache_save_period = 0
+  and keys_cached = 200000.0
+  and key_cache_save_period = 14400
+  and read_repair_chance = 1.0
+  and gc_grace = 864000
+  and min_compaction_threshold = 4
+  and max_compaction_threshold = 32
+  and replicate_on_write = true
+  and row_cache_provider = 'ConcurrentLinkedHashCacheProvider';
