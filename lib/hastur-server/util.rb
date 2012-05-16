@@ -1,8 +1,7 @@
-# A collection of useful functions, including for the ffi-rzmq gem.
-
 require "multi_json"
 require "termite"
 
+# A collection of useful functions, including for the ffi-rzmq gem.
 module Hastur
   module Util
     extend self  # Allows calling as Util.blah
@@ -16,12 +15,13 @@ module Hastur
     MICRO_SECS_1971 = 31536000000000
     NANO_SECS_1971  = 31536000000000000
 
+    #
+    # Get a Termite logger (singleton) handle.
+    #
+    # @return [Termite::Logger] a logger with the component set to "Hastur"
+    #
     def hastur_logger
       @__hastur_internal_logger ||= ::Termite::Logger.new(:component => "Hastur")
-    end
-
-    def zmq_error
-      ::ZMQ::Util.error_string
     end
 
     #
@@ -30,7 +30,7 @@ module Hastur
     # 1, 1970 at midnight UTC.  Default to giving Time.now as a Hastur
     # timestamp.
     #
-    # @param [Time, Fixnum] default Time.now
+    # @param [Time, Fixnum] ts default Time.now
     # @return [Fixnum] epoch microseconds
     #
     def timestamp(ts=Time.now)
@@ -59,7 +59,7 @@ module Hastur
     # Return the current process's uptime in microseconds. This is the amount of time
     # that has passed since this module was loaded.
     #
-    # @param [Time] default Time.now
+    # @param [Time] time default Time.now
     # @return [Fixnum] current process uptime in microseconds
     #
     def uptime(time=Time.now)
@@ -82,7 +82,7 @@ module Hastur
     #
     # Check if the provided UUID string is a valid 36-byte hex UUID.
     # @param [String] string to be tested
-    # @return [TrueClass,FalseClass]
+    # @return [Boolean]
     #
     def valid_uuid?(uuid)
       if UUID_RE.match(uuid)
@@ -97,7 +97,7 @@ module Hastur
     # doesn't try to check for things we fix up automatically.
     #
     # @param uri [String] The URI to check
-    # @return [TrueClass,FalseClass]
+    # @return [Boolean]
     #
     def valid_zmq_uri?(uri)
       case uri
@@ -116,7 +116,7 @@ module Hastur
     # hostname, or have other slight quirks, and we don't know in
     # advance which version of ZeroMQ we're connecting to.
     #
-    # @param uri [String] The URI to convert
+    # @param [String] uri The URI to convert
     # @return [String] converted URI
     #
     def to_valid_zmq_uri(uri)
@@ -163,7 +163,8 @@ module Hastur
     #
     # Set a variety of socket options in a ZMQ-version-appropriate way.
     #
-    # @param opts [Hash] an Options array
+    # @param [ZMQ::Socket,Array<ZMQ::Socket>] socks socket(s) to configure
+    # @param [Hash] opts an Options array
     # @option opts [String] :linger The socket linger option
     # @option opts [String] :hwm The socket high water mark for send and receive
     # @option opts [String] :identity The socket identity for router, req and sub sockets
@@ -196,8 +197,8 @@ module Hastur
     # @param [ZMQ::Socket] ZeroMQ socket to bind
     # @param [String,Array<String>] a single URI or array of URI's to bind
     #
-    def bind(socks, uri)
-      [socks].flatten.each do |sock|
+    def bind(sock, uris)
+      [uris].flatten.each do |uri|
         rc = sock.bind(uri)
         ok = ZMQ::Util.resultcode_ok?(rc)
         hastur_logger.error "Could not bind socket to URI '#{uri}': #{zmq_error}" unless ok
@@ -210,8 +211,8 @@ module Hastur
     # @param [ZMQ::Socket] ZeroMQ socket to connect
     # @param [String,Array<String>] a single URI or array of URI's to connect to
     #
-    def connect(socks, uri)
-      [socks].flatten.each do |sock|
+    def connect(sock, uris)
+      [uris].flatten.each do |uri|
         rc = sock.connect(uri)
         ok = ZMQ::Util.resultcode_ok?(rc)
         hastur_logger.error "Could not connect socket to URI '#{uri}': #{zmq_error}" unless ok
@@ -220,8 +221,11 @@ module Hastur
 
     #
     # Read raw ZMQ messages from the provided socket, check for errors.
-    # @param [ZMQ::Socket] ZeroMQ socket to connect
+    # Errors are logged, and false is returned if there are any.
+    #
+    # @param [ZMQ::Socket] socket ZeroMQ socket to connect
     # @return [Array<ZMQ::Message>,FalseClass] either a list of messages or just false if an error was detected.
+    #
     def read_msgs(socket)
       message = []
       rc = socket.recvmsgs message
@@ -234,6 +238,15 @@ module Hastur
     end
     alias recv_msgs read_msgs
 
+    #
+    # Send raw ZMQ messages on the provided socket, check for errors.
+    # Errors are logged, and false is returned if there are any.
+    # Messages are _not_ closed after sending.
+    #
+    # @param [ZMQ::Socket] socket ZeroMQ socket to connect
+    # @param [Array<ZMQ::Message>] list of ZMQ::Messages to send
+    # @return [Boolean] success / failure, errors are logged
+    #
     def send_msgs(socket, message)
       rc = socket.sendmsgs message
       if ZMQ::Util.resultcode_ok?(rc)
@@ -247,8 +260,8 @@ module Hastur
     #
     # Read an array of Strings on a ZeroMQ socket.
     #
-    # @param socket [ZMQ::Socket] The socket
-    # @return [Array or false] The array of strings from a multipart message or false for failure.
+    # @param [ZMQ::Socket] socket The socket
+    # @return [Array<String>,FalseClass] The array of strings from a multipart message or false for failure.
     #
     def read_strings(socket)
       message = []
@@ -266,9 +279,9 @@ module Hastur
     #
     # Send an array of Strings on a ZeroMQ socket.
     #
-    # @param socket [ZMQ::Socket] The socket
-    # @param message [Array of String] The Strings to send
-    # @return [Boolean] Whether the send succeeded
+    # @param [ZMQ::Socket] socket the socket
+    # @param [Array<String>] message the strings to send
+    # @return [Boolean] whether the send succeeded
     #
     def send_strings(socket, message)
       rc = socket.send_strings message
@@ -282,6 +295,8 @@ module Hastur
 
     #
     # Check a URI for validity before passing onto ZMQ.
+    # @param [String] uri the URI to check.
+    # @raise [StandardError] raised on invalid URI strings
     #
     def check_uri(uri)
       result = /\A(?<protocol>\w+):\/\/(?<hostname>[^:]+):(?<port>\d+)\Z/.match(uri)
@@ -302,10 +317,10 @@ module Hastur
     # @example Connect on loopback port 1234 with a PUSH socket
     #  Hastur::Util.connect_socket(ctx, ZMQ::PUSH, "tcp://127.0.0.1:1234")
     #
-    # @param ctx [::ZMQ::Context] ZeroMQ Context
-    # @param type The ZeroMQ socket type, like ZMQ::PULL, or a symbol like :PULL
-    # @param uri The ZeroMQ URI, or an Array of same
-    # @param opts [Hash] Options
+    # @param [ZMQ::Context] ctx ZeroMQ Context
+    # @param [Fixnum] type type The ZeroMQ socket type, like ZMQ::PULL, or a symbol like :PULL
+    # @param [String,Array<String>] uri The ZeroMQ URI, or an Array of same
+    # @param [Hash{Symbol=>Fixnum,String}] opts Options
     # @option opts [Fixnum] :linger The number of seconds to linger for the ZeroMQ socket
     # @option opts [Fixnum] :hwm The send and receive high water mark for the ZeroMQ socket
     # @option opts [String] :identity The socket identity for router, req and sub sockets
@@ -323,10 +338,10 @@ module Hastur
     # @example Bind on loopback port 1234 with a PULL socket
     #  Hastur::Util.bind_socket(ctx, ZMQ::PULL, "tcp://127.0.0.1:1234")
     #
-    # @param ctx [::ZMQ::Context] ZeroMQ Context
-    # @param type The ZeroMQ socket type, like ZMQ::PULL, or a symbol like :PULL
-    # @param uri [String] The ZeroMQ URI
-    # @param opts [Hash] Options
+    # @param [ZMQ::Context] ctx ZeroMQ Context
+    # @param [Fixnum] type The ZeroMQ socket type, like ZMQ::PULL, or a symbol like :PULL
+    # @param [String,Array<String>] uri The ZeroMQ URI, or an Array of same
+    # @param [Hash{Symbol=>Fixnum,String}] opts Options
     # @option opts [Fixnum] :linger The number of seconds to linger for the ZeroMQ socket
     # @option opts [Fixnum] :hwm The send and receive high water mark for the ZeroMQ socket
     # @option opts [String] :identity The socket identity for router, req and sub sockets
@@ -389,6 +404,11 @@ module Hastur
         raise "Must provide either bind or connect option to bind_or_connect_socket!"
       end
       socket
+    end
+
+    # make exception strings smaller in this file
+    def zmq_error
+      ::ZMQ::Util.error_string
     end
   end
 end
