@@ -236,7 +236,7 @@ module Hastur
       #
       # @!method /app/:app/node/:node
       #
-      # Get application information for a paritcular node.
+      # Get application information for a particular node.
       #
       get "/app/:app/node/:node" do
         stub! "/app/:app/node/:node"
