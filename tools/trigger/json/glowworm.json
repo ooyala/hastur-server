@@ -1,0 +1,79 @@
+[
+  {
+    "payload": "{\"name\": \"glowworm.latency\", \"value\": 0.16}",
+    "timestamp": 1335307053158247,
+    "type": "gauge",
+    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
+  },
+  {
+    "payload": "{\"name\": \"glowworm.latency\", \"value\": 0.34}",
+    "timestamp": 1335307053158501,
+    "type": "gauge",
+    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
+  },
+  {
+    "payload": "{\"name\": \"glowworm.latency\", \"value\": 1.00487}",
+    "timestamp": 1335307053158530,
+    "type": "gauge",
+    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
+  },
+  {
+    "payload": "{\"name\": \"glowworm.latency\", \"value\": 0.253}",
+    "timestamp": 1335307053158540,
+    "type": "gauge",
+    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
+  },
+  {
+    "payload": "{\"name\": \"glowworm.latency\", \"value\": 1.00487}",
+    "timestamp": 1335307053158550,
+    "type": "gauge",
+    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
+  },
+  {
+    "payload": "{\"name\": \"glowworm.latency\", \"value\": 1.00487}",
+    "timestamp": 1335307053158560,
+    "type": "gauge",
+    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
+  },
+  {
+    "payload": "{\"name\": \"glowworm.latency\", \"value\": 1.00487}",
+    "timestamp": 1335307053158570,
+    "type": "gauge",
+    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
+  },
+  {
+    "payload": "{\"name\": \"glowworm.latency\", \"value\": 1.00487}",
+    "timestamp": 1335307053158580,
+    "type": "gauge",
+    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
+  },
+  {
+    "payload": "{\"name\": \"glowworm.latency\", \"value\": 1.00487}",
+    "timestamp": 1335307053158590,
+    "type": "gauge",
+    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
+  },
+  {
+    "payload": "{\"name\": \"glowworm.latency\", \"value\": 1.00487}",
+    "timestamp": 1335307053158600,
+    "type": "gauge",
+    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
+  },
+  {
+    "payload": "{\"name\": \"glowworm.latency\", \"value\": 1234.1}",
+    "timestamp": 1335307053158610,
+    "type": "gauge",
+    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
+  }
+]

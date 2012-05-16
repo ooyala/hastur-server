@@ -1,0 +1,16 @@
+[
+  {
+    "payload": "{\"name\": \"collectd.load\", \"value\": 11.1}",
+    "timestamp": 1335307053158244,
+    "type": "gauge",
+    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
+  },
+  {
+    "payload": "{\"name\": \"load.reset\"}",
+    "timestamp": 1335307053158247,
+    "type": "event",
+    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
+    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
+  }
+]
