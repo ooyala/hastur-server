@@ -145,17 +145,13 @@ module Hastur
         start_ts, end_ts = get_start_end :five_minutes
 
         # query cassandra for the data
-        opts = { :name => params[:stat] }
+        opts = { :name => params[:stat], :value_only => true }
         values = ::Hastur::Cassandra.get(cass_client, params[:uuid], params[:type], start_ts, end_ts, opts)
 
         # transform the data into an understandable format
         data = Hash.new
         values.each do |key, val|
-          if val.is_a? ::Hash
-            val.each do |ts, json|
-              data[ts] = MultiJson.load(json)["value"]
-            end
-          end
+          data.merge!(val) if val.is_a? ::Hash
         end
 
         h = {
