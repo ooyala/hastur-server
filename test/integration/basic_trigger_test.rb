@@ -12,7 +12,7 @@ require 'minitest/autorun'
 
 require "ffi-rzmq"
 
-TEST_TRIGGER = File.join(File.dirname(__FILE__), "logging_trigger.rb")
+TEST_TRIGGER = File.join(HASTUR_ROOT, "tools", "trigger", "triggers", "logging_trigger.rb")
 
 TEST_COUNTER_ENVELOPE = Hastur::Envelope.new :type => Hastur::Message::Stat::Counter, :from => UUID1, :to => UUID2
 TEST_COUNTER_1 = <<JSON
