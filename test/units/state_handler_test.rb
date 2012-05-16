@@ -1,5 +1,5 @@
 require_relative "../test_helper"
-require "hastur-trigger/state_handler"
+require "hastur-server/trigger/state_handler"
 
 class StateHandlerTest < Scope::TestCase
   context "state handler with working cassandra" do
