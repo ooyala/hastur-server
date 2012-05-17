@@ -105,21 +105,9 @@ CREATE COLUMN FAMILY RegistrationDay;
 # Seen UUIDs per time period
 # Row key: timestamp (rounded down to day)
 # Col key: UUID
-# TODO(noah or al): Convert this to a lookup CF, along
-# with the various name CFs below.
-CREATE COLUMN FAMILY UUIDDay
+CREATE COLUMN FAMILY LookupByKey
   with rows_cached = 1
   and keys_cached = 1;
-
-# Seen stat names per time period
-# Row key: timestamp (rounded down to day)
-# Col key: message name
-# TODO(noah or al): Remove these in favor of a Lookup CF (see above)
-CREATE COLUMN FAMILY GaugeNameDay;
-CREATE COLUMN FAMILY CounterNameDay;
-CREATE COLUMN FAMILY MarkNameDay;
-CREATE COLUMN FAMILY HBProcessNameDay;
-CREATE COLUMN FAMILY HBPluginV1NameDay;
 
 create keyspace HasturTrigger
   with placement_strategy = SimpleStrategy

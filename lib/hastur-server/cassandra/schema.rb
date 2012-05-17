@@ -4,6 +4,7 @@ require "multi_json"
 require "date"
 
 require "hastur-server/util"
+require "hastur-server/message"
 
 module Hastur
   module Cassandra
@@ -159,9 +160,10 @@ module Hastur
                         "last_access" => now_ts }, insert_options) if cf
 
         # Insert into "saw this in this time period" rows
-        client.insert(:UUIDDay, one_day_ts.to_s, { uuid => "" })
-        if schema[:name_cf]
-          client.insert(schema[:name_cf], one_day_ts.to_s, { name => "" })
+        client.insert(:LookupByKey, "uuid-#{one_day_ts}", { uuid => "" })
+        if schema[:name]
+          type_id = Hastur::Message.symbol_to_type_id(msg_type.to_sym)
+          client.insert(:LookupByKey, "name-#{one_day_ts}", { "#{name}-#{type_id}" => "" })
         end
       end
     end

@@ -73,7 +73,7 @@ class CassandraSchemaTest < Scope::TestCase
     @cass_client.stubs(:batch).yields(@cass_client)
     Hastur::Util.stubs(:timestamp).with(nil).returns(NOWISH_TIMESTAMP)
     @cass_client.stubs(:insert).with(anything, anything, { "last_access" => NOWISH_TIMESTAMP })
-    @cass_client.stubs(:insert).with(:UUIDDay, anything, { FAKE_UUID => "" })
+    @cass_client.stubs(:insert).with(:LookupByKey, anything, anything)
   end
 
   context "Cassandra message schema" do
@@ -88,7 +88,6 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with(:StatGauge, row_key, { colname => (37.1).to_msgpack,
                                            "last_access" => NOWISH_TIMESTAMP,
                                            "last_write" => NOWISH_TIMESTAMP }, {})
-      @cass_client.expects(:insert).with(:GaugeNameDay, DAY_TS, { "this.is.a.gauge" => "" })
       Hastur::Cassandra.insert(@cass_client, json, "gauge", :uuid => FAKE_UUID)
     end
 
@@ -102,7 +101,6 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with(:StatCounter, row_key, { colname => 5.to_msgpack,
                                            "last_access" => NOWISH_TIMESTAMP,
                                            "last_write" => NOWISH_TIMESTAMP }, {})
-      @cass_client.expects(:insert).with(:CounterNameDay, DAY_TS, { "totally.a.counter" => "" })
       Hastur::Cassandra.insert(@cass_client, json, "counter", :uuid => FAKE_UUID)
     end
 
@@ -116,7 +114,6 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with(:StatMark, row_key, { colname => nil.to_msgpack,
                                            "last_access" => NOWISH_TIMESTAMP,
                                            "last_write" => NOWISH_TIMESTAMP }, {})
-      @cass_client.expects(:insert).with(:MarkNameDay, DAY_TS, { "marky.mark" => "" })
       Hastur::Cassandra.insert(@cass_client, json, "mark", :uuid => FAKE_UUID)
     end
 
