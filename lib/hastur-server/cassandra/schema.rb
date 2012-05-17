@@ -203,8 +203,6 @@ module Hastur
       r1.merge(r2).merge(r3)
     end
 
-    protected
-
     def time_segment_for_timestamp(timestamp, granularity)
       # :name, :value, :timestamp
       time = Time.at(timestamp / ONE_SECOND)
@@ -281,6 +279,8 @@ module Hastur
 
       segments
     end
+
+    protected
 
     #
     # This is the basic getter for messages.  By default it gets all messages with a given
