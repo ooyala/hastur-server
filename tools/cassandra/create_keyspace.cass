@@ -10,30 +10,75 @@ CREATE COLUMN FAMILY GaugeArchive
   with comparator='BytesType(reversed=true)'
   and rows_cached = 0
   and keys_cached = 0;
-CREATE COLUMN FAMILY CounterArchive;
-CREATE COLUMN FAMILY MarkArchive;
-CREATE COLUMN FAMILY LogArchive;
-CREATE COLUMN FAMILY ErrorArchive;
-CREATE COLUMN FAMILY EventArchive;
-CREATE COLUMN FAMILY HBAgentArchive;
-CREATE COLUMN FAMILY HBProcessArchive;
-CREATE COLUMN FAMILY HBPluginV1Archive;
-CREATE COLUMN FAMILY RegAgentArchive;
-CREATE COLUMN FAMILY RegProcessArchive;
-CREATE COLUMN FAMILY RegPluginV1Archive;
-CREATE COLUMN FAMILY InfoProcessArchive;
-CREATE COLUMN FAMILY InfoAgentArchive;
+CREATE COLUMN FAMILY CounterArchive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
+CREATE COLUMN FAMILY MarkArchive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
+CREATE COLUMN FAMILY LogArchive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
+CREATE COLUMN FAMILY ErrorArchive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
+CREATE COLUMN FAMILY EventArchive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
+CREATE COLUMN FAMILY HBAgentArchive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
+CREATE COLUMN FAMILY HBProcessArchive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
+CREATE COLUMN FAMILY HBPluginV1Archive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
+CREATE COLUMN FAMILY RegAgentArchive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
+CREATE COLUMN FAMILY RegProcessArchive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
+CREATE COLUMN FAMILY RegPluginV1Archive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
+CREATE COLUMN FAMILY InfoProcessArchive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
+CREATE COLUMN FAMILY InfoAgentArchive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
 
 # Per-UUID Full-granularity Hastur messages,
 # only name, timestamp and value.
 # Row key: UUID-timestamp (rounded to granularity)
 # Col key: name-timestamp
-CREATE COLUMN FAMILY StatCounter;
-CREATE COLUMN FAMILY StatGauge;
-CREATE COLUMN FAMILY StatMark;
-CREATE COLUMN FAMILY HBProcess;
-CREATE COLUMN FAMILY HBAgent;
-CREATE COLUMN FAMILY HBPluginV1;
+CREATE COLUMN FAMILY StatCounter
+  with comparator='BytesType(reversed=true)';
+CREATE COLUMN FAMILY StatGauge
+  with comparator='BytesType(reversed=true)';
+CREATE COLUMN FAMILY StatMark
+  with comparator='BytesType(reversed=true)';
+CREATE COLUMN FAMILY HBProcess
+  with comparator='BytesType(reversed=true)';
+CREATE COLUMN FAMILY HBAgent
+  with comparator='BytesType(reversed=true)';
+CREATE COLUMN FAMILY HBPluginV1
+  with comparator='BytesType(reversed=true)';
 
 # Per-UUID Registration Rollups
 # Row key: UUID-timestamp
