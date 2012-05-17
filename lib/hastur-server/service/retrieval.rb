@@ -46,7 +46,7 @@ module Hastur
       #
       # Top-level resources.
       #
-      # @return [Hash{String=>URI}] keys are names, values are resource URI's
+      # @return [Hash{String=>URI}] keys are names, values are resource URIs
       #
       get "/" do
         hostname = get_request_url(request)
