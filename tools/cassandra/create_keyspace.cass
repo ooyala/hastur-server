@@ -8,58 +8,72 @@ USE Hastur;
 # Col key: name-timestamp or timestamp
 CREATE COLUMN FAMILY GaugeArchive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 CREATE COLUMN FAMILY CounterArchive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 CREATE COLUMN FAMILY MarkArchive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 CREATE COLUMN FAMILY LogArchive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 CREATE COLUMN FAMILY ErrorArchive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 CREATE COLUMN FAMILY EventArchive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 CREATE COLUMN FAMILY HBAgentArchive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 CREATE COLUMN FAMILY HBProcessArchive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 CREATE COLUMN FAMILY HBPluginV1Archive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 CREATE COLUMN FAMILY RegAgentArchive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 CREATE COLUMN FAMILY RegProcessArchive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 CREATE COLUMN FAMILY RegPluginV1Archive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 CREATE COLUMN FAMILY InfoProcessArchive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 CREATE COLUMN FAMILY InfoAgentArchive
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 0
   and keys_cached = 0;
 
@@ -69,26 +83,32 @@ CREATE COLUMN FAMILY InfoAgentArchive
 # Col key: name-timestamp
 CREATE COLUMN FAMILY StatCounter
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 1
   and keys_cached = 1;
 CREATE COLUMN FAMILY StatGauge
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 1
   and keys_cached = 1;
 CREATE COLUMN FAMILY StatMark
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 1
   and keys_cached = 1;
 CREATE COLUMN FAMILY HBProcess
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 1
   and keys_cached = 1;
 CREATE COLUMN FAMILY HBAgent
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 1
   and keys_cached = 1;
 CREATE COLUMN FAMILY HBPluginV1
   with comparator='BytesType(reversed=true)'
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and rows_cached = 1
   and keys_cached = 1;
 
@@ -100,13 +120,15 @@ CREATE COLUMN FAMILY HBPluginV1
 #                and
 #          labelspec-registration-COLS
 # TODO(noah): adjust this when we have a real implementation that works
-CREATE COLUMN FAMILY RegistrationDay;
+CREATE COLUMN FAMILY RegistrationDay
+  with compaction_strategy = 'LeveledCompactionStrategy';
 
 # Seen UUIDs per time period
 # Row key: timestamp (rounded down to day)
 # Col key: UUID
 CREATE COLUMN FAMILY LookupByKey
-  with rows_cached = 1
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and rows_cached = 1
   and keys_cached = 1;
 
 create keyspace HasturTrigger
@@ -120,15 +142,9 @@ create column family TriggerState
   and comparator = UTF8Type
   and default_validation_class = UTF8Type
   and key_validation_class = UTF8Type
+  and compaction_strategy = 'LeveledCompactionStrategy'
   and memtable_operations = 0.0328125
   and memtable_throughput = 7
-  and rows_cached = 0.0
-  and row_cache_save_period = 0
-  and keys_cached = 200000.0
-  and key_cache_save_period = 14400
   and read_repair_chance = 1.0
   and gc_grace = 864000
-  and min_compaction_threshold = 4
-  and max_compaction_threshold = 32
-  and replicate_on_write = true
-  and row_cache_provider = 'ConcurrentLinkedHashCacheProvider';
+  and replicate_on_write = true;
