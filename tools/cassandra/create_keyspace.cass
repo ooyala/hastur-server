@@ -6,7 +6,10 @@ USE Hastur;
 # Per-UUID Archives for various Hastur messages as JSON
 # Row key: UUID-timestamp (rounded to granularity)
 # Col key: name-timestamp or timestamp
-CREATE COLUMN FAMILY GaugeArchive;
+CREATE COLUMN FAMILY GaugeArchive
+  with comparator='BytesType(reversed=true)'
+  and rows_cached = 0
+  and keys_cached = 0;
 CREATE COLUMN FAMILY CounterArchive;
 CREATE COLUMN FAMILY MarkArchive;
 CREATE COLUMN FAMILY LogArchive;
@@ -56,8 +59,8 @@ CREATE COLUMN FAMILY HBProcessNameDay;
 CREATE COLUMN FAMILY HBPluginV1NameDay;
 
 create keyspace HasturTrigger
-  with placement_strategy = LocalStrategy
-  and strategy_options = [{replication_factor : 1}];
+  with placement_strategy = SimpleStrategy
+  and strategy_options = {replication_factor : 1};
 
 use HasturTrigger;
 
@@ -68,7 +71,6 @@ create column family TriggerState
   and key_validation_class = UTF8Type
   and memtable_operations = 0.0328125
   and memtable_throughput = 7
-  and memtable_flush_after = 1440
   and rows_cached = 0.0
   and row_cache_save_period = 0
   and keys_cached = 200000.0
