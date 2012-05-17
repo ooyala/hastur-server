@@ -46,7 +46,7 @@ module Hastur
       #
       # Top-level resources.
       #
-      # @return [Hash{String=>String}] keys are names, values are resource URI's
+      # @return [Hash{String=>URI}] keys are names, values are resource URI's
       #
       get "/" do
         hostname = get_request_url(request)
@@ -302,6 +302,35 @@ module Hastur
         MultiJson.dump(h)
       end
 
+      #
+      # @!method /name
+      #
+      # Get a list of name resources that have been seen in the last 24-48 hours.
+      #
+      # @return [Hash{String=>URI}]
+      #
+      get "/name" do
+        hostname = get_request_url(request)
+        start_ts, end_ts = get_start_end :one_day
+
+        # always get two rows and merge
+        row_keys = [
+          Hastur::Cassandra.time_segment_for_timestamp(start_ts, ONE_DAY),
+          Hastur::Cassandra.time_segment_for_timestamp(start_ts - ONE_DAY, ONE_DAY),
+        ].map(&:to_s)
+
+        names = {}
+        %w[MarkNameDay CounterNameDay GaugeNameDay].each do |cf|
+          row_keys.each do |key|
+            cass_client.get(cf, key).each do |name,|
+              names[name] = "http://#{hostname}/name/#{name}"
+            end
+          end
+        end
+
+        MultiJson.dump names
+      end
+
       private
 
       THRIFT_OPTIONS = {
@@ -310,6 +339,13 @@ module Hastur
         :retries => 10,
       }
 
+      # constants like Hastur::Cassandra, but shorter
+      ONE_SECOND   = 1_000_000
+      ONE_MINUTE   = 60 * ONE_SECOND
+      FIVE_MINUTES =  5 * ONE_MINUTE
+      ONE_HOUR     = 60 * ONE_MINUTE
+      ONE_DAY      = 24 * ONE_HOUR
+      ONE_WEEK     =  7 * ONE_DAY
 
       helpers do
 
@@ -340,10 +376,10 @@ module Hastur
         #
         def delta_usec(delta)
           case delta.to_s
-            when "one_minute"   ;     60_000_000
-            when "five_minutes" ;    600_000_000
-            when "one_hour"     ;  3_600_000_000
-            when "one_day"      ; 86_400_000_000
+            when "one_minute"   ; ONE_MINUTE
+            when "five_minutes" ; FIVE_MINUTES
+            when "one_hour"     ; ONE_HOUR
+            when "one_day"      ; ONE_DAY
             when /\A\d+\Z/      ; delta.to_i
           end
         end
@@ -395,9 +431,19 @@ module Hastur
 
         #
         # Creates a cassandra client that connects as needed
+        # @return [Cassandra] cassandra client object
         #
         def cass_client
-          @cass_client ||= ::Cassandra.new("Hastur", @cassandra_uris.flatten, THRIFT_OPTIONS)
+          unless @cass_client
+            @cass_client = ::Cassandra.new("Hastur", @cassandra_uris.flatten, THRIFT_OPTIONS)
+
+            # for non-production and port-forwarded ssh, there will only be one URI and it
+            # should not auto-discover nodes
+            if @cassandra_uris.one?
+              @cass_client.disable_node_auto_discovery!
+            end
+          end
+          @cass_client
         end
 
         #
