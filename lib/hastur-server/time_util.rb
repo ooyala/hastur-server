@@ -160,20 +160,11 @@ module Hastur
     # in the list. If you want non-inclusive, use boundary value - 1usec.
     #
     # If what you need is month of 5 minute chunks:
-    # @example usec_chunks ts - USEC_ONE_DAY * 30, ts, :five_minutes
+    # @example usec_aligned_chunks ts - USEC_ONE_DAY * 30, ts, :five_minutes
     #
     # @example
-    #   usec_chunks(start_ts, end_ts, :five_minutes).each do { |c| }
-    #   usec_chunks(start_ts - USEC_FIVE_MINUTES, end_ts + USEC_FIVE_MINUTES, :five_minutes)
-    #   now - 5 minutes -> now
-    #
-    # At 5 minute chunks it should return like this (but in microseconds):
-    #
-    # 5:00 to 5:00 --> 5:00
-    # 5:01 to 5:04 --> 5:00
-    # 5:01 to 5:14 --> 5:00, 5:05, 5:10
-    # 5:01 to 5:15 --> 5:00, 5:05, 5:10, 5:15
-    # 5:01 to 5:16 --> 5:00, 5:05, 5:10, 5:15
+    #   usec_aligned_chunks(start_ts, end_ts, :five_minutes).each do { |c| }
+    #   usec_aligned_chunks(start_ts - USEC_FIVE_MINUTES, end_ts + USEC_FIVE_MINUTES, :five_minutes)
     #
     def usec_aligned_chunks(start_ts, end_ts, chunk)
       chunk_usec = usec_from_interval chunk
