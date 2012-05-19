@@ -5,6 +5,7 @@ require "cgi"
 require "hastur/api"
 require "hastur-server/cassandra/rollups"
 require "hastur-server/cassandra/schema"
+require "hastur-server/time_util"
 require "multi_json"
 
 module Hastur
@@ -26,6 +27,8 @@ module Hastur
     #   * consider JSONP callbacks - github has great examples
     #
     class Retrieval < Sinatra::Base
+      include Hastur::TimeUtil # import all the usec_* methods
+
       #
       # All of the Hastur message types. These are used in various places in the API
       # usually in the :type field. The keys may be used to indicate that you want all
@@ -310,25 +313,18 @@ module Hastur
       # @return [Hash{String=>URI}]
       #
       get "/name" do
-        hostname = get_request_url(request)
-        start_ts, end_ts = get_start_end :one_day
+        dump_lookup_rows("name", "name")
+      end
 
-        # always get two rows and merge
-        row_keys = [
-          Hastur::Cassandra.time_segment_for_timestamp(start_ts, ONE_DAY),
-          Hastur::Cassandra.time_segment_for_timestamp(start_ts - ONE_DAY, ONE_DAY),
-        ].map(&:to_s)
-
-        names = {}
-        %w[MarkNameDay CounterNameDay GaugeNameDay].each do |cf|
-          row_keys.each do |key|
-            cass_client.get(cf, key).each do |name,|
-              names[name] = "http://#{hostname}/name/#{name}"
-            end
-          end
-        end
-
-        MultiJson.dump names
+      #
+      # @!method /uuid
+      #
+      # Get a list of UUIDs that have been seen in the last 24-48 hours.
+      #
+      # @return [Hash{String=>URI}]
+      #
+      get "/uuid" do
+        dump_lookup_rows("uuid", "node")
       end
 
       private
@@ -338,14 +334,6 @@ module Hastur
         :connect_timeout => 30,
         :retries => 10,
       }
-
-      # constants like Hastur::Cassandra, but shorter
-      ONE_SECOND   = 1_000_000
-      ONE_MINUTE   = 60 * ONE_SECOND
-      FIVE_MINUTES =  5 * ONE_MINUTE
-      ONE_HOUR     = 60 * ONE_MINUTE
-      ONE_DAY      = 24 * ONE_HOUR
-      ONE_WEEK     =  7 * ONE_DAY
 
       helpers do
 
@@ -372,37 +360,26 @@ module Hastur
         end
 
         #
-        # Turn a string or number into a number of usecs.
-        #
-        def delta_usec(delta)
-          case delta.to_s
-            when "one_minute"   ; ONE_MINUTE
-            when "five_minutes" ; FIVE_MINUTES
-            when "one_hour"     ; ONE_HOUR
-            when "one_day"      ; ONE_DAY
-            when /\A\d+\Z/      ; delta.to_i
-          end
-        end
-
-        #
         # Get the time range tuple.  Use params or the default period (in seconds).
         #
         # @param [Symbol,String,Fixnum] default delta from current time for start_ts
         # @return Array<Fixnum> start and end epoch usec values
         #
-        def get_start_end(default_delta = "five_minutes")
+        def get_start_end(default_delta = :five_minutes)
+          now = Hastur.timestamp
+
           if params[:end]
             end_ts = Hastur.timestamp(params[:end].to_i)
           else
-            end_ts = Hastur.timestamp
+            end_ts = now
           end
 
           if params[:start]
             start_ts = Hastur.timestamp(params[:start].to_i)
           elsif params[:ago]
-            start_ts = Hastur.timestamp - delta_usec(params[:ago])
+            start_ts = now - usec_from_interval(params[:ago])
           else
-            start_ts = end_ts - delta_usec(default_delta)
+            start_ts = end_ts - usec_from_interval(default_delta)
           end
 
           return start_ts, end_ts
@@ -427,6 +404,41 @@ module Hastur
             @last_registration_update = ::Time.now.to_i
           end
           @registrations
+        end
+
+        #
+        # Grab 24-48 hours of data from the LookupByKey CF and yield the block, giving it key/value pairs.
+        #
+        # @param [String] kind of key to look up (currently, "name" or "uuid")
+        # @yield [String] key returned from Cassandra
+        #
+        def lookup_by_key(kind)
+          start_ts, end_ts = get_start_end :day
+
+          values = {}
+          usec_aligned_chunks(start_ts, end_ts, :day).each do |ts|
+            cass_client.get('LookupByKey', "#{kind}-#{ts}").each do |key,value|
+              yield key, value
+            end
+          end
+        end
+
+        #
+        # Convert LookupByKey rows into JSON.
+        #
+        # @param [String] kind "name" or "uuid" for now
+        # @param [String] path to put in the url, e.g. /node/:uuid for UUIDs
+        # @return [Hash{String=>URI}]
+        #
+        def dump_lookup_rows(kind, path)
+          hostname = get_request_url(request)
+
+          data = {}
+          lookup_by_key kind do |key,|
+            data[key] = "http://#{hostname}/#{path}/#{key}"
+          end
+
+          MultiJson.dump data
         end
 
         #
