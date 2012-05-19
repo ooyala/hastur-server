@@ -1,7 +1,6 @@
 {
   "application": "hastur-core",
   "logging": {
-    "console_print":"on",
-    "stdout_level":"debug"
+    "console_print":"off"
   }
 }
