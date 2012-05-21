@@ -112,7 +112,7 @@ module Hastur
           h = {
                 :hostname => registration_hash["json"]["hostname"],
                 :ipv4     => registration_hash["json"]["ipv4"],
-                :stat     => "#{hostname}/node/#{params[:uuid]}/stat",
+                :data     => "#{hostname}/node/#{params[:uuid]}/data",
                 :fact     => "#{hostname}/node/#{params[:uuid]}/fact"
               }
         else
@@ -122,22 +122,21 @@ module Hastur
       end
 
       #
-      # @!method /node/:uuid/stat
+      # @!method /node/:uuid/data
       #
-      # Retrieves a list of available stats on a particular node
+      # Retrieves a list of available messages on a particular node
       #
       # @param uuid UUID to query for (required)
       #
-      get "/node/:uuid/stat" do
+      get "/node/:uuid/data" do
         hostname = get_request_url(request)
         start_ts, end_ts = get_start_end :one_day
 
-        # Get with no subtype gives JSON
         h = {}
         Hastur::Cassandra::SCHEMA.keys.each do |type|
           data = Hastur::Cassandra.get(cass_client, params[:uuid], type, start_ts, end_ts, :consistency => 1)
           data.each do |k, v|
-            h[k] = "#{hostname}/node/#{params[:uuid]}/stat/#{type}/#{k}" unless k.empty?
+            h[k] = "#{hostname}/node/#{params[:uuid]}/data/#{type}/#{k}" unless k.empty?
           end
         end
 
@@ -145,21 +144,21 @@ module Hastur
       end
 
       #
-      # @!method /node/:uuid/stat/:stat
+      # @!method /node/:uuid/data/:data
       #
-      # Retrieves the values of a particular stat for a particular node
+      # Retrieves the values of a particular message for a particular node
       #
       # @param uuid    UUID to query for (required)
       # @param start   Starting timestamp, default 5 minutes ago
       # @param end     Ending timestamp, default now
-      # @param stat    Name of the stat to query for (required)
-      # @param type    Type of stat (required)
+      # @param name    Name of the message to query for (required)
+      # @param type    Type of message (required)
       #
-      get "/node/:uuid/stat/:type/:stat" do
+      get "/node/:uuid/data/:type/:name" do
         start_ts, end_ts = get_start_end :five_minutes
 
         # query cassandra for the data
-        opts = { :name => params[:stat], :value_only => true }
+        opts = { :name => params[:name], :value_only => true }
         values = ::Hastur::Cassandra.get(cass_client, params[:uuid], params[:type], start_ts, end_ts, opts)
 
         # transform the data into an understandable format
@@ -169,7 +168,7 @@ module Hastur
         end
 
         h = {
-              :name  => params[:stat],
+              :name  => params[:name],
               :count => data.size,
               :type  => params[:type],
               :data  => data
@@ -214,7 +213,7 @@ module Hastur
       # @example
       #   GET /app/:app/data/
       #   {
-      #     "stat"    => "/app/:app/data/stat/"
+      #     "data"    => "/app/:app/data/data/"
       #     "gauge"   => "/app/:app/data/gauge/"
       #     "counter" => "/app/:app/data/counter/"
       #     "event"   => "/app/:app/data/event/"
@@ -227,7 +226,7 @@ module Hastur
         h = {
           :name            => CGI.unescape(params[:app]),
           :number_of_nodes => uuids.size,
-          :stats           => "#{hostname}/app/#{CGI.escape(params[:app])}/stat"
+          :data            => "#{hostname}/app/#{CGI.escape(params[:app])}/data"
         }
 
         MultiJson.dump(h)
@@ -253,13 +252,13 @@ module Hastur
       end
 
       #
-      # @!method /app/:app/stat
+      # @!method /app/:app/name
       #
-      # Retrieves a list of stat name for a particular application
+      # Retrieves a list of message names for a particular application
       #
       # @param app URL-encoded application name (required)
       #
-      get "/app/:app/stat" do
+      get "/app/:app/name" do
         hostname = get_request_url(request)
         uuids = get_uuids_from_app_name(params[:app])
         start_ts, end_ts = get_start_end :one_day
@@ -269,7 +268,7 @@ module Hastur
         Hastur::Cassandra::SCHEMA.keys.each do |type|
           data = Hastur::Cassandra.get(cass_client, uuids, type, start_ts, end_ts, :consistency => 1)
           data.each do |k, v|
-            h[k] = "#{hostname}/app/#{CGI.escape(params[:app])}/stat/#{type}/#{k}" unless k.empty?
+            h[k] = "#{hostname}/app/#{CGI.escape(params[:app])}/data/#{type}/#{k}" unless k.empty?
           end
         end
 
@@ -277,23 +276,23 @@ module Hastur
       end
 
       #
-      # @!method /app/:app_name/stat/:stat
+      # @!method /app/:app_name/data/:name
       #
-      # Retrieves the values of a particular stat across all apps
+      # Retrieves the values of a particular message across all apps
       #
       # @param app URL-encoded application name (required)
       # @param start   Starting timestamp, default 5 minutes ago
       # @param end     Ending timestamp, default now
-      # @param stat    Name of the stat to query for (required)
-      # @param type    Type of stat (required)
+      # @param name    Name of the message to query for (required)
+      # @param type    Type of message (required)
       #
-      get "/app/:app/stat/:type/:stat" do
+      get "/app/:app/data/:type/:name" do
         h = {}
         uuids = get_uuids_from_app_name(params[:app])
         start_ts, end_ts = get_start_end :five_minutes
 
         # query cassandra for the data
-        opts = { :name => params[:stat] }
+        opts = { :name => params[:name] }
         values = ::Hastur::Cassandra.get(cass_client, uuids, params[:type], start_ts, end_ts, opts)
 
         # transform the data into an understandable format
@@ -307,7 +306,7 @@ module Hastur
         end
 
         h = {
-              :name  => params[:stat],
+              :name  => params[:name],
               :count => data.size,
               :type  => params[:type],
               :data  => data
