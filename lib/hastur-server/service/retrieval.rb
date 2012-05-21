@@ -8,6 +8,9 @@ require "hastur-server/cassandra/schema"
 require "hastur-server/time_util"
 require "multi_json"
 
+# TODO(noah): Override for JRuby
+MultiJson.use :yajl
+
 module Hastur
   module Service
     #
@@ -43,6 +46,14 @@ module Hastur
         :registration => %w[reg_agent reg_process reg_pluginv1],
         :info         => %w[info_agent info_process],
       }.freeze
+
+      before "" do
+        if request['Origin']
+          response['Access-Control-Allow-Origin'] = "*"
+        end
+
+        response['Content-Type'] = "application/json"
+      end
 
       #
       # @!method /
