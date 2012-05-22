@@ -125,6 +125,10 @@ module Hastur
       #
       def hash_to_message(data)
         klass = Hastur::Message.symbol_to_class(data[:type])
+
+        # if no UUID is provided, set one in the message payload
+        data[:uuid] ||= @uuid
+
         payload = MultiJson.dump(data)
         klass.new :from => @uuid, :payload => payload
       end
