@@ -275,13 +275,6 @@ class CassandraSchemaTest < Scope::TestCase
                      }, out)
       end
 
-      should "return an array of cfdefs" do
-        data = Hastur::Cassandra.cfdefs("Hastur")
-        assert_kind_of Array, data
-        data.each do |v|
-          assert_kind_of CassandraThrift::CfDef, v
-        end
-      end
     end
   end
 end

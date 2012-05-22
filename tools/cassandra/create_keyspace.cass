@@ -72,6 +72,38 @@ CREATE COLUMN FAMILY HBPluginV1
   with comparator='BytesType(reversed=true)'
   and compaction_strategy = 'LeveledCompactionStrategy';
 
+# Per-UUID metadata, stored daily, for message types.
+# Row key: UUID-timestamp (rounded to day)
+# Col key: varies widely
+CREATE COLUMN FAMILY GaugeMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY CounterMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY MarkMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY LogMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY ErrorMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY EventMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY HBAgentMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY HBProcessMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY HBPluginV1Metadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY RegAgentMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY RegProcessMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY RegPluginV1Metadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY InfoProcessMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY InfoAgentMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy';
+
 # Per-UUID Registration Rollups
 # Row key: UUID-timestamp
 # Col key: labelspec-registration-name

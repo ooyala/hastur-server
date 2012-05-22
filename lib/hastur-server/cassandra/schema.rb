@@ -22,117 +22,138 @@ module Hastur
 
     SCHEMA = {
       "gauge" => {
-        :cf          => :GaugeArchive,
-        :name        => :name,
+        :type        => :gauge,
+        :archive_cf  => :GaugeArchive,
+        :name        => true,
         :value       => :value,
         :granularity => FIVE_MINUTES,
         :values_cf   => :StatGauge,
         :name_cf     => :GaugeNameDay,
+        :metadata_cf => :GaugeMetadata,
       },
       "counter" => {
-        :cf          => :CounterArchive,
-        :name        => :name,
+        :type        => :counter,
+        :archive_cf  => :CounterArchive,
+        :name        => true,
         :value       => :value,
         :granularity => FIVE_MINUTES,
         :values_cf   => :StatCounter,
         :name_cf     => :CounterNameDay,
+        :metadata_cf => :CounterMetadata,
       },
       "mark" => {
-        :cf          => :MarkArchive,
-        :name        => :name,
+        :type        => :mark,
+        :archive_cf  => :MarkArchive,
+        :name        => true,
         :value       => :value,
         :granularity => ONE_HOUR,
         :values_cf   => :StatMark,
         :name_cf     => :MarkNameDay,
+        :metadata_cf => :MarkMetadata,
       },
       "log" => {
-        :cf          => :LogArchive,
+        :type        => :log,
+        :archive_cf  => :LogArchive,
         :granularity => FIVE_MINUTES,
-        :name        => nil,
+        :name        => false,
+        :metadata_cf => :LogMetadata,
       },
       "error" => {
-        :cf          => :ErrorArchive,
+        :type        => :error,
+        :archive_cf  => :ErrorArchive,
         :granularity => ONE_DAY,
-        :name        => nil,
+        :name        => false,
+        :metadata_cf => :ErrorMetadata,
       },
       "event" => {
-        :cf          => :EventArchive,
+        :type        => :event,
+        :archive_cf  => :EventArchive,
         :granularity => ONE_DAY,
-        :name        => nil,
+        :name        => false,
+        :metadata_cf => :EventMetadata,
       },
       "hb_process" => {
-        :cf          => :HBProcessArchive,
-        :name        => :name,
+        :type        => :hb_process,
+        :archive_cf  => :HBProcessArchive,
+        :name        => true,
         :value       => :value,
         :granularity => FIVE_MINUTES,
         :values_cf   => "HBProcess",
         :name_cf     => "HBProcessNameDay",
+        :metadata_cf => :HBProcessMetadata,
       },
       "hb_agent" => {
-        :cf          => :HBAgentArchive,
-        :name        => :name,
+        :type        => :hb_agent,
+        :archive_cf  => :HBAgentArchive,
+        :name        => true,
         :value       => :value,
         :granularity => ONE_HOUR,
         :values_cf   => "HBAgent",
+        :metadata_cf => :HBAgentMetadata,
       },
       "hb_pluginv1" => {
-        :cf          => :HBPluginV1Archive,
-        :name        => :name,
+        :type        => :hb_pluginv1,
+        :archive_cf  => :HBPluginV1Archive,
+        :name        => true,
         :value       => :value,
         :granularity => ONE_HOUR,
         :values_cf   => "HBPluginV1",
         :name_cf     => "HBPluginV1NameDay",
+        :metadata_cf => :HBPluginV1Metadata,
       },
       "reg_agent" => {
-        :cf          => :RegAgentArchive,
+        :type        => :reg_agent,
+        :archive_cf  => :RegAgentArchive,
         :granularity => ONE_DAY,
-        :name        => nil,
+        :name        => false,
+        :metadata_cf => :RegAgentMetadata,
       },
       "reg_process" => {
-        :cf          => :RegProcessArchive,
+        :type        => :reg_process,
+        :archive_cf  => :RegProcessArchive,
         :granularity => ONE_DAY,
-        :name        => nil,
+        :name        => false,
+        :metadata_cf => :RegProcessMetadata,
       },
       "reg_pluginv1" => {
-        :cf          => :RegPluginV1Archive,
+        :type        => :reg_pluginv1,
+        :archive_cf  => :RegPluginV1Archive,
         :granularity => ONE_DAY,
-        :name        => nil,
+        :name        => false,
+        :metadata_cf => :RegPluginV1Metadata,
       },
       "info_process" => {
-        :cf          => :InfoProcessArchive,
+        :type        => :info_process,
+        :archive_cf  => :InfoProcessArchive,
         :granularity => ONE_DAY,
-        :name        => nil,
+        :name        => false,
+        :metadata_cf => :InfoProcessMetadata,
       },
       "info_agent" => {
-        :cf          => :InfoAgentArchive,
+        :type        => :info_agent,
+        :archive_cf  => :InfoAgentArchive,
         :granularity => ONE_DAY,
-        :name        => nil,
+        :name        => false,
+        :metadata_cf => :InfoAgentMetadata,
       },
     }.freeze
 
     #
-    # Return a list of CassandraThrift::CfDef objects that can be used for setup.
-    # @param [String] keyspace the cfdefs will be instantiated in.
-    # @param [Hash] opts additional options for CassandraThrift::CfDef.new
-    # @return [Array<CassandraThrift::CfDef>]
-    #
-    def cfdefs(keyspace, opts={})
-      SCHEMA.values.map do |data|
-        CassandraThrift::CfDef.new *opts, :name => data[:cf].to_s, :keyspace => keyspace
-      end
-    end
-
-    #
     # Insert a column.
+    #
     # @param [Cassandra] cass_client client object, should be connected and in the right keyspace
     # @param [String] json_string to be parsed & data used for the insert
-    # @param [String] msg_type string, e.g. the .to_s of the symbols in Hastur::Message
+    # @param [Hash] schema The schema hash for this message type
     # @param [Hash{Symbol=>Fixnum,String}] options
     # @option options [Fixnum] :ttl, passed to the cassandra client
     # @option options [Fixnum] :consistency, passed to the cassandra client
     # @option options [String] :uuid 36-byte agent UUID
     #
     def insert(cass_client, json_string, msg_type, options = {})
+      schema_insert(cass_client, json_string, SCHEMA[msg_type], options)
+    end
+
+    def schema_insert(cass_client, json_string, schema, options = {})
       hash = MultiJson.load(json_string, :symbolize_keys => true)
       raise "Cannot deserialize JSON string!" unless hash
       uuid = options.delete(:uuid) || hash[:uuid] || hash[:from]
@@ -141,8 +162,8 @@ module Hastur
       schema = SCHEMA[msg_type]
       raise "No schema defined for Hastur message type '#{msg_type}'!" unless schema
 
-      name = schema[:name] ? hash[schema[:name]] : nil
-      value = hash[:value]                   # Example: 37.914
+      name = schema[:name] ? :name : nil
+      value = hash[:value]
       timestamp_usec = hash[:timestamp]
 
       colname = col_name(name, timestamp_usec)
@@ -153,24 +174,27 @@ module Hastur
       insert_options[:consistency] = options[:consistency] if options[:consistency]
       now_ts = ::Hastur::Util.timestamp.to_s
       cass_client.batch do |client|
-        client.insert(schema[:cf], key, { colname => json_string,
-                        "last_write" => now_ts, "last_access" => now_ts }, insert_options)
+        client.insert(schema[:archive_cf], key, { colname => json_string }, insert_options)
+        client.insert(schema[:metadata_cf], key,
+                      { "last_write" => now_ts, "last_access" => now_ts }, insert_options)
+
         cf = schema[:values_cf]
-        client.insert(cf, key, { colname => value.to_msgpack, "last_write" => now_ts,
-                        "last_access" => now_ts }, insert_options) if cf
+        client.insert(schema[:metadata_cf], key, { colname => value.to_msgpack }, insert_options) if cf
 
         # Insert into "saw this in this time period" rows
         client.insert(:LookupByKey, "uuid-#{one_day_ts}", { uuid => "" })
         if schema[:name]
-          type_id = Hastur::Message.symbol_to_type_id(msg_type.to_sym)
+          type_id = Hastur::Message.symbol_to_type_id(schema[:type])
           client.insert(:LookupByKey, "name-#{one_day_ts}", { "#{name}-#{type_id}" => "" })
         end
       end
     end
 
+    #
     # Get a message on a given agent UUID over a given block of time, up to about a day.
     #
     # Options:
+    #   :value_only
     #   :name - message name
     #   :consistency - Cassandra read consistency
     #   :count - maximum number of entries to return, default 10000
@@ -180,14 +204,18 @@ module Hastur
         raise "Don't query more than 3 days at once yet!"
       end
 
-      raw_get_all(cass_client, agent_uuid, type, start_timestamp, end_timestamp, options)
+      schemas = type.map { |type| SCHEMA[type.to_sym] }
+
+      raw_get_all(cass_client, agent_uuid, schemas.compact, start_timestamp, end_timestamp, options)
     end
 
+    #
     # Get all stats on a given agent UUID over a given block of time, up to about a day.
     # If a :type option is given, pull the values from that type's storage area.  Otherwise,
     # pull raw JSON information from the all-stats archive area.
     #
     # Options:
+    #   :name
     #   :value_only - return only the value, not the full JSON
     #   :consistency - Cassandra read consistency
     #   :count - maximum number of entries to return, default 10000
@@ -197,10 +225,8 @@ module Hastur
         raise "Don't query more than 3 days at once yet!"
       end
 
-      r1 = raw_get_all(cass_client, agent_uuid, "gauge", start_timestamp, end_timestamp, options) || {}
-      r2 = raw_get_all(cass_client, agent_uuid, "counter", start_timestamp, end_timestamp, options) || {}
-      r3 = raw_get_all(cass_client, agent_uuid, "mark", start_timestamp, end_timestamp, options) || {}
-      r1.merge(r2).merge(r3)
+      get(cass_client, agent_uuid, [ "gauge", "counter", "mark" ],
+          start_timestamp, end_timestamp, options) || {}
     end
 
     def time_segment_for_timestamp(timestamp, granularity)
@@ -283,90 +309,129 @@ module Hastur
     protected
 
     #
-    # This is the basic getter for messages.  By default it gets all messages with a given
-    # message type and agent UUID across the given timestamps.  It can be modified in several
-    # other ways by options:
+    # This is the basic getter for messages.  By default it gets all
+    # messages with the given message type(s) and agent UUID(s) across
+    # the given timestamps.
     #
-    # Hastur Options:
-    #   :name - the message name such as stat name, heartbeat name or plugin name
-    #   :value_only - return only the message (usually stat) value, not full JSON
+    # You can specify :name, :name_prefix or :start/:finish options,
+    # but not more than one.  If you specify :name or :name_prefix, it
+    # will be implemented by changing the :start and :finish options
+    # to Cassandra.
     #
-    # Cassandra Options:
-    #   :count - maximum number of messages, default 10,000
-    #   :consistency - read consistency
-    #   :start - starting column name in each row
-    #   :finish - final column name in each row
-    #   :reversed - return results in reverse order
+    # This method calls cass_client.multi_get() once for each schema given.
     #
-    # You can specify :name or :start/:finish, but not both.
-    # If you specify :name, it will be implemented by changing the
-    # :start and :finish options to Cassandra.
+    # @param cass_client The cassandra client object
+    # @param [Array<String> or String] agent_uuids The UUID or list of UUIDs to query
+    # @param [Array<Hash> or Hash] msg_schemas The message schema or schemas to query
+    # @param [Fixnum] start_timestamp The earliest time value to query
+    # @param [Fixnum] end_timestamp The latest time value to query
+    # @param [Hash] options Options
+    # @option options [String] :name The message name
+    # @option options [String] :name_prefix The message name prefix
+    # @option options [Boolean] :value_only Return only message values, not full JSON
+    # @option options [Fixnum] :count Maximum number to return, defaults to 10_000
+    # @option options [Fixnum] :consistency Read consistency, defaults to 1
+    # @option options [String] :start Initial column name for a slice
+    # @option options [String] :finish Final column name for a slice
+    # @option options [Boolean] :reversed Return in reverse order
     #
-    def raw_get_all(cass_client, agent_uuid, msg_type, start_timestamp, end_timestamp, options = {})
-      if options[:name] && (options[:start] || options[:finish])
-        raise "Error: you can't specify the :name option with :start or :finish in raw_get_all!"
+    def raw_get_all(cass_client, agent_uuids, msg_schemas, start_timestamp, end_timestamp, options = {})
+      if (options[:name] && options[:name_prefix]) ||
+          (options[:name] || options[:name_prefix]) && (options[:start] || options[:finish])
+        raise "Error: you can't specify :name or :name_prefix with :start/:finish in raw_get_all!"
       end
 
-      schema = SCHEMA[msg_type]
-      raise "No schema defined for Hastur message type '#{msg_type}'!" unless schema
+      # Coerce to list
+      agent_uuids = [ agent_uuids ].flatten
+      msg_schemas = [ msg_schemas ].flatten
 
-      name_field = schema[:name]
-      granularity = schema[:granularity]
+      if options[:name] || options[:name_prefix]
+        # Want a name?  Then filter out all nameless schemas.
+        msg_schemas.keep_if { |schema| schema[:name] }
 
-      cf = schema[:cf]
-      cf = schema[:values_cf] if options[:value_only] && schema[:values_cf]
+        return {} if msg_schemas.empty?
+      end
 
-      segments = segments_for_timestamps(start_timestamp, end_timestamp, granularity)
+      cf_by_type = {}
+      row_keys_by_type = {}
+      metadata_row_keys_by_type = {}
+      options_by_type = {}
 
-      if agent_uuid.kind_of?(Array)
-        row_keys = agent_uuid.map do |uuid|
+      msg_schemas.each do |schema|
+        type = schema[:type]
+
+        cf = (options[:value_only] && schema[:values_cf]) ? schema[:values_cf] : schema[:archive_cf]
+        cf_by_type[type] = cf
+
+        row_keys_by_type[type] = agent_uuids.map do |uuid|
+          segments = segments_for_timestamps(start_timestamp, end_timestamp, schema[:granularity])
           segments.map { |seg| "#{uuid}-#{seg}" }
         end.flatten
-      else
-        row_keys = segments.map { |seg| "#{agent_uuid}-#{seg}" }
+
+        metadata_row_keys_by_type[type] = agent_uuids.map do |uuid|
+          segments = segments_for_timestamps(start_timestamp, end_timestamp, ONE_DAY)
+          segments.map { |seg| "#{uuid}-#{seg}" }
+        end.flatten
+
+        cass_options = { :count => 10_000 }
+        CASS_GET_OPTIONS.each do |opt|
+          cass_options[opt] = options[opt] if options.has_key?(opt)
+        end
+
+        if schema[:name] && options[:name_prefix]
+          prefix = options[:name_prefix]
+          raise "We currently fail hard if the last byte of the name prefix is 255!" if prefix[-1].ord == 255
+
+          cass_options[:start] = prefix
+          cass_options[:finish] = prefix[0..-2] + prefix[-1].succ
+        elsif schema[:name] && options[:name]
+          # For a named schema like stats or heartbeats, tell Cassandra what column range to query.
+          cass_options[:start] = col_name(options[:name], start_timestamp)
+          cass_options[:finish] = col_name(options[:name], end_timestamp)
+        else
+          # For an unnamed schema like events, tell Cassandra what column range to query
+          cass_options[:start] = col_name(nil, start_timestamp) unless options[:start]
+          cass_options[:finish] = col_name(nil, end_timestamp) unless options[:finish]
+        end
+
+        options_by_type[type] = cass_options
       end
 
-      cass_options = { :count => 10_000 }
-      CASS_GET_OPTIONS.each do |opt|
-        cass_options[opt] = options[opt] if options.has_key?(opt)
+      values = []
+      options_by_type.each do |type, cass_options|
+        # Now, actually do the query
+        values << cass_client.multi_get(cf_by_type[type], row_keys_by_type[type], cass_options)
       end
-
-      if name_field && options[:name]
-        # For a named schema like stats or heartbeats, tell Cassandra what column range to query.
-        cass_options[:start] = col_name(options[:name], start_timestamp)
-        cass_options[:finish] = col_name(options[:name], end_timestamp)
-      elsif !name_field
-        # For an unnamed schema like events, tell Cassandra what column range to query
-        cass_options[:start] = col_name(nil, start_timestamp) unless options[:start]
-        cass_options[:finish] = col_name(nil, end_timestamp) unless options[:finish]
-      end
-
-      # Now, actually do the query
-      values = cass_client.multi_get(cf, row_keys, cass_options)
 
       # Mark rows as accessed
       now_ts = Hastur::Util.timestamp(nil)
       cass_client.batch do |client|
-        row_keys.each do |key|
-          client.insert(cf, key, "last_access" => now_ts.to_s)
+        msg_schemas.each do |schema|
+          row_keys = metadata_row_keys_by_type[schema[:type]]
+          metadata_cf = schema[:metadata_cf]
+
+          client.insert(metadata_cf, row_keys, "last_access" => now_ts.to_s)
         end
       end
 
       # Delete empty rows in result
-      values.delete_if { |_, value| value.nil? || value.empty? }
+      values.each.delete_if { |_, value| value.nil? || value.empty? }
 
+      #### TODO: switch to final representation
       final_values = {}
-      values.each do |row_key, col_hash|
-        col_hash.each do |col_key, value|
-          name, timestamp = col_name_to_name_and_timestamp(col_key)
+      values.each do |v|
+        v.each do |row_key, col_hash|
+          col_hash.each do |col_key, value|
+            name, timestamp = col_name_to_name_and_timestamp(col_key)
 
-          if timestamp <= end_timestamp && timestamp >= start_timestamp
-            val = options[:value_only] ? MessagePack.unpack(value) : value
-            if name
-              final_values[name] ||= {}
-              final_values[name][timestamp] = val
-            else
-              final_values[timestamp] = val
+            if timestamp <= end_timestamp && timestamp >= start_timestamp
+              val = options[:value_only] ? MessagePack.unpack(value) : value
+              if name
+                final_values[name] ||= {}
+                final_values[name][timestamp] = val
+              else
+                final_values[timestamp] = val
+              end
             end
           end
         end
