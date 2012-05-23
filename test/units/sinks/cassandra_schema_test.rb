@@ -5,6 +5,7 @@ require "hastur-server/cassandra/schema"
 GAUGE_JSON = <<JSON
 {
   "type": "gauge",
+  "uuid": "91c61ff0-8740-012f-e54a-64ce8f3a9dc2",
   "name": "this.is.a.gauge",
   "value": 37.1,
   "timestamp": 1329858724285438,
@@ -18,6 +19,7 @@ JSON
 COUNTER_JSON = <<JSON
 {
   "type": "counter",
+  "uuid": "91c61ff0-8740-012f-e54a-64ce8f3a9dc2",
   "name": "totally.a.counter",
   "value": 5,
   "timestamp": 1329858724285438,
@@ -32,7 +34,9 @@ JSON
 MARK_JSON = <<JSON
 {
   "type": "mark",
+  "uuid": "91c61ff0-8740-012f-e54a-64ce8f3a9dc2",
   "name": "marky.mark",
+  "value": "start",
   "timestamp": 1329858724285438,
   "labels": {
   }
@@ -41,6 +45,8 @@ JSON
 
 EVENT_JSON = <<JSON
 {
+  "type": "event",
+  "uuid": "91c61ff0-8740-012f-e54a-64ce8f3a9dc2",
   "name": "fake.event.name",
   "timestamp": 1329858724285438,
   "body": "stack trace placeholder",
@@ -72,7 +78,9 @@ class CassandraSchemaTest < Scope::TestCase
     @cass_client = mock("Cassandra client")
     @cass_client.stubs(:batch).yields(@cass_client)
     Hastur::Util.stubs(:timestamp).with(nil).returns(NOWISH_TIMESTAMP)
-    @cass_client.stubs(:insert).with(anything, anything, { "last_access" => NOWISH_TIMESTAMP })
+    #@cass_client.stubs(:insert).with(anything, anything, { "last_access" => NOWISH_TIMESTAMP })
+
+    # TODO(noah): Add these actual assertions
     @cass_client.stubs(:insert).with(:LookupByKey, anything, anything)
   end
 
@@ -82,12 +90,10 @@ class CassandraSchemaTest < Scope::TestCase
       json = GAUGE_JSON
       row_key = "#{FAKE_UUID}-#{ROW_TS}"
       colname = "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
-      @cass_client.expects(:insert).with(:GaugeArchive, row_key, { colname => json,
-                                           "last_access" => NOWISH_TIMESTAMP,
-                                           "last_write" => NOWISH_TIMESTAMP }, {})
-      @cass_client.expects(:insert).with(:StatGauge, row_key, { colname => (37.1).to_msgpack,
-                                           "last_access" => NOWISH_TIMESTAMP,
-                                           "last_write" => NOWISH_TIMESTAMP }, {})
+      @cass_client.expects(:insert).with(:GaugeArchive, row_key, { colname => json }, {})
+      @cass_client.expects(:insert).with(:StatGauge, row_key, { colname => (37.1).to_msgpack }, {})
+      @cass_client.expects(:insert).with(:GaugeMetadata, row_key, anything, {})
+
       Hastur::Cassandra.insert(@cass_client, json, "gauge", :uuid => FAKE_UUID)
     end
 

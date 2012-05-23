@@ -159,7 +159,7 @@ module Hastur
       uuid = options.delete(:uuid) || hash[:uuid] || hash[:from]
       raise "No UUID given!" unless uuid
 
-      name = schema[:name] ? :name : nil
+      name = schema[:name] ? hash[:name] : nil
       value = hash[:value]
       timestamp_usec = hash[:timestamp]
 
@@ -176,7 +176,7 @@ module Hastur
                       { "last_write" => now_ts, "last_access" => now_ts }, insert_options)
 
         cf = schema[:values_cf]
-        client.insert(schema[:metadata_cf], key, { colname => value.to_msgpack }, insert_options) if cf
+        client.insert(cf, key, { colname => value.to_msgpack }, insert_options) if cf
 
         # Insert into "saw this in this time period" rows
         client.insert(:LookupByKey, "uuid-#{one_day_ts}", { uuid => "" })
