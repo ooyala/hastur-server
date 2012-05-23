@@ -8,45 +8,59 @@ USE Hastur;
 # Col key: name-timestamp or timestamp
 CREATE COLUMN FAMILY GaugeArchive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY CounterArchive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY MarkArchive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY LogArchive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY ErrorArchive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY EventArchive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY HBAgentArchive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY HBProcessArchive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY HBPluginV1Archive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY RegAgentArchive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY RegProcessArchive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY RegPluginV1Archive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY InfoProcessArchive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY InfoAgentArchive
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 
 # Per-UUID Full-granularity Hastur messages,
@@ -55,54 +69,74 @@ CREATE COLUMN FAMILY InfoAgentArchive
 # Col key: name-timestamp
 CREATE COLUMN FAMILY StatCounter
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY StatGauge
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY StatMark
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY HBProcess
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY HBAgent
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY HBPluginV1
   with comparator='BytesType(reversed=true)'
+  and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 
 # Per-UUID metadata, stored daily, for message types.
 # Row key: UUID-timestamp (rounded to day)
 # Col key: varies widely
 CREATE COLUMN FAMILY GaugeMetadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 CREATE COLUMN FAMILY CounterMetadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 CREATE COLUMN FAMILY MarkMetadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 CREATE COLUMN FAMILY LogMetadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 CREATE COLUMN FAMILY ErrorMetadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 CREATE COLUMN FAMILY EventMetadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 CREATE COLUMN FAMILY HBAgentMetadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 CREATE COLUMN FAMILY HBProcessMetadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 CREATE COLUMN FAMILY HBPluginV1Metadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 CREATE COLUMN FAMILY RegAgentMetadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 CREATE COLUMN FAMILY RegProcessMetadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 CREATE COLUMN FAMILY RegPluginV1Metadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 CREATE COLUMN FAMILY InfoProcessMetadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 CREATE COLUMN FAMILY InfoAgentMetadata
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 
 # Per-UUID Registration Rollups
 # Row key: UUID-timestamp
@@ -113,13 +147,15 @@ CREATE COLUMN FAMILY InfoAgentMetadata
 #          labelspec-registration-COLS
 # TODO(noah): adjust this when we have a real implementation that works
 CREATE COLUMN FAMILY RegistrationDay
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 
 # Seen UUIDs per time period
 # Row key: timestamp (rounded down to day)
 # Col key: UUID
 CREATE COLUMN FAMILY LookupByKey
-  with compaction_strategy = 'LeveledCompactionStrategy';
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
 
 create keyspace HasturTrigger
   with placement_strategy = SimpleStrategy
@@ -133,6 +169,7 @@ create column family TriggerState
   and default_validation_class = UTF8Type
   and key_validation_class = UTF8Type
   and compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null
   and read_repair_chance = 1.0
   and gc_grace = 864000
   and replicate_on_write = true;
