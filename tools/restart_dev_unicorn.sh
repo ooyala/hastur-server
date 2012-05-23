@@ -16,9 +16,11 @@ die () {
 [ -n "$USER" ] || die "USER envvar must be set"
 [ -n "$HOME" ] || die "HOME envvar must be set"
 
-# detect RVM then RBenv then fall back to /opt/hastur, which should
-# be sufficient most of the time
-if [ -e "$HOME/.rvm/scripts/rvm" ] ; then
+export PATH="/opt/hastur/bin:/opt/ruby/1.9/bin:/bin:/usr/bin:/usr/local/bin:/opt/local/bin"
+
+if [ -n "$(which unicorn)" ] ; then
+  true # ignore rvm/rbenv
+elif [ -e "$HOME/.rvm/scripts/rvm" ] ; then
   source "$HOME/.rvm/scripts/rvm"
   rvm use 1.9.3
 elif [ -e "$HOME/.rbenv" ] ; then
@@ -29,16 +31,12 @@ fi
 
 UNICORN=$(which unicorn)
 
-# fall back to Hastur
-[ -n "$UNICORN" ] || export PATH="/opt/hastur/bin:$PATH"
-UNICORN=$(which unicorn)
-
 [ -n "$UNICORN" ] || die "could not find a unicorn or hastur install"
 
 killall -u $USER unicorn
 sleep 1
 
-if [ "$USER" == "viet" ] ; then
+if [ "$USER" == "noah" ] ; then
   PORT=8080
 else
   PORT=8888
