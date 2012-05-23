@@ -56,64 +56,60 @@ module Hastur
       end
 
       #
-      # @!method /
+      # @!method /api/
       #
       # Top-level resources.
       #
       # @return [Hash{String=>URI}] keys are names, values are resource URIs
       #
-      get "/" do
-        hostname = get_request_url(request)
-
+      get "/api" do
         MultiJson.dump({
-          :node => "#{hostname}/node",
-          :app  => "#{hostname}/app",
-          :type => "#{hostname}/type",
+          :node => "#{root_uri}/api/node",
+          :app  => "#{root_uri}/api/app",
+          :type => "#{root_uri}/api/type",
         }, json_params)
       end
 
       #
-      # @!method /type
+      # @!method /api/type
       #
       # A structure of all the supported Hastur message types.
       #
       # @return [Hash{String=>Array<String>}]
       #
-      get "/type" do
+      get "/api/type" do
         MultiJson.dump TYPES, json_params
       end
 
       #
-      # @!method /node
+      # @!method /api/node
       #
       # Retrieves a list of currently registered Hastur-enabled nodes
       #
-      get "/node" do
-        hostname = get_request_url(request)
+      get "/api/node" do
         h = {}
         get_registrations.each do |uuid, reg_hash|
-          h[uuid] = "#{hostname}/node/#{uuid}"
+          h[uuid] = "#{root_uri}/api/node/#{uuid}"
         end
 
         MultiJson.dump h, json_params
       end
 
       #
-      # @!method /node/:uuid
+      # @!method /api/node/:uuid
       #
       # Retrieves meta-data on a particular node
       #
       # @param uuid UUID to query for (required)
       #
-      get "/node/:uuid" do
-        hostname = get_request_url(request)
+      get "/api/node/:uuid" do
         if get_registrations[params[:uuid]]
           registration_hash = get_registrations[params[:uuid]]
           h = {
                 :hostname => registration_hash["json"]["hostname"],
                 :ipv4     => registration_hash["json"]["ipv4"],
-                :data     => "#{hostname}/node/#{params[:uuid]}/data",
-                :fact     => "#{hostname}/node/#{params[:uuid]}/fact"
+                :data     => "#{root_uri}/api/node/#{params[:uuid]}/data",
+                :fact     => "#{root_uri}/api/node/#{params[:uuid]}/fact"
               }
         else
           error 404, "#{params[:uuid]} is not registered."
@@ -122,21 +118,20 @@ module Hastur
       end
 
       #
-      # @!method /node/:uuid/data
+      # @!method /api/node/:uuid/data
       #
       # Retrieves a list of available messages on a particular node
       #
       # @param uuid UUID to query for (required)
       #
-      get "/node/:uuid/data" do
-        hostname = get_request_url(request)
+      get "/api/node/:uuid/data" do
         start_ts, end_ts = get_start_end :one_day
 
         h = {}
         Hastur::Cassandra::SCHEMA.keys.each do |type|
           data = Hastur::Cassandra.get(cass_client, params[:uuid], type, start_ts, end_ts, :consistency => 1)
           data.each do |k, v|
-            h[k] = "#{hostname}/node/#{params[:uuid]}/data/#{type}/#{k}" unless k.empty?
+            h[k] = "#{root_uri}/api/node/#{params[:uuid]}/data/#{type}/#{k}" unless k.empty?
           end
         end
 
@@ -144,7 +139,7 @@ module Hastur
       end
 
       #
-      # @!method /node/:uuid/data/:data
+      # @!method /api/node/:uuid/data/:data
       #
       # Retrieves the values of a particular message for a particular node
       #
@@ -154,7 +149,7 @@ module Hastur
       # @param name    Name of the message to query for (required)
       # @param type    Type of message (required)
       #
-      get "/node/:uuid/data/:type/:name" do
+      get "/api/node/:uuid/data/:type/:name" do
         start_ts, end_ts = get_start_end :five_minutes
 
         # query cassandra for the data
@@ -178,13 +173,12 @@ module Hastur
       end
 
       #
-      # @!method /app
+      # @!method /api/app
       #
       # Retrieves all of the registered applications.
       #
-      get "/app" do
+      get "/api/app" do
         h = {}
-        hostname = get_request_url(request)
         apps = Set.new
         # Retrieve all registered processes
         cass_client.each(:RegProcessArchive) do |r, c|
@@ -197,14 +191,14 @@ module Hastur
 
         # Populate the return data object with the appropriate hash values
         app.each do |app|
-          h[app] = "#{hostname}/app/#{CGI.escape(app)}/data"
+          h[app] = "#{root_uri}/api/app/#{CGI.escape(app)}/data"
         end
 
         MultiJson.dump h, json_params
       end
 
       #
-      # @!method /app/:app/data
+      # @!method /api/app/:app/data
       #
       # Retrieves meta-data about a specific application name.
       #
@@ -220,46 +214,44 @@ module Hastur
       #     ...
       #   }
       #
-      get "/app/:app/data" do
-        hostname = get_request_url(request)
+      get "/api/app/:app/data" do
         uuids = get_uuids_from_app_name(params[:app])
         h = {
           :name            => CGI.unescape(params[:app]),
           :number_of_nodes => uuids.size,
-          :data            => "#{hostname}/app/#{CGI.escape(params[:app])}/data"
+          :data            => "#{root_uri}/api/app/#{CGI.escape(params[:app])}/data"
         }
 
         MultiJson.dump h, json_params
       end
 
       #
-      # @!method /app/:app/node
+      # @!method /api/app/:app/node
       # @note not implmented
       #
       # Returns a list of nodes with the application registered.
       #
-      get "/app/:app/node" do
+      get "/api/app/:app/node" do
         stub! "/app/:app/node"
       end
 
       #
-      # @!method /app/:app/node/:node
+      # @!method /api/app/:app/node/:node
       #
       # Get application information for a particular node.
       #
-      get "/app/:app/node/:node" do
+      get "/api/app/:app/node/:node" do
         stub! "/app/:app/node/:node"
       end
 
       #
-      # @!method /app/:app/name
+      # @!method /api/app/:app/name
       #
       # Retrieves a list of message names for a particular application
       #
       # @param app URL-encoded application name (required)
       #
-      get "/app/:app/name" do
-        hostname = get_request_url(request)
+      get "/api/app/:app/name" do
         uuids = get_uuids_from_app_name(params[:app])
         start_ts, end_ts = get_start_end :one_day
 
@@ -268,7 +260,7 @@ module Hastur
         Hastur::Cassandra::SCHEMA.keys.each do |type|
           data = Hastur::Cassandra.get(cass_client, uuids, type, start_ts, end_ts, :consistency => 1)
           data.each do |k, v|
-            h[k] = "#{hostname}/app/#{CGI.escape(params[:app])}/data/#{type}/#{k}" unless k.empty?
+            h[k] = "#{root_uri}/api/app/#{CGI.escape(params[:app])}/data/#{type}/#{k}" unless k.empty?
           end
         end
 
@@ -276,7 +268,7 @@ module Hastur
       end
 
       #
-      # @!method /app/:app_name/data/:name
+      # @!method /api/app/:app_name/data/:name
       #
       # Retrieves the values of a particular message across all apps
       #
@@ -286,7 +278,7 @@ module Hastur
       # @param name    Name of the message to query for (required)
       # @param type    Type of message (required)
       #
-      get "/app/:app/data/:type/:name" do
+      get "/api/app/:app/data/:type/:name" do
         h = {}
         uuids = get_uuids_from_app_name(params[:app])
         start_ts, end_ts = get_start_end :five_minutes
@@ -316,24 +308,24 @@ module Hastur
       end
 
       #
-      # @!method /name
+      # @!method /api/name
       #
       # Get a list of name resources that have been seen in the last 24-48 hours.
       #
       # @return [Hash{String=>URI}]
       #
-      get "/name" do
+      get "/api/name" do
         dump_lookup_rows("name", "name")
       end
 
       #
-      # @!method /uuid
+      # @!method /api/uuid
       #
       # Get a list of UUIDs that have been seen in the last 24-48 hours.
       #
       # @return [Hash{String=>URI}]
       #
-      get "/uuid" do
+      get "/api/uuid" do
         dump_lookup_rows("uuid", "node")
       end
 
@@ -399,7 +391,7 @@ module Hastur
         # Check for/sanitize parameters that we pass through to MultiJson.
         #
         def json_params
-          if params[:pretty]
+          if params[:pretty] or not request.xhr?
             { :pretty => true }
           else
             {}
@@ -409,8 +401,10 @@ module Hastur
         #
         # Computes the request url without the path information
         #
-        def get_request_url(request)
-          request.url[0..(request.url.length - request.path_info.length - 1)]
+        def root_uri
+          uri = URI.parse request.url
+          uri.path = ""
+          uri.to_s
         end
 
         #
@@ -452,11 +446,9 @@ module Hastur
         # @return [Hash{String=>URI}]
         #
         def dump_lookup_rows(kind, path)
-          hostname = get_request_url(request)
-
           data = {}
           lookup_by_key kind do |key,|
-            data[key] = "http://#{hostname}/#{path}/#{key}"
+            data[key] = "http://#{root_uri}/#{path}/#{key}"
           end
 
           MultiJson.dump data, json_params
