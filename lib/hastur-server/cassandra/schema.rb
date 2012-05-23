@@ -188,20 +188,47 @@ module Hastur
     end
 
     #
-    # Get a message on a given agent UUID over a given block of time, up to about a day.
+    # This is the basic getter for messages.  By default it gets all
+    # messages with the given message type(s) and agent UUID(s) across
+    # the given timestamps.
     #
-    # Options:
-    #   :value_only
-    #   :name - message name
-    #   :consistency - Cassandra read consistency
-    #   :count - maximum number of entries to return, default 10000
+    # Queries should be broken up into no more than a day or so each
+    # time, less for queries across multiple UUIDs or message types.
+    #
+    # You can specify :name or :name_prefix but not both at once.
+    # Either one is incompatible with directly specifying Cassandra
+    # :start/:finish options -- but if you're doing that, you should
+    # already be directly reading Hastur code.  It's an ugly hack and
+    # you will need to adjust it periodically as we change our storage
+    # schema.  If possible, don't.
+    #
+    # @param cass_client The cassandra client object
+    # @param [Array<String> or String] agent_uuids The UUID or list of UUIDs to query
+    # @param [String or Symbol or Hash or Array] type The message type(s) or schema(s) to query
+    # @param [Fixnum] start_timestamp The earliest time value to query
+    # @param [Fixnum] end_timestamp The latest time value to query
+    # @param [Hash] options Options
+    # @option options [String] :name The message name
+    # @option options [String] :name_prefix The message name prefix
+    # @option options [Boolean] :value_only Return only message values, not full JSON
+    # @option options [Fixnum] :count Maximum number to return, defaults to 10_000
+    # @option options [Fixnum] :consistency Read consistency, defaults to 1
+    # @option options [String] :start Initial column name for a Cassandra slice - use at own risk!
+    # @option options [String] :finish Final column name for a Cassandra slice - use at own risk!
+    # @option options [Boolean] :reversed Return in reverse order
     #
     def get(cass_client, agent_uuid, type, start_timestamp, end_timestamp, options = {})
       if end_timestamp - start_timestamp > 72 * ONE_HOUR
         raise "Don't query more than 3 days at once yet!"
       end
 
-      schemas = [type].flatten.map { |type| SCHEMA[type.to_s] }
+      # Make sure type is a list
+      type = [type].flatten
+
+      # If it's a list of strings/symbols, convert to schema objects
+      unless type[0].is_a?(Hash)
+        schemas = type.map { |type| SCHEMA[type.to_s] }
+      end
 
       raw_get_all(cass_client, agent_uuid, schemas.compact, start_timestamp, end_timestamp, options)
     end
@@ -275,7 +302,7 @@ module Hastur
 
     def col_name_to_name_and_timestamp(col_name)
       time_packed = col_name[-8..-1]
-      timestamp = time_packed.unpack("Q>")[0]
+      timestamp = time_packed.unpack("Q>")[0].to_i
 
       # Skip col_name[-9], which is the dash between name and packed timestamp
       name = col_name[0..-10]
@@ -306,36 +333,13 @@ module Hastur
     protected
 
     #
-    # This is the basic getter for messages.  By default it gets all
-    # messages with the given message type(s) and agent UUID(s) across
-    # the given timestamps.
-    #
-    # You can specify :name, :name_prefix or :start/:finish options,
-    # but not more than one.  If you specify :name or :name_prefix, it
-    # will be implemented by changing the :start and :finish options
-    # to Cassandra.
-    #
-    # This method calls cass_client.multi_get() once for each schema given.
-    #
-    # @param cass_client The cassandra client object
-    # @param [Array<String> or String] agent_uuids The UUID or list of UUIDs to query
-    # @param [Array<Hash> or Hash] msg_schemas The message schema or schemas to query
-    # @param [Fixnum] start_timestamp The earliest time value to query
-    # @param [Fixnum] end_timestamp The latest time value to query
-    # @param [Hash] options Options
-    # @option options [String] :name The message name
-    # @option options [String] :name_prefix The message name prefix
-    # @option options [Boolean] :value_only Return only message values, not full JSON
-    # @option options [Fixnum] :count Maximum number to return, defaults to 10_000
-    # @option options [Fixnum] :consistency Read consistency, defaults to 1
-    # @option options [String] :start Initial column name for a Cassandra slice - use at own risk!
-    # @option options [String] :finish Final column name for a Cassandra slice - use at own risk!
-    # @option options [Boolean] :reversed Return in reverse order
+    # Basic raw low-level getter.  See .get() for options and params,
+    # but types must be converted to schemas already.
     #
     def raw_get_all(cass_client, agent_uuids, msg_schemas, start_timestamp, end_timestamp, options = {})
       if (options[:name] && options[:name_prefix]) ||
           (options[:name] || options[:name_prefix]) && (options[:start] || options[:finish])
-        raise "Error: you can't specify :name or :name_prefix with :start/:finish in raw_get_all!"
+        raise "Error: you can have at most one of :name, :name_prefix or :start/:finish in raw_get_all!"
       end
 
       # Make sure start_timestamp and end_timestamp are in the right order.
@@ -430,20 +434,23 @@ module Hastur
       # Delete empty rows in result
       values.each { |hash| hash.delete_if { |_, value| value.nil? || value.empty? } }
 
-      #### TODO: switch to final representation
       final_values = {}
       values.each do |v|
         v.each do |row_key, col_hash|
+          uuid = uuid_from_row_key(row_key)
+          final_values[uuid] ||= {}
+
           col_hash.each do |col_key, value|
             name, timestamp = col_name_to_name_and_timestamp(col_key)
 
             if timestamp <= end_timestamp && timestamp >= start_timestamp
               val = options[:value_only] ? MessagePack.unpack(value) : value
+
               if name
-                final_values[name] ||= {}
-                final_values[name][timestamp] = val
+                final_values[uuid][name] ||= {}
+                final_values[uuid][name][timestamp] = val
               else
-                final_values[timestamp] = val
+                final_values[uuid][timestamp] = val
               end
             end
           end
