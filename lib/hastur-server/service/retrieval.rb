@@ -67,6 +67,7 @@ module Hastur
           :node => "#{root_uri}/api/node",
           :app  => "#{root_uri}/api/app",
           :type => "#{root_uri}/api/type",
+          :name => "#{root_uri}/api/name",
         }, json_params)
       end
 
@@ -315,18 +316,25 @@ module Hastur
       # @return [Hash{String=>URI}]
       #
       get "/api/name" do
-        dump_lookup_rows("name", "name")
+        start_ts, end_ts = get_start_end :day
+
+        data = {}
+        usec_aligned_chunks(start_ts, end_ts, :day).each do |ts|
+          cass_client.get('LookupByKey', "name-#{ts}").each do |key,value|
+            data[key] = "#{root_uri}/api/name/#{key}"
+          end
+        end
+
+        MultiJson.dump data, json_params
       end
 
       #
-      # @!method /api/uuid
+      # @!method /api/name/:name
       #
-      # Get a list of UUIDs that have been seen in the last 24-48 hours.
+      # @todo write this
       #
-      # @return [Hash{String=>URI}]
-      #
-      get "/api/uuid" do
-        dump_lookup_rows("uuid", "node")
+      get "/api/name/:name" do
+        stub!
       end
 
       private
@@ -419,39 +427,6 @@ module Hastur
             @last_registration_update = ::Time.now.to_i
           end
           @registrations
-        end
-
-        #
-        # Grab 24-48 hours of data from the LookupByKey CF and yield the block, giving it key/value pairs.
-        #
-        # @param [String] kind of key to look up (currently, "name" or "uuid")
-        # @yield [String] key returned from Cassandra
-        #
-        def lookup_by_key(kind)
-          start_ts, end_ts = get_start_end :day
-
-          values = {}
-          usec_aligned_chunks(start_ts, end_ts, :day).each do |ts|
-            cass_client.get('LookupByKey', "#{kind}-#{ts}").each do |key,value|
-              yield key, value
-            end
-          end
-        end
-
-        #
-        # Convert LookupByKey rows into JSON.
-        #
-        # @param [String] kind "name" or "uuid" for now
-        # @param [String] path to put in the url, e.g. /node/:uuid for UUIDs
-        # @return [Hash{String=>URI}]
-        #
-        def dump_lookup_rows(kind, path)
-          data = {}
-          lookup_by_key kind do |key,|
-            data[key] = "http://#{root_uri}/#{path}/#{key}"
-          end
-
-          MultiJson.dump data, json_params
         end
 
         #
