@@ -467,7 +467,7 @@ module Hastur
         #
         # Returns an error & status code indicating the method is not implemented yet.
         #
-        def stub!(route)
+        def stub!(route = "unspecified")
           error 405, "this route (#{route}) is just a stub and is not implemented yet"
         end
 
