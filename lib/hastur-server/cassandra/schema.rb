@@ -413,10 +413,10 @@ module Hastur
         options_by_type[type] = cass_options
       end
 
-      values = []
+      values = {}
       options_by_type.each do |type, cass_options|
         # Now, actually do the query
-        values << cass_client.multi_get(cf_by_type[type], row_keys_by_type[type], cass_options)
+        values[type] = cass_client.multi_get(cf_by_type[type], row_keys_by_type[type], cass_options)
       end
 
       # Mark rows as accessed
@@ -432,13 +432,15 @@ module Hastur
       end
 
       # Delete empty rows in result
-      values.each { |hash| hash.delete_if { |_, value| value.nil? || value.empty? } }
+      values.each { |_, hash| hash.delete_if { |_, value| value.nil? || value.empty? } }
 
       final_values = {}
-      values.each do |v|
+      values.each do |type, v|
         v.each do |row_key, col_hash|
           uuid = uuid_from_row_key(row_key)
           final_values[uuid] ||= {}
+          final_values[uuid][type.to_s] ||= {}
+          hash = final_values[uuid][type.to_s]
 
           col_hash.each do |col_key, value|
             name, timestamp = col_name_to_name_and_timestamp(col_key)
@@ -447,10 +449,10 @@ module Hastur
               val = options[:value_only] ? MessagePack.unpack(value) : value
 
               if name
-                final_values[uuid][name] ||= {}
-                final_values[uuid][name][timestamp] = val
+                hash[name] ||= {}
+                hash[name][timestamp] = val
               else
-                final_values[uuid][timestamp] = val
+                hash[timestamp] = val
               end
             end
           end
