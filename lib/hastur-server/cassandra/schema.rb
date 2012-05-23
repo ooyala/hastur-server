@@ -201,7 +201,7 @@ module Hastur
         raise "Don't query more than 3 days at once yet!"
       end
 
-      schemas = [type].flatten.map { |type| SCHEMA[type.to_sym] }
+      schemas = [type].flatten.map { |type| SCHEMA[type.to_s] }
 
       raw_get_all(cass_client, agent_uuid, schemas.compact, start_timestamp, end_timestamp, options)
     end
@@ -351,9 +351,12 @@ module Hastur
 
       if options[:name] || options[:name_prefix]
         # Want a name?  Then filter out all nameless schemas.
-        msg_schemas.keep_if { |schema| schema[:name] }
+        msg_schemas = msg_schemas.select { |schema| schema[:name] }
 
-        return {} if msg_schemas.empty?
+        if msg_schemas.empty?
+          raise "You asked for messages by name, but gave only types with no name!"
+          return {}
+        end
       end
 
       cf_by_type = {}
@@ -414,9 +417,10 @@ module Hastur
       cass_client.batch do |client|
         msg_schemas.each do |schema|
           row_keys = metadata_row_keys_by_type[schema[:type]]
-          metadata_cf = schema[:metadata_cf]
 
-          client.insert(metadata_cf, row_keys, "last_access" => now_ts.to_s)
+          row_keys.each do |row_key|
+            client.insert(schema[:metadata_cf], row_key, { "last_access" => now_ts.to_s }, {})
+          end
         end
       end
 
