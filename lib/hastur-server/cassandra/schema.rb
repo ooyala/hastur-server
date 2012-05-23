@@ -159,9 +159,6 @@ module Hastur
       uuid = options.delete(:uuid) || hash[:uuid] || hash[:from]
       raise "No UUID given!" unless uuid
 
-      schema = SCHEMA[msg_type]
-      raise "No schema defined for Hastur message type '#{msg_type}'!" unless schema
-
       name = schema[:name] ? :name : nil
       value = hash[:value]
       timestamp_usec = hash[:timestamp]
@@ -204,7 +201,7 @@ module Hastur
         raise "Don't query more than 3 days at once yet!"
       end
 
-      schemas = type.map { |type| SCHEMA[type.to_sym] }
+      schemas = [type].flatten.map { |type| SCHEMA[type.to_sym] }
 
       raw_get_all(cass_client, agent_uuid, schemas.compact, start_timestamp, end_timestamp, options)
     end
@@ -415,7 +412,7 @@ module Hastur
       end
 
       # Delete empty rows in result
-      values.each.delete_if { |_, value| value.nil? || value.empty? }
+      values.each { |hash| hash.delete_if { |_, value| value.nil? || value.empty? } }
 
       #### TODO: switch to final representation
       final_values = {}
