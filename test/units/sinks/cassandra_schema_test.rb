@@ -167,9 +167,10 @@ class CassandraSchemaTest < Scope::TestCase
     should "query a gauge from StatGauge" do
       @cass_client.expects(:multi_get).with(:StatGauge, [ "#{FAKE_UUID}-#{ROW_TS}" ],
                                             :count => 10_000,
-                                            :start => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
-                                            :finish => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+                                            :start => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00",
+                                            :finish => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE").
         returns({})
+      @cass_client.expects(:insert).with(:GaugeMetadata, "#{FAKE_UUID}-#{ROW_DAY_TS}", { "last_access" => NOWISH_TIMESTAMP}, {})
       out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "gauge",
                                   1329858724285438, 1329858724285440,
                                   :name => "this.is.a.gauge", :value_only => true)
