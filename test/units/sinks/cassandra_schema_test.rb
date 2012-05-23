@@ -167,10 +167,11 @@ class CassandraSchemaTest < Scope::TestCase
     should "query a gauge from StatGauge" do
       @cass_client.expects(:multi_get).with(:StatGauge, [ "#{FAKE_UUID}-#{ROW_TS}" ],
                                             :count => 10_000,
-                                            :start => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00",
-                                            :finish => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE").
+                                            :finish => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :start => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
         returns({})
-      @cass_client.expects(:insert).with(:GaugeMetadata, "#{FAKE_UUID}-#{ROW_DAY_TS}", { "last_access" => NOWISH_TIMESTAMP}, {})
+      @cass_client.expects(:insert).with(:GaugeMetadata, "#{FAKE_UUID}-#{ROW_DAY_TS}",
+                                         { "last_access" => NOWISH_TIMESTAMP}, {})
       out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "gauge",
                                   1329858724285438, 1329858724285440,
                                   :name => "this.is.a.gauge", :value_only => true)
@@ -180,9 +181,11 @@ class CassandraSchemaTest < Scope::TestCase
     should "query a counter from StatCounter" do
       @cass_client.expects(:multi_get).with(:StatCounter, [ "#{FAKE_UUID}-#{ROW_TS}" ],
                                             :count => 10_000,
-                                            :start => "some.counter-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
-                                            :finish => "some.counter-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+                                            :finish => "some.counter-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :start => "some.counter-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
         returns({})
+      @cass_client.expects(:insert).with(:CounterMetadata, "#{FAKE_UUID}-#{ROW_DAY_TS}",
+                                         { "last_access" => NOWISH_TIMESTAMP}, {})
       out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "counter",
                                   1329858724285438, 1329858724285440,
                                   :name => "some.counter", :value_only => true)
@@ -192,9 +195,11 @@ class CassandraSchemaTest < Scope::TestCase
     should "query a mark from StatMark" do
       @cass_client.expects(:multi_get).with(:StatMark, [ "#{FAKE_UUID}-#{ROW_HOUR_TS}" ],
                                             :count => 10_000,
-                                            :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
-                                            :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+                                            :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
         returns({})
+      @cass_client.expects(:insert).with(:MarkMetadata, "#{FAKE_UUID}-#{ROW_DAY_TS}",
+                                         { "last_access" => NOWISH_TIMESTAMP}, {})
       out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "mark",
                                   1329858724285438, 1329858724285440,
                                   :name => "this.is.a.mark", :value_only => true)
@@ -204,9 +209,11 @@ class CassandraSchemaTest < Scope::TestCase
     should "query a gauge from GaugeArchive" do
       @cass_client.expects(:multi_get).with(:GaugeArchive, [ "#{FAKE_UUID}-#{ROW_TS}" ],
                                             :count => 10_000,
-                                            :start => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
-                                            :finish => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+                                            :finish => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :start => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
         returns({})
+      @cass_client.expects(:insert).with(:GaugeMetadata, "#{FAKE_UUID}-#{ROW_DAY_TS}",
+                                         { "last_access" => NOWISH_TIMESTAMP}, {})
       out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "gauge",
                                        1329858724285438, 1329858724285440, :name => "this.is.a.gauge")
       assert_equal({}, out)
@@ -214,10 +221,10 @@ class CassandraSchemaTest < Scope::TestCase
 
     should "query an event from EventArchive" do
       @cass_client.expects(:multi_get).with(:EventArchive, [ "#{FAKE_UUID}-1329782400000000" ],
-                                            :count => 10_000,
-                                            :start => "\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
-                                            :finish => "\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+                                            :count => 10_000).
         returns({})
+      @cass_client.expects(:insert).with(:EventMetadata, "#{FAKE_UUID}-#{ROW_DAY_TS}",
+                                         { "last_access" => NOWISH_TIMESTAMP}, {})
       out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "event", 1329858724285438, 1329858724285440)
       assert_equal({}, out)
     end
