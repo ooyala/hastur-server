@@ -69,7 +69,7 @@ module Hastur
         :type        => :event,
         :archive_cf  => :EventArchive,
         :granularity => ONE_DAY,
-        :name        => false,
+        :name        => true,
         :metadata_cf => :EventMetadata,
       },
       "hb_process" => {
@@ -179,10 +179,10 @@ module Hastur
         client.insert(cf, key, { colname => value.to_msgpack }, insert_options) if cf
 
         # Insert into "saw this in this time period" rows
-        client.insert(:LookupByKey, "uuid-#{one_day_ts}", { uuid => "" })
+        client.insert(:LookupByKey, "uuid-#{one_day_ts}", { uuid => "" }, {})
         if schema[:name]
           type_id = Hastur::Message.symbol_to_type_id(schema[:type])
-          client.insert(:LookupByKey, "name-#{one_day_ts}", { "#{name}-#{type_id}" => "" })
+          client.insert(:LookupByKey, "name-#{one_day_ts}", { "#{name}-#{type_id}" => "" }, {})
         end
       end
     end
@@ -328,14 +328,21 @@ module Hastur
     # @option options [Boolean] :value_only Return only message values, not full JSON
     # @option options [Fixnum] :count Maximum number to return, defaults to 10_000
     # @option options [Fixnum] :consistency Read consistency, defaults to 1
-    # @option options [String] :start Initial column name for a slice
-    # @option options [String] :finish Final column name for a slice
+    # @option options [String] :start Initial column name for a Cassandra slice - use at own risk!
+    # @option options [String] :finish Final column name for a Cassandra slice - use at own risk!
     # @option options [Boolean] :reversed Return in reverse order
     #
     def raw_get_all(cass_client, agent_uuids, msg_schemas, start_timestamp, end_timestamp, options = {})
       if (options[:name] && options[:name_prefix]) ||
           (options[:name] || options[:name_prefix]) && (options[:start] || options[:finish])
         raise "Error: you can't specify :name or :name_prefix with :start/:finish in raw_get_all!"
+      end
+
+      # Make sure start_timestamp and end_timestamp are in the right order.
+      if start_timestamp > end_timestamp
+        tmp = end_timestamp
+        end_timestamp = start_timestamp
+        start_timestamp = tmp
       end
 
       # Coerce to list
@@ -379,12 +386,14 @@ module Hastur
           prefix = options[:name_prefix]
           raise "We currently fail hard if the last byte of the name prefix is 255!" if prefix[-1].ord == 255
 
-          cass_options[:start] = prefix
-          cass_options[:finish] = prefix[0..-2] + prefix[-1].succ
+          # We use a reversed comparator - swap start and finish
+          cass_options[:finish] = prefix
+          cass_options[:start] = prefix[0..-2] + prefix[-1].succ
         elsif schema[:name] && options[:name]
           # For a named schema like stats or heartbeats, tell Cassandra what column range to query.
-          cass_options[:start] = col_name(options[:name], start_timestamp)
-          cass_options[:finish] = col_name(options[:name], end_timestamp)
+          # Reverse the timestamps.  We use a reverse comparator, we have to.
+          cass_options[:finish] = col_name(options[:name], start_timestamp)
+          cass_options[:start] = col_name(options[:name], end_timestamp)
         else
           # For an unnamed schema like events, tell Cassandra what column range to query
           cass_options[:start] = col_name(nil, start_timestamp) unless options[:start]
