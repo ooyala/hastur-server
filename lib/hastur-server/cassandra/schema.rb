@@ -331,14 +331,17 @@ module Hastur
         cass_options[opt] = options[opt] if options.has_key?(opt)
       end
 
+      # start/finish options are reversed here - all of the column families this method deals
+      # with use the reverse comparator, cassandra return an error if start/end are given
+      # in the natural order, which results in a ThriftClient::NoServersAvailable exception
       if name_field && options[:name]
         # For a named schema like stats or heartbeats, tell Cassandra what column range to query.
-        cass_options[:start] = col_name(options[:name], start_timestamp)
-        cass_options[:finish] = col_name(options[:name], end_timestamp)
+        cass_options[:finish] = col_name(options[:name], start_timestamp)
+        cass_options[:start] = col_name(options[:name], end_timestamp)
       elsif !name_field
         # For an unnamed schema like events, tell Cassandra what column range to query
-        cass_options[:start] = col_name(nil, start_timestamp) unless options[:start]
-        cass_options[:finish] = col_name(nil, end_timestamp) unless options[:finish]
+        cass_options[:finish] = col_name(nil, start_timestamp) unless options[:finish]
+        cass_options[:start] = col_name(nil, end_timestamp) unless options[:start]
       end
 
       # Now, actually do the query
