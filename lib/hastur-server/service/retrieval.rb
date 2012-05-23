@@ -69,7 +69,7 @@ module Hastur
           :node => "#{hostname}/node",
           :app  => "#{hostname}/app",
           :type => "#{hostname}/type",
-        })
+        }, json_params)
       end
 
       #
@@ -80,7 +80,7 @@ module Hastur
       # @return [Hash{String=>Array<String>}]
       #
       get "/type" do
-        MultiJson.dump TYPES
+        MultiJson.dump TYPES, json_params
       end
 
       #
@@ -95,7 +95,7 @@ module Hastur
           h[uuid] = "#{hostname}/node/#{uuid}"
         end
 
-        MultiJson.dump(h)
+        MultiJson.dump h, json_params
       end
 
       #
@@ -118,7 +118,7 @@ module Hastur
         else
           error 404, "#{params[:uuid]} is not registered."
         end
-        MultiJson.dump(h)
+        MultiJson.dump h, json_params
       end
 
       #
@@ -140,7 +140,7 @@ module Hastur
           end
         end
 
-        MultiJson.dump(h)
+        MultiJson.dump h, json_params
       end
 
       #
@@ -174,7 +174,7 @@ module Hastur
               :data  => data
             }
 
-        MultiJson.dump(h)
+        MultiJson.dump h, json_params
       end
 
       #
@@ -200,7 +200,7 @@ module Hastur
           h[app] = "#{hostname}/app/#{CGI.escape(app)}/data"
         end
 
-        MultiJson.dump(h)
+        MultiJson.dump h, json_params
       end
 
       #
@@ -229,7 +229,7 @@ module Hastur
           :data            => "#{hostname}/app/#{CGI.escape(params[:app])}/data"
         }
 
-        MultiJson.dump(h)
+        MultiJson.dump h, json_params
       end
 
       #
@@ -272,7 +272,7 @@ module Hastur
           end
         end
 
-        MultiJson.dump(h)
+        MultiJson.dump h, json_params
       end
 
       #
@@ -312,7 +312,7 @@ module Hastur
               :data  => data
             }
 
-        MultiJson.dump(h)
+        MultiJson.dump h, json_params
       end
 
       #
@@ -396,6 +396,17 @@ module Hastur
         end
 
         #
+        # Check for/sanitize parameters that we pass through to MultiJson.
+        #
+        def json_params
+          if params[:pretty]
+            { :pretty => true }
+          else
+            {}
+          end
+        end
+
+        #
         # Computes the request url without the path information
         #
         def get_request_url(request)
@@ -448,7 +459,7 @@ module Hastur
             data[key] = "http://#{hostname}/#{path}/#{key}"
           end
 
-          MultiJson.dump data
+          MultiJson.dump data, json_params
         end
 
         #

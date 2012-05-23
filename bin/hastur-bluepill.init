@@ -28,6 +28,11 @@ PILL_APP=$(echo $APP |sed 's/-/_/g')
 [ -e $BLUEPILL ] || die "$BLUEPILL does not exist - is your installation complete?"
 [ -e $PILL ] || die "$PILL does not exist"
 
+if [ ! -d /var/run/hastur ] ; then
+  mkdir -p /var/run/hastur
+  chown role-hastur /var/run/hastur
+fi
+
 case "$APP" in
   hastur-agent)
     # limit resources for hastur-agent, we must never crash production
