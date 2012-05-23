@@ -150,9 +150,9 @@ CREATE COLUMN FAMILY RegistrationDay
   with compaction_strategy = 'LeveledCompactionStrategy'
   and compression_options = null;
 
-# Seen UUIDs per time period
-# Row key: timestamp (rounded down to day)
-# Col key: UUID
+# Seen UUIDs, names, etc. per day
+# Row key: type identifier ("uuid", "name") then timestamp (rounded down to day)
+# Col key: UUID or name-type
 CREATE COLUMN FAMILY LookupByKey
   with compaction_strategy = 'LeveledCompactionStrategy'
   and compression_options = null;
