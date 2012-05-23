@@ -397,10 +397,13 @@ module Hastur
           # Reverse the timestamps.  We use a reverse comparator, we have to.
           cass_options[:finish] = col_name(options[:name], start_timestamp)
           cass_options[:start] = col_name(options[:name], end_timestamp)
-        else
+        elsif !schema[:name]
           # For an unnamed schema like events, tell Cassandra what column range to query
           cass_options[:start] = col_name(nil, start_timestamp) unless options[:start]
           cass_options[:finish] = col_name(nil, end_timestamp) unless options[:finish]
+        else
+          # The schema has a name, but we're not specifying it.  Don't specify a start
+          # or finish unless the caller explicitly gave one.
         end
 
         options_by_type[type] = cass_options
