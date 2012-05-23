@@ -208,10 +208,10 @@ module Hastur
       # @example
       #   GET /app/:app/data/
       #   {
-      #     "data"    => "/app/:app/data/data/"
-      #     "gauge"   => "/app/:app/data/gauge/"
-      #     "counter" => "/app/:app/data/counter/"
-      #     "event"   => "/app/:app/data/event/"
+      #     "data"    => "/api/app/:app/data/data/"
+      #     "gauge"   => "/api/app/:app/data/gauge/"
+      #     "counter" => "/api/app/:app/data/counter/"
+      #     "event"   => "/api/app/:app/data/event/"
       #     ...
       #   }
       #
@@ -233,7 +233,7 @@ module Hastur
       # Returns a list of nodes with the application registered.
       #
       get "/api/app/:app/node" do
-        stub! "/app/:app/node"
+        stub! "/api/app/:app/node"
       end
 
       #
@@ -242,7 +242,7 @@ module Hastur
       # Get application information for a particular node.
       #
       get "/api/app/:app/node/:node" do
-        stub! "/app/:app/node/:node"
+        stub! "/api/app/:app/node/:node"
       end
 
       #
@@ -467,8 +467,8 @@ module Hastur
         #
         # Returns an error & status code indicating the method is not implemented yet.
         #
-        def stub!
-          error 405, "this route is just a stub and is not implemented yet"
+        def stub!(route)
+          error 405, "this route (#{route}) is just a stub and is not implemented yet"
         end
 
         #
