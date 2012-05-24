@@ -1,6 +1,8 @@
 # To run: "cat create_keyspace.cass | grep -v \# | cassandra-cli -h localhost"
 
-CREATE KEYSPACE Hastur;
+CREATE KEYSPACE Hastur
+  with with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
+  and strategy_options = {replication_factor:2};
 USE Hastur;
 
 # Per-UUID Archives for various Hastur messages as JSON
