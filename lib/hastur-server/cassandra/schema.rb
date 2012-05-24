@@ -138,6 +138,45 @@ module Hastur
       },
     }.freeze
 
+    # A Hastur Schema is a mapping of strings to symbols to values.
+    # The top level strings are the type names, the symbols are
+    # attributes of those types (:type, :archive_cf, :granulariy,
+    # :name, :metadata_cf).
+
+    def get_schema_by_type(type)
+      unless @already_loaded_schema_file
+        location = ENV['HASTUR_SCHEMA_FILE'] ||
+          File.join(File.dirname(__FILE__), "..", "..", "..", "tools", "hastur_schema.json")
+
+        # Read the JSON objects.
+        # Symbolize both keys and string values of the individual schemas.
+
+        begin
+          contents = File.read location
+          hash = MultiJson.load(contents)
+          hash.each do |type, type_hash|
+            type_hash.keys.each do |key|
+              value = type_hash[key]
+              if value.is_a?(String)
+                type_hash[key.to_sym] = value.to_sym
+              else
+                type_hash[key.to_sym] = value
+              end
+              type_hash.delete(key)
+            end
+          end
+        rescue
+          raise "Failed to read schema from #{location}, failed with exception #{$!.inspect}!"
+        end
+
+        @hastur_schemas = hash.freeze
+
+        @already_loaded_schema_file = true
+      end
+
+      @hastur_schemas[type.to_s]
+    end
+
     #
     # Insert a column.
     #
@@ -150,7 +189,7 @@ module Hastur
     # @option options [String] :uuid 36-byte agent UUID
     #
     def insert(cass_client, json_string, msg_type, options = {})
-      schema_insert(cass_client, json_string, SCHEMA[msg_type], options)
+      schema_insert(cass_client, json_string, get_schema_by_type(msg_type), options)
     end
 
     def schema_insert(cass_client, json_string, schema, options = {})
@@ -227,7 +266,7 @@ module Hastur
 
       # If it's a list of strings/symbols, convert to schema objects
       unless type[0].is_a?(Hash)
-        schemas = type.map { |type| SCHEMA[type.to_s] }
+        schemas = type.map { |type| get_schema_by_type(type) }
       end
 
       raw_get_all(cass_client, agent_uuid, schemas.compact, start_timestamp, end_timestamp, options)
@@ -416,7 +455,12 @@ module Hastur
       values = {}
       options_by_type.each do |type, cass_options|
         # Now, actually do the query
-        values[type] = cass_client.multi_get(cf_by_type[type], row_keys_by_type[type], cass_options)
+
+        if options[:count_columns]
+          values[type] = cass_client.multi_count_columns(cf_by_type[type], row_keys_by_type[type], cass_options)
+        else
+          values[type] = cass_client.multi_get(cf_by_type[type], row_keys_by_type[type], cass_options)
+        end
       end
 
       # Mark rows as accessed
@@ -429,6 +473,10 @@ module Hastur
             client.insert(schema[:metadata_cf], row_key, { "last_access" => now_ts.to_s }, {})
           end
         end
+      end
+
+      if options[:count_columns]
+        #TODO(noah): Fix this
       end
 
       # Delete empty rows in result
