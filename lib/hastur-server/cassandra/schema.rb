@@ -22,8 +22,8 @@ module Hastur
 
     # A Hastur Schema is a mapping of strings to symbols to values.
     # The top level strings are the type names, the symbols are
-    # attributes of those types (:type, :archive_cf, :granulariy,
-    # :name, :metadata_cf).
+    # attributes of those types (:type, :archive_cf, :granularity,
+    # :name, :name_cf, :value, :values_cf, :metadata_cf).
 
     def get_schema_by_type(type)
       unless @already_loaded_schema_file
