@@ -396,16 +396,6 @@ module Hastur
           return start_ts, end_ts
         end
 
-        #
-        # Check for/sanitize parameters that we pass through to MultiJson.
-        #
-        def json_params
-          if params[:pretty] or not request.xhr?
-            { :pretty => true }
-          else
-            {}
-          end
-        end
 
         #
         # Computes the request url without the path information
@@ -452,6 +442,12 @@ module Hastur
         # @return [String] Serialized JSON content
         #
         def json(content)
+          json_options = {}
+
+          if params[:pretty] or not request.xhr?
+            json_options[:pretty] = true
+          end
+
           MultiJson.dump content, json_options
         end
 
