@@ -63,12 +63,12 @@ module Hastur
       # @return [Hash{String=>URI}] keys are names, values are resource URIs
       #
       get "/api" do
-        MultiJson.dump({
+        json({
           :node => "#{root_uri}/api/node",
           :app  => "#{root_uri}/api/app",
           :type => "#{root_uri}/api/type",
           :name => "#{root_uri}/api/name",
-        }, json_params)
+        })
       end
 
       #
@@ -79,7 +79,7 @@ module Hastur
       # @return [Hash{String=>Array<String>}]
       #
       get "/api/type" do
-        MultiJson.dump TYPES, json_params
+        json TYPES
       end
 
       #
@@ -93,7 +93,7 @@ module Hastur
           h[uuid] = "#{root_uri}/api/node/#{uuid}"
         end
 
-        MultiJson.dump h, json_params
+        json h
       end
 
       #
@@ -115,7 +115,8 @@ module Hastur
         else
           error 404, "#{params[:uuid]} is not registered."
         end
-        MultiJson.dump h, json_params
+
+        json h
       end
 
       #
@@ -136,7 +137,7 @@ module Hastur
           end
         end
 
-        MultiJson.dump h, json_params
+        json h
       end
 
       #
@@ -170,7 +171,7 @@ module Hastur
               :data  => data
             }
 
-        MultiJson.dump h, json_params
+        json h
       end
 
       #
@@ -195,7 +196,7 @@ module Hastur
           h[app] = "#{root_uri}/api/app/#{CGI.escape(app)}/data"
         end
 
-        MultiJson.dump h, json_params
+        json h
       end
 
       #
@@ -223,7 +224,7 @@ module Hastur
           :data            => "#{root_uri}/api/app/#{CGI.escape(params[:app])}/data"
         }
 
-        MultiJson.dump h, json_params
+        json h
       end
 
       #
@@ -265,7 +266,7 @@ module Hastur
           end
         end
 
-        MultiJson.dump h, json_params
+        json h
       end
 
       #
@@ -305,7 +306,7 @@ module Hastur
               :data  => data
             }
 
-        MultiJson.dump h, json_params
+        json h
       end
 
       #
@@ -325,7 +326,7 @@ module Hastur
           end
         end
 
-        MultiJson.dump data, json_params
+        json data
       end
 
       #
@@ -444,6 +445,14 @@ module Hastur
             end
           end
           @cass_client
+        end
+
+        #
+        # Dump JSON to string with appropriate params.
+        # @return [String] Serialized JSON content
+        #
+        def json(content)
+          MultiJson.dump content, json_options
         end
 
         #
