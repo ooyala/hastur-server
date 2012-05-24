@@ -1,0 +1,117 @@
+{
+  "gauge": {
+    "type"       : "gauge",
+    "archive_cf" : "GaugeArchive",
+    "name"       : true,
+    "value"      : true,
+    "granularity": 300000000,
+    "values_cf"  : "StatGauge",
+    "name_cf"    : "GaugeNameDay",
+    "metadata_cf": "GaugeMetadata"
+  },
+  "counter": {
+    "type"       : "counter",
+    "archive_cf" : "CounterArchive",
+    "name"       : true,
+    "value"      : true,
+    "granularity": 300000000,
+    "values_cf"  : "StatCounter",
+    "name_cf"    : "CounterNameDay",
+    "metadata_cf": "CounterMetadata"
+  },
+  "mark": {
+    "type"       : "mark",
+    "archive_cf" : "MarkArchive",
+    "name"       : true,
+    "value"      : true,
+    "granularity": 3600000000,
+    "values_cf"  : "StatMark",
+    "name_cf"    : "MarkNameDay",
+    "metadata_cf": "MarkMetadata"
+  },
+  "log": {
+    "type"       : "log",
+    "archive_cf" : "LogArchive",
+    "granularity": 300000000,
+    "name"       : false,
+    "metadata_cf": "LogMetadata"
+  },
+  "error": {
+    "type"       : "error",
+    "archive_cf" : "ErrorArchive",
+    "granularity": 86400000000,
+    "name"       : false,
+    "metadata_cf": "ErrorMetadata"
+  },
+  "event": {
+    "type"       : "event",
+    "archive_cf" : "EventArchive",
+    "granularity": 86400000000,
+    "name"       : true,
+    "metadata_cf": "EventMetadata"
+  },
+  "hb_process": {
+    "type"       : "hb_process",
+    "archive_cf" : "HBProcessArchive",
+    "name"       : true,
+    "value"      : true,
+    "granularity": 300000000,
+    "values_cf"  : "HBProcess",
+    "name_cf"    : "HBProcessNameDay",
+    "metadata_cf": "HBProcessMetadata"
+  },
+  "hb_agent": {
+    "type"       : "hb_agent",
+    "archive_cf" : "HBAgentArchive",
+    "name"       : true,
+    "value"      : true,
+    "granularity": 3600000000,
+    "values_cf"  : "HBAgent",
+    "metadata_cf": "HBAgentMetadata"
+  },
+  "hb_pluginv1": {
+    "type"       : "hb_pluginv1",
+    "archive_cf" : "HBPluginV1Archive",
+    "name"       : true,
+    "value"      : true,
+    "granularity": 3600000000,
+    "values_cf"  : "HBPluginV1",
+    "name_cf"    : "HBPluginV1NameDay",
+    "metadata_cf": "HBPluginV1Metadata"
+  },
+  "reg_agent": {
+    "type"       : "reg_agent",
+    "archive_cf" : "RegAgentArchive",
+    "granularity": 86400000000,
+    "name"       : false,
+    "metadata_cf": "RegAgentMetadata"
+  },
+  "reg_process": {
+    "type"       : "reg_process",
+    "archive_cf" : "RegProcessArchive",
+    "granularity": 86400000000,
+    "name"       : false,
+    "metadata_cf": "RegProcessMetadata"
+  },
+  "reg_pluginv1": {
+    "type"       : "reg_pluginv1",
+    "archive_cf" : "RegPluginV1Archive",
+    "granularity": 86400000000,
+    "name"       : false,
+    "metadata_cf": "RegPluginV1Metadata"
+  },
+  "info_process": {
+    "type"       : "info_process",
+    "archive_cf" : "InfoProcessArchive",
+    "granularity": 86400000000,
+    "name"       : false,
+    "metadata_cf": "InfoProcessMetadata"
+  },
+  "info_agent": {
+    "type"       : "info_agent",
+    "archive_cf" : "InfoAgentArchive",
+    "granularity": 86400000000,
+    "name"       : false,
+    "metadata_cf": "InfoAgentMetadata"
+  }
+}
