@@ -178,7 +178,10 @@ module Hastur
     end
 
     #
-    # Insert a column.
+    # Insert a Hastur message.  This inserts the JSON into the archive
+    # column family, the value into the value column family (if
+    # relevant), and updates the metadata and LookupByKey column
+    # family.
     #
     # @param [Cassandra] cass_client client object, should be connected and in the right keyspace
     # @param [String] json_string to be parsed & data used for the insert
@@ -188,11 +191,11 @@ module Hastur
     # @option options [Fixnum] :consistency, passed to the cassandra client
     # @option options [String] :uuid 36-byte agent UUID
     #
-    def insert(cass_client, json_string, msg_type, options = {})
-      schema_insert(cass_client, json_string, get_schema_by_type(msg_type), options)
-    end
+    def insert(cass_client, json_string, schema, options = {})
+      unless schema.is_a?(Hash)
+        schema = get_schema_by_type(schema)
+      end
 
-    def schema_insert(cass_client, json_string, schema, options = {})
       hash = MultiJson.load(json_string, :symbolize_keys => true)
       raise "Cannot deserialize JSON string!" unless hash
       uuid = options.delete(:uuid) || hash[:uuid] || hash[:from]
