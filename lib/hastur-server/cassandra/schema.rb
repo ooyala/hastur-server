@@ -448,12 +448,9 @@ module Hastur
             if timestamp <= end_timestamp && timestamp >= start_timestamp
               val = options[:value_only] ? MessagePack.unpack(value) : value
 
-              if name
-                hash[name] ||= {}
-                hash[name][timestamp] = val
-              else
-                hash[timestamp] = val
-              end
+              # This happens even if name is nil
+              hash[name] ||= {}
+              hash[name][timestamp] = val
             end
           end
         end
