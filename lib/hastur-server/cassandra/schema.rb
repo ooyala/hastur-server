@@ -78,8 +78,8 @@ module Hastur
         :name        => true,
         :value       => :value,
         :granularity => FIVE_MINUTES,
-        :values_cf   => "HBProcess",
-        :name_cf     => "HBProcessNameDay",
+        :values_cf   => :HBProcess,
+        :name_cf     => :HBProcessNameDay,
         :metadata_cf => :HBProcessMetadata,
       },
       "hb_agent" => {
@@ -88,7 +88,7 @@ module Hastur
         :name        => true,
         :value       => :value,
         :granularity => ONE_HOUR,
-        :values_cf   => "HBAgent",
+        :values_cf   => :HBAgent,
         :metadata_cf => :HBAgentMetadata,
       },
       "hb_pluginv1" => {
@@ -97,8 +97,8 @@ module Hastur
         :name        => true,
         :value       => :value,
         :granularity => ONE_HOUR,
-        :values_cf   => "HBPluginV1",
-        :name_cf     => "HBPluginV1NameDay",
+        :values_cf   => :HBPluginV1,
+        :name_cf     => :HBPluginV1NameDay,
         :metadata_cf => :HBPluginV1Metadata,
       },
       "reg_agent" => {
