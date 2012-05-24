@@ -340,11 +340,16 @@ module Hastur
       values = {}
       options_by_type.each do |type, cass_options|
         # Now, actually do the query
-
-        if options[:count_columns]
-          values[type] = cass_client.multi_count_columns(cf_by_type[type], row_keys_by_type[type], cass_options)
-        else
-          values[type] = cass_client.multi_get(cf_by_type[type], row_keys_by_type[type], cass_options)
+        begin
+          if options[:count_columns]
+            values[type] = cass_client.multi_count_columns(cf_by_type[type], row_keys_by_type[type], cass_options)
+          else
+            values[type] = cass_client.multi_get(cf_by_type[type], row_keys_by_type[type], cass_options)
+          end
+        # the Cassandra gem tends to return this useless and misleading exception,
+        # so catch it and raise something with some useful info in it
+        rescue ThriftClient::NoServersAvailable
+          raise "query failed: type: #{type} column_family: #{cf_by_type[type]}, row_keys: #{row_keys_by_type[type]}, cass_options: #{cass_options}, options: #{options}"
         end
       end
 
