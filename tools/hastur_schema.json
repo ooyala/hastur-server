@@ -113,5 +113,12 @@
     "granularity": 86400000000,
     "name"       : false,
     "metadata_cf": "InfoAgentMetadata"
+  },
+  "info_ohai": {
+    "type"       : "info_ohai",
+    "archive_cf" : "InfoOhaiArchive",
+    "granularity": 86400000000,
+    "name"       : false,
+    "metadata_cf": "InfoOhaiMetadata"
   }
 }

@@ -4,6 +4,7 @@ require 'multi_json'
 require 'uuid'
 require 'socket'
 require 'termite'
+require 'ohai/system'
 
 require "hastur/api"
 require "hastur-server/version"
@@ -90,6 +91,7 @@ module Hastur
         @last_ack_check    = Time.now - @ack_interval
         @last_noop_blast   = Time.now - @noop_interval
         @last_agent_reg    = Time.now - 129600 # 1.5 days
+        @last_ohai_info    = Time.now - 129600 # 1.5 days
         @last_stat_flush   = Time.now
 
         @counters = {
@@ -297,6 +299,28 @@ module Hastur
       end
 
       #
+      # Sends Ohai info to Hastur.
+      #
+      def poll_ohai_info_timeout
+        if Time.now - @last_ohai_info > 86400
+          begin
+            ohai = Ohai::System.new
+            ohai.all_plugins
+            # Hastur requires all bodies to have timestamps, and we like them to have UUID's
+            info = ohai.data.merge({
+              "uuid" => @uuid,
+              "timestamp" => Hastur.timestamp
+            })
+            msg = Hastur::Message::Info::Ohai.new :from => @uuid, :data => info
+            msg.send @router_socket
+            @counters[:zmq_send] += 1
+          rescue
+          end
+          @last_ohai_info = Time.now
+        end
+      end
+
+      #
       # Check to see if it's time to send a heartbeat.
       #
       def poll_heartbeat_timeout
@@ -366,6 +390,7 @@ module Hastur
         while @running
           poll_noop
           poll_registration_timeout
+          poll_ohai_info_timeout
           poll_heartbeat_timeout
           poll_ack_timeouts
           poll_plugin_pids

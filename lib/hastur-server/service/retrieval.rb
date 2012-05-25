@@ -110,7 +110,7 @@ module Hastur
                 :hostname => registration_hash["json"]["hostname"],
                 :ipv4     => registration_hash["json"]["ipv4"],
                 :data     => "#{root_uri}/api/node/#{params[:uuid]}/data",
-                :fact     => "#{root_uri}/api/node/#{params[:uuid]}/fact"
+                :ohai     => "#{root_uri}/api/node/#{params[:uuid]}/ohai"
               }
         else
           error 404, "#{params[:uuid]} is not registered."
@@ -174,6 +174,21 @@ module Hastur
             }
 
         json h
+      end
+
+      #
+      # @!method /api/node/:uuid/ohai
+      #
+      # Retrieve Ohai system information.
+      # See: http://wiki.opscode.com/display/chef/Ohai
+      #
+      # @param uuid UUID to query for (required)
+      #
+      get "/api/node/:uuid/ohai" do
+        start_ts, end_ts = get_start_end :day
+        data = Hastur::Cassandra.get(cass_client, params[:uuid], "info_ohai", start_ts, end_ts, :count => 1)
+        # deserialize & reserialize so the json options can be applied
+        json MultiJson.load(smoosh(data))
       end
 
       #
@@ -336,7 +351,7 @@ module Hastur
       # @todo write this
       #
       get "/api/name/:name" do
-        stub!
+        stub! "/api/name/:name"
       end
 
       private
@@ -406,6 +421,17 @@ module Hastur
           uri.path = ""
           uri.query = nil
           uri.to_s
+        end
+
+        #
+        # Pull the first non-hash value in a deep hash, effectively smooshing it.
+        #
+        def smoosh(data)
+          cur = data
+          while cur.respond_to? :keys
+            cur = cur[cur.keys.first]
+          end
+          cur
         end
 
         #
