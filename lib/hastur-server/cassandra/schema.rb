@@ -405,6 +405,7 @@ module Hastur
       # Delete empty rows in result
       values.each { |_, hash| hash.delete_if { |_, value| value.nil? || value.empty? } }
 
+      # Final output format:  { :uuid => { :type => { :name => { :timestamp => value } } } }
       final_values = {}
       values.each do |type, v|
         v.each do |row_key, col_hash|
