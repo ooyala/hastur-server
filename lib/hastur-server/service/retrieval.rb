@@ -256,274 +256,42 @@ module Hastur
       end
 
       #
-      # @!method /api/data/message
+      # @!method /api/data/:format
       #
       # Try to retrieve all Hastur messages, everywhere.  Fail with status 400.
       # Data requests must specify an application name or node UUID.
       #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/message" do
+      get "/api/data/:format" do
         error 400, "You must specify an application name or node UUID to query data!"
       end
 
       #
-      # @!method /api/data/value
-      #
-      # Try to retrieve all Hastur messages, everywhere.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
-      #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/value" do
-        error 400, "You must specify an application name or node UUID to query data!"
-      end
-
-      #
-      # @!method /api/data/count
-      #
-      # Try to retrieve all Hastur messages, everywhere.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
-      #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/count" do
-        error 400, "You must specify an application name or node UUID to query data!"
-      end
-
-      #
-      # @!method /api/data/rollup
-      #
-      # Try to retrieve all Hastur messages, everywhere.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
-      #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/rollup" do
-        error 400, "You must specify an application name or node UUID to query data!"
-      end
-
-      #
-      # @!method /api/data/name/:name/message
+      # @!method /api/data/name/:name/:format
       #
       # Try to retrieve too many Hastur messages.  Fail with status 400.
       # Data requests must specify an application name or node UUID.
       #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/name/:name/message" do
+      get "/api/data/name/:name/:format" do
         error 400, "You must specify an application name or node UUID to query data!"
       end
 
       #
-      # @!method /api/data/name/:name/value
+      # @!method /api/data/type/:type/:format
       #
       # Try to retrieve too many Hastur messages.  Fail with status 400.
       # Data requests must specify an application name or node UUID.
       #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/name/:name/value" do
+      get "/api/data/type/:type/:format" do
         error 400, "You must specify an application name or node UUID to query data!"
       end
 
       #
-      # @!method /api/data/name/:name/count
+      # @!method /api/data/name/:name/type/:type/:format
       #
       # Try to retrieve too many Hastur messages.  Fail with status 400.
       # Data requests must specify an application name or node UUID.
       #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/name/:name/count" do
-        error 400, "You must specify an application name or node UUID to query data!"
-      end
-
-      #
-      # @!method /api/data/name/:name/rollup
-      #
-      # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
-      #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/name/:name/rollup" do
-        error 400, "You must specify an application name or node UUID to query data!"
-      end
-
-      #
-      # @!method /api/data/type/:type/message
-      #
-      # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
-      #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/type/:type/message" do
-        error 400, "You must specify an application name or node UUID to query data!"
-      end
-
-      #
-      # @!method /api/data/type/:type/value
-      #
-      # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
-      #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/type/:type/value" do
-        error 400, "You must specify an application name or node UUID to query data!"
-      end
-
-      #
-      # @!method /api/data/type/:type/count
-      #
-      # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
-      #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/type/:type/count" do
-        error 400, "You must specify an application name or node UUID to query data!"
-      end
-
-      #
-      # @!method /api/data/type/:type/rollup
-      #
-      # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
-      #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/type/:type/rollup" do
-        error 400, "You must specify an application name or node UUID to query data!"
-      end
-
-      #
-      # @!method /api/data/name/:name/type/:type/message
-      #
-      # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
-      #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/name/:name/type/:type/message" do
-        error 400, "You must specify an application name or node UUID to query data!"
-      end
-
-      #
-      # @!method /api/data/name/:name/type/:type/value
-      #
-      # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
-      #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/name/:name/type/:type/value" do
-        error 400, "You must specify an application name or node UUID to query data!"
-      end
-
-      #
-      # @!method /api/data/name/:name/type/:type/count
-      #
-      # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
-      #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/name/:name/type/:type/count" do
-        error 400, "You must specify an application name or node UUID to query data!"
-      end
-
-      #
-      # @!method /api/data/name/:name/type/:type/rollup
-      #
-      # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
-      #
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param uuid UUID(s) to query for
-      # @param app_name Application name(s) to query for - no wildcards
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      #
-      get "/api/data/name/:name/type/:type/rollup" do
+      get "/api/data/name/:name/type/:type/:format" do
         error 400, "You must specify an application name or node UUID to query data!"
       end
 
@@ -619,9 +387,10 @@ module Hastur
         #
         # Options can include the following:
         #
-        # :value_only - return values, not full JSON structures
         # :uuid - uuid or list of uuids
         # :type - type or list of types
+        # :app - application name or list of application names, no wildcards
+        # :name - message name or list of message names
         # :output - :message, :value, :count or :rollup
         #
         # Params are overridden by options where appropriate.
@@ -639,9 +408,15 @@ module Hastur
           uuids = (options["uuid"] || params["uuid"]).split(",")
           types = options[:type] || type_list_from_string(params["type"])
 
+          raise "Unimplemented output option :rollup!" if options[:output] == :rollup
+          unless [:message, :value, :count].include?(options[:output])
+            raise "Illegal output option #{options[:output]}"
+          end
+
           cass_options = {}
           cass_options[:reversed] = true if param_is_true("reversed")
-          cass_options[:value_only] = true if options[:value_only]
+          cass_options[:value_only] = true if options[:output] == :value
+          cass_options[:count_columns] = true if options[:output] == :count
 
           # "count" vs "limit" is an unfortunate naming situation.
           # Cassandra uses "count" to mean "how many results,
