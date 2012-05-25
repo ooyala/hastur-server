@@ -16,24 +16,6 @@ require "hastur-server/input/collectd"
 require "hastur-server/message"
 
 module Hastur
-  # provide a way to get at the (single) instance of the agent class to send messages directly
-  def self.agent=(agent)
-    @agent = agent
-  end
-
-  # monkeypatch Hastur to send directly to ZeroMQ
-  # hastur/api tries to register before agent= is called but after this monkeypatch
-  # gets loaded, try to detect that and fall back to the original method
-  # this monkeypatch should be deleted as soon as the block API is available (around 2012-05-10)
-  alias _send_to_udp send_to_udp
-  def self.send_to_udp(m)
-    begin
-      @agent._send @agent.hash_to_message(m)
-    rescue
-      _send_to_udp(m)
-    end
-  end
-
   module Service
     class Agent
       attr_reader :uuid, :routers, :port, :heartbeat, :ack_interval, :noop_interval
@@ -103,16 +85,17 @@ module Hastur
           :events      => 0,
         }
 
-        # this file monkeypatches Hastur client so it can send directly over ZMQ instead of
+        # hand a block to Hastur client so it can send directly over ZMQ instead of
         # sendto UDP -> OS -> itself -> ZMQ
-        Hastur.agent = self
+        Hastur.deliver_with do
+          _send(hash_to_message(m)) rescue nil
+        end
       end
 
       def _fail(message, e)
         @logger.debug "FAIL: #{message}: #{e.inspect}"
         error = Hastur::Message::Error.new :from => @uuid, :data => e
-        error.send(@router_socket)
-        @counters[:zmq_send] += 1
+        _send(error)
         @counters[:errors] += 1
       end
 
@@ -292,8 +275,7 @@ module Hastur
           msg = Hastur::Message::Reg::Agent.new :from => @uuid, :data => reg_info
 
           @logger.debug "Attempting to register agent #{@uuid}: #{msg.to_json}"
-          msg.send @router_socket
-          @counters[:zmq_send] += 1
+          _send(msg)
           @last_agent_reg = Time.now
         end
       end
@@ -312,8 +294,7 @@ module Hastur
               "timestamp" => Hastur.timestamp
             })
             msg = Hastur::Message::Info::Ohai.new :from => @uuid, :data => info
-            msg.send @router_socket
-            @counters[:zmq_send] += 1
+            _send(msg)
           rescue
           end
           @last_ohai_info = Time.now
@@ -343,7 +324,7 @@ module Hastur
               }
             }
           )
-          msg.send(@router_socket)
+          _send(msg)
 
           @last_heartbeat = now
         end
@@ -358,7 +339,7 @@ module Hastur
           @logger.debug "Checking unacked messages #{@acks.inspect}"
           @acks.each_pair do |key, msg|
             msg.envelope.incr_resend # record the fact that this is a resend
-            msg.send(@router_socket)
+            _send(msg)
           end
           @last_ack_check = Time.now
         end
@@ -370,7 +351,7 @@ module Hastur
       def poll_noop
         if Time.now - @last_noop_blast > @noop_interval
           @routers.count.times do
-            Hastur::Message::Noop.new(:from => @uuid).send(@router_socket)
+            _send(Hastur::Message::Noop.new(:from => @uuid))
             @counters[:noops] += 1
           end
           @last_noop_blast = Time.now
@@ -402,8 +383,7 @@ module Hastur
         end
 
         msg = Hastur::Message::Log.new :from => @uuid, :payload => "Hastur Agent #{@uuid} exiting."
-        msg.send(@router_socket)
-        @counters[:zmq_send] += 1
+        _send(msg)
 
         @router_socket.close
       end
