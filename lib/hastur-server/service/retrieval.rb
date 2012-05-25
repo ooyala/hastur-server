@@ -259,44 +259,44 @@ module Hastur
       # @!method /api/data/:format
       #
       # Try to retrieve all Hastur messages, everywhere.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
+      # Data requests must specify one or more node UUIDs.
       #
       get "/api/data/:format" do
-        error 400, "You must specify an application name or node UUID to query data!"
+        error 400, "You must specify one or more node UUIDs to query data!"
       end
 
       #
       # @!method /api/data/name/:name/:format
       #
       # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
+      # Data requests must specify one or more node UUIDs.
       #
       get "/api/data/name/:name/:format" do
-        error 400, "You must specify an application name or node UUID to query data!"
+        error 400, "You must specify one or more node UUIDs to query data!"
       end
 
       #
       # @!method /api/data/type/:type/:format
       #
       # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
+      # Data requests must specify one or more node UUIDs.
       #
       get "/api/data/type/:type/:format" do
-        error 400, "You must specify an application name or node UUID to query data!"
+        error 400, "You must specify one or more node UUIDs to query data!"
       end
 
       #
       # @!method /api/data/name/:name/type/:type/:format
       #
       # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify an application name or node UUID.
+      # Data requests must specify one or more node UUIDs.
       #
       get "/api/data/name/:name/type/:type/:format" do
-        error 400, "You must specify an application name or node UUID to query data!"
+        error 400, "You must specify one or more node UUIDs to query data!"
       end
 
       #
-      # @!method /api/data/app/:app/:format
+      # @!method /api/data/node/:uuid/:format
       #
       # Retrieve Hastur messages.  Parameters may be
       # comma-separated values when specifying multiple
@@ -307,14 +307,13 @@ module Hastur
       # @param end Ending timestamp, default now
       # @param ago How many microseconds back to query - an alternative to start/end
       # @param uuid UUID(s) to query for
-      # @param app Application name(s) to query for - no wildcards
       # @param name Message name(s) to query for - supports wildcards
       # @param type Message type(s) to query for
       # @param limit Maximum number of values to return
       # @param reversed Return earliest first instead of latest first
       # @param consistency Cassandra read consistency
       #
-      get "/api/data/app/:app/:format" do
+      get "/api/data/node/:uuid/:format" do
         query_hastur
       end
 
@@ -355,7 +354,7 @@ module Hastur
         end
 
         def type_list_from_string(types)
-          types.split(",").map { |type| TYPE_MAPPING[type] || type }.flatten.uniq
+          (types || "all").split(",").map { |type| TYPE_MAPPING[type] || type }.flatten.uniq
         end
 
         def param_is_true(name)
@@ -372,13 +371,10 @@ module Hastur
         # "format" - the output format - message, value, count or rollup
         # "uuid" - uuid or list of uuids
         # "type" - type or list of types
-        # "app" - app name or list of app names
         # "name" - message name or list of message names
         # "reversed" - return results in reverse order - only matters with "limit"
         # "limit" - max number of results to return
         # "consistency" - Cassandra read consistency
-        #
-        # TODO: implement app_names, message names.
         #
         def query_hastur(options)
           stub! if params["output"] == :rollup
@@ -390,8 +386,9 @@ module Hastur
 
           uuids = params["uuid"].split(",")
           types = type_list_from_string(params["type"])
-          app_names = params["app"].split(",")
           msg_names = params["name"].split(",")
+
+          raise "Not supporting comma-separated list of message names yet!" unless msg_names.size == 1
 
           cass_options = {}
           cass_options[:reversed] = true if param_is_true("reversed")
@@ -406,6 +403,15 @@ module Hastur
           # return a count of my results."  I don't think we can win
           # here, Cassandra-naming-wise.
           cass_options[:count] = params["limit"].to_i if params["limit"]
+
+          # TODO: support multiple names/prefixes, probably by returning the
+          # whole bucket and postfiltering.
+          if msg_names[0].include?("*")
+            prefix = msg_names[0].split("*", 2)[0]
+            cass_options[:name_prefix] = prefix
+          else
+            cass_options[:name] = msg_names[0]
+          end
 
           if params["consistency"]
             cass_options[:consistency] = params["consistency"].to_i
