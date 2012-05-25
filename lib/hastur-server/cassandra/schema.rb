@@ -109,12 +109,17 @@ module Hastur
         cf = schema[:values_cf]
         client.insert(cf, key, { colname => value.to_msgpack }, insert_options) if cf
 
-        # Insert into "saw this in this time period" rows
+        # Insert into "saw UUID in this time period" row
         client.insert(:LookupByKey, "uuid-#{one_day_ts}", { uuid => "" }, {})
+
+        # Insert into "saw name in this time period" row
         if schema[:name]
           type_id = Hastur::Message.symbol_to_type_id(schema[:type])
           client.insert(:LookupByKey, "name-#{one_day_ts}", { "#{name}-#{type_id}" => "" }, {})
         end
+
+        # Insert into "saw this UUID for this app name" row
+        client.insert(:LookupByKey, "app_name-#{one_day_ts}", { uuid => "" }, {})
       end
     end
 
