@@ -261,7 +261,7 @@ module Hastur
 
         # Get with no subtype gives JSON
         h = {}
-        Hastur::Cassandra::SCHEMA.keys.each do |type|
+        Hastur::Cassandra.current_schemas.keys.each do |type|
           data = Hastur::Cassandra.get(cass_client, uuids, type, start_ts, end_ts, :consistency => 1)
           data.each do |k, v|
             h[k] = "#{root_uri}/api/app/#{CGI.escape(params[:app])}/data/#{type}/#{k}" unless k.empty?
