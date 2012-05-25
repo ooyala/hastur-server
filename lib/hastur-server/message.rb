@@ -22,7 +22,6 @@ module Hastur
       class Agent    < Simple ; end
       class Process  < Simple ; end
       class PluginV1 < Simple ; end
-      class Ohai     < Simple ; end
     end
     module HB
       class Agent    < Simple ; end
