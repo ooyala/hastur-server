@@ -16,6 +16,9 @@ module Hastur
     #
     # The Hastur Retrieval REST service.
     #
+    # Parameters:
+    #   * Timestamps are in microseconds since the Unix epoch
+    #
     # Conventions:
     #   * use singular names for resources in all paths & params to be consistent
     #   * explicitly use the correct HTTP 1.1 status codes
@@ -111,12 +114,14 @@ module Hastur
       # @param uuid UUID to query for (required)
       #
       get "/api/node/:uuid" do
+        # TODO(noah): allow list of UUIDs
         if get_registrations[params[:uuid]]
           registration_hash = get_registrations[params[:uuid]]
           h = {
                 :hostname => registration_hash["json"]["hostname"],  # TODO(noah): Update?
                 :ipv4     => registration_hash["json"]["ipv4"],
                 :data     => "#{root_uri}/api/data/node/#{params[:uuid]}/data",
+                :ohai     => "#{root_uri}/api/node/#{params[:uuid]}/ohai",
               }
         else
           error 404, "#{params[:uuid]} is not registered."
@@ -126,37 +131,20 @@ module Hastur
       end
 
       #
-      # @!method /api/node/:uuid/data/:type/:name
+      # @!method /api/node/:uuid/ohai
       #
-      # Retrieves the values of a particular message for a particular node
+      # Retrieve Ohai system information.
+      # See: http://wiki.opscode.com/display/chef/Ohai
       #
-      # @param uuid    UUID to query for (required)
-      # @param start   Starting timestamp, default 5 minutes ago
-      # @param end     Ending timestamp, default now
-      # @param name    Name of the message to query for (required)
-      # @param type    Type of message (required)
+      # @param uuid UUID to query for (required)
       #
-      get "/api/node/:uuid/data/:type/:name" do
-        start_ts, end_ts = get_start_end :five_minutes
+      get "/api/node/:uuid/ohai" do
+        # TODO(noah): allow list of UUIDs
+        start_ts, end_ts = get_start_end :day
+        data = Hastur::Cassandra.get(cass_client, params[:uuid], "info_ohai", start_ts, end_ts, :count => 1)
 
-        # query cassandra for the data
-        opts = { :name => params[:name], :value_only => true }
-        values = ::Hastur::Cassandra.get(cass_client, params[:uuid], params[:type], start_ts, end_ts, opts)
-
-        # transform the data into an understandable format
-        data = Hash.new
-        values.each do |key, val|
-          data.merge!(val) if val.is_a? ::Hash
-        end
-
-        h = {
-              :name  => params[:name],
-              :count => data.size,
-              :type  => params[:type],
-              :data  => data
-            }
-
-        json h
+        # reserialize so the json options can be applied
+        json MultiJson.load(data[params[:uuid]]["info_ohai"][nil].values.first)
       end
 
       #
@@ -267,6 +255,59 @@ module Hastur
         json data
       end
 
+      #
+      # @!method /api/data/message
+      #
+      # Try to retrieve all Hastur messages, everywhere.  Fail.
+      #
+      # @param start Starting timestamp, default 5 minutes ago
+      # @param end Ending timestamp, default now
+      # @param uuid UUID(s) to query for
+      # @param app_name Application name(s) to query for - no wildcards
+      # @param name Message name(s) to query for - supports wildcards
+      # @param type Message type(s) to query for
+      #
+      get "/api/data/message" do
+        stub!
+      end
+
+      #
+      # @!method /api/data/node/:uuid/type/:type/name/:name/value
+      #
+      # Retrieves the values of a particular message for a particular node
+      #
+      # @param uuid        UUID to query for (required)
+      # @param start       Starting timestamp, default 5 minutes ago
+      # @param end         Ending timestamp, default now
+      # @param name        Name of the message to query for (required)
+      # @param type        Type of message (required)
+      # @param reversed    Return results in reverse order - only matters with "limit"
+      # @param limit       Maximum number of results to return (default 10,000)
+      # @param consistency Cassandra read consistency (default 1)
+      #
+      get "/api/data/node/:uuid/type/:type/name/:name/value" do
+        start_ts, end_ts = get_start_end :five_minutes
+
+        # query cassandra for the data
+        opts = { :name => params[:name], :value_only => true }
+        values = ::Hastur::Cassandra.get(cass_client, params[:uuid], params[:type], start_ts, end_ts, opts)
+
+        # transform the data into an understandable format
+        data = Hash.new
+        values.each do |key, val|
+          data.merge!(val) if val.is_a? ::Hash
+        end
+
+        h = {
+              :name  => params[:name],
+              :count => data.size,
+              :type  => params[:type],
+              :data  => data
+            }
+
+        json h
+      end
+
       private
 
       THRIFT_OPTIONS = {
@@ -308,7 +349,7 @@ module Hastur
         end
 
         def param_is_true(name)
-          params[name] && !["", "false", "no", "f"].include?(params[name].downcase)
+          params[name] && !["", "0", "false", "no", "f"].include?(params[name].downcase)
         end
 
         #
@@ -336,7 +377,7 @@ module Hastur
         # "limit" - max number of results to return
         # "consistency" - Cassandra read consistency
         #
-        # TODO: add types, message names.
+        # TODO: add app_names, message names.
         #
         def query_hastur(options)
           uuids = (options["uuid"] || params["uuid"]).split(",")
