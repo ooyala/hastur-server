@@ -320,12 +320,11 @@ module Hastur
       #
       get "/api/name" do
         start_ts, end_ts = get_start_end :day
+        names = Hastur::Cassandra.lookup_by_key cass_client, :name, start_ts, end_ts
 
         data = {}
-        usec_aligned_chunks(start_ts, end_ts, :day).each do |ts|
-          cass_client.get('LookupByKey', "name-#{ts}").each do |key,value|
-            data[key] = "#{root_uri}/api/name/#{key}"
-          end
+        names.each do |name,|
+          data[name] = "#{root_uri}/api/name/#{name}"
         end
 
         json data

@@ -4,11 +4,13 @@ require "multi_json"
 require "date"
 
 require "hastur-server/util"
+require "hastur-server/time_util"
 require "hastur-server/message"
 
 module Hastur
   module Cassandra
     extend self
+    include Hastur::TimeUtil
 
     # These constants aren't so much "public" as they are useful
     # in-module and we don't care about securing them.
@@ -160,6 +162,27 @@ module Hastur
       end
 
       raw_get_all(cass_client, agent_uuid, schemas.compact, start_timestamp, end_timestamp, options)
+    end
+
+    #
+    # Get one or more rows from the LookupByKey CF and return a flattened hash.
+    #
+    # @param cass_client The cassandra client object
+    # @param [String,Symbol] prefix the row key prefix to fetch, e.g. "name", "cnames"
+    # @param [Fixnum] start_timestamp The earliest time value to query
+    # @param [Fixnum] end_timestamp The latest time value to query
+    #
+    # @example
+    #   names = Hastur::Cassandra.lookup_by_key(client, "name", Time.now - 86401, Time.now)
+    #
+    def lookup_by_key(cass_client, kind, start_timestamp, end_timestamp)
+      data = Hash.new
+      usec_aligned_chunks(start_timestamp, end_timestamp, :day).each do |ts|
+        cass_client.get('LookupByKey', "#{kind}-#{ts}").each do |key,value|
+          data[key] = value
+        end
+      end
+      data
     end
 
     #
