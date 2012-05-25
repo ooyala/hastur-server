@@ -360,8 +360,8 @@ module Hastur
           cass_options[:start] = col_name(options[:name], end_timestamp)
         elsif !schema[:name]
           # For an unnamed schema like events, tell Cassandra what column range to query
-          cass_options[:start] = col_name(nil, start_timestamp) unless options[:start]
-          cass_options[:finish] = col_name(nil, end_timestamp) unless options[:finish]
+          cass_options[:finish] = col_name(nil, start_timestamp) unless options[:finish]
+          cass_options[:start] = col_name(nil, end_timestamp) unless options[:start]
         else
           # The schema has a name, but we're not specifying it.  Don't specify a start
           # or finish unless the caller explicitly gave one.
