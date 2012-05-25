@@ -115,7 +115,7 @@ module Hastur
         # Insert into "saw name in this time period" row
         if schema[:name]
           type_id = Hastur::Message.symbol_to_type_id(schema[:type])
-          client.insert(:LookupByKey, "name-#{one_day_ts}", { "#{name}-#{type_id}" => "" }, {})
+          client.insert(:LookupByKey, "name-#{one_day_ts}", { "#{name}-#{type_id}-#{uuid}" => "" }, {})
         end
 
         # Insert into "saw this UUID for this app name" row
