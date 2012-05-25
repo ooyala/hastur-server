@@ -45,6 +45,9 @@ module Hastur
         :error        => %w[error],
         :registration => %w[reg_agent reg_process reg_pluginv1],
         :info         => %w[info_agent info_process],
+        :all          => %w[counter gauge mark hb_process hb_agent hb_pluginv1
+                            event log error reg_agent reg_process reg_pluginv1
+                            info_agent info_process]
       }.freeze
 
       before "" do
@@ -56,7 +59,7 @@ module Hastur
       end
 
       #
-      # @!method /api/
+      # @!method /api
       #
       # Top-level resources.
       #
@@ -68,6 +71,7 @@ module Hastur
           :app  => "#{root_uri}/api/app",
           :type => "#{root_uri}/api/type",
           :name => "#{root_uri}/api/name",
+          :data => "#{root_uri}/api/data",
         })
       end
 
@@ -90,7 +94,10 @@ module Hastur
       get "/api/node" do
         h = {}
         get_registrations.each do |uuid, reg_hash|
-          h[uuid] = "#{root_uri}/api/node/#{uuid}"
+          h[uuid] = {
+            :registration_data => "#{root_uri}/api/node/#{uuid}",
+            :message_data => "#{root_uri}/api/data/node/#{uuid}",
+          }
         end
 
         json h
@@ -107,36 +114,12 @@ module Hastur
         if get_registrations[params[:uuid]]
           registration_hash = get_registrations[params[:uuid]]
           h = {
-                :hostname => registration_hash["json"]["hostname"],
+                :hostname => registration_hash["json"]["hostname"],  # TODO(noah): Update?
                 :ipv4     => registration_hash["json"]["ipv4"],
-                :data     => "#{root_uri}/api/node/#{params[:uuid]}/data",
-                :fact     => "#{root_uri}/api/node/#{params[:uuid]}/fact"
+                :data     => "#{root_uri}/api/data/node/#{params[:uuid]}/data",
               }
         else
           error 404, "#{params[:uuid]} is not registered."
-        end
-
-        json h
-      end
-
-      #
-      # @!method /api/node/:uuid/data
-      #
-      # Retrieves a list of available named message resources on a given node.
-      #
-      # @param uuid UUID to query for (required)
-      #
-      get "/api/node/:uuid/data" do
-        start_ts, end_ts = get_start_end :one_day
-
-        h = {}
-        %w[stat gauge counter hb_process hb_agent hb_pluginv1 event].each do |type|
-          data = Hastur::Cassandra.get(cass_client, params[:uuid], type, start_ts, end_ts, :consistency => 1, :value_only => 1)
-          data.each do |uuid, stat_col|
-            stat_col[type].each do |name,|
-              h[name] = "#{root_uri}/api/node/#{params[:uuid]}/data/#{type}/#{name}"
-            end
-          end
         end
 
         json h
@@ -195,14 +178,16 @@ module Hastur
 
         # Populate the return data object with the appropriate hash values
         app.each do |app|
-          h[app] = "#{root_uri}/api/app/#{CGI.escape(app)}/data"
+          h[app] = {
+            :message_data => "#{root_uri}/api/data/app/#{CGI.escape(app)}",
+          }
         end
 
         json h
       end
 
       #
-      # @!method /api/app/:app/data
+      # @!method /api/app/:app
       #
       # Retrieves meta-data about a specific application name.
       #
@@ -218,34 +203,18 @@ module Hastur
       #     ...
       #   }
       #
-      get "/api/app/:app/data" do
-        uuids = get_uuids_from_app_name(params[:app])
+      get "/api/app/:app" do
+        start_ts, end_ts = get_start_end :one_day
+        uuids = Hastur::Cassandra.lookup_by_key cass_client, :app_name, start_ts, end_ts
+
         h = {
-          :name            => CGI.unescape(params[:app]),
-          :number_of_nodes => uuids.size,
-          :data            => "#{root_uri}/api/app/#{CGI.escape(params[:app])}/data"
+          :app             => CGI.unescape(params[:app]),
+          :nodes           => uuids,
+          :message_names   => "#{root_uri}/api/app/#{CGI.escape(params[:app])}/name",
+          :message_data    => "#{root_uri}/api/data/app/#{CGI.escape(params[:app])}",
         }
 
         json h
-      end
-
-      #
-      # @!method /api/app/:app/node
-      # @note not implmented
-      #
-      # Returns a list of nodes with the application registered.
-      #
-      get "/api/app/:app/node" do
-        stub! "/api/app/:app/node"
-      end
-
-      #
-      # @!method /api/app/:app/node/:node
-      #
-      # Get application information for a particular node.
-      #
-      get "/api/app/:app/node/:node" do
-        stub! "/api/app/:app/node/:node"
       end
 
       #
@@ -256,57 +225,19 @@ module Hastur
       # @param app URL-encoded application name (required)
       #
       get "/api/app/:app/name" do
-        uuids = get_uuids_from_app_name(params[:app])
         start_ts, end_ts = get_start_end :one_day
+        uuids = Hastur::Cassandra.lookup_by_key cass_client, :app_name, start_ts, end_ts
 
-        # Get with no subtype gives JSON
+        # TODO(noah): correct for schema.rb's output format
         h = {}
         Hastur::Cassandra.current_schemas.keys.each do |type|
           data = Hastur::Cassandra.get(cass_client, uuids, type, start_ts, end_ts, :consistency => 1)
           data.each do |k, v|
-            h[k] = "#{root_uri}/api/app/#{CGI.escape(params[:app])}/data/#{type}/#{k}" unless k.empty?
+            h[k] = {
+              :message_data => "#{root_uri}/api/data/app/#{CGI.escape(params[:app])}/type/#{type}/name/#{k}"
+            } unless k.nil?
           end
         end
-
-        json h
-      end
-
-      #
-      # @!method /api/app/:app_name/data/:name
-      #
-      # Retrieves the values of a particular message across all apps
-      #
-      # @param app URL-encoded application name (required)
-      # @param start   Starting timestamp, default 5 minutes ago
-      # @param end     Ending timestamp, default now
-      # @param name    Name of the message to query for (required)
-      # @param type    Type of message (required)
-      #
-      get "/api/app/:app/data/:type/:name" do
-        h = {}
-        uuids = get_uuids_from_app_name(params[:app])
-        start_ts, end_ts = get_start_end :five_minutes
-
-        # query cassandra for the data
-        opts = { :name => params[:name] }
-        values = ::Hastur::Cassandra.get(cass_client, uuids, params[:type], start_ts, end_ts, opts)
-
-        # transform the data into an understandable format
-        data = Hash.new
-        values.each do |key, val|
-          if val.is_a? ::Hash
-            val.each do |ts, json|
-              data[ts] = MultiJson.load(json)["value"]
-            end
-          end
-        end
-
-        h = {
-              :name  => params[:name],
-              :count => data.size,
-              :type  => params[:type],
-              :data  => data
-            }
 
         json h
       end
@@ -314,7 +245,8 @@ module Hastur
       #
       # @!method /api/name
       #
-      # Get a list of name resources that have been seen in the last 24-48 hours.
+      # Get a list of name resources that have been seen in the last 24-48 hours,
+      # with a list of what UUIDs it has been seen on.
       #
       # @return [Hash{String=>URI}]
       #
@@ -322,21 +254,17 @@ module Hastur
         start_ts, end_ts = get_start_end :day
         names = Hastur::Cassandra.lookup_by_key cass_client, :name, start_ts, end_ts
 
+        # TODO: more services for a given name
+        # TODO: fix for output format
+
         data = {}
         names.each do |name,|
-          data[name] = "#{root_uri}/api/name/#{name}"
+          data[name] = {
+            :name => name,
+          }
         end
 
         json data
-      end
-
-      #
-      # @!method /api/name/:name
-      #
-      # @todo write this
-      #
-      get "/api/name/:name" do
-        stub!
       end
 
       private
@@ -348,28 +276,6 @@ module Hastur
       }
 
       helpers do
-
-        #
-        # Retrieves a list of node UUIDs that are associated with an application
-        #
-        def get_uuids_from_app_name(app)
-          uuids = Set.new
-          # Scan all of the registered apps to find the set of associated node UUIDs
-          cass_client.each(:RegProcessArchive) do |r, c|
-            if c.is_a? ::Hash
-              c.each do |col_key, value|
-                begin
-                  if MultiJson.load(value)["labels"]["app"] == app
-                    uuids.add(r[0..35])
-                  end
-                rescue Exception
-                  nil
-                end
-              end
-            end
-          end
-          uuids.to_a
-        end
 
         #
         # Get the time range tuple.  Use params or the default period (in seconds).
@@ -397,6 +303,76 @@ module Hastur
           return start_ts, end_ts
         end
 
+        def type_list_from_string(types)
+          types.split(",").map { |type| TYPE_MAPPING[type] || type }.flatten.uniq
+        end
+
+        def param_is_true(name)
+          params[name] && !["", "false", "no", "f"].include?(params[name].downcase)
+        end
+
+        #
+        # Actually query Hastur.  This accepts options and automatically
+        # sees the Sinatra params.  Usually options come from the URI that
+        # called the helper and params are extra overrides provided by the
+        # user.  Since the helper checks this, the various routes don't have
+        # to do so individually.
+        #
+        # Where appropriate, values can be comma-separated lists.
+        #
+        # Options can include the following:
+        #
+        # :value_only - return values, not full JSON structures
+        # :uuid - uuid or list of uuids
+        # :type - type or list of types
+        # :output - :message, :value, :count or :rollup
+        #
+        # Params are overridden by options where appropriate.
+        # They can include the following:
+        #
+        # "uuid" - uuid or list of uuids
+        # "type" - type or list of types
+        # "reversed" - return results in reverse order - only matters with "limit"
+        # "limit" - max number of results to return
+        # "consistency" - Cassandra read consistency
+        #
+        # TODO: add types, message names.
+        #
+        def query_hastur(options)
+          uuids = (options["uuid"] || params["uuid"]).split(",")
+          types = options[:type] || type_list_from_string(params["type"])
+
+          cass_options = {}
+          cass_options[:reversed] = true if param_is_true("reversed")
+          cass_options[:value_only] = true if options[:value_only]
+
+          # "count" vs "limit" is an unfortunate naming situation.
+          # Cassandra uses "count" to mean "how many results,
+          # maximum?"  We use it to mean "please return a count of my
+          # results."  We use "limit" for Cassandra's "count".
+          # Cassandra uses get_count or count_columns for "please
+          # return a count of my results."  I don't think we can win
+          # here, Cassandra-naming-wise.
+          cass_options[:count] = params["limit"].to_i if params["limit"]
+
+          if params["consistency"]
+            cass_options[:consistency] = params["consistency"].to_i
+          end
+
+          values = Hastur::Cassandra.get(cass_client, uuids, types, start_ts, end_ts, options)
+
+          output = {}
+          values.each do |uuid, hash1|
+            output[uuid] = {}
+            hash1.each do |type, hash2|
+              # hash2 is a mapping of { name => { timestamp => value/object } }
+              # This will return a structure without the names.
+              output[uuid][type] = hash2.values.inject({}, &:merge)
+            end
+          end
+
+          output
+        end
 
         #
         # Computes the request url without the path information
@@ -411,6 +387,8 @@ module Hastur
         #
         # Retrieves a list of registered agents. Periodically refreshes the registrations
         # depending on how long ago the last refresh was.
+        #
+        # Defaults to refreshing every five minutes.
         #
         def get_registrations
           @last_registration_update ||= 0
@@ -486,6 +464,9 @@ module Hastur
         #
         # Normally the filter parameter will be used to restrict which type(s)
         # of registrations are returned.
+        #
+        # @todo Move this into schema.rb and/or replace it with something less horrible.
+        # @todo Use some kind of real registration rollups instead of querying every reg!
         #
         # @param [Hash] filter The fuzzy_filter hash to restrict registrations returned
         # @param [Hash] The lastest registrations per agent uuid
