@@ -386,9 +386,9 @@ module Hastur
 
           uuids = params["uuid"].split(",")
           types = type_list_from_string(params["type"])
-          msg_names = params["name"].split(",")
+          msg_names = params["name"] ? params["name"].split(",") : []
 
-          raise "Not supporting comma-separated list of message names yet!" unless msg_names.size == 1
+          raise "Not supporting comma-separated list of message names yet!" unless msg_names.size <= 1
 
           cass_options = {}
           cass_options[:reversed] = true if param_is_true("reversed")
@@ -420,13 +420,20 @@ module Hastur
           values = Hastur::Cassandra.get(cass_client, uuids, types, start_ts, end_ts, options)
 
           output = {}
-          values.each do |uuid, hash1|
-            output[uuid] = {}
-            hash1.each do |type, hash2|
-              # hash2 is a mapping of { name => { timestamp => value/object } }
-              # This will return a structure without the names.
-              output[uuid][type] = hash2.values.inject({}, &:merge)
+
+          if params["output"] == "value" || params["output"] == "message"
+
+            # Hastur::Cassandra.get returns the following format:
+            # { :uuid => { :type => { :name => { :timestamp => value/object } } } }
+            values.each do |uuid, hash1|
+              output[uuid] = {}
+              hash1.each do |type, hash2|
+                # This will return a structure without the names.
+                output[uuid].merge!(hash2)
+              end
             end
+          else
+            raise "Unhandled output format #{params["output"]}!"
           end
 
           json output
