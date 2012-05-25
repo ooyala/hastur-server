@@ -20,6 +20,10 @@ CREATE COLUMN FAMILY MarkArchive
   with comparator='BytesType(reversed=true)'
   and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY CompoundArchive
+  with comparator='BytesType(reversed=true)'
+  and compression_options = null
+  and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY LogArchive
   with comparator='BytesType(reversed=true)'
   and compression_options = null
@@ -85,6 +89,10 @@ CREATE COLUMN FAMILY StatMark
   with comparator='BytesType(reversed=true)'
   and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY StatCompound
+  with comparator='BytesType(reversed=true)'
+  and compression_options = null
+  and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY HBProcess
   with comparator='BytesType(reversed=true)'
   and compression_options = null
@@ -108,6 +116,9 @@ CREATE COLUMN FAMILY CounterMetadata
   with compaction_strategy = 'LeveledCompactionStrategy'
   and compression_options = null;
 CREATE COLUMN FAMILY MarkMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
+CREATE COLUMN FAMILY CompoundMetadata
   with compaction_strategy = 'LeveledCompactionStrategy'
   and compression_options = null;
 CREATE COLUMN FAMILY LogMetadata

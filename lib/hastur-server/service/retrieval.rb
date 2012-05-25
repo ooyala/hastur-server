@@ -38,7 +38,7 @@ module Hastur
       # of the values, so for example, "stat" will get you all counters, gauges, and marks.
       #
       TYPES = {
-        :stat         => %w[counter gauge mark],
+        :stat         => %w[counter gauge mark compound],
         :heartbeat    => %w[hb_process hb_agent hb_pluginv1],
         :event        => %w[event],
         :log          => %w[log],
@@ -130,7 +130,7 @@ module Hastur
         start_ts, end_ts = get_start_end :one_day
 
         h = {}
-        %w[stat gauge counter hb_process hb_agent hb_pluginv1 event].each do |type|
+        %w[stat gauge counter compound hb_process hb_agent hb_pluginv1 event].each do |type|
           data = Hastur::Cassandra.get(cass_client, params[:uuid], type, start_ts, end_ts, :consistency => 1, :value_only => 1)
           data.each do |uuid, stat_col|
             stat_col[type].each do |name,|

@@ -29,6 +29,16 @@
     "name_cf"    : "MarkNameDay",
     "metadata_cf": "MarkMetadata"
   },
+  "compound": {
+    "type"       : "compound",
+    "archive_cf" : "CompoundArchive",
+    "name"       : true,
+    "value"      : true,
+    "granularity": 3600000000,
+    "values_cf"  : "StatCompound",
+    "name_cf"    : "CompoundNameDay",
+    "metadata_cf": "CompoundMetadata"
+  },
   "log": {
     "type"       : "log",
     "archive_cf" : "LogArchive",

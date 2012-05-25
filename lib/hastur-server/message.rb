@@ -32,6 +32,7 @@ module Hastur
       class Mark     < Simple ; end
       class Gauge    < Simple ; end
       class Counter  < Simple ; end
+      class Compound < Simple ; end
     end
     module Info
       class Process  < Simple ; end
@@ -50,6 +51,7 @@ module Hastur
       Hastur::Message::Stat::Mark     => 10,
       Hastur::Message::Stat::Gauge    => 11,
       Hastur::Message::Stat::Counter  => 12,
+      Hastur::Message::Stat::Compound => 13,
       # registrations
       Hastur::Message::Reg::Agent     => 20,
       Hastur::Message::Reg::Process   => 21,
@@ -77,6 +79,7 @@ module Hastur
       :mark         => Hastur::Message::Stat::Mark,
       :gauge        => Hastur::Message::Stat::Gauge,
       :counter      => Hastur::Message::Stat::Counter,
+      :compound     => Hastur::Message::Stat::Compound,
       :reg_agent    => Hastur::Message::Reg::Agent,
       :reg_process  => Hastur::Message::Reg::Process,
       :reg_pluginv1 => Hastur::Message::Reg::PluginV1,

@@ -6,10 +6,11 @@ require 'socket'
 require 'termite'
 require 'ohai/system'
 
-require "hastur/api"
+require "hastur"
 require "hastur-server/version"
 require "hastur-server/util"
 require "hastur-server/plugin/v1"
+require "hastur-server/plugin/linux"
 require "hastur-server/input/json"
 require "hastur-server/input/statsd"
 require "hastur-server/input/collectd"
@@ -87,8 +88,12 @@ module Hastur
 
         # hand a block to Hastur client so it can send directly over ZMQ instead of
         # sendto UDP -> OS -> itself -> ZMQ
-        Hastur.deliver_with do
-          _send(hash_to_message(m)) rescue nil
+        Hastur.deliver_with do |m|
+          begin
+            _send(hash_to_message(m))
+          rescue Exception => e
+            _fail(m, e)
+          end
         end
       end
 
@@ -144,7 +149,7 @@ module Hastur
       def poll_udp
         # process UDP input from localhost
         begin
-          data, sender = @udp_socket.recvfrom_nonblock(65536) rescue nil
+          data, sender = @udp_socket.recvfrom_nonblock(65535) rescue nil
           return if data.nil? or data.length == 0
           @counters[:udp_packets] += 1
         rescue Exception => e
@@ -233,7 +238,7 @@ module Hastur
         @poller.poll_nonblock
 
         # read messages from Hastur (router)
-        if @poller.readables.include?(@router_socket)
+        while @poller.readables.include?(@router_socket)
           msg = Hastur::Message.recv(@router_socket)
           @counters[:zmq_recv] += 1
           case msg
@@ -368,6 +373,8 @@ module Hastur
         set_up_local_ports
 
         @running = true
+        last_system_stat_time = Time.now.to_i - 5
+
         while @running
           poll_noop
           poll_registration_timeout
@@ -375,11 +382,18 @@ module Hastur
           poll_heartbeat_timeout
           poll_ack_timeouts
           poll_plugin_pids
-          poll_udp
           poll_zmq rescue nil # Temp: 2012-05-02, should properly detect & log bad messages
           send_agent_stats unless @no_agent_stats
 
-          sleep 0.1 # prevent tight loops from using too much CPU
+          if select([@udp_socket], [], [], 0.25)
+            poll_udp
+          end
+
+          now = Time.now.to_i
+          if (now - last_system_stat_time) >= 10 and File.exists?("/proc/net/dev")
+            Hastur::Plugin::Linux.run
+            last_system_stat_time = now
+          end
         end
 
         msg = Hastur::Message::Log.new :from => @uuid, :payload => "Hastur Agent #{@uuid} exiting."

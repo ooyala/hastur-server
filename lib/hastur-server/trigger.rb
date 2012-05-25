@@ -161,6 +161,10 @@ module Hastur
         message_stream filters.merge(:type => :mark), &block
       end
 
+      def compound(filters = {}, &block)
+        message_stream filters.merge(:type => :compound), &block
+      end
+
       def events(filters = {}, &block)
         message_stream filters.merge(:type => :event), &block
       end
