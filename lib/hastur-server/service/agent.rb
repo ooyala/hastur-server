@@ -6,7 +6,7 @@ require 'socket'
 require 'termite'
 require 'ohai/system'
 
-require "hastur"
+require "hastur/api"
 require "hastur-server/version"
 require "hastur-server/util"
 require "hastur-server/plugin/v1"
@@ -15,6 +15,9 @@ require "hastur-server/input/json"
 require "hastur-server/input/statsd"
 require "hastur-server/input/collectd"
 require "hastur-server/message"
+
+Hastur.app_name = "hastur-agent.rb"
+Hastur.no_background_thread!
 
 module Hastur
   module Service
@@ -372,8 +375,11 @@ module Hastur
 
         set_up_local_ports
 
+        Hastur.start
         @running = true
+
         last_system_stat_time = Time.now
+        last_heartbeat_time = Time.now - 61
 
         while @running
           poll_noop
@@ -390,6 +396,13 @@ module Hastur
           end
 
           now = Time.now
+          # agent doesn't use the Hastur background thead, send a heartbeat every minute
+          if (now - last_heartbeat_time) >= 60
+            Hastur.heartbeat("process_heartbeat")
+            last_heartbeat_time = now
+          end
+
+          # send Linux stats every 10 seconds
           if (now - last_system_stat_time) >= 10 and File.exists?("/proc/net/dev")
             Hastur::Plugin::Linux.run
             last_system_stat_time = now
