@@ -296,6 +296,28 @@ module Hastur
       end
 
       #
+      # @!method /api/data/app/:app/:format
+      #
+      # Retrieve Hastur messages.  Parameters may be
+      # comma-separated values when specifying multiple
+      # of a given item.
+      #
+      # @param format One of "message", "value", "count" or "rollup" for output format
+      # @param start Starting timestamp, default 5 minutes ago
+      # @param end Ending timestamp, default now
+      # @param uuid UUID(s) to query for
+      # @param app Application name(s) to query for - no wildcards
+      # @param name Message name(s) to query for - supports wildcards
+      # @param type Message type(s) to query for
+      # @param limit Maximum number of values to return
+      # @param reversed Return earliest first instead of latest first
+      # @param consistency Cassandra read consistency
+      #
+      get "/api/data/app/:app/:format" do
+        json query_hastur(:output => params["format"])
+      end
+
+      #
       # @!method /api/data/node/:uuid/type/:type/name/:name/value
       #
       # Retrieves the values of a particular message for a particular node
@@ -379,25 +401,20 @@ module Hastur
         #
         # Actually query Hastur.  This accepts options and automatically
         # sees the Sinatra params.  Usually options come from the URI that
-        # called the helper and params are extra overrides provided by the
-        # user.  Since the helper checks this, the various routes don't have
-        # to do so individually.
+        # called the helper.
         #
         # Where appropriate, values can be comma-separated lists.
         #
         # Options can include the following:
         #
-        # :uuid - uuid or list of uuids
-        # :type - type or list of types
-        # :app - application name or list of application names, no wildcards
-        # :name - message name or list of message names
         # :output - :message, :value, :count or :rollup
         #
-        # Params are overridden by options where appropriate.
-        # They can include the following:
+        # Params can include the following:
         #
         # "uuid" - uuid or list of uuids
         # "type" - type or list of types
+        # "app" - app name or list of app names
+        # "name" - message name or list of message names
         # "reversed" - return results in reverse order - only matters with "limit"
         # "limit" - max number of results to return
         # "consistency" - Cassandra read consistency
@@ -405,13 +422,15 @@ module Hastur
         # TODO: add app_names, message names.
         #
         def query_hastur(options)
-          uuids = (options["uuid"] || params["uuid"]).split(",")
-          types = options[:type] || type_list_from_string(params["type"])
-
-          raise "Unimplemented output option :rollup!" if options[:output] == :rollup
+          stub! if options[:output] == :rollup
           unless [:message, :value, :count].include?(options[:output])
             raise "Illegal output option #{options[:output]}"
           end
+
+          uuids = params["uuid"].split(",")
+          types = type_list_from_string(params["type"])
+          app_names = params["app"].split(",")
+          msg_names = params["name"].split(",")
 
           cass_options = {}
           cass_options[:reversed] = true if param_is_true("reversed")
