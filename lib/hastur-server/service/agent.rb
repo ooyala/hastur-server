@@ -9,8 +9,8 @@ require 'ohai/system'
 require "hastur/api"
 require "hastur-server/version"
 require "hastur-server/util"
-require "hastur-server/plugin/v1"
-require "hastur-server/plugin/linux"
+require "hastur-server/agent/plugin_v1_exec"
+require "hastur-server/agent/linux_stats"
 require "hastur-server/input/json"
 require "hastur-server/input/statsd"
 require "hastur-server/input/collectd"
@@ -48,7 +48,7 @@ module Hastur
         end
 
         opts[:port]           ||= 8125
-        opts[:heartbeat]      ||= 30
+        opts[:heartbeat]      ||= 60
         opts[:ack_interval]   ||= 30
         opts[:noop_interval]  ||= 30
         opts[:stats_interval] ||= 300
@@ -256,7 +256,7 @@ module Hastur
           when Hastur::Message::Cmd::PluginV1
             # TODO: add hmac authentication of plugin exec messages
             config = msg.decode
-            plugin = Hastur::Plugin::V1.new(config[:plugin_path], config[:plugin_args], config[:plugin])
+            plugin = Hastur::Agent::PluginV1Exec.new(config[:plugin_path], config[:plugin_args], config[:plugin])
             pid = plugin.run
             @plugins[pid] = plugin
           else
@@ -398,13 +398,13 @@ module Hastur
           now = Time.now
           # agent doesn't use the Hastur background thead, send a heartbeat every minute
           if (now - last_heartbeat_time) >= 60
-            Hastur.heartbeat("process_heartbeat")
+            Hastur.heartbeat("hastur.agent.process_heartbeat")
             last_heartbeat_time = now
           end
 
           # send Linux stats every 10 seconds
           if (now - last_system_stat_time) >= 10 and File.exists?("/proc/net/dev")
-            Hastur::Plugin::Linux.run
+            Hastur::Agent::LinuxStats.run
             last_system_stat_time = now
           end
         end

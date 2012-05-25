@@ -1,8 +1,8 @@
 require "hastur/api"
 
 module Hastur
-  module Plugin
-    module Linux
+  module Agent
+    module LinuxStats
       extend self
 
       def run

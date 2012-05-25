@@ -1,7 +1,6 @@
-
 module Hastur
-  module Plugin
-    class V1
+  module Agent
+    class PluginV1Exec
       attr_accessor :command, :args, :out_fd, :err_fd, :pid, :status, :name
 
       def initialize(command, args=[], name="", env={})
