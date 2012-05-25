@@ -305,6 +305,7 @@ module Hastur
       # @param format One of "message", "value", "count" or "rollup" for output format
       # @param start Starting timestamp, default 5 minutes ago
       # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
       # @param uuid UUID(s) to query for
       # @param app Application name(s) to query for - no wildcards
       # @param name Message name(s) to query for - supports wildcards
@@ -314,7 +315,7 @@ module Hastur
       # @param consistency Cassandra read consistency
       #
       get "/api/data/app/:app/:format" do
-        json query_hastur(:output => params["format"])
+        query_hastur
       end
 
       #
@@ -399,18 +400,13 @@ module Hastur
         end
 
         #
-        # Actually query Hastur.  This accepts options and automatically
-        # sees the Sinatra params.  Usually options come from the URI that
-        # called the helper.
-        #
-        # Where appropriate, values can be comma-separated lists.
-        #
-        # Options can include the following:
-        #
-        # :output - :message, :value, :count or :rollup
+        # Actually query Hastur. The query is based on the Sinatra
+        # params. Where appropriate, values can be comma-separated
+        # lists.
         #
         # Params can include the following:
         #
+        # "format" - the output format - message, value, count or rollup
         # "uuid" - uuid or list of uuids
         # "type" - type or list of types
         # "app" - app name or list of app names
@@ -419,13 +415,15 @@ module Hastur
         # "limit" - max number of results to return
         # "consistency" - Cassandra read consistency
         #
-        # TODO: add app_names, message names.
+        # TODO: implement app_names, message names.
         #
         def query_hastur(options)
-          stub! if options[:output] == :rollup
-          unless [:message, :value, :count].include?(options[:output])
-            raise "Illegal output option #{options[:output]}"
+          stub! if params["output"] == :rollup
+          unless ["message", "value", "count"].include?(params["output"])
+            raise "Illegal output option #{params["output"]}"
           end
+
+          start_ts, end_ts = get_start_end :five_minutes
 
           uuids = params["uuid"].split(",")
           types = type_list_from_string(params["type"])
@@ -434,8 +432,8 @@ module Hastur
 
           cass_options = {}
           cass_options[:reversed] = true if param_is_true("reversed")
-          cass_options[:value_only] = true if options[:output] == :value
-          cass_options[:count_columns] = true if options[:output] == :count
+          cass_options[:value_only] = true if params["output"] == "value"
+          cass_options[:count_columns] = true if params["output"] == "count"
 
           # "count" vs "limit" is an unfortunate naming situation.
           # Cassandra uses "count" to mean "how many results,
@@ -462,7 +460,7 @@ module Hastur
             end
           end
 
-          output
+          json output
         end
 
         #
