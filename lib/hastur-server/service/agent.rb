@@ -373,7 +373,7 @@ module Hastur
         set_up_local_ports
 
         @running = true
-        last_system_stat_time = Time.now.to_i - 5
+        last_system_stat_time = Time.now
 
         while @running
           poll_noop
@@ -389,7 +389,7 @@ module Hastur
             poll_udp
           end
 
-          now = Time.now.to_i
+          now = Time.now
           if (now - last_system_stat_time) >= 10 and File.exists?("/proc/net/dev")
             Hastur::Plugin::Linux.run
             last_system_stat_time = now
