@@ -8,7 +8,6 @@ module Hastur
       def run
         ts = Hastur.timestamp # use the same timestamp so they can be lined up easily
         Hastur.send :compound, "linux.proc.stat",      proc_stat,      ts
-        STDERR.print "Hastur.send :compound, \"linux.proc.stat\",      #{proc_stat},      #{ts}"
         Hastur.send :compound, "linux.proc.diskstats", proc_diskstats, ts
         Hastur.send :compound, "linux.proc.uptime",    proc_uptime,    ts
         Hastur.send :compound, "linux.proc.loadavg",   proc_loadavg,   ts
