@@ -122,7 +122,7 @@ module Hastur
       #
       # @!method /api/node/:uuid/data
       #
-      # Retrieves a list of available messages on a particular node
+      # Retrieves a list of available named message resources on a given node.
       #
       # @param uuid UUID to query for (required)
       #
@@ -130,10 +130,12 @@ module Hastur
         start_ts, end_ts = get_start_end :one_day
 
         h = {}
-        Hastur::Cassandra::SCHEMA.keys.each do |type|
-          data = Hastur::Cassandra.get(cass_client, params[:uuid], type, start_ts, end_ts, :consistency => 1)
-          data.each do |k, v|
-            h[k] = "#{root_uri}/api/node/#{params[:uuid]}/data/#{type}/#{k}" unless k.empty?
+        %w[stat gauge counter event].each do |type|
+          data = Hastur::Cassandra.get(cass_client, params[:uuid], type, start_ts, end_ts, :consistency => 1, :value_only => 1)
+          data.each do |uuid, stat_col|
+            stat_col[type].each do |name,|
+              h[name] = "#{root_uri}/api/node/#{params[:uuid]}/data/#{type}/#{name}"
+            end
           end
         end
 
@@ -141,7 +143,7 @@ module Hastur
       end
 
       #
-      # @!method /api/node/:uuid/data/:data
+      # @!method /api/node/:uuid/data/:type/:name
       #
       # Retrieves the values of a particular message for a particular node
       #
