@@ -318,43 +318,6 @@ module Hastur
         query_hastur
       end
 
-      #
-      # @!method /api/data/node/:uuid/type/:type/name/:name/value
-      #
-      # Retrieves the values of a particular message for a particular node
-      #
-      # @param uuid        UUID to query for (required)
-      # @param start       Starting timestamp, default 5 minutes ago
-      # @param end         Ending timestamp, default now
-      # @param name        Name of the message to query for (required)
-      # @param type        Type of message (required)
-      # @param reversed    Return results in reverse order - only matters with "limit"
-      # @param limit       Maximum number of results to return (default 10,000)
-      # @param consistency Cassandra read consistency (default 1)
-      #
-      get "/api/data/node/:uuid/type/:type/name/:name/value" do
-        start_ts, end_ts = get_start_end :five_minutes
-
-        # query cassandra for the data
-        opts = { :name => params[:name], :value_only => true }
-        values = ::Hastur::Cassandra.get(cass_client, params[:uuid], params[:type], start_ts, end_ts, opts)
-
-        # transform the data into an understandable format
-        data = Hash.new
-        values.each do |key, val|
-          data.merge!(val) if val.is_a? ::Hash
-        end
-
-        h = {
-              :name  => params[:name],
-              :count => data.size,
-              :type  => params[:type],
-              :data  => data
-            }
-
-        json h
-      end
-
       private
 
       THRIFT_OPTIONS = {
