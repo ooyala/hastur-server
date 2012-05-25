@@ -25,7 +25,12 @@ module Hastur
     # attributes of those types (:type, :archive_cf, :granularity,
     # :name, :name_cf, :value, :values_cf, :metadata_cf).
 
-    def get_schema_by_type(type)
+    def current_schemas
+      # Frozen hash or nil
+      @hastur_schemas
+    end
+
+    def schema_by_type(type)
       unless @already_loaded_schema_file
         location = ENV['HASTUR_SCHEMA_FILE'] ||
           File.join(File.dirname(__FILE__), "..", "..", "..", "tools", "hastur_schema.json")
@@ -75,7 +80,7 @@ module Hastur
     #
     def insert(cass_client, json_string, schema, options = {})
       unless schema.is_a?(Hash)
-        schema = get_schema_by_type(schema)
+        schema = schema_by_type(schema)
       end
 
       hash = MultiJson.load(json_string, :symbolize_keys => true)
@@ -151,7 +156,7 @@ module Hastur
 
       # If it's a list of strings/symbols, convert to schema objects
       unless type[0].is_a?(Hash)
-        schemas = type.map { |type| get_schema_by_type(type) }
+        schemas = type.map { |type| schema_by_type(type) }
       end
 
       raw_get_all(cass_client, agent_uuid, schemas.compact, start_timestamp, end_timestamp, options)
