@@ -472,7 +472,7 @@ module Hastur
         def json(content)
           json_options = {}
 
-          if params[:pretty] or not request.xhr?
+          unless %w[0 false no].include?(params[:pretty]) or request.xhr?
             json_options[:pretty] = true
           end
 
