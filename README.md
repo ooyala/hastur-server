@@ -36,7 +36,11 @@ If you're not sure if data is coming in on the UDP port, the first thing to chec
 is tcpdump on localhost. This is generally safe to run during production, just don't leave it
 running for a long time.
 
-    sudo tcpdump -ni lo -vX -s 65536 port 8125
+    sudo tcpdump -ni lo -vX -s 65535 port 8125
+
+On OSX
+
+    sudo tcpdump -ni lo0 -vX -s 8192 port 8125
 
 Once you've verified that data is getting to the agent on UDP, you can snoop the outbound ZeroMQ
 port to see if the same data is making it through the agent.
