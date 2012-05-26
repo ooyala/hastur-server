@@ -168,7 +168,7 @@ module Hastur
 
         h = {
               :name  => params[:name],
-              :count => data.size,
+              :count => data[params[:type]][params[:name]].size,
               :type  => params[:type],
               :data  => data
             }
