@@ -33,6 +33,7 @@ set -x
 # See configure_chroots.sh to take the debootstraps to the point where they can be snapshotted for builds.
 #
 
+BRANCH_OR_TAG="master" ; [ -n "$1" ] && BRANCH_OR_TAG="$1"
 ROOT_ROOT=/snapfs/roots
 SNAP_ROOT=/snapfs/snapshots
 SNAP_SUFFIX=$(date +%s)
@@ -75,6 +76,10 @@ build_hastur () {
     cd "$path/tmp/hastur-server"
     git pull
   fi
+
+  # switch to the desired branch/tag
+  cd "$path/tmp/hastur-server"
+  git checkout -f $BRANCH_OR_TAG
 
   if [ "$arch" == "i386" ] ; then
     personality=$(which linux32)
