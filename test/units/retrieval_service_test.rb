@@ -73,7 +73,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     app
   end
 
-  def get_response_hash(uri, options = {})
+  def get_response_data(uri, options = {})
     get uri
     #follow_redirect!
 
@@ -87,13 +87,13 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
   end
 
   def test_top_level
-    hash = get_response_hash "/api"
+    hash = get_response_data "/api"
 
     assert hash.keys.include?("node"), "Must contain Node URL"
   end
 
   def test_types
-    hash = get_response_hash "/api/type"
+    hash = get_response_data "/api/type"
 
     assert hash.keys.include?("all"), "Types hash must include 'all'"
     assert hash.keys.include?("stat"), "Types hash must include 'stat'"
@@ -101,14 +101,14 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
   end
 
   def test_node
-    hash = get_response_hash "/api/node"
+    hash = get_response_data "/api/node"
 
     assert hash.keys.include?(A1UUID), "/api/node must include first UUID"
     assert hash.keys.include?(A2UUID), "/api/node must include second UUID, hash: #{hash.inspect}"
   end
 
   def test_node_uuid
-    array = get_response_hash "/api/node/#{A1UUID}"
+    array = get_response_data "/api/node/#{A1UUID}"
 
     assert array.size == 1, "Must return an array of one response, not #{array.inspect}"
     assert array[0].has_key?("hostname"), "Returned response must have key 'hostname'"
@@ -135,7 +135,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     Hastur::Cassandra.expects(:get).with(anything, [A1UUID, A2UUID], "info_ohai",
                                          FAKE_TS1, FAKE_TS2, :count => 1).
       returns(INFO_OHAI)
-    array = get_response_hash "/api/node/#{A1UUID},#{A2UUID}/ohai?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+    array = get_response_data "/api/node/#{A1UUID},#{A2UUID}/ohai?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
 
     assert array.size == 2, "Must return two pieces of Ohai data"
     assert array.map { |ohai| ohai["uuid"] }.sort == [A1UUID, A2UUID], "Must have Ohai data for both UUIDs!"
@@ -145,7 +145,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     Hastur::Cassandra.expects(:lookup_by_key).with(anything, :app_name, FAKE_TS1, FAKE_TS2).
       returns({ "app_name-37-#{A1UUID}" => "", "other_app-#{A2UUID}" => "" })
 
-    hash = get_response_hash "/api/app?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+    hash = get_response_data "/api/app?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
     assert hash.has_key?("app_name-37"), "Must have first app name!"
     assert hash.has_key?("other_app"), "Must have second app name!"
   end
@@ -160,7 +160,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
                 "fourthapp-#{A3UUID}" => "",
               })
 
-    array = get_response_hash "/api/app/other_app,app_name-37,third%24%25app,not_an_app?" +
+    array = get_response_data "/api/app/other_app,app_name-37,third%24%25app,not_an_app?" +
       "start=#{FAKE_TS1}&end=#{FAKE_TS2}"
     assert_equal 4, array.size, "Must return four app names"
 
@@ -187,7 +187,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
                 }
               })
 
-    hash = get_response_hash "/api/data/node/#{A1UUID}/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+    hash = get_response_data "/api/data/node/#{A1UUID}/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
   end
 
 end
