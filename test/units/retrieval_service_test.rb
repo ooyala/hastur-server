@@ -1,13 +1,14 @@
 require_relative "../test_helper"
 require "minitest/autorun"
-require "rack-test"
+require "rack/test"
 require "hastur-server/service/retrieval"
 
 class RetrievalServiceTest < MiniTest::Unit::TestCase
   include Rack::Test::Methods
 
   def app
-    Hastur::Service::Retrieval.new
+    # Supply no URIs for Cassandra
+    Hastur::Service::Retrieval.new []
   end
 
   def test_blah
