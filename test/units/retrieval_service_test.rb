@@ -150,4 +150,13 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     assert hash.has_key?("other_app"), "Must have second app name!"
   end
 
+  def test_app_app
+    Hastur::Cassandra.expects(:lookup_by_key).with(anything, :app_name, FAKE_TS1, FAKE_TS2).
+      returns({ "app_name-37-#{A1UUID}" => "", "other_app-#{A2UUID}" => "" })
+
+    array = get_response_hash "/api/app/other_app?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+    assert array.size == 1, "Must only return one app name"
+    assert array[0]["app"] == "other_app", "Must return correct app name"
+  end
+
 end
