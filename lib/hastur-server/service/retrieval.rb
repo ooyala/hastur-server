@@ -111,28 +111,30 @@ module Hastur
       #
       # @!method /api/node/:uuid
       #
-      # Retrieves meta-data on particular node(s)
+      # Retrieves meta-data on particular node(s).  Returns an array
+      # of hashes with hostname, UUID and other data.
       #
       # @param uuid UUID to query for (required)
       #
       get "/api/node/:uuid" do
         registrations = get_registrations
 
-        uuids = params[:uuid].split(",").map { |uuid| registrations[uuid] }
+        uuids = params[:uuid].split(",")
+        registrations = uuids.map { |uuid| registrations[uuid] }.compact
 
-        if uuids.empty?
-          error 404, "#{params[:uuid]} is not registered."
+        if registrations.empty?
+          error 404, "None of #{params[:uuid]} are registered."
         else
-          json uuids.map do |uuid|
-            registration_hash = registrations[uuid]
-
+          array = registrations.map do |registration_hash|
             {
               :hostname => registration_hash["json"]["hostname"],
               :ipv4     => registration_hash["json"]["ipv4"],
-              :data     => "#{root_uri}/api/data/node/#{uuid}/data",
-              :ohai     => "#{root_uri}/api/node/#{uuid}/ohai",
+              :data     => "#{root_uri}/api/data/node/#{registration_hash["uuid"]}/data",
+              :ohai     => "#{root_uri}/api/node/#{registration_hash["uuid"]}/ohai",
             }
           end
+
+          json array
         end
       end
 

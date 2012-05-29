@@ -55,12 +55,13 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     get uri
     #follow_redirect!
 
-    #unless last_response.ok?
-    #  raise "Request to #{uri} failed with status #{last_response.status}.  Body was: #{last_response.body}"
-    #end
-
-    assert last_response.ok?, "Request to #{uri} must succeed"
-    MultiJson.load(last_response.body)
+    if last_response.ok?
+      MultiJson.load(last_response.body)
+    else
+      File.open("/tmp/retrieval_test_body.html", "w") { |f| f.write(last_response.body) }
+      assert last_response.ok?, "Request to #{uri} must succeed, not fail with #{last_response.status}." +
+        "  Body is in /tmp/retrieval_test_body.html"
+    end
   end
 
   def test_top_level
@@ -82,6 +83,12 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
 
     assert hash.keys.include?(A1UUID), "/api/node must include first UUID"
     assert hash.keys.include?(A2UUID), "/api/node must include second UUID, hash: #{hash.inspect}"
+  end
+
+  def test_node_uuid
+    array = get_response_hash "/api/node/#{A1UUID}"
+
+    assert array.size == 1, "Must return an array of one response, not #{array.inspect}"
   end
 
 end
