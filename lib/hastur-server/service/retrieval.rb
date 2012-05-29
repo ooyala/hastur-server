@@ -101,7 +101,7 @@ module Hastur
         get_registrations.each do |uuid, reg_hash|
           h[uuid] = {
             :registration_data => "#{root_uri}/api/node/#{uuid}",
-            :message_data => "#{root_uri}/api/data/node/#{uuid}",
+            :message_data => "#{root_uri}/api/data/node/#{uuid}/message",
           }
         end
 
@@ -129,7 +129,7 @@ module Hastur
             {
               :hostname => registration_hash["json"]["hostname"],
               :ipv4     => registration_hash["json"]["ipv4"],
-              :data     => "#{root_uri}/api/data/node/#{registration_hash["uuid"]}/data",
+              :data     => "#{root_uri}/api/data/node/#{registration_hash["uuid"]}/message",
               :ohai     => "#{root_uri}/api/node/#{registration_hash["uuid"]}/ohai",
             }
           end
@@ -174,7 +174,7 @@ module Hastur
         # Populate the return data object with the appropriate hash values
         app_names.each do |app|
           h[app] = {
-            :message_data => "#{root_uri}/api/data/app/#{CGI.escape(app)}",
+            :message_data => "#{root_uri}/api/data/app/#{CGI.escape(app)}/message",
           }
         end
 
@@ -188,28 +188,21 @@ module Hastur
       #
       # @param app URL-encoded application name (required)
       #
-      # @example
-      #   GET /app/:app/data/
-      #   {
-      #     "data"    => "/api/app/:app/data/data/"
-      #     "gauge"   => "/api/app/:app/data/gauge/"
-      #     "counter" => "/api/app/:app/data/counter/"
-      #     "event"   => "/api/app/:app/data/event/"
-      #     ...
-      #   }
-      #
       get "/api/app/:app" do
         start_ts, end_ts = get_start_end :one_day
         uuids = Hastur::Cassandra.lookup_by_key cass_client, :app_name, start_ts, end_ts
 
-        h = {
-          :app             => CGI.unescape(params[:app]),
-          :nodes           => uuids,
-          :message_names   => "#{root_uri}/api/app/#{CGI.escape(params[:app])}/name",
-          :message_data    => "#{root_uri}/api/data/app/#{CGI.escape(params[:app])}",
-        }
+        array = params[:app].split(",").map do |app|
+          bare_app = CGI.unescape(app)
+          {
+            :app             => bare_app,
+            :nodes           => uuids,
+            :message_names   => "#{root_uri}/api/app/#{CGI.escape(params[:app])}/name",
+            :message_data    => "#{root_uri}/api/data/app/#{CGI.escape(params[:app])}/message",
+          }
+        end
 
-        json h
+        json array
       end
 
       #
