@@ -8,6 +8,8 @@ require "hastur-server/cassandra/schema"
 require "hastur-server/time_util"
 require "multi_json"
 
+# TODO(noah): Add parameter validation - alert on bad params?
+
 # TODO(noah): Override for JRuby
 MultiJson.use :yajl
 
@@ -109,25 +111,29 @@ module Hastur
       #
       # @!method /api/node/:uuid
       #
-      # Retrieves meta-data on a particular node
+      # Retrieves meta-data on particular node(s)
       #
       # @param uuid UUID to query for (required)
       #
       get "/api/node/:uuid" do
-        # TODO(noah): allow list of UUIDs
-        if get_registrations[params[:uuid]]
-          registration_hash = get_registrations[params[:uuid]]
-          h = {
-                :hostname => registration_hash["json"]["hostname"],  # TODO(noah): Update?
-                :ipv4     => registration_hash["json"]["ipv4"],
-                :data     => "#{root_uri}/api/data/node/#{params[:uuid]}/data",
-                :ohai     => "#{root_uri}/api/node/#{params[:uuid]}/ohai",
-              }
-        else
-          error 404, "#{params[:uuid]} is not registered."
-        end
+        registrations = get_registrations
 
-        json h
+        uuids = params[:uuid].split(",").map { |uuid| registrations[uuid] }
+
+        if uuids.empty?
+          error 404, "#{params[:uuid]} is not registered."
+        else
+          json uuids.map do |uuid|
+            registration_hash = registrations[uuid]
+
+            {
+              :hostname => registration_hash["json"]["hostname"],
+              :ipv4     => registration_hash["json"]["ipv4"],
+              :data     => "#{root_uri}/api/data/node/#{params[:uuid]}/data",
+              :ohai     => "#{root_uri}/api/node/#{params[:uuid]}/ohai",
+            }
+          end
+        end
       end
 
       #
@@ -139,12 +145,16 @@ module Hastur
       # @param uuid UUID to query for (required)
       #
       get "/api/node/:uuid/ohai" do
-        # TODO(noah): allow list of UUIDs
         start_ts, end_ts = get_start_end :day
-        data = Hastur::Cassandra.get(cass_client, params[:uuid], "info_ohai", start_ts, end_ts, :count => 1)
 
-        # reserialize so the json options can be applied
-        json MultiJson.load(data[params[:uuid]]["info_ohai"][nil].values.first)
+        h = params[:uuid].split(",").map do |uuid|
+          data = Hastur::Cassandra.get(cass_client, uuid, "info_ohai", start_ts, end_ts, :count => 1)
+
+          # reserialize so the json options can be applied
+          MultiJson.load(data[uuid]["info_ohai"][nil].values.first)
+        end
+
+        json h
       end
 
       #
@@ -385,7 +395,7 @@ module Hastur
           start_ts, end_ts = get_start_end :five_minutes
 
           uuids = params["uuid"].split(",")
-          types = type_list_from_string(params["type"])
+          types = type_list_from_string(params["type"] || "all")
           msg_names = params["name"] ? params["name"].split(",") : []
 
           raise "Not supporting comma-separated list of message names yet!" unless msg_names.size <= 1
