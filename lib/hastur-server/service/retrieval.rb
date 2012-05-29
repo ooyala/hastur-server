@@ -379,7 +379,7 @@ module Hastur
         end
 
         def type_list_from_string(types)
-          (types || "all").split(",").map { |type| TYPE_MAPPING[type] || type }.flatten.uniq
+          (types || "all").split(",").map { |type| TYPES[type.to_sym] || type }.flatten.uniq
         end
 
         def param_is_true(name)
@@ -401,10 +401,10 @@ module Hastur
         # "limit" - max number of results to return
         # "consistency" - Cassandra read consistency
         #
-        def query_hastur(options)
-          stub! if params["output"] == :rollup
-          unless ["message", "value", "count"].include?(params["output"])
-            raise "Illegal output option #{params["output"]}"
+        def query_hastur
+          stub! if params["format"] == "rollup"
+          unless ["message", "value", "count"].include?(params["format"])
+            raise "Illegal output option #{params["format"]}"
           end
 
           start_ts, end_ts = get_start_end :five_minutes
@@ -417,8 +417,8 @@ module Hastur
 
           cass_options = {}
           cass_options[:reversed] = true if param_is_true("reversed")
-          cass_options[:value_only] = true if params["output"] == "value"
-          cass_options[:count_columns] = true if params["output"] == "count"
+          cass_options[:value_only] = true if params["format"] == "value"
+          cass_options[:count_columns] = true if params["format"] == "count"
 
           # "count" vs "limit" is an unfortunate naming situation.
           # Cassandra uses "count" to mean "how many results,
@@ -431,7 +431,9 @@ module Hastur
 
           # TODO: support multiple names/prefixes, probably by returning the
           # whole bucket and postfiltering.
-          if msg_names[0].include?("*")
+          if msg_names == []
+            # Do nothing
+          elsif msg_names[0].include?("*")
             prefix = msg_names[0].split("*", 2)[0]
             cass_options[:name_prefix] = prefix
           else
@@ -442,11 +444,11 @@ module Hastur
             cass_options[:consistency] = params["consistency"].to_i
           end
 
-          values = Hastur::Cassandra.get(cass_client, uuids, types, start_ts, end_ts, options)
+          values = Hastur::Cassandra.get(cass_client, uuids, types, start_ts, end_ts, cass_options)
 
           output = {}
 
-          if ["value", "message", "count"].include?(params["output"])
+          if ["value", "message", "count"].include?(params["format"])
             # Hastur::Cassandra.get returns the following format:
             #   { :uuid => { :type => { :name => { :timestamp => value/object } } } }
             # This REST API returns:
@@ -459,7 +461,7 @@ module Hastur
               end
             end
           else
-            raise "Unhandled output format #{params["output"]}!"
+            raise "Unhandled output format #{params["format"]}!"
           end
 
           json output

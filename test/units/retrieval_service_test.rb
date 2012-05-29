@@ -175,4 +175,19 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     assert_equal [ A1UUID ], sorted[3]["nodes"], "Must have one UUID for third$%app"
   end
 
+  TYPES = Hastur::Service::Retrieval::TYPES
+
+  def test_data_node_uuid_format
+    Hastur::Cassandra.expects(:get).with(anything, [A1UUID], TYPES[:all], FAKE_TS1, FAKE_TS2, {}).
+      returns({
+                A1UUID => {
+                  nil => {
+                    FAKE_TS1 => AGENT_REG_1,
+                  }
+                }
+              })
+
+    hash = get_response_hash "/api/data/node/#{A1UUID}/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+  end
+
 end
