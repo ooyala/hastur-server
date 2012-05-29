@@ -327,6 +327,72 @@ module Hastur
         query_hastur
       end
 
+      #
+      # @!method /api/data/node/:uuid/:format
+      #
+      # Retrieve Hastur messages.  Parameters may be
+      # comma-separated values when specifying multiple
+      # of a given item.
+      #
+      # @param format One of "message", "value", "count" or "rollup" for output format
+      # @param start Starting timestamp, default 5 minutes ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @param uuid UUID(s) to query for
+      # @param name Message name(s) to query for - supports wildcards
+      # @param type Message type(s) to query for
+      # @param limit Maximum number of values to return
+      # @param reversed Return earliest first instead of latest first
+      # @param consistency Cassandra read consistency
+      #
+      get "/api/data/node/:uuid/type/:type/:format" do
+        query_hastur
+      end
+
+      #
+      # @!method /api/data/node/:uuid/:format
+      #
+      # Retrieve Hastur messages.  Parameters may be
+      # comma-separated values when specifying multiple
+      # of a given item.
+      #
+      # @param format One of "message", "value", "count" or "rollup" for output format
+      # @param start Starting timestamp, default 5 minutes ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @param uuid UUID(s) to query for
+      # @param name Message name(s) to query for - supports wildcards
+      # @param type Message type(s) to query for
+      # @param limit Maximum number of values to return
+      # @param reversed Return earliest first instead of latest first
+      # @param consistency Cassandra read consistency
+      #
+      get "/api/data/node/:uuid/name/:name/:format" do
+        query_hastur
+      end
+
+      #
+      # @!method /api/data/node/:uuid/:format
+      #
+      # Retrieve Hastur messages.  Parameters may be
+      # comma-separated values when specifying multiple
+      # of a given item.
+      #
+      # @param format One of "message", "value", "count" or "rollup" for output format
+      # @param start Starting timestamp, default 5 minutes ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @param uuid UUID(s) to query for
+      # @param name Message name(s) to query for - supports wildcards
+      # @param type Message type(s) to query for
+      # @param limit Maximum number of values to return
+      # @param reversed Return earliest first instead of latest first
+      # @param consistency Cassandra read consistency
+      #
+      get "/api/data/node/:uuid/type/:type/name/:name/:format" do
+        query_hastur
+      end
+
       private
 
       THRIFT_OPTIONS = {
@@ -395,7 +461,7 @@ module Hastur
           start_ts, end_ts = get_start_end :five_minutes
 
           uuids = params["uuid"].split(",")
-          types = type_list_from_string(params["type"] || "all")
+          types = type_list_from_string(params["type"])
           msg_names = params["name"] ? params["name"].split(",") : []
 
           raise "Not supporting comma-separated list of message names yet!" unless msg_names.size <= 1
