@@ -141,4 +141,13 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     assert array.map { |ohai| ohai["uuid"] }.sort == [A1UUID, A2UUID], "Must have Ohai data for both UUIDs!"
   end
 
+  def test_app
+    Hastur::Cassandra.expects(:lookup_by_key).with(anything, :app_name, FAKE_TS1, FAKE_TS2).
+      returns({ "app_name-37-#{A1UUID}" => "", "other_app-#{A2UUID}" => "" })
+
+    hash = get_response_hash "/api/app?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+    assert hash.has_key?("app_name-37"), "Must have first app name!"
+    assert hash.has_key?("other_app"), "Must have second app name!"
+  end
+
 end

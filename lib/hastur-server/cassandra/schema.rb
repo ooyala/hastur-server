@@ -93,6 +93,7 @@ module Hastur
       name = schema[:name] ? hash[:name] : nil
       value = hash[:value]
       timestamp_usec = hash[:timestamp]
+      app_name = hash[:labels]["app"] || ""
 
       colname = col_name(name, timestamp_usec)
       key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec, schema[:granularity] || ONE_DAY)
@@ -119,7 +120,7 @@ module Hastur
         end
 
         # Insert into "saw this UUID for this app name" row
-        client.insert(:LookupByKey, "app_name-#{one_day_ts}", { uuid => "" }, {})
+        client.insert(:LookupByKey, "app_name-#{one_day_ts}", { "#{app_name}-#{uuid}" => "" }, {})
       end
     end
 

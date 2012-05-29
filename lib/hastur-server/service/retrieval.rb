@@ -166,19 +166,13 @@ module Hastur
       # Retrieves all of the registered applications.
       #
       get "/api/app" do
-        h = {}
-        apps = Set.new
-        # Retrieve all registered processes
-        cass_client.each(:RegProcessArchive) do |r, c|
-          if c.is_a? ::Hash
-            c.each do |col_key, value|
-              apps.add(MultiJson.load(value)["labels"]["app"]) rescue nil
-            end
-          end
-        end
+        start_ts, end_ts = get_start_end :one_day
+        app_hash = Hastur::Cassandra.lookup_by_key cass_client, :app_name, start_ts, end_ts
+        app_names = app_hash.map { |col_key, _| col_key[0..-38] }.uniq
 
+        h = {}
         # Populate the return data object with the appropriate hash values
-        app.each do |app|
+        app_names.each do |app|
           h[app] = {
             :message_data => "#{root_uri}/api/data/app/#{CGI.escape(app)}",
           }
