@@ -148,30 +148,16 @@ module Hastur
       #
       get "/api/node/:uuid/ohai" do
         start_ts, end_ts = get_start_end :day
+        uuids = params[:uuid].split(",")
 
-        h = params[:uuid].split(",").map do |uuid|
-          data = Hastur::Cassandra.get(cass_client, uuid, "info_ohai", start_ts, end_ts, :count => 1)
+        data = Hastur::Cassandra.get(cass_client, uuids, "info_ohai", start_ts, end_ts, :count => 1)
 
+        array = uuids.map do |uuid|
           # reserialize so the json options can be applied
           MultiJson.load(data[uuid]["info_ohai"][nil].values.first)
         end
 
-        json h
-      end
-
-      #
-      # @!method /api/node/:uuid/ohai
-      #
-      # Retrieve Ohai system information.
-      # See: http://wiki.opscode.com/display/chef/Ohai
-      #
-      # @param uuid UUID to query for (required)
-      #
-      get "/api/node/:uuid/ohai" do
-        start_ts, end_ts = get_start_end :day
-        data = Hastur::Cassandra.get(cass_client, params[:uuid], "info_ohai", start_ts, end_ts, :count => 1)
-        # deserialize & reserialize so the json options can be applied
-        json MultiJson.load(smoosh(data))
+        json array
       end
 
       #

@@ -31,6 +31,26 @@ AGENT_REG_2 = <<JSON
 }
 JSON
 
+INFO_OHAI_1 = <<JSON
+{
+  "uuid": "#{A1UUID}",
+  "type": "info_ohai",
+  "timestamp": "#{FAKE_TS1}",
+  "labels": {
+  }
+}
+JSON
+
+INFO_OHAI_2 = <<JSON
+{
+  "uuid": "#{A2UUID}",
+  "type": "info_ohai",
+  "timestamp": "#{FAKE_TS2}",
+  "labels": {
+  }
+}
+JSON
+
 class RetrievalServiceTest < MiniTest::Unit::TestCase
   include Rack::Test::Methods
 
@@ -38,13 +58,15 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     # Supply no URIs for Cassandra
     app = Hastur::Service::Retrieval.new []
 
-    cass_client = mock("Cassandra Client")
-    Hastur::Service::Retrieval.cass_client = cass_client
+    # For now, fake a full Cass client.  Eventually all mocking should
+    # be done through Hastur::Cassandra.
+    @cass_client = mock("Cassandra Client")
+    Hastur::Service::Retrieval.cass_client = @cass_client
 
     # Supply fake agent registrations
     packed1 = [FAKE_TS1].pack("Q>")
     packed2 = [FAKE_TS2].pack("Q>")
-    cass_client.stubs(:each).with(:RegAgentArchive).
+    @cass_client.stubs(:each).with(:RegAgentArchive).
       multiple_yields([A1UUID, { packed1 => AGENT_REG_1 }],
                       [A2UUID, { packed2 => AGENT_REG_2 }])
 
@@ -89,6 +111,34 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     array = get_response_hash "/api/node/#{A1UUID}"
 
     assert array.size == 1, "Must return an array of one response, not #{array.inspect}"
+    assert array[0].has_key?("hostname"), "Returned response must have key 'hostname'"
+  end
+
+  INFO_OHAI = {
+    A1UUID => {
+      "info_ohai" => {
+        nil => {
+          FAKE_TS1 => INFO_OHAI_1,
+        }
+      }
+    },
+    A2UUID => {
+      "info_ohai" => {
+        nil => {
+          FAKE_TS2 => INFO_OHAI_2,
+        }
+      }
+    },
+  }
+
+  def test_node_uuid_ohai
+    Hastur::Cassandra.expects(:get).with(anything, [A1UUID, A2UUID], "info_ohai",
+                                         FAKE_TS1, FAKE_TS2, :count => 1).
+      returns(INFO_OHAI)
+    array = get_response_hash "/api/node/#{A1UUID},#{A2UUID}/ohai?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+
+    assert array.size == 2, "Must return two pieces of Ohai data"
+    assert array.map { |ohai| ohai["uuid"] }.sort == [A1UUID, A2UUID], "Must have Ohai data for both UUIDs!"
   end
 
 end
