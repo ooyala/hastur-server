@@ -215,56 +215,6 @@ module Hastur
       end
 
       #
-      # @!method /api/app/:app/name
-      #
-      # Retrieves a list of message names for a particular application
-      #
-      # @param app URL-encoded application name (required)
-      #
-      get "/api/app/:app/name" do
-        start_ts, end_ts = get_start_end :one_day
-        uuids = Hastur::Cassandra.lookup_by_key cass_client, :app_name, start_ts, end_ts
-
-        # TODO(noah): correct for schema.rb's output format
-        h = {}
-        Hastur::Cassandra.current_schemas.keys.each do |type|
-          data = Hastur::Cassandra.get(cass_client, uuids, type, start_ts, end_ts, :consistency => 1)
-          data.each do |k, v|
-            h[k] = {
-              :message_data => "#{root_uri}/api/data/app/#{CGI.escape(params[:app])}/type/#{type}/name/#{k}"
-            } unless k.nil?
-          end
-        end
-
-        json h
-      end
-
-      #
-      # @!method /api/name
-      #
-      # Get a list of name resources that have been seen in the last 24-48 hours,
-      # with a list of what UUIDs it has been seen on.
-      #
-      # @return [Hash{String=>URI}]
-      #
-      get "/api/name" do
-        start_ts, end_ts = get_start_end :day
-        names = Hastur::Cassandra.lookup_by_key cass_client, :name, start_ts, end_ts
-
-        # TODO: more services for a given name
-        # TODO: fix for output format
-
-        data = {}
-        names.each do |name,|
-          data[name] = {
-            :name => name,
-          }
-        end
-
-        json data
-      end
-
-      #
       # @!method /api/data/:format
       #
       # Try to retrieve all Hastur messages, everywhere.  Fail with status 400.
