@@ -21,6 +21,9 @@
 #
 
 require "httparty"
+require "hastur/api"
+
+BASE_URL = "http://hastur.ooyala.com/api"
 
 class Hstat
   include HTTParty
@@ -41,17 +44,33 @@ class Hstat
       %w[stat net.dev loadavg diskstats].each do |name|
         @threads << Thread.new do
           begin
+            Thread.current[:finish] = Hastur.timestamp
+            Thread.current[:start] = Thread.current[:finish] - 60_000_000
+
             loop do
-              req = HTTParty.get("http://hastur.ooyala.com/api/node/#{uuid}/data/compound/linux.proc.#{name}?count=1&ago=five_minutes")
-              data = MultiJson.load(req.body)
-              @mutex.synchronize do
-                @stats[uuid] ||= {}
-                @stats[uuid][name] = data
+              stat_name = "linux.proc.#{name}"
+
+              req = HTTParty.get("#{BASE_URL}/node/#{uuid}/data/compound/#{stat_name}?start=#{Thread.current[:start]}&end=#{Thread.current[:finish]}&count=1")
+
+              if req.code.between? 200, 299
+                data = MultiJson.load(req.body)
+
+                if data.has_key? "data" and data["data"].has_key? "compound"
+                  @mutex.synchronize do
+                    @stats[uuid] ||= {}
+                    @stats[uuid][name] = data
+                  end
+
+                  Thread.current[:start] = data["data"]["compound"][stat_name].keys.first.to_i + 9_000_000
+                end
+
+                Thread.current[:finish] = Hastur.timestamp
               end
               sleep 2
             end
           rescue Exception => e
             STDERR.puts "exception: #{e}"
+            STDERR.puts "exception: #{e.backtrace}"
           end
         end
         sleep 0.2
@@ -125,48 +144,50 @@ loop do
   current = mkhash(uuids, STAT_KEYS)
 
   hstat.uuids do |uuid,stats|
-    if stats["net.dev"]
-      tskey = stats["net.dev"]["data"]["compound"]["linux.proc.net.dev"].keys.first
-      eth0  = stats["net.dev"]["data"]["compound"]["linux.proc.net.dev"][tskey]["eth0"]
+    if stats.kind_of? Hash
+      if stats["net.dev"].inspect.length > 100
+        tskey = stats["net.dev"]["data"]["compound"]["linux.proc.net.dev"].keys.first
+        eth0  = stats["net.dev"]["data"]["compound"]["linux.proc.net.dev"][tskey]["eth0"]
 
-      current[uuid][:eth0_ts] = tskey.to_i
-      current[uuid][:eth0_recv] = eth0[0]
-      current[uuid][:eth0_send] = eth0[8]
+        current[uuid][:eth0_ts] = tskey.to_i
+        current[uuid][:eth0_recv] = eth0[0]
+        current[uuid][:eth0_send] = eth0[8]
 
-      if current[uuid][:eth0_ts] > previous[uuid][:eth0_ts]
-        count[uuid][:eth0]         = count[uuid][:eth0] + 1
-        diffs[uuid][:eth0_ts]      = current[uuid][:eth0_ts]
-        diffs[uuid][:eth0_elapsed] = current[uuid][:eth0_ts]   - previous[uuid][:eth0_ts]
-        diffs[uuid][:eth0_recv]    = current[uuid][:eth0_recv] - previous[uuid][:eth0_recv]
-        diffs[uuid][:eth0_send]    = current[uuid][:eth0_send] - previous[uuid][:eth0_send]
-      end
-    end
-
-    if stats["loadavg"]
-      lavg = stats["loadavg"]["data"]["compound"]["linux.proc.loadavg"].values.first
-      diffs[uuid][:load_1min] = lavg[0]
-      diffs[uuid][:load_5min] = lavg[1]
-      diffs[uuid][:load_15min] = lavg[2]
-    end
-
-    if stats["diskstats"]
-      tskey = stats["diskstats"]["data"]["compound"]["linux.proc.diskstats"].keys.first
-      disks = stats["diskstats"]["data"]["compound"]["linux.proc.diskstats"][tskey]
-
-      disks.each do |device,values|
-        next unless device =~ /\A(?:sd|vd|xvd|hd)[a-z]\Z/
-        current[uuid][:iops_read]  = current[uuid][:iops_read]  + disks[device][0]
-        current[uuid][:iops_write] = current[uuid][:iops_write] + disks[device][7]
+        if current[uuid][:eth0_ts] > previous[uuid][:eth0_ts]
+          count[uuid][:eth0]         = count[uuid][:eth0] + 1
+          diffs[uuid][:eth0_ts]      = current[uuid][:eth0_ts]
+          diffs[uuid][:eth0_elapsed] = current[uuid][:eth0_ts]   - previous[uuid][:eth0_ts]
+          diffs[uuid][:eth0_recv]    = current[uuid][:eth0_recv] - previous[uuid][:eth0_recv]
+          diffs[uuid][:eth0_send]    = current[uuid][:eth0_send] - previous[uuid][:eth0_send]
+        end
       end
 
-      current[uuid][:iops_ts] = tskey.to_i
+      if stats["loadavg"].inspect.length > 100
+        lavg = stats["loadavg"]["data"]["compound"]["linux.proc.loadavg"].values.first
+        diffs[uuid][:load_1min] = lavg[0]
+        diffs[uuid][:load_5min] = lavg[1]
+        diffs[uuid][:load_15min] = lavg[2]
+      end
 
-      if current[uuid][:iops_ts] > previous[uuid][:iops_ts]
-        count[uuid][:iops]         = count[uuid][:iops] + 1
-        diffs[uuid][:iops_ts]      = current[uuid][:iops_ts]
-        diffs[uuid][:iops_elapsed] = current[uuid][:iops_ts]    - previous[uuid][:iops_ts]
-        diffs[uuid][:iops_read]    = current[uuid][:iops_read]  - previous[uuid][:iops_read]
-        diffs[uuid][:iops_write]   = current[uuid][:iops_write] - previous[uuid][:iops_write]
+      if stats["diskstats"].inspect.length > 100
+        tskey = stats["diskstats"]["data"]["compound"]["linux.proc.diskstats"].keys.first
+        disks = stats["diskstats"]["data"]["compound"]["linux.proc.diskstats"][tskey]
+
+        disks.each do |device,values|
+          next unless device =~ /\A(?:sd|vd|xvd|hd)[a-z]\Z/
+          current[uuid][:iops_read]  = current[uuid][:iops_read]  + disks[device][0]
+          current[uuid][:iops_write] = current[uuid][:iops_write] + disks[device][7]
+        end
+
+        current[uuid][:iops_ts] = tskey.to_i
+
+        if current[uuid][:iops_ts] > previous[uuid][:iops_ts]
+          count[uuid][:iops]         = count[uuid][:iops] + 1
+          diffs[uuid][:iops_ts]      = current[uuid][:iops_ts]
+          diffs[uuid][:iops_elapsed] = current[uuid][:iops_ts]    - previous[uuid][:iops_ts]
+          diffs[uuid][:iops_read]    = current[uuid][:iops_read]  - previous[uuid][:iops_read]
+          diffs[uuid][:iops_write]   = current[uuid][:iops_write] - previous[uuid][:iops_write]
+        end
       end
     end
   end
