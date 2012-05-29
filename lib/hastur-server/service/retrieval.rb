@@ -641,13 +641,13 @@ module Hastur
         #
         def get_last_agent_registrations
           last_registrations = {}
+          # TODO(noah): Move this into schema.rb
           cass_client.each(:RegAgentArchive) do |r, c|
             uuid = r[0..35]
             last = last_registrations[uuid]
             last_timestamp = last[:timestamp] if last
             last_value = last[:value] if last
             c.each do |col_key, value|
-              next if col_key == "last_access" || col_key == "last_write"
               timestamp = col_key[-8..-1].unpack("Q>")[0]
               if !last_timestamp || timestamp > last_timestamp
                 hash = MultiJson.decode(value)
