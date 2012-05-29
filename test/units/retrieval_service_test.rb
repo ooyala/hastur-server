@@ -152,11 +152,27 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
 
   def test_app_app
     Hastur::Cassandra.expects(:lookup_by_key).with(anything, :app_name, FAKE_TS1, FAKE_TS2).
-      returns({ "app_name-37-#{A1UUID}" => "", "other_app-#{A2UUID}" => "" })
+      returns({
+                "app_name-37-#{A1UUID}" => "",
+                "app_name-37-#{A2UUID}" => "",
+                "other_app-#{A2UUID}" => "",
+                "third$%app-#{A1UUID}" => "",
+                "fourthapp-#{A3UUID}" => "",
+              })
 
-    array = get_response_hash "/api/app/other_app?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
-    assert array.size == 1, "Must only return one app name"
-    assert array[0]["app"] == "other_app", "Must return correct app name"
+    array = get_response_hash "/api/app/other_app,app_name-37,third%24%25app,not_an_app?" +
+      "start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+    assert_equal 4, array.size, "Must return four app names"
+
+    # Sort by app name
+    sorted = array.sort { |a, b| a["app"] <=> b["app"] }
+
+    # Sorted, the four names are: app_name-37, not_an_app, other_app, third$%app
+
+    assert_equal [ A1UUID, A2UUID ], sorted[0]["nodes"], "Must have two UUIDs for app_name-37"
+    assert_equal [], sorted[1]["nodes"], "Must have no UUIDs for not_an_app"
+    assert_equal [ A2UUID ], sorted[2]["nodes"], "Must have one UUID for other_app"
+    assert_equal [ A1UUID ], sorted[3]["nodes"], "Must have one UUID for third$%app"
   end
 
 end

@@ -190,13 +190,22 @@ module Hastur
       #
       get "/api/app/:app" do
         start_ts, end_ts = get_start_end :one_day
-        uuids = Hastur::Cassandra.lookup_by_key cass_client, :app_name, start_ts, end_ts
+        app_name_data = Hastur::Cassandra.lookup_by_key cass_client, :app_name, start_ts, end_ts
+
+        uuids_by_app_name = {}
+        app_name_data.each do |col_key, _|
+          app_name = col_key[0..-38]
+          uuid = col_key[-36..-1]
+
+          uuids_by_app_name[app_name] ||= []
+          uuids_by_app_name[app_name] << uuid
+        end
 
         array = params[:app].split(",").map do |app|
           bare_app = CGI.unescape(app)
           {
             :app             => bare_app,
-            :nodes           => uuids,
+            :nodes           => uuids_by_app_name[bare_app] || [],
             :message_names   => "#{root_uri}/api/app/#{CGI.escape(params[:app])}/name",
             :message_data    => "#{root_uri}/api/data/app/#{CGI.escape(params[:app])}/message",
           }
