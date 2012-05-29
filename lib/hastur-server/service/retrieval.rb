@@ -43,7 +43,7 @@ module Hastur
       # of the values, so for example, "stat" will get you all counters, gauges, and marks.
       #
       TYPES = {
-        :stat         => %w[counter gauge mark],
+        :stat         => %w[counter gauge mark compound],
         :heartbeat    => %w[hb_process hb_agent hb_pluginv1],
         :event        => %w[event],
         :log          => %w[log],
@@ -129,8 +129,8 @@ module Hastur
             {
               :hostname => registration_hash["json"]["hostname"],
               :ipv4     => registration_hash["json"]["ipv4"],
-              :data     => "#{root_uri}/api/data/node/#{params[:uuid]}/data",
-              :ohai     => "#{root_uri}/api/node/#{params[:uuid]}/ohai",
+              :data     => "#{root_uri}/api/data/node/#{uuid}/data",
+              :ohai     => "#{root_uri}/api/node/#{uuid}/ohai",
             }
           end
         end
@@ -155,6 +155,21 @@ module Hastur
         end
 
         json h
+      end
+
+      #
+      # @!method /api/node/:uuid/ohai
+      #
+      # Retrieve Ohai system information.
+      # See: http://wiki.opscode.com/display/chef/Ohai
+      #
+      # @param uuid UUID to query for (required)
+      #
+      get "/api/node/:uuid/ohai" do
+        start_ts, end_ts = get_start_end :day
+        data = Hastur::Cassandra.get(cass_client, params[:uuid], "info_ohai", start_ts, end_ts, :count => 1)
+        # deserialize & reserialize so the json options can be applied
+        json MultiJson.load(smoosh(data))
       end
 
       #
@@ -527,6 +542,17 @@ module Hastur
         end
 
         #
+        # Pull the first non-hash value in a deep hash, effectively smooshing it.
+        #
+        def smoosh(data)
+          cur = data
+          while cur.respond_to? :keys
+            cur = cur[cur.keys.first]
+          end
+          cur
+        end
+
+        #
         # Retrieves a list of registered agents. Periodically refreshes the registrations
         # depending on how long ago the last refresh was.
         #
@@ -566,7 +592,7 @@ module Hastur
         def json(content)
           json_options = {}
 
-          if params[:pretty] or not request.xhr?
+          unless %w[0 false no].include?(params[:pretty]) or request.xhr?
             json_options[:pretty] = true
           end
 

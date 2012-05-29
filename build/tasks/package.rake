@@ -350,6 +350,7 @@ namespace :hastur do
       "--name",          "hastur-server",
       "--provides",      "hastur-server",
       "--replaces",      "hastur-agent",
+      "--after-install", File.join(PROJECT_TOP, 'build', 'scripts', 'after-install-server.sh'),
     ].flatten
 
     run_required FPM, command, PATHS[:prefix] do

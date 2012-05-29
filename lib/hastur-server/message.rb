@@ -22,7 +22,6 @@ module Hastur
       class Agent    < Simple ; end
       class Process  < Simple ; end
       class PluginV1 < Simple ; end
-      class Facter   < Simple ; end
     end
     module HB
       class Agent    < Simple ; end
@@ -33,10 +32,12 @@ module Hastur
       class Mark     < Simple ; end
       class Gauge    < Simple ; end
       class Counter  < Simple ; end
+      class Compound < Simple ; end
     end
     module Info
       class Process  < Simple ; end
       class Agent    < Simple ; end
+      class Ohai     < Simple ; end
     end
 
     CLASS_TYPE_IDS = {
@@ -50,11 +51,11 @@ module Hastur
       Hastur::Message::Stat::Mark     => 10,
       Hastur::Message::Stat::Gauge    => 11,
       Hastur::Message::Stat::Counter  => 12,
+      Hastur::Message::Stat::Compound => 13,
       # registrations
       Hastur::Message::Reg::Agent     => 20,
       Hastur::Message::Reg::Process   => 21,
       Hastur::Message::Reg::PluginV1  => 22,
-      Hastur::Message::Reg::Facter    => 23,
       # heartbeats
       Hastur::Message::HB::Agent      => 30,
       Hastur::Message::HB::Process    => 31,
@@ -64,6 +65,7 @@ module Hastur
       # info
       Hastur::Message::Info::Process  => 50,
       Hastur::Message::Info::Agent    => 51,
+      Hastur::Message::Info::Ohai     => 52,
     }.freeze
 
     TYPE_ID_CLASSES = CLASS_TYPE_IDS.invert.freeze
@@ -77,6 +79,7 @@ module Hastur
       :mark         => Hastur::Message::Stat::Mark,
       :gauge        => Hastur::Message::Stat::Gauge,
       :counter      => Hastur::Message::Stat::Counter,
+      :compound     => Hastur::Message::Stat::Compound,
       :reg_agent    => Hastur::Message::Reg::Agent,
       :reg_process  => Hastur::Message::Reg::Process,
       :reg_pluginv1 => Hastur::Message::Reg::PluginV1,
@@ -86,6 +89,7 @@ module Hastur
       :cmd_pluginv1 => Hastur::Message::Cmd::PluginV1,
       :info_agent   => Hastur::Message::Info::Agent,
       :info_process => Hastur::Message::Info::Process,
+      :info_ohai    => Hastur::Message::Info::Ohai,
     }.freeze
 
     CLASS_SYMBOLS = SYMBOL_CLASSES.invert.freeze

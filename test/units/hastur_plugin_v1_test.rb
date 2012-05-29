@@ -2,10 +2,10 @@
 require_relative "../test_helper"
 
 require 'minitest/autorun'
-require 'hastur-server/plugin/v1'
+require 'hastur-server/agent/plugin_v1_exec'
 require 'hastur-server/libc_ffi'
 
-class TestHasturPluginV1Module < MiniTest::Unit::TestCase
+class TestHasturAgentPluginV1ExecModule < MiniTest::Unit::TestCase
   PLUGIN_PATH = File.join(File.dirname(__FILE__), "plugins")
 
   def setup
@@ -21,9 +21,9 @@ class TestHasturPluginV1Module < MiniTest::Unit::TestCase
   end
 
   def run_plugin(name, args=[], should_succeed=true)
-    p = Hastur::Plugin::V1.new(File.join(PLUGIN_PATH, name), args, "my_name")
+    p = Hastur::Agent::PluginV1Exec.new(File.join(PLUGIN_PATH, name), args, "my_name")
 
-    pid = p.run 
+    pid = p.run
     assert pid > 1, "p.run should return a pid"
 
     loop do
@@ -34,7 +34,7 @@ class TestHasturPluginV1Module < MiniTest::Unit::TestCase
         sleep 0.1
       end
     end
-    
+
     h = p.to_hash
     assert_equal "my_name", h[:name]
   end

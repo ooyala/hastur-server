@@ -1,7 +1,7 @@
 # To run: "cat create_keyspace.cass | grep -v \# | cassandra-cli -h localhost"
 
 CREATE KEYSPACE Hastur
-  with with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
+  with placement_strategy = 'org.apache.cassandra.locator.SimpleStrategy'
   and strategy_options = {replication_factor:2};
 USE Hastur;
 
@@ -17,6 +17,10 @@ CREATE COLUMN FAMILY CounterArchive
   and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY MarkArchive
+  with comparator='BytesType(reversed=true)'
+  and compression_options = null
+  and compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY CompoundArchive
   with comparator='BytesType(reversed=true)'
   and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
@@ -64,6 +68,10 @@ CREATE COLUMN FAMILY InfoAgentArchive
   with comparator='BytesType(reversed=true)'
   and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY InfoOhaiArchive
+  with comparator='BytesType(reversed=true)'
+  and compression_options = null
+  and compaction_strategy = 'LeveledCompactionStrategy';
 
 # Per-UUID Full-granularity Hastur messages,
 # only name, timestamp and value.
@@ -78,6 +86,10 @@ CREATE COLUMN FAMILY StatGauge
   and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 CREATE COLUMN FAMILY StatMark
+  with comparator='BytesType(reversed=true)'
+  and compression_options = null
+  and compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY StatCompound
   with comparator='BytesType(reversed=true)'
   and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
@@ -104,6 +116,9 @@ CREATE COLUMN FAMILY CounterMetadata
   with compaction_strategy = 'LeveledCompactionStrategy'
   and compression_options = null;
 CREATE COLUMN FAMILY MarkMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
+CREATE COLUMN FAMILY CompoundMetadata
   with compaction_strategy = 'LeveledCompactionStrategy'
   and compression_options = null;
 CREATE COLUMN FAMILY LogMetadata
@@ -137,6 +152,9 @@ CREATE COLUMN FAMILY InfoProcessMetadata
   with compaction_strategy = 'LeveledCompactionStrategy'
   and compression_options = null;
 CREATE COLUMN FAMILY InfoAgentMetadata
+  with compaction_strategy = 'LeveledCompactionStrategy'
+  and compression_options = null;
+CREATE COLUMN FAMILY InfoOhaiMetadata
   with compaction_strategy = 'LeveledCompactionStrategy'
   and compression_options = null;
 
