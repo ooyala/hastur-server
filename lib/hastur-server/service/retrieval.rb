@@ -421,14 +421,15 @@ module Hastur
 
           output = {}
 
-          if params["output"] == "value" || params["output"] == "message"
-
+          if ["value", "message", "count"].include?(params["output"])
             # Hastur::Cassandra.get returns the following format:
-            # { :uuid => { :type => { :name => { :timestamp => value/object } } } }
+            #   { :uuid => { :type => { :name => { :timestamp => value/object } } } }
+            # This REST API returns:
+            #   { :uuid => { :name => { :timestamp => value/object } } }
             values.each do |uuid, hash1|
               output[uuid] = {}
               hash1.each do |type, hash2|
-                # This will return a structure without the names.
+                # This will return a structure without the types.
                 output[uuid].merge!(hash2)
               end
             end
