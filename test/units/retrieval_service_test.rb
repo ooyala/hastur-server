@@ -181,13 +181,43 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     Hastur::Cassandra.expects(:get).with(anything, [A1UUID], TYPES[:all], FAKE_TS1, FAKE_TS2, {}).
       returns({
                 A1UUID => {
-                  nil => {
-                    FAKE_TS1 => AGENT_REG_1,
+                  "reg_agent" => {
+                    "" => {
+                      FAKE_TS1 => AGENT_REG_1,
+                    }
                   }
                 }
               })
 
     hash = get_response_data "/api/data/node/#{A1UUID}/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+
+    assert_equal( { A1UUID => { "" => { FAKE_TS1.to_s => AGENT_REG_1 } } }, hash )
   end
+
+  def test_retrieval_multiple_types
+    Hastur::Cassandra.expects(:get).with(anything, [A1UUID],
+                                         TYPES[:stat] + TYPES[:event] + TYPES[:heartbeat],
+                                         FAKE_TS1, FAKE_TS2, {}).
+      returns({
+                A1UUID => {
+                  "reg_agent" => {
+                    "" => {
+                      FAKE_TS1 => AGENT_REG_1,
+                    }
+                  }
+                }
+              })
+
+    hash = get_response_data "/api/data/node/#{A1UUID}/type/stat,event,heartbeat/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+  end
+
+
+  # Next TODOs:
+  #   * test specifying types
+  #   * test name prefixes
+  #   * test UUID lists
+  #   * test output formats
+  #   * test reversed, limit, consistency - Cassandra options
+  #   * test count_columns, incl. in cass_schema_test
 
 end
