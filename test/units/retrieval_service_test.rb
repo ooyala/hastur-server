@@ -51,6 +51,19 @@ INFO_OHAI_2 = <<JSON
 }
 JSON
 
+EVENT_1 = <<JSON
+{
+  "uuid"      : "#{A1UUID}",
+  "type"      : "event",
+  "name"      : "live.universe.everything",
+  "subject"   : "42",
+  "body"      : "The secret to Life, The Universe, and Everything! has been discovered. The universe will now be replaced.",
+  "attn"      : [ "root@localhost", "5555555555@message.text.com" ],
+  "timestamp" : #{FAKE_TS1},
+  "labels"    : { "fake": "true", "maybe": "what is 6 times 7?" }
+}
+JSON
+
 class RetrievalServiceTest < MiniTest::Unit::TestCase
   include Rack::Test::Methods
 
@@ -208,13 +221,29 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
                 }
               })
 
-    hash = get_response_data "/api/data/node/#{A1UUID}/type/stat,event,heartbeat/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+    hash = get_response_data "/api/data/node/#{A1UUID}/type/stat,event,heartbeat" +
+      "/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
   end
 
+  def test_retrieval_name_prefix
+    Hastur::Cassandra.expects(:get).with(anything, [A1UUID], ["event"],
+                                         FAKE_TS1, FAKE_TS2, { :name_prefix => "live" }).
+      returns({
+                A1UUID => {
+                  "event" => {
+                    "live.universe.everything" => {
+                      FAKE_TS1 => EVENT_1,
+                    }
+                  }
+                }
+              })
+
+    hash = get_response_data "/api/data/node/#{A1UUID}/type/event/name" +
+      "/live*/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+  end
 
   # Next TODOs:
-  #   * test specifying types
-  #   * test name prefixes
+  #   * test multiple names/prefixes (fix them!)
   #   * test UUID lists
   #   * test output formats
   #   * test reversed, limit, consistency - Cassandra options
