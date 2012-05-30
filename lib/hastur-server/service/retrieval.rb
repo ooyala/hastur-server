@@ -119,23 +119,25 @@ module Hastur
       # Retrieves meta-data on particular node(s).  Returns an array
       # of hashes with hostname, UUID and other data.
       #
+      # @todo Figure out if there's any reason to have this instead of querying registrations
       # @param uuid UUID to query for (required)
       #
       get "/api/node/:uuid" do
-        registrations = get_registrations
+        h = {}
+        start_ts, end_ts = get_start_end :one_day
+        uuid_hash = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
 
         uuids = params[:uuid].split(",")
-        registrations = uuids.map { |uuid| registrations[uuid] }.compact
+        registrations = uuids & uuid_hash.keys
 
         if registrations.empty?
-          error 404, "None of #{params[:uuid]} are registered."
+          error 404, "None of #{params[:uuid]} have logged messages recently."
         else
-          array = registrations.map do |registration_hash|
+          array = registrations.map do |uuid|
             {
-              :hostname => registration_hash["json"]["hostname"],
-              :ipv4     => registration_hash["json"]["ipv4"],
-              :data     => "#{root_uri}/api/data/node/#{registration_hash["uuid"]}/message",
-              :ohai     => "#{root_uri}/api/node/#{registration_hash["uuid"]}/ohai",
+              :registration_data => "#{root_uri}/api/data/node/#{uuid}/type/reg_agent,reg_process/message",
+              :message_data      => "#{root_uri}/api/data/node/#{uuid}/message",
+              :ohai              => "#{root_uri}/api/node/#{uuid}/ohai",
             }
           end
 

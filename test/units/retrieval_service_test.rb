@@ -89,14 +89,6 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     @cass_client = mock("Cassandra Client")
     Hastur::Service::Retrieval.cass_client = @cass_client
 
-    # Supply fake agent registrations.
-    # We should stop using the "enumerate all registrations" bit, too.
-    packed1 = [FAKE_TS1].pack("Q>")
-    packed2 = [FAKE_TS2].pack("Q>")
-    @cass_client.stubs(:each).with(:RegAgentArchive).
-      multiple_yields([A1UUID, { packed1 => AGENT_REG_1 }],
-                      [A2UUID, { packed2 => AGENT_REG_2 }])
-
     app
   end
 
@@ -138,10 +130,14 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
   end
 
   def test_node_uuid
-    array = get_response_data "/api/node/#{A1UUID}"
+    Hastur::Cassandra.expects(:lookup_by_key).with(anything, :uuid, FAKE_TS1, FAKE_TS2).
+      returns({ A1UUID => "", A2UUID => "" })
 
-    assert array.size == 1, "Must return an array of one response, not #{array.inspect}"
-    assert array[0].has_key?("hostname"), "Returned response must have key 'hostname'"
+    array = get_response_data "/api/node/#{A1UUID}?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+
+    assert_equal 1, array.size, "Must return an array of one response, not #{array.inspect}"
+    assert array[0].keys.sort == [ "message_data", "ohai", "registration_data" ],
+      "Returned response must link to appropriate services!"
   end
 
   INFO_OHAI = {
