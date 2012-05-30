@@ -506,33 +506,6 @@ module Hastur
         end
 
         #
-        # Pull the first non-hash value in a deep hash, effectively smooshing it.
-        #
-        def smoosh(data)
-          cur = data
-          while cur.respond_to? :keys
-            cur = cur[cur.keys.first]
-          end
-          cur
-        end
-
-        #
-        # Retrieves a list of registered agents. Periodically refreshes the registrations
-        # depending on how long ago the last refresh was.
-        #
-        # Defaults to refreshing every five minutes.
-        #
-        def get_registrations
-          @last_registration_update ||= 0
-          # periodically update registrations
-          if Time.now.to_i - @last_registration_update > 5*60 || @registrations == nil
-            @registrations = get_last_agent_registrations
-            @last_registration_update = ::Time.now.to_i
-          end
-          @registrations
-        end
-
-        #
         # Get a Cassandra client
         # @return [Cassandra] cassandra client object
         #
@@ -578,43 +551,6 @@ module Hastur
         def stub!(route = "unspecified")
           error 405, "this route (#{route}) is just a stub and is not implemented yet"
         end
-
-        #
-        # Grabs the most recent registartions from Cassandra and returns them as
-        # a hash of hashes:
-        #
-        #     {uuid => reg_hash, uuid2 => reg_hash2, ...}
-        #
-        # Normally the filter parameter will be used to restrict which type(s)
-        # of registrations are returned.
-        #
-        # @todo Move this into schema.rb and/or replace it with something less horrible.
-        # @todo Use some kind of real registration rollups instead of querying every reg!
-        #
-        # @param [Hash] filter The fuzzy_filter hash to restrict registrations returned
-        # @param [Hash] The lastest registrations per agent uuid
-        #
-        def get_last_agent_registrations
-          last_registrations = {}
-          # TODO(noah): Move this into schema.rb
-          cass_client.each(:RegAgentArchive) do |r, c|
-            uuid = r[0..35]
-            last = last_registrations[uuid]
-            last_timestamp = last[:timestamp] if last
-            last_value = last[:value] if last
-            c.each do |col_key, value|
-              timestamp = col_key[-8..-1].unpack("Q>")[0]
-              if !last_timestamp || timestamp > last_timestamp
-                hash = MultiJson.decode(value)
-                last_timestamp = timestamp
-                last_value = hash
-              end
-            end
-            last_registrations[uuid] = { "timestamp" => last_timestamp, "json" => last_value } if last_value
-          end
-          last_registrations
-        end
-
       end
 
       def initialize(cassandra_uris)
