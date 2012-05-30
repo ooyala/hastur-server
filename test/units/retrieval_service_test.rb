@@ -89,7 +89,8 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     @cass_client = mock("Cassandra Client")
     Hastur::Service::Retrieval.cass_client = @cass_client
 
-    # Supply fake agent registrations
+    # Supply fake agent registrations.
+    # We should stop using the "enumerate all registrations" bit, too.
     packed1 = [FAKE_TS1].pack("Q>")
     packed2 = [FAKE_TS2].pack("Q>")
     @cass_client.stubs(:each).with(:RegAgentArchive).
@@ -127,7 +128,10 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
   end
 
   def test_node
-    hash = get_response_data "/api/node"
+    Hastur::Cassandra.expects(:lookup_by_key).with(anything, :uuid, FAKE_TS1, FAKE_TS2).
+      returns({ A1UUID => "", A2UUID => "" })
+
+    hash = get_response_data "/api/node?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
 
     assert hash.keys.include?(A1UUID), "/api/node must include first UUID"
     assert hash.keys.include?(A2UUID), "/api/node must include second UUID, hash: #{hash.inspect}"
