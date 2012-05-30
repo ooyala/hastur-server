@@ -33,7 +33,6 @@ ack_socket = Hastur::Util.connect_socket(ctx, ::ZMQ::PUSH, opts[:acks_to].flatte
 
 puts "Connecting to Cassandra at #{opts[:cassandra].flatten.inspect}"
 client = Cassandra.new(opts[:keyspace], opts[:cassandra].flatten)
-client.default_write_consistency = 2  # Initial default: 1
 
 @running = true
 %w(INT TERM KILL).each do | sig |
