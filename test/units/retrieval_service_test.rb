@@ -84,8 +84,8 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     # Supply no URIs for Cassandra
     app = Hastur::Service::Retrieval.new []
 
-    # For now, fake a full Cass client.  Eventually all mocking should
-    # be done through Hastur::Cassandra.
+    # Fake a Cassandra client.  We mock to avoid
+    # using it, though.
     @cass_client = mock("Cassandra Client")
     Hastur::Service::Retrieval.cass_client = @cass_client
 
