@@ -64,6 +64,19 @@ EVENT_1 = <<JSON
 }
 JSON
 
+EVENT_2 = <<JSON
+{
+  "uuid"      : "#{A1UUID}",
+  "type"      : "event",
+  "name"      : "dead.universe.everything",
+  "subject"   : "42.5",
+  "body"      : "The secret to Death, The Universe, and Everything! has been discovered. The universe will now be replaced.",
+  "attn"      : [ "root@localhost", "5555555555@message.text.com" ],
+  "timestamp" : #{FAKE_TS2},
+  "labels"    : { "fake": "true", "maybe": "what is 6 times 1347?" }
+}
+JSON
+
 class RetrievalServiceTest < MiniTest::Unit::TestCase
   include Rack::Test::Methods
 
@@ -204,7 +217,8 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
 
     hash = get_response_data "/api/data/node/#{A1UUID}/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
 
-    assert_equal( { A1UUID => { "" => { FAKE_TS1.to_s => AGENT_REG_1 } } }, hash )
+    assert_equal( { A1UUID => { "" => { FAKE_TS1.to_s => AGENT_REG_1 } },
+                    "count" => 1, "uuid_count" => 1, "name_count" => 1 }, hash )
   end
 
   def test_retrieval_multiple_types
@@ -242,9 +256,40 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
       "/live*/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
   end
 
+  def test_retrieval_multiple_name_prefix
+    Hastur::Cassandra.expects(:get).with(anything, [A1UUID, A2UUID], ["event"],
+                                         FAKE_TS1, FAKE_TS2, { :name_prefix => "live" }).
+      returns({
+                A1UUID => {
+                  "event" => {
+                    "live.universe.everything" => {
+                      FAKE_TS1 => EVENT_1,
+                    }
+                  }
+                }
+              })
+
+    Hastur::Cassandra.expects(:get).with(anything, [A1UUID, A2UUID], ["event"],
+                                         FAKE_TS1, FAKE_TS2, { :name_prefix => "dead" }).
+      returns({
+                A2UUID => {
+                  "event" => {
+                    "dead.universe.everything" => {
+                      FAKE_TS2 => EVENT_2,
+                    }
+                  }
+                }
+              })
+
+    Hastur::Cassandra.expects(:get).with(anything, [A1UUID, A2UUID], ["event"],
+                                         FAKE_TS1, FAKE_TS2, { :name => "bobo" }).
+      returns({ })
+
+    hash = get_response_data "/api/data/node/#{A1UUID},#{A2UUID}/type/event/name" +
+      "/live*,bobo,dead*/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+  end
+
   # Next TODOs:
-  #   * test multiple names/prefixes (fix them!)
-  #   * test UUID lists
   #   * test output formats
   #   * test reversed, limit, consistency - Cassandra options
   #   * test count_columns, incl. in cass_schema_test

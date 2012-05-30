@@ -396,7 +396,7 @@ module Hastur
         # "format" - the output format - message, value, count or rollup
         # "uuid" - uuid or list of uuids
         # "type" - type or list of types
-        # "name" - message name or list of message names
+        # "name" - message name or list of message names (can append * for match-all)
         # "reversed" - return results in reverse order - only matters with "limit"
         # "limit" - max number of results to return
         # "consistency" - Cassandra read consistency
@@ -413,8 +413,6 @@ module Hastur
           types = type_list_from_string(params["type"])
           msg_names = params["name"] ? params["name"].split(",") : []
 
-          raise "Not supporting comma-separated list of message names yet!" unless msg_names.size <= 1
-
           cass_options = {}
           cass_options[:reversed] = true if param_is_true("reversed")
           cass_options[:value_only] = true if params["format"] == "value"
@@ -429,37 +427,60 @@ module Hastur
           # here, Cassandra-naming-wise.
           cass_options[:count] = params["limit"].to_i if params["limit"]
 
-          # TODO: support multiple names/prefixes, probably by returning the
-          # whole bucket and postfiltering.
+          name_option_list = []
           if msg_names == []
-            # Do nothing
-          elsif msg_names[0].include?("*")
-            prefix = msg_names[0].split("*", 2)[0]
-            cass_options[:name_prefix] = prefix
+            name_option_list << {}
           else
-            cass_options[:name] = msg_names[0]
+            msg_names.each do |name|
+              if name.include?("*")
+                prefix = name.split("*", 2)[0]
+                name_option_list << { :name_prefix => prefix }
+              else
+                name_option_list << { :name => name }
+              end
+            end
           end
 
           if params["consistency"]
             cass_options[:consistency] = params["consistency"].to_i
           end
 
-          values = Hastur::Cassandra.get(cass_client, uuids, types, start_ts, end_ts, cass_options)
+          values = []
+          name_option_list.each do |name_opts|
+            values << Hastur::Cassandra.get(cass_client, uuids, types,
+                                            start_ts, end_ts, cass_options.merge(name_opts))
+          end
 
           output = {}
+
+          # TODO: add paging - return and reuse last column name in each row?
 
           if ["value", "message", "count"].include?(params["format"])
             # Hastur::Cassandra.get returns the following format:
             #   { :uuid => { :type => { :name => { :timestamp => value/object } } } }
             # This REST API returns:
             #   { :uuid => { :name => { :timestamp => value/object } } }
-            values.each do |uuid, hash1|
-              output[uuid] = {}
-              hash1.each do |type, hash2|
-                # This will return a structure without the types.
-                output[uuid].merge!(hash2)
+
+            sample_count = 0
+            name_count = 0
+
+            values.each do |values_for_name_opts|
+              values_for_name_opts.each do |uuid, hash1|
+                output[uuid] ||= {}
+                hash1.each do |type, hash2|
+                  # Hash2 maps { :name => { :timestamp => value/object } }
+                  # This will return a structure without the types.
+                  output[uuid].merge!(hash2)
+                  name_count += hash2.size
+
+                  sample_count += hash2.values.map(&:size).inject(0, &:+)
+                end
               end
             end
+
+            output["uuid_count"] = output.size
+            output["name_count"] = name_count
+            output["count"] = sample_count
           else
             raise "Unhandled output format #{params["format"]}!"
           end
