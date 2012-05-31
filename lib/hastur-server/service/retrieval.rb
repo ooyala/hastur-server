@@ -551,6 +551,14 @@ module Hastur
         def stub!(route = "unspecified")
           error 405, "this route (#{route}) is just a stub and is not implemented yet"
         end
+
+        #
+        # Implement the Sinatra forward method so bad requests don't try to pass through
+        # to the superclass and return 404 right away.
+        #
+        def forward
+          error 404, "Invalid path: '#{request.path_info}'"
+        end
       end
 
       def initialize(cassandra_uris)
