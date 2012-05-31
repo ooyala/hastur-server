@@ -20,12 +20,17 @@ module Hastur
         File.readlines('/proc/stat').each do |line|
           fields = line.split ' '
           key = fields.shift
-          stats[key] = fields.map(&:to_i)
 
+          # keep CPU numbers in a list
+          if key.start_with?("cpu")
+            stats[key] = fields.map(&:to_i)
           # flatten interrupts to a single value, it's a big list and largely useless as-is
           # without a mapping, but the single value is useful for rate over time
-          if key == "intr"
-            stats[key] = stats[key].inject(&:+)
+          elsif key == "intr" or key == "softirq"
+            stats[key] = fields.map(&:to_i).inject(&:+)
+          # the rest are just single values, store them that way
+          else
+            stats[key] = fields[0].to_i
           end
         end
         stats
