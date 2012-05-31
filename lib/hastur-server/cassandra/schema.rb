@@ -113,7 +113,7 @@ module Hastur
         # Insert into "saw UUID in this time period" row
         client.insert(:LookupByKey, "uuid-#{one_day_ts}", { uuid => "" }, {})
 
-        # Insert into "saw name in this time period" row
+        # Insert into "saw message name in this time period" row
         if schema[:name]
           type_id = Hastur::Message.symbol_to_type_id(schema[:type])
           client.insert(:LookupByKey, "name-#{one_day_ts}", { "#{name}-#{type_id}-#{uuid}" => "" }, {})
