@@ -524,7 +524,7 @@ module Hastur
             json_options[:pretty] = true
           end
 
-          MultiJson.dump content, json_options
+          MultiJson.dump(content, json_options) + "\n"
         end
 
         #
@@ -533,7 +533,7 @@ module Hastur
         #
         def error(code, message)
           headers "statusText" => message
-          halt code, "{\"error\":\"#{message}\"}"
+          halt code, "{\"error\":\"#{message}\"}\n"
         end
 
         #
