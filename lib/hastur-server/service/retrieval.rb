@@ -1,6 +1,6 @@
 require "sinatra/base"
 
-require "cassandra"
+require "cassandra/1.0"
 require "cgi"
 require "hastur/api"
 require "hastur-server/cassandra/rollups"
@@ -43,17 +43,29 @@ module Hastur
       # of the values, so for example, "stat" will get you all counters, gauges, and marks.
       #
       TYPES = {
-        :stat         => %w[counter gauge mark compound],
+        :metric       => %w[counter gauge mark compound],
         :heartbeat    => %w[hb_process hb_agent hb_pluginv1],
         :event        => %w[event],
         :log          => %w[log],
         :error        => %w[error],
         :registration => %w[reg_agent reg_process reg_pluginv1],
-        :info         => %w[info_agent info_process],
+        :info         => %w[info_agent info_process info_ohai],
         :all          => %w[counter gauge mark hb_process hb_agent hb_pluginv1
                             event log error reg_agent reg_process reg_pluginv1
                             info_agent info_process]
       }.freeze
+
+      # TODO(al) use the schema to build these lists
+      TYPES_WITH_VALUES = ["metric", TYPES[:metric], "heartbeat", TYPES[:heartbeat]].flatten.freeze
+      DEFAULT_DAY_BUCKET = ["registration", TYPES[:registration], "info", TYPES[:info]].flatten.freeze
+
+      configure do
+        set :show_exceptions, false
+        error(500) do
+          e = env["sinatra.error"]
+          hastur_error 500, "Server error. Either you found a bug or made a malformed request.", e.backtrace
+        end
+      end
 
       before "" do
         if request['Origin']
@@ -72,11 +84,9 @@ module Hastur
       #
       get "/api" do
         json({
-          :node => "#{root_uri}/api/node",
-          :app  => "#{root_uri}/api/app",
-          :type => "#{root_uri}/api/type",
-          :name => "#{root_uri}/api/name",
-          :data => "#{root_uri}/api/data",
+          :type     => "#{root_uri}/api/type",
+          :app      => "#{root_uri}/api/app",
+          :node     => "#{root_uri}/api/node",
         })
       end
 
@@ -89,77 +99,6 @@ module Hastur
       #
       get "/api/type" do
         json TYPES
-      end
-
-      #
-      # @!method /api/node
-      #
-      # Retrieves a list of currently registered Hastur-enabled nodes
-      #
-      get "/api/node" do
-        h = {}
-        start_ts, end_ts = get_start_end :one_day
-        uuid_hash = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
-
-        uuid_hash.keys.each do |uuid|
-          uuid_hash[uuid] = "#{root_uri}/api/node/#{uuid}"
-        end
-
-        json uuid_hash
-      end
-
-      #
-      # @!method /api/node/:uuid
-      #
-      # Retrieves meta-data on particular node(s).  Returns an array
-      # of hashes with hostname, UUID and other data.
-      #
-      # @todo Figure out if there's any reason to have this instead of querying registrations
-      # @param uuid UUID to query for (required)
-      #
-      get "/api/node/:uuid" do
-        h = {}
-        start_ts, end_ts = get_start_end :one_day
-        uuid_hash = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
-
-        uuids = params[:uuid].split(",")
-        registrations = uuids & uuid_hash.keys
-
-        if registrations.empty?
-          error 404, "None of #{params[:uuid]} have logged messages recently."
-        else
-          array = registrations.map do |uuid|
-            {
-              :registration_data => "#{root_uri}/api/data/node/#{uuid}/type/reg_agent,reg_process/message",
-              :message_data      => "#{root_uri}/api/data/node/#{uuid}/message",
-              :ohai              => "#{root_uri}/api/node/#{uuid}/ohai",
-            }
-          end
-
-          json array
-        end
-      end
-
-      #
-      # @!method /api/node/:uuid/ohai
-      #
-      # Retrieve Ohai system information.
-      # See: http://wiki.opscode.com/display/chef/Ohai
-      #
-      # @param uuid UUID to query for (required)
-      #
-      get "/api/node/:uuid/ohai" do
-        start_ts, end_ts = get_start_end :day
-        uuids = params[:uuid].split(",")
-
-        data = Hastur::Cassandra.get(cass_client, uuids, "info_ohai", start_ts, end_ts, :count => 1)
-
-        array = uuids.map do |uuid|
-          # reserialize so the json options can be applied
-          MultiJson.load(data[uuid]["info_ohai"][nil].values.first)
-        end
-
-        json array
       end
 
       #
@@ -206,10 +145,10 @@ module Hastur
         array = params[:app].split(",").map do |app|
           bare_app = CGI.unescape(app)
           {
-            :app             => bare_app,
-            :nodes           => uuids_by_app_name[bare_app] || [],
-            :message_names   => "#{root_uri}/api/app/#{CGI.escape(params[:app])}/name",
-            :message_data    => "#{root_uri}/api/data/app/#{CGI.escape(params[:app])}/message",
+            :app     => bare_app,
+            :node    => uuids_by_app_name[bare_app] || [],
+            :name    => "#{root_uri}/api/app/#{CGI.escape(params[:app])}/name",
+            :message => "#{root_uri}/api/app/#{CGI.escape(params[:app])}/message",
           }
         end
 
@@ -217,47 +156,73 @@ module Hastur
       end
 
       #
-      # @!method /api/data/:format
+      # @!method /api/data/node
       #
-      # Try to retrieve all Hastur messages, everywhere.  Fail with status 400.
-      # Data requests must specify one or more node UUIDs.
+      # Retrieves a list of currently registered Hastur-enabled nodes
       #
-      get "/api/data/:format" do
-        error 400, "You must specify one or more node UUIDs to query data!"
+      get "/api/node" do
+        h = {}
+        start_ts, end_ts = get_start_end :one_day
+        uuid_hash = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
+
+        uuid_hash.keys.each do |uuid|
+          uuid_hash[uuid] = "#{root_uri}/api/node/#{uuid}"
+        end
+
+        json uuid_hash
       end
 
       #
-      # @!method /api/data/name/:name/:format
+      # @!method /api/node/:uuid/:format
       #
-      # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify one or more node UUIDs.
+      # Retrieve a set of resources for the given UUID. Parameters may be
+      # comma-separated values when specifying multiple of a given item.
       #
-      get "/api/data/name/:name/:format" do
-        error 400, "You must specify one or more node UUIDs to query data!"
+      # @param start Starting timestamp, default 5 minutes ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @param uuid UUID(s) to query for
+      # @param consistency Cassandra read consistency
+      #
+      get "/api/node/:uuid" do
+        start_ts, end_ts = get_start_end :one_day
+        uuids = params[:uuid].split(",")
+
+        # reduce the list of UUID's to those that have been seen in the provided time window
+        # so invalid UUID's passed in on the URI don't cause bad queries
+        seen_uuids = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
+        req_uuids = uuids & seen_uuids.keys
+
+        if req_uuids.empty?
+          hastur_error 404, "None of #{params[:uuid]} have sent any messages recently."
+        else
+          array = req_uuids.map do |uuid|
+            node = {}
+            TYPES.each do |type,subtypes|
+              if TYPES_WITH_VALUES.include?(type.to_s)
+                node[type] = "#{root_uri}/api/node/#{uuid}/type/#{type}/value"
+              else
+                node[type] = "#{root_uri}/api/node/#{uuid}/type/#{type}/message"
+              end
+
+              if type != :all
+                subtypes.each do |subtype|
+                  if TYPES_WITH_VALUES.include?(subtype.to_s)
+                    node["#{type}-#{subtype}"] = "#{root_uri}/api/node/#{uuid}/type/#{subtype}/value"
+                  else
+                    node["#{type}-#{subtype}"] = "#{root_uri}/api/node/#{uuid}/type/#{subtype}/message"
+                  end
+                end
+              end
+            end
+            node
+          end
+          json array
+        end
       end
 
       #
-      # @!method /api/data/type/:type/:format
-      #
-      # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify one or more node UUIDs.
-      #
-      get "/api/data/type/:type/:format" do
-        error 400, "You must specify one or more node UUIDs to query data!"
-      end
-
-      #
-      # @!method /api/data/name/:name/type/:type/:format
-      #
-      # Try to retrieve too many Hastur messages.  Fail with status 400.
-      # Data requests must specify one or more node UUIDs.
-      #
-      get "/api/data/name/:name/type/:type/:format" do
-        error 400, "You must specify one or more node UUIDs to query data!"
-      end
-
-      #
-      # @!method /api/data/node/:uuid/:format
+      # @!method /api/node/:uuid/type/:type/:format
       #
       # Retrieve Hastur messages.  Parameters may be
       # comma-separated values when specifying multiple
@@ -274,73 +239,23 @@ module Hastur
       # @param reversed Return earliest first instead of latest first
       # @param consistency Cassandra read consistency
       #
-      get "/api/data/node/:uuid/:format" do
+      get "/api/node/:uuid/type/:type/:format" do
         query_hastur
       end
 
       #
-      # @!method /api/data/node/:uuid/:format
+      # @!method /api/node/:uuid/:format
+      # @see /api/node/:uuid/type/:type/:format
       #
-      # Retrieve Hastur messages.  Parameters may be
-      # comma-separated values when specifying multiple
-      # of a given item.
-      #
-      # @param format One of "message", "value", "count" or "rollup" for output format
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param ago How many microseconds back to query - an alternative to start/end
-      # @param uuid UUID(s) to query for
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      # @param limit Maximum number of values to return
-      # @param reversed Return earliest first instead of latest first
-      # @param consistency Cassandra read consistency
-      #
-      get "/api/data/node/:uuid/type/:type/:format" do
+      get "/api/node/:uuid/name/:name/:format" do
         query_hastur
       end
 
       #
-      # @!method /api/data/node/:uuid/:format
+      # @!method /api/node/:uuid/:format
+      # @see /api/node/:uuid/type/:type/:format
       #
-      # Retrieve Hastur messages.  Parameters may be
-      # comma-separated values when specifying multiple
-      # of a given item.
-      #
-      # @param format One of "message", "value", "count" or "rollup" for output format
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param ago How many microseconds back to query - an alternative to start/end
-      # @param uuid UUID(s) to query for
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      # @param limit Maximum number of values to return
-      # @param reversed Return earliest first instead of latest first
-      # @param consistency Cassandra read consistency
-      #
-      get "/api/data/node/:uuid/name/:name/:format" do
-        query_hastur
-      end
-
-      #
-      # @!method /api/data/node/:uuid/:format
-      #
-      # Retrieve Hastur messages.  Parameters may be
-      # comma-separated values when specifying multiple
-      # of a given item.
-      #
-      # @param format One of "message", "value", "count" or "rollup" for output format
-      # @param start Starting timestamp, default 5 minutes ago
-      # @param end Ending timestamp, default now
-      # @param ago How many microseconds back to query - an alternative to start/end
-      # @param uuid UUID(s) to query for
-      # @param name Message name(s) to query for - supports wildcards
-      # @param type Message type(s) to query for
-      # @param limit Maximum number of values to return
-      # @param reversed Return earliest first instead of latest first
-      # @param consistency Cassandra read consistency
-      #
-      get "/api/data/node/:uuid/type/:type/name/:name/:format" do
+      get "/api/node/:uuid/type/:type/name/:name/:format" do
         query_hastur
       end
 
@@ -401,6 +316,7 @@ module Hastur
         # "name" - message name or list of message names (can append * for match-all)
         # "reversed" - return results in reverse order - only matters with "limit"
         # "limit" - max number of results to return
+        # "raw" - don't merge messages into the return data, return it as escaped json inside the json
         # "consistency" - Cassandra read consistency
         #
         def query_hastur
@@ -409,11 +325,19 @@ module Hastur
             raise "Illegal output option #{params["format"]}"
           end
 
-          start_ts, end_ts = get_start_end :five_minutes
-
           uuids = params["uuid"].split(",")
           types = type_list_from_string(params["type"])
           msg_names = params["name"] ? params["name"].split(",") : []
+
+          # Some message types are day bucketed and are only expected once a day, like registrations,
+          # heartbeats, and ohai information. These should default to getting one day of data.
+          if types & DEFAULT_DAY_BUCKET == types
+            default_span = :one_day
+          else
+            default_span = :five_minutes
+          end
+
+          start_ts, end_ts = get_start_end default_span
 
           cass_options = {}
           cass_options[:reversed] = true if param_is_true("reversed")
@@ -467,15 +391,26 @@ module Hastur
             name_count = 0
 
             values.each do |values_for_name_opts|
-              values_for_name_opts.each do |uuid, hash1|
+              values_for_name_opts.each do |uuid, node_data|
+                # hash1: {"gauge"=>{"hastur.agent.utime"=>{1338517798448399=>"{\"type\"
                 output[uuid] ||= {}
-                hash1.each do |type, hash2|
-                  # Hash2 maps { :name => { :timestamp => value/object } }
+                node_data.each do |type, ts_values|
+                  # ts_values maps { :name => { :timestamp => value/object } }
                   # This will return a structure without the types.
-                  output[uuid].merge!(hash2)
-                  name_count += hash2.size
+                  output[uuid].merge!(ts_values)
+                  name_count += ts_values.size
 
-                  sample_count += hash2.values.map(&:size).inject(0, &:+)
+                  sample_count += ts_values.values.map(&:size).inject(0, &:+)
+                end
+
+                # deserialize the JSON unless the user asks for raw messages so that most use cases
+                # only have to deserialize once, so far this doesn't seem to have a speed impact
+                if params["format"] == "message" and not param_is_true(:raw)
+                  output[uuid].keys.each do |name|
+                    output[uuid][name].keys.each do |ts|
+                      output[uuid][name][ts] = MultiJson.load output[uuid][name].delete(ts) # rescue?
+                    end
+                  end
                 end
               end
             end
@@ -518,9 +453,9 @@ module Hastur
         # Calls through to Sinatra's halt with an error code with a JSON body containing
         # {"error": "message"} and the same message in the statusText header.
         #
-        def error(code, message)
+        def hastur_error(code=500, message="FAIL", bt=nil)
           headers "statusText" => message
-          halt code, "{\"error\":\"#{message}\"}\n"
+          halt(code, MultiJson.dump({:error => message, :backtrace => bt[0..10]}, :pretty => true) + "\n")
         end
 
         #
@@ -528,7 +463,7 @@ module Hastur
         #
         def check_present(p, human_name = nil)
           unless params[p]
-            error 404, "#{human_name || p} param is required!"
+            hastur_error 404, "#{human_name || p} param is required!"
           end
         end
 
@@ -536,7 +471,7 @@ module Hastur
         # Returns an error & status code indicating the method is not implemented yet.
         #
         def stub!(route = "unspecified")
-          error 405, "this route (#{route}) is just a stub and is not implemented yet"
+          hastur_error 405, "this route (#{route}) is just a stub and is not implemented yet"
         end
 
         #
@@ -544,7 +479,7 @@ module Hastur
         # to the superclass and return 404 right away.
         #
         def forward
-          error 404, "Invalid path: '#{request.path_info}'"
+          hastur_error 404, "Invalid path: '#{request.path_info}'"
         end
 
         #
