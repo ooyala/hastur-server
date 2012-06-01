@@ -1,8 +1,8 @@
 require_relative "../test_helper"
-require "test/unit"
+require "minitest/autorun"
 require "hastur-server/monkeypatch"
 
-class ArrayTest < Test::Unit::TestCase
+class ArrayTest < MiniTest::Unit::TestCase
   def test_fuzzy_filter_1
     list = [ {:a => 'a', :b => 'b'}, {:a => 'a'} ].fuzzy_filter( {:a => 'a'} )
     assert_equal(2, list.size)
