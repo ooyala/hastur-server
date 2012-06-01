@@ -200,18 +200,16 @@ module Hastur
             node = {}
             TYPES.each do |type,subtypes|
               if TYPES_WITH_VALUES.include?(type.to_s)
-                node[type] = "#{root_uri}/api/node/#{uuid}/type/#{type}/value"
-              else
-                node[type] = "#{root_uri}/api/node/#{uuid}/type/#{type}/message"
+                node["#{type}/value"] = "#{root_uri}/api/node/#{uuid}/type/#{type}/value"
               end
+              node["#{type}/message"] = "#{root_uri}/api/node/#{uuid}/type/#{type}/message"
 
               if type != :all
                 subtypes.each do |subtype|
                   if TYPES_WITH_VALUES.include?(subtype.to_s)
-                    node["#{type}-#{subtype}"] = "#{root_uri}/api/node/#{uuid}/type/#{subtype}/value"
-                  else
-                    node["#{type}-#{subtype}"] = "#{root_uri}/api/node/#{uuid}/type/#{subtype}/message"
+                    node["#{subtype}/value"] = "#{root_uri}/api/node/#{uuid}/type/#{subtype}/value"
                   end
+                  node["#{subtype}/message"] = "#{root_uri}/api/node/#{uuid}/type/#{subtype}/message"
                 end
               end
             end
@@ -224,9 +222,8 @@ module Hastur
       #
       # @!method /api/node/:uuid/type/:type/:format
       #
-      # Retrieve Hastur messages.  Parameters may be
-      # comma-separated values when specifying multiple
-      # of a given item.
+      # Retrieve Hastur messages by UUID & type.
+      # Parameters may be comma-separated values when specifying multiple of a given item.
       #
       # @param format One of "message", "value", "count" or "rollup" for output format
       # @param start Starting timestamp, default 5 minutes ago
@@ -244,18 +241,65 @@ module Hastur
       end
 
       #
-      # @!method /api/node/:uuid/:format
-      # @see /api/node/:uuid/type/:type/:format
+      # @!method /api/node/:uuid/name/:name/:format
+      #
+      # Retrieve Hastur messages by UUID & message name.
+      # Parameters may be comma-separated values when specifying multiple of a given item.
+      #
+      # @param format One of "message", "value", "count" or "rollup" for output format
+      # @param start Starting timestamp, default 5 minutes ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @param uuid UUID(s) to query for
+      # @param name Message name(s) to query for - supports wildcards
+      # @param type Message type(s) to query for
+      # @param limit Maximum number of values to return
+      # @param reversed Return earliest first instead of latest first
+      # @param consistency Cassandra read consistency
       #
       get "/api/node/:uuid/name/:name/:format" do
         query_hastur
       end
 
       #
-      # @!method /api/node/:uuid/:format
-      # @see /api/node/:uuid/type/:type/:format
+      # @!method /api/node/:uuid/type/:type/name/:name/:format
+      #
+      # Retrieve Hastur messages by UUID, type, and message name.
+      # Parameters may be comma-separated values when specifying multiple of a given item.
+      #
+      # @param format One of "message", "value", "count" or "rollup" for output format
+      # @param start Starting timestamp, default 5 minutes ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @param uuid UUID(s) to query for
+      # @param name Message name(s) to query for - supports wildcards
+      # @param type Message type(s) to query for
+      # @param limit Maximum number of values to return
+      # @param reversed Return earliest first instead of latest first
+      # @param consistency Cassandra read consistency
       #
       get "/api/node/:uuid/type/:type/name/:name/:format" do
+        query_hastur
+      end
+
+      #
+      # @!method /api/node/:uuid/type/:type/:format
+      #
+      # Retrieve Hastur messages by UUID and type.
+      # Parameters may be comma-separated values when specifying multiple of a given item.
+      #
+      # @param format One of "message", "value", "count" or "rollup" for output format
+      # @param start Starting timestamp, default 5 minutes ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @param uuid UUID(s) to query for
+      # @param name Message name(s) to query for - supports wildcards
+      # @param type Message type(s) to query for
+      # @param limit Maximum number of values to return
+      # @param reversed Return earliest first instead of latest first
+      # @param consistency Cassandra read consistency
+      #
+      get "/api/node/:uuid/type/:type/:format" do
         query_hastur
       end
 
@@ -322,7 +366,7 @@ module Hastur
         def query_hastur
           stub! if params["format"] == "rollup"
           unless ["message", "value", "count"].include?(params["format"])
-            raise "Illegal output option #{params["format"]}"
+            error 405, "Illegal output option: '#{params["format"]}'"
           end
 
           uuids = params["uuid"].split(",")
@@ -393,12 +437,17 @@ module Hastur
             values.each do |values_for_name_opts|
               values_for_name_opts.each do |uuid, node_data|
                 # hash1: {"gauge"=>{"hastur.agent.utime"=>{1338517798448399=>"{\"type\"
-                output[uuid] ||= {}
+                output[uuid] ||= { :types => {} }
                 node_data.each do |type, ts_values|
                   # ts_values maps { :name => { :timestamp => value/object } }
                   # This will return a structure without the types.
                   output[uuid].merge!(ts_values)
                   name_count += ts_values.size
+
+                  # needed for format, deleted before return
+                  ts_values.keys.each do |name|
+                    output[uuid][:types][name] = type
+                  end
 
                   sample_count += ts_values.values.map(&:size).inject(0, &:+)
                 end
@@ -419,10 +468,83 @@ module Hastur
             output["name_count"] = name_count
             output["count"] = sample_count
           else
-            raise "Unhandled output format #{params["format"]}!"
+            error 405, "Unhandled output format: '#{params["format"]}'!"
           end
 
-          json output
+          json format_data(output)
+        end
+
+        #
+        # Reformat data structures before serialization.
+        # @todo document this in the regular query paths
+        #
+        # "two_lists" keeps the uuid/name key levels but splits timestamp / values into two lists
+        #   { uuid => { name => { :timestamps => [...], :values => [...] } } }
+        #
+        # "ordered" transforms the hash of { timestamp => value } to an array of hashes
+        # this is handy if you run into JSON parsers that don't preserve order (the spec says it's unordered)
+        #   { uuid => { name => [ { :timestamp => ts, :value => val }, ... ] } }
+        #
+        # @param [Hash] content
+        # @return [Hash] content
+        #
+        def format_data(content)
+          output = {}
+
+          # uncondintionally flatten compound values in-place to behave like the other stat types
+          content.keys.each do |key|
+            # skip non-hash entries
+            if content[key].respond_to? :keys
+              content[key].keys.each do |name|
+                if content[key][:types][name] == "compound"
+                  # clean up early, might help with memory and it needs to be deleted anyways
+                  compound = content[key].delete name
+                  compound.each do |timestamp, values|
+                    if values.respond_to? :keys
+                      values.each do |inner_name, inner_value|
+                        newname = [name, inner_name].join('.')
+                        content[key][:types][newname] = "compound"
+                        content[key][newname] ||= {}
+                        content[key][newname][timestamp] = inner_value
+                      end
+                    else
+                      content[key][name] = values
+                    end
+                  end
+                end
+              end
+            end
+          end
+
+          return content unless ["two_lists", "ordered"].select { |p| param_is_true(p) }.any?
+
+          content.keys.each do |key|
+            if content[key].respond_to? :keys
+              output[key] = {}
+              content[key].keys.each do |name|
+                output[key][name] = {}
+
+                if param_is_true("two_lists") and content[key][:types][name]
+                  output[key][name] = { :timestamps => [], :values => [] }
+                  content[key][name].each do |timestamp, value|
+                    output[key][name][:timestamps] << timestamp
+                    output[key][name][:values] << value
+                  end
+                elsif param_is_true("ordered") and content[key][:types][name]
+                  output[key][name] = []
+                  content[key][name].each do |timestamp, value|
+                    output[key][name] << { :timestamp => timestamp, :data => value }
+                  end
+                else
+                  output[key][name] = content[key][name]
+                end
+              end
+            else
+              output[key] = content[key]
+            end
+          end
+
+          output
         end
 
         #
@@ -455,7 +577,12 @@ module Hastur
         #
         def hastur_error(code=500, message="FAIL", bt=nil)
           headers "statusText" => message
-          halt(code, MultiJson.dump({:error => message, :backtrace => bt[0..10]}, :pretty => true) + "\n")
+          halt(code, MultiJson.dump({
+              :error => message,
+              :url => request.url,
+              :backtrace => bt[0..10]
+            }, :pretty => true) + "\n"
+          )
         end
 
         #
