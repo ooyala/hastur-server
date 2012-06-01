@@ -1,9 +1,9 @@
 require_relative "../../test_helper"
 
-require "test/unit"
+require "minitest/autorun"
 require "hastur-server/hastur-heap-scheduler"
 
-class HasturHeapSchedulerTest < Test::Unit::TestCase 
+class HasturHeapSchedulerTest < MiniTest::Unit::TestCase
 
   def test_job
     job1 = '{ "type":"plugin", "plugin_path":"echo", "plugin_args":"A OK", "interval":"five_minutes", "plugin":"myPlugin", "uuid":"84f5aea0-449b-012f-e937-109addba6b5d", "labels": {} }'
