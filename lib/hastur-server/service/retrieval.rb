@@ -118,9 +118,9 @@ module Hastur
         h = {}
         # Populate the return data object with the appropriate hash values
         app_names.each do |app|
-          h[app] = {
-            :message_data => "#{root_uri}/api/data/app/#{CGI.escape(app)}/message",
-          }
+          if app and app.length > 3
+            h[app] = "#{root_uri}/api/app/#{CGI.escape(app)}"
+          end
         end
 
         json h
@@ -151,8 +151,6 @@ module Hastur
           {
             :app     => bare_app,
             :node    => uuids_by_app_name[bare_app] || [],
-            :name    => "#{root_uri}/api/app/#{CGI.escape(params[:app])}/name",
-            :message => "#{root_uri}/api/app/#{CGI.escape(params[:app])}/message",
           }
         end
 
