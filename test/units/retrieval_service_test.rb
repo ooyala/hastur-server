@@ -77,6 +77,8 @@ EVENT_2 = <<JSON
 }
 JSON
 
+NODE_RESOURCE_KEYS = %w[metric/value metric/message counter/value counter/message gauge/value gauge/message mark/value mark/message compound/value compound/message heartbeat/value heartbeat/message hb_process/value hb_process/message hb_agent/value hb_agent/message hb_pluginv1/value hb_pluginv1/message event/message log/message error/message registration/message reg_agent/message reg_process/message reg_pluginv1/message info/message info_agent/message info_process/message info_ohai/message all/message]
+
 class RetrievalServiceTest < MiniTest::Unit::TestCase
   include Rack::Test::Methods
 
@@ -100,6 +102,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     if last_response.ok?
       MultiJson.load(last_response.body)
     else
+      STDERR.print "\n#{last_response.body}\n"
       File.open("/tmp/retrieval_test_body.html", "w") { |f| f.write(last_response.body) }
       assert last_response.ok?, "Request to #{uri} must succeed, not fail with #{last_response.status}." +
         "  Body is in /tmp/retrieval_test_body.html"
@@ -116,7 +119,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     hash = get_response_data "/api/type"
 
     assert hash.keys.include?("all"), "Types hash must include 'all'"
-    assert hash.keys.include?("stat"), "Types hash must include 'stat'"
+    assert hash.keys.include?("metric"), "Types hash must include 'metric'"
     assert hash.keys.include?("event"), "Types hash must include 'event'"
   end
 
@@ -137,8 +140,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     array = get_response_data "/api/node/#{A1UUID}?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
 
     assert_equal 1, array.size, "Must return an array of one response, not #{array.inspect}"
-    assert array[0].keys.sort == [ "message_data", "ohai", "registration_data" ],
-      "Returned response must link to appropriate services!"
+    assert array[0].keys.sort == NODE_RESOURCE_KEYS.sort, "Returned response must link to appropriate services!"
   end
 
   INFO_OHAI = {
@@ -162,7 +164,8 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     Hastur::Cassandra.expects(:get).with(anything, [A1UUID, A2UUID], "info_ohai",
                                          FAKE_TS1, FAKE_TS2, :count => 1).
       returns(INFO_OHAI)
-    array = get_response_data "/api/node/#{A1UUID},#{A2UUID}/ohai?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+
+    array = get_response_data "/api/node/#{A1UUID},#{A2UUID}/type/info_ohai/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
 
     assert array.size == 2, "Must return two pieces of Ohai data"
     assert array.map { |ohai| ohai["uuid"] }.sort == [A1UUID, A2UUID], "Must have Ohai data for both UUIDs!"
@@ -196,10 +199,10 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
 
     # Sorted, the four names are: app_name-37, not_an_app, other_app, third$%app
 
-    assert_equal [ A1UUID, A2UUID ], sorted[0]["nodes"], "Must have two UUIDs for app_name-37"
-    assert_equal [], sorted[1]["nodes"], "Must have no UUIDs for not_an_app"
-    assert_equal [ A2UUID ], sorted[2]["nodes"], "Must have one UUID for other_app"
-    assert_equal [ A1UUID ], sorted[3]["nodes"], "Must have one UUID for third$%app"
+    assert_equal [ A1UUID, A2UUID ], sorted[0]["node"], "Must have two UUIDs for app_name-37"
+    assert_equal [], sorted[1]["node"], "Must have no UUIDs for not_an_app"
+    assert_equal [ A2UUID ], sorted[2]["node"], "Must have one UUID for other_app"
+    assert_equal [ A1UUID ], sorted[3]["node"], "Must have one UUID for third$%app"
   end
 
   TYPES = Hastur::Service::Retrieval::TYPES
@@ -216,7 +219,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
                 }
               })
 
-    hash = get_response_data "/api/data/node/#{A1UUID}/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+    hash = get_response_data "/api/node/#{A1UUID}/type/registration/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
 
     assert_equal( { A1UUID => { "" => { FAKE_TS1.to_s => AGENT_REG_1 } },
                     "count" => 1, "uuid_count" => 1, "name_count" => 1 }, hash )
@@ -224,7 +227,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
 
   def test_retrieval_multiple_types
     Hastur::Cassandra.expects(:get).with(anything, [A1UUID],
-                                         TYPES[:stat] + TYPES[:event] + TYPES[:heartbeat],
+                                         TYPES[:metric] + TYPES[:event] + TYPES[:heartbeat],
                                          FAKE_TS1, FAKE_TS2, {}).
       returns({
                 A1UUID => {
@@ -236,7 +239,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
                 }
               })
 
-    hash = get_response_data "/api/data/node/#{A1UUID}/type/stat,event,heartbeat" +
+    hash = get_response_data "/api/node/#{A1UUID}/type/metric,event,heartbeat" +
       "/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
   end
 
@@ -253,7 +256,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
                 }
               })
 
-    hash = get_response_data "/api/data/node/#{A1UUID}/type/event/name" +
+    hash = get_response_data "/api/node/#{A1UUID}/type/event/name" +
       "/live*/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
   end
 
@@ -286,7 +289,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
                                          FAKE_TS1, FAKE_TS2, { :name => "bobo" }).
       returns({ })
 
-    hash = get_response_data "/api/data/node/#{A1UUID},#{A2UUID}/type/event/name" +
+    hash = get_response_data "/api/node/#{A1UUID},#{A2UUID}/type/event/name" +
       "/live*,bobo,dead*/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
   end
 
