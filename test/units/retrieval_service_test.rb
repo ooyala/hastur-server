@@ -161,14 +161,17 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
   }
 
   def test_node_uuid_ohai
-    Hastur::Cassandra.expects(:get).with(anything, [A1UUID, A2UUID], "info_ohai",
+    Hastur::Cassandra.expects(:get).with(anything, [A1UUID, A2UUID], ["info_ohai"],
                                          FAKE_TS1, FAKE_TS2, :count => 1).
       returns(INFO_OHAI)
 
-    array = get_response_data "/api/node/#{A1UUID},#{A2UUID}/type/info_ohai/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+    # also test limit while we're here
+    hash = get_response_data "/api/node/#{A1UUID},#{A2UUID}/type/info_ohai/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}&limit=1"
 
-    assert array.size == 2, "Must return two pieces of Ohai data"
-    assert array.map { |ohai| ohai["uuid"] }.sort == [A1UUID, A2UUID], "Must have Ohai data for both UUIDs!"
+    got_uuids = hash.keys.select { |key| [A1UUID, A2UUID].include?(key) }
+
+    assert got_uuids.size == 2, "Must return two pieces of Ohai data"
+    assert got_uuids.sort == [A1UUID, A2UUID].sort, "Must have Ohai data for both UUIDs!"
   end
 
   def test_app
@@ -219,10 +222,11 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
                 }
               })
 
-    hash = get_response_data "/api/node/#{A1UUID}/type/registration/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
+    hash = get_response_data "/api/node/#{A1UUID}/type/all/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}&raw=true"
 
     assert_equal( { A1UUID => { "" => { FAKE_TS1.to_s => AGENT_REG_1 } },
-                    "count" => 1, "uuid_count" => 1, "name_count" => 1 }, hash )
+                    "uuid_count" => 1, "count" => 1, "uuid_count" => 1, "name_count" => 1,
+                    "types" => { A1UUID => { "" => "reg_agent" } } }, hash )
   end
 
   def test_retrieval_multiple_types
