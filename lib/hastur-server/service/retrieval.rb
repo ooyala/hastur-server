@@ -506,14 +506,6 @@ module Hastur
         end
 
         #
-        # Get a Cassandra client
-        # @return [Cassandra] cassandra client object
-        #
-        def cass_client
-          Hastur::Service::Retrieval.cass_client
-        end
-
-        #
         # Dump JSON to string with appropriate params.
         # @return [String] Serialized JSON content
         #
@@ -559,38 +551,28 @@ module Hastur
         def forward
           error 404, "Invalid path: '#{request.path_info}'"
         end
+
+        #
+        # Creates a cassandra client that connects as needed
+        # @return [Cassandra] cassandra client object
+        #
+        def cass_client
+          unless @cass_client
+            @cass_client = ::Cassandra.new("Hastur", @cassandra_uris.flatten, THRIFT_OPTIONS)
+
+            # for non-production and port-forwarded ssh, there will only be one URI and it
+            # should not auto-discover nodes
+            if @cassandra_uris.one?
+              @cass_client.disable_node_auto_discovery!
+            end
+          end
+          @cass_client
+        end
       end
 
       def initialize(cassandra_uris)
         @cassandra_uris = cassandra_uris
         super
-      end
-
-      #
-      # Sets the Cassandra client to use.  This is a good way to
-      # override for testing.
-      #
-      # @param client The client to use for Cassandra queries
-      #
-      def self.cass_client=(client)
-        @cass_client = client
-      end
-
-      #
-      # Creates a cassandra client that connects as needed
-      # @return [Cassandra] cassandra client object
-      #
-      def self.cass_client
-        unless @cass_client
-          @cass_client = ::Cassandra.new("Hastur", @cassandra_uris.flatten, THRIFT_OPTIONS)
-
-          # for non-production and port-forwarded ssh, there will only be one URI and it
-          # should not auto-discover nodes
-          if @cassandra_uris.one?
-            @cass_client.disable_node_auto_discovery!
-          end
-        end
-        @cass_client
       end
     end
   end

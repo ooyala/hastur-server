@@ -84,10 +84,11 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     # Supply no URIs for Cassandra
     app = Hastur::Service::Retrieval.new []
 
-    # Fake a Cassandra client.  We mock to avoid
+    # Fake a Cassandra client and monkey patch it in.  We mock to avoid
     # using it, though.
-    @cass_client = mock("Cassandra Client")
-    Hastur::Service::Retrieval.cass_client = @cass_client
+    def app.cass_client
+      @cass_client = mock("Cassandra Client")
+    end
 
     app
   end
