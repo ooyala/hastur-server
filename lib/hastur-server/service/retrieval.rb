@@ -63,7 +63,8 @@ module Hastur
         set :show_exceptions, false
         error(500) do
           e = env["sinatra.error"]
-          hastur_error 500, "Server error. Either you found a bug or made a malformed request.", e.backtrace
+          bt = e.respond_to?(:backtrace) ? e.backtrace : nil
+          hastur_error 500, "Server error. Either you found a bug or made a malformed request.", bt
         end
       end
 
@@ -422,6 +423,7 @@ module Hastur
           end
 
           output = {}
+          types = {}
 
           # TODO: add paging - return and reuse last column name in each row?
 
@@ -437,16 +439,16 @@ module Hastur
             values.each do |values_for_name_opts|
               values_for_name_opts.each do |uuid, node_data|
                 # hash1: {"gauge"=>{"hastur.agent.utime"=>{1338517798448399=>"{\"type\"
-                output[uuid] ||= { :types => {} }
+                output[uuid] ||= {}
+                types[uuid] ||= {}
                 node_data.each do |type, ts_values|
                   # ts_values maps { :name => { :timestamp => value/object } }
                   # This will return a structure without the types.
                   output[uuid].merge!(ts_values)
                   name_count += ts_values.size
 
-                  # needed for format, deleted before return
                   ts_values.keys.each do |name|
-                    output[uuid][:types][name] = type
+                    types[uuid][name] = type
                   end
 
                   sample_count += ts_values.values.map(&:size).inject(0, &:+)
@@ -457,7 +459,11 @@ module Hastur
                 if params["format"] == "message" and not param_is_true(:raw)
                   output[uuid].keys.each do |name|
                     output[uuid][name].keys.each do |ts|
-                      output[uuid][name][ts] = MultiJson.load output[uuid][name].delete(ts) # rescue?
+                      begin
+                        output[uuid][name][ts] = MultiJson.load output[uuid][name][ts]
+                      rescue Exception => e
+                        hastur_error 501, "JSON parsing failed for: '#{output[uuid][name][ts]}' #{e}"
+                      end
                     end
                   end
                 end
@@ -471,7 +477,7 @@ module Hastur
             error 405, "Unhandled output format: '#{params["format"]}'!"
           end
 
-          json format_data(output)
+          json format_data(output, types)
         end
 
         #
@@ -488,7 +494,7 @@ module Hastur
         # @param [Hash] content
         # @return [Hash] content
         #
-        def format_data(content)
+        def format_data(content, types)
           output = {}
 
           # uncondintionally flatten compound values in-place to behave like the other stat types
@@ -496,14 +502,14 @@ module Hastur
             # skip non-hash entries
             if content[key].respond_to? :keys
               content[key].keys.each do |name|
-                if content[key][:types][name] == "compound"
+                if types[key][name] == "compound"
                   # clean up early, might help with memory and it needs to be deleted anyways
                   compound = content[key].delete name
                   compound.each do |timestamp, values|
                     if values.respond_to? :keys
                       values.each do |inner_name, inner_value|
                         newname = [name, inner_name].join('.')
-                        content[key][:types][newname] = "compound"
+                        types[key][newname] = "compound"
                         content[key][newname] ||= {}
                         content[key][newname][timestamp] = inner_value
                       end
@@ -516,7 +522,10 @@ module Hastur
             end
           end
 
-          return content unless ["two_lists", "ordered"].select { |p| param_is_true(p) }.any?
+          if ["two_lists", "ordered"].select { |p| param_is_true(p) }.none?
+            content[:types] = types
+            return content
+          end
 
           content.keys.each do |key|
             if content[key].respond_to? :keys
@@ -524,13 +533,13 @@ module Hastur
               content[key].keys.each do |name|
                 output[key][name] = {}
 
-                if param_is_true("two_lists") and content[key][:types][name]
+                if param_is_true("two_lists") and types[key][name]
                   output[key][name] = { :timestamps => [], :values => [] }
                   content[key][name].each do |timestamp, value|
                     output[key][name][:timestamps] << timestamp
                     output[key][name][:values] << value
                   end
-                elsif param_is_true("ordered") and content[key][:types][name]
+                elsif param_is_true("ordered") and types[key][name]
                   output[key][name] = []
                   content[key][name].each do |timestamp, value|
                     output[key][name] << { :timestamp => timestamp, :data => value }
@@ -544,6 +553,7 @@ module Hastur
             end
           end
 
+          output[:types] = types
           output
         end
 
@@ -575,12 +585,12 @@ module Hastur
         # Calls through to Sinatra's halt with an error code with a JSON body containing
         # {"error": "message"} and the same message in the statusText header.
         #
-        def hastur_error(code=500, message="FAIL", bt=nil)
+        def hastur_error(code=501, message="FAIL", bt=nil)
           headers "statusText" => message
           halt(code, MultiJson.dump({
               :error => message,
               :url => request.url,
-              :backtrace => bt[0..10]
+              :backtrace => bt.kind_of?(Array) ? bt[0..10] : bt
             }, :pretty => true) + "\n"
           )
         end
