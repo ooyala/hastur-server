@@ -170,7 +170,6 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
 
     got_uuids = hash.keys.select { |key| [A1UUID, A2UUID].include?(key) }
 
-    assert got_uuids.size == 2, "Must return two pieces of Ohai data"
     assert got_uuids.sort == [A1UUID, A2UUID].sort, "Must have Ohai data for both UUIDs!"
   end
 
@@ -225,7 +224,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
     hash = get_response_data "/api/node/#{A1UUID}/type/all/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}&raw=true"
 
     assert_equal( { A1UUID => { "" => { FAKE_TS1.to_s => AGENT_REG_1 } },
-                    "uuid_count" => 1, "count" => 1, "uuid_count" => 1, "name_count" => 1,
+                    "uuid_count" => 1, "count" => 1, "name_count" => 1,
                     "types" => { A1UUID => { "" => "reg_agent" } } }, hash )
   end
 
