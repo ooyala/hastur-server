@@ -1,4 +1,5 @@
 require_relative "../test_helper"
+require "ffi-rzmq"
 require "hastur-server/util"
 
 class UtilTest < Scope::TestCase
