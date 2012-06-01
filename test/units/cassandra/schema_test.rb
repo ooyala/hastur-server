@@ -11,7 +11,8 @@ GAUGE_JSON = <<JSON
   "timestamp": 1329858724285438,
   "labels": {
     "a": 1,
-    "b": 2
+    "b": 2,
+    "app": "myapp"
   }
 }
 JSON
@@ -26,7 +27,8 @@ COUNTER_JSON = <<JSON
   "labels": {
     "c": 1,
     "d": 2,
-    "e": 9
+    "e": 9,
+    "app": "myapp"
   }
 }
 JSON
@@ -39,6 +41,7 @@ MARK_JSON = <<JSON
   "value": "start",
   "timestamp": 1329858724285438,
   "labels": {
+    "app": "myapp"
   }
 }
 JSON
@@ -56,6 +59,7 @@ EVENT_JSON = <<JSON
     "big Jimmy"
   ],
   "labels": {
+    "app": "myapp"
   }
 }
 JSON
@@ -67,6 +71,7 @@ REG_PROCESS_JSON = <<JSON
   "data": { "a": "b", "c": "d" },
   "timestamp": 1329858724285438,
   "labels": {
+    "app": "myapp"
   }
 }
 JSON
