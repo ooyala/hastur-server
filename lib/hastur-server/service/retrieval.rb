@@ -101,16 +101,11 @@ module Hastur
         start_ts, end_ts = get_start_end :one_day
         uuid_hash = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
 
-        h = {}
-
         uuid_hash.keys.each do |uuid|
-          h[uuid] = {
-            :registration_data => "#{root_uri}/api/node/#{uuid}",
-            :message_data => "#{root_uri}/api/data/node/#{uuid}/message",
-          }
+          uuid_hash[uuid] = "#{root_uri}/api/node/#{uuid}"
         end
 
-        json h
+        json uuid_hash
       end
 
       #
