@@ -63,8 +63,11 @@ module Hastur
         set :show_exceptions, false
         error(500) do
           e = env["sinatra.error"]
-          bt = e.respond_to?(:backtrace) ? e.backtrace : nil
-          hastur_error 500, "Server error. Either you found a bug or made a malformed request.", bt
+          if e.kind_of? Exception
+            hastur_error 500, "Server exception: #{e}", e.backtrace
+          else
+            hastur_error 500, "Server error. Either you found a bug or made a malformed request.", bt
+          end
         end
       end
 
