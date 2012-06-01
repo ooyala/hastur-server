@@ -19,6 +19,7 @@ module Hastur
     USEC_FIVE_MINUTES =  5 * USEC_ONE_MINUTE
     USEC_ONE_HOUR     = 60 * USEC_ONE_MINUTE
     USEC_ONE_DAY      = 24 * USEC_ONE_HOUR
+    USEC_TWO_DAYS     =  2 * USEC_ONE_DAY
     USEC_ONE_WEEK     =  7 * USEC_ONE_DAY
 
     # epoch time constants for use in best-effort conversion of various
@@ -204,6 +205,7 @@ module Hastur
       when :five_minutes, "five_minutes"      ; USEC_FIVE_MINUTES
       when :hour, :one_hour, "one_hour"       ; USEC_ONE_HOUR
       when :day, :one_day, "one_day"          ; USEC_ONE_DAY
+      when :two_days, "two_days"              ; USEC_ONE_DAY * 2
       when :week, :one_week, "one_week"       ; USEC_ONE_WEEK
       when /\A\d+\Z/ ; interval.to_i
       end
