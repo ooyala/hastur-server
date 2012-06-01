@@ -109,8 +109,8 @@ class CassandraSchemaTest < Scope::TestCase
                                            "last_access" => NOWISH_TIMESTAMP }, {})
       @cass_client.expects(:insert).with(:LookupByKey, "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, {})
       @cass_client.expects(:insert).with(:LookupByKey, "name-#{ROW_DAY_TS}",
-                                         { "this.is.a.gauge-11" => "" }, {})
-      @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { FAKE_UUID => ""}, {})
+                                         { "this.is.a.gauge-11-#{FAKE_UUID}" => "" }, {})
+      @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, {})
       Hastur::Cassandra.insert(@cass_client, json, "gauge", :uuid => FAKE_UUID)
     end
 
@@ -125,8 +125,8 @@ class CassandraSchemaTest < Scope::TestCase
                                            "last_access" => NOWISH_TIMESTAMP }, {})
       @cass_client.expects(:insert).with(:LookupByKey, "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, {})
       @cass_client.expects(:insert).with(:LookupByKey, "name-#{ROW_DAY_TS}",
-                                         { "totally.a.counter-12" => "" }, {})
-      @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { FAKE_UUID => ""}, {})
+                                         { "totally.a.counter-12-#{FAKE_UUID}" => "" }, {})
+      @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, {})
       Hastur::Cassandra.insert(@cass_client, json, "counter", :uuid => FAKE_UUID)
     end
 
@@ -141,8 +141,8 @@ class CassandraSchemaTest < Scope::TestCase
                                            "last_access" => NOWISH_TIMESTAMP }, {})
       @cass_client.expects(:insert).with(:LookupByKey, "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, {})
       @cass_client.expects(:insert).with(:LookupByKey, "name-#{ROW_DAY_TS}",
-                                         { "marky.mark-10" => "" }, {})
-      @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { FAKE_UUID => ""}, {})
+                                         { "marky.mark-10-#{FAKE_UUID}" => "" }, {})
+      @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, {})
       Hastur::Cassandra.insert(@cass_client, json, "mark", :uuid => FAKE_UUID)
     end
 
@@ -156,8 +156,8 @@ class CassandraSchemaTest < Scope::TestCase
                                            "last_access" => NOWISH_TIMESTAMP }, {})
       @cass_client.expects(:insert).with(:LookupByKey, "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, {})
       @cass_client.expects(:insert).with(:LookupByKey, "name-#{ROW_DAY_TS}",
-                                         { "fake.event.name-1" => "" }, {})
-      @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { FAKE_UUID => ""}, {})
+                                         { "fake.event.name-1-#{FAKE_UUID}" => "" }, {})
+      @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, {})
       Hastur::Cassandra.insert(@cass_client, json, "event", :uuid => FAKE_UUID)
     end
 
@@ -170,7 +170,7 @@ class CassandraSchemaTest < Scope::TestCase
                                          { "last_write" => NOWISH_TIMESTAMP,
                                            "last_access" => NOWISH_TIMESTAMP }, {})
       @cass_client.expects(:insert).with(:LookupByKey, "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, {})
-      @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { FAKE_UUID => ""}, {})
+      @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, {})
       Hastur::Cassandra.insert(@cass_client, json, "reg_process", :uuid => FAKE_UUID)
     end
 

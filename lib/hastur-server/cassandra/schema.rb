@@ -85,15 +85,15 @@ module Hastur
         schema = schema_by_type(schema)
       end
 
-      hash = MultiJson.load(json_string, :symbolize_keys => true)
+      hash = MultiJson.load(json_string)
       raise "Cannot deserialize JSON string!" unless hash
       uuid = options.delete(:uuid) || hash[:uuid] || hash[:from]
       raise "No UUID given!" unless uuid
 
-      name = schema[:name] ? hash[:name] : nil
-      value = hash[:value]
-      timestamp_usec = hash[:timestamp]
-      app_name = hash[:labels]["app"] || ""
+      name = schema[:name] ? hash["name"] : nil
+      value = hash["value"]
+      timestamp_usec = hash["timestamp"]
+      app_name = hash["labels"]["app"] || ""
 
       colname = col_name(name, timestamp_usec)
       key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec, schema[:granularity] || ONE_DAY)
