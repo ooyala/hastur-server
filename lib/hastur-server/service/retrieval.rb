@@ -7,6 +7,7 @@ require "hastur-server/cassandra/rollups"
 require "hastur-server/cassandra/schema"
 require "hastur-server/time_util"
 require "multi_json"
+require "termite"
 
 # TODO(noah): Add parameter validation - alert on bad params?
 
@@ -50,8 +51,10 @@ module Hastur
         :error        => %w[error],
         :registration => %w[reg_agent reg_process reg_pluginv1],
         :info         => %w[info_agent info_process info_ohai],
-        :all          => %w[counter gauge mark hb_process hb_agent hb_pluginv1
-                            event log error reg_agent reg_process reg_pluginv1
+        :all          => %w[counter gauge mark compound
+                            hb_process hb_agent hb_pluginv1
+                            event log error
+                            reg_agent reg_process reg_pluginv1
                             info_agent info_process]
       }.freeze
 
@@ -419,8 +422,17 @@ module Hastur
 
           values = []
           name_option_list.each do |name_opts|
-            values << Hastur::Cassandra.get(cass_client, uuids, types,
-                                            start_ts, end_ts, cass_options.merge(name_opts))
+            query_options = cass_options.merge(name_opts)
+
+            @logger.debug("Querying cassandra:", {
+              :uuids    => uuids,
+              :types    => types,
+              :start_ts => start_ts,
+              :end_ts   => end_ts,
+              :options  => query_options,
+            })
+
+            values << Hastur::Cassandra.get(cass_client, uuids, types, start_ts, end_ts, query_options)
           end
 
           output = {}
@@ -639,6 +651,7 @@ module Hastur
       end
 
       def initialize(cassandra_uris)
+        @logger = Termite::Logger.new
         @cassandra_uris = cassandra_uris
         super
       end
