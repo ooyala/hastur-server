@@ -494,22 +494,14 @@ module Hastur
         end
 
         #
-        # Reformat data structures before serialization.
-        # @todo document this in the regular query paths
-        #
-        # "two_lists" keeps the uuid/name key levels but splits timestamp / values into two lists
-        #   { uuid => { name => { :timestamps => [...], :values => [...] } } }
-        #
-        # "ordered" transforms the hash of { timestamp => value } to an array of hashes
-        # this is handy if you run into JSON parsers that don't preserve order (the spec says it's unordered)
-        #   { uuid => { name => [ { :timestamp => ts, :value => val }, ... ] } }
+        # Reformat compound values from cassandra to be easier to work with.
+        # Reformats in-place, breaking out keys inside compound values into separate stats
+        # in the return hash. E.g. /proc/stats goes from a big hash with cpu, cpu0, etc. in it
+        # to linux.proc.stat.cpu, linux.proc.stat.cpu0, etc..
         #
         # @param [Hash] content
-        # @return [Hash] content
         #
-        def format_data(content, types)
-          output = {}
-
+        def reformat_compounds(content, types)
           # uncondintionally flatten compound values in-place to behave like the other stat types
           content.keys.each do |key|
             # skip non-hash entries
@@ -534,7 +526,31 @@ module Hastur
               end
             end
           end
+        end
 
+        #
+        # Reformat data structures before serialization.
+        # @todo document this in the regular query paths
+        #
+        # "two_lists" keeps the uuid/name key levels but splits timestamp / values into two lists
+        #   { uuid => { name => { :timestamps => [...], :values => [...] } } }
+        #
+        # "ordered" transforms the hash of { timestamp => value } to an array of hashes
+        # this is handy if you run into JSON parsers that don't preserve order (the spec says it's unordered)
+        #   { uuid => { name => [ { :timestamp => ts, :value => val }, ... ] } }
+        #
+        # @param [Hash] content
+        # @return [Hash] content
+        #
+        def format_data(content, types)
+          output = {}
+
+          # only reformat compounds on /value, and never if ?raw is specified
+          if params["format"] != "message" and not param_is_true(:raw)
+            reformat_compounds(content, types)
+          end
+
+          # unless one of the alternate formats is requested, we're all done here
           if ["two_lists", "ordered"].select { |p| param_is_true(p) }.none?
             content[:types] = types
             return content
