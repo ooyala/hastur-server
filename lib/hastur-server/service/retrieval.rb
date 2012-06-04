@@ -494,38 +494,30 @@ module Hastur
         end
 
         #
-        # Reformat compound values from cassandra to be easier to work with.
-        # Reformats in-place, breaking out keys inside compound values into separate stats
-        # in the return hash. E.g. /proc/stats goes from a big hash with cpu, cpu0, etc. in it
-        # to linux.proc.stat.cpu, linux.proc.stat.cpu0, etc..
+        # Wrap up all the outer boilerplate loops for reformatting the datastructures
+        # that come back from cassandra.
         #
         # @param [Hash] content
+        # @param [Hash] types
+        # @yield key, name
+        # @yieldreturn [Object] data to be placed under output[key][name]
         #
-        def reformat_compounds(content, types)
-          # uncondintionally flatten compound values in-place to behave like the other stat types
+        def reformat_output(content, types)
+          output = {}
+
           content.keys.each do |key|
-            # skip non-hash entries
             if content[key].respond_to? :keys
+              output[key] = {}
               content[key].keys.each do |name|
-                if types[key][name] == "compound"
-                  # clean up early, might help with memory and it needs to be deleted anyways
-                  compound = content[key].delete name
-                  compound.each do |timestamp, values|
-                    if values.respond_to? :keys
-                      values.each do |inner_name, inner_value|
-                        newname = [name, inner_name].join('.')
-                        types[key][newname] = "compound"
-                        content[key][newname] ||= {}
-                        content[key][newname][timestamp] = inner_value
-                      end
-                    else
-                      content[key][name] = values
-                    end
-                  end
-                end
+                output[key][name] = yield key, name
               end
+            else
+              output[key] = content[key]
             end
           end
+
+          output[:types] = types
+          output
         end
 
         #
@@ -543,47 +535,56 @@ module Hastur
         # @return [Hash] content
         #
         def format_data(content, types)
-          output = {}
-
-          # only reformat compounds on /value, and never if ?raw is specified
-          if params["format"] != "message" and not param_is_true(:raw)
-            reformat_compounds(content, types)
-          end
-
-          # unless one of the alternate formats is requested, we're all done here
-          if ["two_lists", "ordered"].select { |p| param_is_true(p) }.none?
-            content[:types] = types
-            return content
-          end
-
-          content.keys.each do |key|
-            if content[key].respond_to? :keys
-              output[key] = {}
-              content[key].keys.each do |name|
-                output[key][name] = {}
-
-                if param_is_true("two_lists") and types[key][name]
-                  output[key][name] = { :timestamps => [], :values => [] }
-                  content[key][name].each do |timestamp, value|
-                    output[key][name][:timestamps] << timestamp
-                    output[key][name][:values] << value
+          # only reformat compound entries on /value, and never if ?raw is specified
+          # "explodes" compound values into multiple stats with the original keys as extra .foo on the name
+          # E.g. /proc/stats goes from a big hash with cpu, cpu0, etc. in it
+          # to linux.proc.stat.cpu, linux.proc.stat.cpu0, etc..
+          unless params["format"] == "message" or param_is_true(:raw)
+            reformat_output content, types do |key, name|
+              if types[key][name] == "compound"
+                # modify content in-place to make it a little faster and (maybe) save memory
+                content[key][name].each do |timestamp, values|
+                  if values.respond_to? :keys
+                    values.each do |inner_name, inner_value|
+                      newname = [name, inner_name].join('.')
+                      types[key][newname] = "compound"
+                      content[key][newname] ||= {}
+                      content[key][newname][timestamp] = inner_value
+                    end
+                  else
+                    content[key][name] = values
                   end
-                elsif param_is_true("ordered") and types[key][name]
-                  output[key][name] = []
-                  content[key][name].each do |timestamp, value|
-                    output[key][name] << { :timestamp => timestamp, :data => value }
-                  end
-                else
-                  output[key][name] = content[key][name]
                 end
               end
-            else
-              output[key] = content[key]
             end
           end
 
-          output[:types] = types
-          output
+          # { uuid => { name => { :timestamps => [...], :values => [...] } } }
+          if param_is_true("two_lists")
+            reformat_output content, types do |key, name|
+              row = { :timestamps => [], :values => [] }
+              content[key][name].each do |timestamp, value|
+                row[:timestamps] << timestamp
+                row[:values] << value
+              end
+              row
+            end
+
+          # { uuid => { name => [ { :timestamp => ts, :value => val }, ... ] } }
+          elsif param_is_true("ordered")
+            reformat_output content, types do |key, name|
+              row = []
+              content[key][name].each do |timestamp, value|
+                row << { :timestamp => timestamp, :data => value }
+              end
+              row
+            end
+
+          # return unmodified except that types are appended
+          else
+            content[:types] = types
+            content
+          end
         end
 
         #
