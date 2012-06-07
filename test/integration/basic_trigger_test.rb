@@ -123,14 +123,14 @@ class BasicTriggerTest < Scope::TestCase
         TRIGGER_SYNDICATOR_BIN,
         '--firehose', :firehose,
         '--workers', :syndicator,
-        :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
+        :stdout => :capture, :stderr => :capture, :verbose => :cyanio,
       ),
       :worker_proc   => Nodule::Process.new(
         TRIGGER_WORKER_BIN,
         '--syndicator', :syndicator,
         '--triggers', TEST_TRIGGER,
         '--no-cassandra',
-        :stdout => :capture, :stderr => :redio, :verbose => :cyanio,
+        :stdout => :capture, :stderr => :capture, :verbose => :cyanio,
       ),
     )
 
