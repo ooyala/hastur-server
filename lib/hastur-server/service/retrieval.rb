@@ -376,6 +376,10 @@ module Hastur
           types = type_list_from_string(params["type"])
           msg_names = params["name"] ? params["name"].split(",") : []
 
+          unless types.any? { |t| TYPES[:all].include?(t) }
+            hastur_error 405, "Invalid type(s): '#{types}'"
+          end
+
           # Some message types are day bucketed and are only expected once a day, like registrations,
           # heartbeats, and ohai information. These should default to getting one day of data.
           if types & DEFAULT_DAY_BUCKET == types
