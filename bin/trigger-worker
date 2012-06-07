@@ -91,7 +91,11 @@ end
 
 # Load triggers, subscribe to message stream
 opts[:triggers].flatten.each do |file|
-  require_relative File.join("..", file)
+  if file[0] == "/"
+    require file
+  else
+    require_relative File.join("..", file)
+  end
 end
 
 last_heartbeat = Time.now
