@@ -78,8 +78,6 @@ module Hastur
         if request['Origin']
           response['Access-Control-Allow-Origin'] = "*"
         end
-
-        response['Content-Type'] = "application/json"
       end
 
       #
@@ -371,7 +369,7 @@ module Hastur
         def query_hastur
           stub! if params["format"] == "rollup"
           unless ["message", "value", "count"].include?(params["format"])
-            error 405, "Illegal output option: '#{params["format"]}'"
+            hastur_error 405, "Illegal output option: '#{params["format"]}'"
           end
 
           uuids = params["uuid"].split(",")
@@ -487,7 +485,7 @@ module Hastur
             output["name_count"] = name_count
             output["count"] = sample_count
           else
-            error 405, "Unhandled output format: '#{params["format"]}'!"
+            hastur_error 405, "Unhandled output format: '#{params["format"]}'!"
           end
 
           json format_data(output, types)
@@ -655,7 +653,15 @@ module Hastur
             json_options[:pretty] = true
           end
 
-          MultiJson.dump(content, json_options) + "\n"
+          # when the cb parameter is specified, return a JSONP response
+          if params["cb"]
+            response['Content-Type'] = "text/javascript"
+            "#{params["cb"]}(#{MultiJson.dump(content)});\n"
+          # otherwise, just make it regular JSON
+          else
+            response['Content-Type'] = "application/json"
+            MultiJson.dump(content, json_options) + "\n"
+          end
         end
 
         #
@@ -664,11 +670,11 @@ module Hastur
         #
         def hastur_error(code=501, message="FAIL", bt=nil)
           headers "statusText" => message
-          halt(code, MultiJson.dump({
+          halt(code, json({
               :error => message,
               :url => request.url,
               :backtrace => bt.kind_of?(Array) ? bt[0..10] : bt
-            }, :pretty => true) + "\n"
+            })
           )
         end
 
