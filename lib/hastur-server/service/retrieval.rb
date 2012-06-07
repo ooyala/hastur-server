@@ -531,10 +531,27 @@ module Hastur
         # this is handy if you run into JSON parsers that don't preserve order (the spec says it's unordered)
         #   { uuid => { name => [ { :timestamp => ts, :value => val }, ... ] } }
         #
+        # "sample=<int>" sets a maximum number of samples to return, it does _not_ roll up, it figures out how
+        # many entries to skip and selects only every (total / samples) point out of the data. This works with
+        # either of the above options or all by itself.
+        #
         # @param [Hash] content
         # @return [Hash] content
         #
         def format_data(content, types)
+          # workaround: we're getting overlaps or unsorted data at this point that causes
+          # the series to be jacked up due to out-of-order items, this re-sorts the keys on
+          # each row but shouldn't end up doing a lot of copying since it reuses the value reference
+          reformat_output content, types do |key, name|
+            row = {}
+            old = content[key].delete name
+            old.keys.sort.each do |ts|
+              row[ts] = old[ts]
+            end
+
+            content[key][name] = row
+          end
+
           # only reformat compound entries on /value, and never if ?raw is specified
           # "explodes" compound values into multiple stats with the original keys as extra .foo on the name
           # E.g. /proc/stats goes from a big hash with cpu, cpu0, etc. in it
@@ -555,6 +572,36 @@ module Hastur
                     content[key][name] = values
                   end
                 end
+                # remove original data
+                content[key].delete(name)
+                types[key].delete(name)
+              end
+            end
+          end
+
+          if param_is_true("sample")
+            sample = params["sample"].to_i # rescue hastur_error(405, "sample must be an integer")
+            if params["format"] != "value"
+              hastur_error 405, "sample is only valid with /value"
+            end
+
+            content["sample"] = sample
+            content["original_count"] = content["count"]
+
+            # only sample the data if the number of samples is less than the original number of values
+            if sample < content["count"]
+              sample_every = (content["count"] / sample).to_i
+
+              reformat_output content, types do |key, name|
+                count = 0
+                content[key][name].keys.each do |timestamp|
+                  if count % sample_every != 0
+                    content[key][name].delete timestamp
+                  end
+                  count = count + 1
+                end
+
+                content["count"] = count
               end
             end
           end
