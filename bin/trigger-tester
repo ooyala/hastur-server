@@ -4,7 +4,7 @@ require 'trollop'
 require 'termite'
 
 require "hastur"
-require "hastur-trigger"
+require "hastur-server/trigger"
 
 require "hastur-server/syndicator"
 
