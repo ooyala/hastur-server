@@ -109,6 +109,8 @@ JSON
 
 class BasicTriggerTest < Scope::TestCase
   setup_once do
+    @start_time = Time.now
+
     @topology = Nodule::Topology.new(
       :alarm           => Nodule::Alarm.new(:timeout => test_timeout(90)),
       :greenio         => Nodule::Console.new(:fg => :green),
@@ -172,6 +174,7 @@ class BasicTriggerTest < Scope::TestCase
 
       pre_counter = count_messages(:counter)
       STDERR.puts "Pre-counter: #{pre_counter}"
+      STDERR.puts "Time from start: #{Time.now - @start_time} seconds"
 
       [
         [3, [TEST_COUNTER_ENVELOPE.pack, TEST_COUNTER_1]],
@@ -187,12 +190,13 @@ class BasicTriggerTest < Scope::TestCase
         end
       end
 
-      until @topology[:worker_proc].stdout.any? { |line| line =~ /^MSG: hb_process/ }
+      while not @topology[:worker_proc].stdout.any? { |line| line =~ /^MSG: hb_process/ }
         STDERR.puts "Worker stdout: #{@topology[:worker_proc].stdout.inspect}"
         STDERR.puts "Worker stderr: #{@topology[:worker_proc].stderr.inspect}"
         STDERR.puts "Syndicator stdout: #{@topology[:syndicator_proc].stdout.inspect}"
         STDERR.puts "Syndicator stderr: #{@topology[:syndicator_proc].stderr.inspect}"
         STDERR.puts "-----------------------"
+        STDERR.puts "Sleep 2.0 seconds.  Time from start: #{Time.now - @start_time} seconds"
         sleep 2.0
       end
 
