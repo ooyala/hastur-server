@@ -192,6 +192,7 @@ class BasicTriggerTest < Scope::TestCase
         STDERR.puts "Worker stderr: #{@topology[:worker_proc].stderr.inspect}"
         STDERR.puts "Syndicator stdout: #{@topology[:syndicator_proc].stdout.inspect}"
         STDERR.puts "Syndicator stderr: #{@topology[:syndicator_proc].stderr.inspect}"
+        STDERR.puts "-----------------------"
         sleep 2.0
       end
 
