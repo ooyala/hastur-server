@@ -18,6 +18,8 @@ module Hastur
   module Service
     #
     # The Hastur Retrieval REST service.
+    # Extra formats and anything not directly related to querying Cassandra is in
+    # the rest_proxy service.
     #
     # Parameters:
     #   * Timestamps are in microseconds since the Unix epoch
@@ -33,7 +35,6 @@ module Hastur
     # Future:
     #   * better query size limits / handling
     #   * add authentication
-    #   * consider JSONP callbacks - github has great examples
     #
     class Retrieval < Sinatra::Base
       include Hastur::TimeUtil # import all the usec_* methods
@@ -469,6 +470,19 @@ module Hastur
                   sample_count += ts_values.values.map(&:size).inject(0, &:+)
                 end
 
+                # workaround: we're getting overlaps or unsorted data at this point that causes
+                # the series to be jacked up due to out-of-order items, this re-sorts the keys on
+                # each row but shouldn't end up doing a lot of copying since it reuses the value reference
+                output.each do |uuid, name_vals|
+                  name_vals.each do |name, ts_vals|
+                    new = {}
+                    ts_vals.keys.sort.each do |ts|
+                      new[ts] = ts_vals[ts]
+                    end
+                    output[uuid][name] = new
+                  end
+                end
+
                 # deserialize the JSON unless the user asks for raw messages so that most use cases
                 # only have to deserialize once, so far this doesn't seem to have a speed impact
                 if params["format"] == "message" and not param_is_true(:raw)
@@ -488,245 +502,13 @@ module Hastur
             output["uuid_count"] = output.size
             output["name_count"] = name_count
             output["count"] = sample_count
+            output["types"] = types
           else
             hastur_error 405, "Unhandled output format: '#{params["format"]}'!"
           end
 
-          json format_data(output, types)
+          json output
         end
-
-        #
-        # Wrap up all the outer boilerplate loops for reformatting the datastructures
-        # that come back from cassandra.
-        #
-        # @param [Hash] content
-        # @param [Hash] types
-        # @yield key, name
-        # @yieldreturn [Object] data to be placed under output[key][name]
-        #
-        def reformat_output(content, types)
-          output = {}
-
-          content.keys.each do |key|
-            if content[key].respond_to? :keys
-              output[key] = {}
-              content[key].keys.each do |name|
-                output[key][name] = yield key, name
-              end
-            else
-              output[key] = content[key]
-            end
-          end
-
-          output[:types] = types
-          output
-        end
-
-        #
-        # Reformat data structures before serialization.
-        # @todo document this in the regular query paths
-        #
-        # "two_lists" keeps the uuid/name key levels but splits timestamp / values into two lists
-        #   { uuid => { name => { :timestamps => [...], :values => [...] } } }
-        #
-        # "ordered" transforms the hash of { timestamp => value } to an array of hashes
-        # this is handy if you run into JSON parsers that don't preserve order (the spec says it's unordered)
-        #   { uuid => { name => [ { :timestamp => ts, :value => val }, ... ] } }
-        #
-        # "sample=<int>" sets a maximum number of samples to return, it does _not_ roll up, it figures out how
-        # many entries to skip and selects only every (total / samples) point out of the data. This works with
-        # either of the above options or all by itself.
-        #
-        # @param [Hash] content
-        # @return [Hash] content
-        #
-        def format_data(content, types)
-          reorder_data(content, types)
-
-          # expand compound tables into names
-          unless params["format"] == "message" or param_is_true(:raw)
-            reformat_compound_values(content, types)
-          end
-
-          # downsample the data
-          if param_is_true("sample")
-            resample_data(content, types)
-          end
-
-          # two_lists / ordered / datatable are mutually exclusive
-          if param_is_true("two_lists")
-            reformat_to_two_lists(content, types)
-
-          elsif param_is_true("ordered")
-            reformat_to_ordered_format(content, types)
-
-          elsif param_is_true("datatable")
-            reformat_to_google_datatable(content, types)
-
-          # return unmodified except that types are appended
-          else
-            content[:types] = types
-            content
-          end
-        end
-
-        # workaround: we're getting overlaps or unsorted data at this point that causes
-        # the series to be jacked up due to out-of-order items, this re-sorts the keys on
-        # each row but shouldn't end up doing a lot of copying since it reuses the value reference
-        def reorder_data(content, types)
-          reformat_output content, types do |key, name|
-            row = {}
-            old = content[key].delete name
-            old.keys.sort.each do |ts|
-              row[ts] = old[ts]
-            end
-
-            content[key][name] = row
-          end
-        end
-
-        # only reformat compound entries on /value, and never if ?raw is specified
-        # "explodes" compound values into multiple stats with the original keys as extra .foo on the name
-        # E.g. /proc/stats goes from a big hash with cpu, cpu0, etc. in it
-        # to linux.proc.stat.cpu, linux.proc.stat.cpu0, etc..
-        def reformat_compound_values(content, types)
-          reformat_output content, types do |key, name|
-            if types[key][name] == "compound"
-              # modify content in-place to make it a little faster and (maybe) save memory
-              content[key][name].each do |timestamp, values|
-                if values.respond_to? :keys
-                  values.each do |inner_name, inner_value|
-                    newname = [name, inner_name].join('.')
-                    types[key][newname] = "compound"
-                    content[key][newname] ||= {}
-                    content[key][newname][timestamp] = inner_value
-                  end
-                else
-                  content[key][name] = values
-                end
-              end
-              # remove original data
-              content[key].delete(name)
-              types[key].delete(name)
-            end
-          end
-        end
-
-        # modify content in-place and reduce it to the requested number of samples
-        def resample_data(content, types)
-          sample = params["sample"].to_i # rescue hastur_error(405, "sample must be an integer")
-          if params["format"] != "value"
-            hastur_error 405, "sample is only valid with /value"
-          end
-
-          content["sample"] = sample
-          content["original_count"] = content["count"]
-
-          # only sample the data if the number of samples is less than the original number of values
-          if sample < content["count"]
-            sample_every = (content["count"] / sample).to_i
-
-            reformat_output content, types do |key, name|
-              count = 0
-              content[key][name].keys.each do |timestamp|
-                if count % sample_every != 0
-                  content[key][name].delete timestamp
-                end
-                count = count + 1
-              end
-
-              content["count"] = count
-            end
-          end
-        end
-
-        # { uuid => { name => { :timestamps => [...], :values => [...] } } }
-        def reformat_to_two_lists(content, types)
-          reformat_output content, types do |key, name|
-            row = { :timestamps => [], :values => [] }
-            content[key][name].each do |timestamp, value|
-              row[:timestamps] << timestamp
-              row[:values] << value
-            end
-            row
-          end
-        end
-
-        # { uuid => { name => [ { :timestamp => ts, :value => val }, ... ] } }
-        def reformat_to_ordered_format(content, types)
-          reformat_output content, types do |key, name|
-            row = []
-            content[key][name].each do |timestamp, value|
-              row << { :timestamp => timestamp, :data => value }
-            end
-            row
-          end
-        end
-
-        # Google DataTable format, for use with Google Charts
-        # https://developers.google.com/chart/interactive/docs/dev/implementing_data_source#jsondatatable
-        def reformat_to_google_datatable(content, types)
-          out = {
-            :cols => [
-              { :id => :time,  :label => "Time",  :type => :datetime },
-              { :id => :value, :label => "Value", :type => :number },
-            ],
-            :rows => []
-          }
-
-
-          timestamps = nil
-          seen_labels = {}
-          reformat_output content, types do |key, name|
-            if params["format"] == "message"
-              content[key][name].each do |ts, val|
-                if val.respond_to?(:has_key?) and val.has_key?("labels")
-                  seen_labels.merge! val["labels"]
-                end
-              end
-            end
-
-            if timestamps == nil
-              timestamps = content[key][name].keys.sort.map do |ts|
-                t = Time.at ts.to_f/1_000_000
-                # The Date() format is google-specific
-                "Date(#{[t.year, t.month, t.mday, t.hour, t.min, t.sec, t.usec / 1000].join(',')})"
-              end
-            end
-          end
-
-          labels = seen_labels.keys.sort
-
-          if params["format"] == "message"
-            labels.each do |label|
-              type = seen_labels[label].kind_of?(Numeric) ? :number : :string
-              out[:cols] << { :id => "label-#{label}", :label => label, :type => type }
-            end
-          end
-
-          types.keys.each do |uuid|
-            content[uuid].each do |name, series|
-              series.values.each_with_index do |val, idx|
-                row = [ { :v => timestamps[idx] } ]
-
-                if params["format"] == "message"
-                  row << { :v => val["value"] }
-                  labels.each do |label|
-                    label_value = val["labels"][label] rescue ""
-                    row << { :v => label_value }
-                  end
-                else
-                  row << { :v => val }
-                end
-
-                out[:rows] << { :c => row }
-              end
-            end
-          end
-
-          { :status => "ok", :reqId => 0, :table => out }
-        end
-
 
         #
         # Computes the request url without the path information
@@ -739,25 +521,14 @@ module Hastur
         end
 
         #
-        # Dump JSON to string with appropriate params.
+        # Dump to JSON string.
+        #
+        # @param [Hash] content
         # @return [String] Serialized JSON content
         #
         def json(content)
-          json_options = {}
-
-          unless %w[0 false no].include?(params[:pretty]) or request.xhr?
-            json_options[:pretty] = true
-          end
-
-          # when the cb parameter is specified, return a JSONP response
-          if params["cb"]
-            response['Content-Type'] = "text/javascript"
-            "#{params["cb"]}(#{MultiJson.dump(content)});\n"
-          # otherwise, just make it regular JSON
-          else
-            response['Content-Type'] = "application/json"
-            MultiJson.dump(content, json_options) + "\n"
-          end
+          response['Content-Type'] = "application/json"
+          MultiJson.dump(content) + "\n"
         end
 
         #
