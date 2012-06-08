@@ -197,6 +197,7 @@ class BasicTriggerTest < Scope::TestCase
         STDERR.puts "Syndicator stderr: #{@topology[:syndicator_proc].stderr.inspect}"
         STDERR.puts "-----------------------"
         STDERR.puts "Sleep 2.0 seconds.  Time from start: #{Time.now - @start_time} seconds"
+        STDERR.flush
         sleep 2.0
       end
 
