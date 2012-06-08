@@ -1,28 +1,53 @@
-require "cassandra/1.0"
-require "cgi"
-require "hastur/api"
-require "hastur-server/cassandra/rollups"
-require "hastur-server/cassandra/schema"
-require "hastur-server/time_util"
 require "multi_json"
-require "termite"
 require 'goliath'
 require 'em-synchrony/em-http'
+require "hastur/eventmachine"
 
 MultiJson.use :yajl
 
 module Hastur
   module Service
     class RestProxy < Goliath::API
-      include Hastur::TimeUtil # import all the usec_* methods
       use Goliath::Rack::Params
       use Goliath::Rack::JSONP
 
-      BASE_URL = "http://localhost:9393"
+      attr_reader :backend
+      def initialize
+        ::ARGV.each_with_index do |arg,idx|
+          if arg == "--backend"
+            @backend = ::ARGV[idx + 1]
+            ::ARGV.slice! idx, 2
+            break
+          end
+        end
+        super
+      end
 
+      #
+      # These routes are proxy-specific:
+      #
+      # /api/*/datatable - converts to Google DataTable format
+      # /api/*/ordered   - converts to an array-of-hashes format for strong ordering
+      # /api/*/two_lists - converts to separate arrays of timestamps & values
+      #
+      # These are proxy-specific query parameters and will not be passed through:
+      #
+      # @param callback Set a callback for JSONP, return JSONP format
+      # @param pretty Return the JSON in pretty-print / indented format
+      #
+      # The following query parameters are passed through to the retrieval service:
+      #
+      # @param start Starting timestamp, default 5 minutes ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @param limit Maximum number of values to return
+      # @param reversed Return earliest first instead of latest first
+      # @param consistency Cassandra read consistency
+      #
+      #
       def response(env)
         url = env['REQUEST_PATH'].split '/'
-        url[0] = BASE_URL # first element is always empty
+        url[0] = @backend # first element is always empty
 
         format = nil
         case url.last
@@ -34,11 +59,20 @@ module Hastur
             url.push 'message'
         end
 
-        req_params = env.params.clone
-        %w[cb ordered datatable sample].each do |p|
-          req_params.delete p
+        # query parameters to be passed to the retrieval service are whitelisted
+        req_params = {}
+        %w[start end ago limit reversed consistency].each do |p|
+          if env.params.has_key? p
+            req_params[p] = env.params[p]
+          end
         end
 
+        json_options = { :pretty => false }
+        if param_is_true("pretty", env.params)
+          json_options[:pretty] = true
+        end
+
+        STDERR.puts "GET #{url.join('/')} #{req_params}"
         req = EM::HttpRequest.new(url.join('/')).get query: req_params
 
         headers = { 'X-Goliath' => 'Proxy', 'X-Hastur-Format' => format }
@@ -48,15 +82,9 @@ module Hastur
           content = format_data(format, content, env.params)
         end
 
-        # when the cb parameter is specified, return a JSONP response
-        if env.params["cb"]
-          headers['Content-Type'] = "text/javascript"
-          json = "#{env.params["cb"]}(#{MultiJson.dump(content)});\n"
-        # otherwise, just make it regular JSON
-        else
-          headers['Content-Type'] = "application/json"
-          json = MultiJson.dump(content, {:pretty => true}) + "\n"
-        end
+        # the JSONP middleware will convert JSON if it sees the 'callback' param
+        headers['Content-Type'] = "application/json"
+        json = MultiJson.dump(content, json_options) + "\n"
 
         [req.response_header.status, headers, json]
       end
@@ -225,6 +253,8 @@ module Hastur
 
       # Google DataTable format, for use with Google Charts
       # https://developers.google.com/chart/interactive/docs/dev/implementing_data_source#jsondatatable
+      # Right now this only handles 'message' types so it can pull out the labels and pass them through.
+      # It remains to be seen if that's useful or if it should be some kind of side-band.
       def reformat_to_google_datatable(content, types, params)
         out = {
           :cols => [
@@ -243,7 +273,7 @@ module Hastur
             end
           end
 
-          if timestamps == nil
+          if timestamps.nil?
             timestamps = content[key][name].keys.sort.map do |ts|
               t = Time.at ts.to_f/1_000_000
               # The Date() format is google-specific
@@ -262,7 +292,13 @@ module Hastur
         types.keys.each do |uuid|
           content[uuid].each do |name, series|
             series.values.each_with_index do |val, idx|
-              row = [ { :v => timestamps[idx] }, { :v => val["value"] } ]
+              row = [ { :v => timestamps[idx] } ]
+              if %w[gauge counter mark].include?(types[uuid][name])
+                row << { :v => val["value"] }
+              else
+                # TODO(al) 2012-06-07 handle compound types for datatable
+                STDERR.puts "TODO(al): handle #{types[uuid][name]} types"
+              end
 
               labels.each do |label|
                 label_value = val["labels"][label] rescue ""
