@@ -182,7 +182,8 @@ class BasicTriggerTest < Scope::TestCase
       ].each do |count, msgs|
         STDERR.puts "Sending a set of #{count} messages to Syndicator..."
         count.times do
-          Hastur::Util.send_strings(socket, msgs)
+          s = Hastur::Util.send_strings(socket, msgs)
+          raise "Error sending message!" unless s
         end
       end
 
