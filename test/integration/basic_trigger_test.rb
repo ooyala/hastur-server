@@ -180,6 +180,7 @@ class BasicTriggerTest < Scope::TestCase
         [6, [TEST_EVENT_ENVELOPE.pack, TEST_EVENT_1]],
         [1, [TEST_HB_PROCESS_ENVELOPE.pack, TEST_HB_PROCESS_1]],
       ].each do |count, msgs|
+        STDERR.puts "Sending a set of #{count} messages to Syndicator..."
         count.times do
           Hastur::Util.send_strings(socket, msgs)
         end
