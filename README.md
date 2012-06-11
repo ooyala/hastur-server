@@ -31,6 +31,13 @@ Components
 * Hastur Syndicator - a server daemon to receive events from Core and
   send them out to workers with triggers as a realtime stream.
 
+API Documentation
+-----------------
+
+All components of Hastur use YARD for basic documentation.  Install
+YARD via "gem install yardoc redcarpet" and then type "yardoc" to
+generate HTML documentation in doc/index.html.
+
 Architecture
 ------------
 
