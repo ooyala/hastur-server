@@ -225,7 +225,7 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
 
     assert_equal( { A1UUID => { "" => { FAKE_TS1.to_s => AGENT_REG_1 } },
                     "uuid_count" => 1, "count" => 1, "name_count" => 1,
-                    "types" => { A1UUID => { "" => "reg_agent" } } }, hash )
+                    "types" => { A1UUID => { "" => ["reg_agent"] } } }, hash )
   end
 
   def test_retrieval_multiple_types

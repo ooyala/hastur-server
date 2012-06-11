@@ -205,7 +205,7 @@ module Hastur
 
       # modify content in-place and reduce it to the requested number of samples
       def resample_data(content, types, params)
-        sample = params["sample"].to_i # rescue hastur_error(405, "sample must be an integer")
+        sample = params["sample"].to_i # rescue hastur_error(404, "sample must be an integer")
 
         content["sample"] = sample
         content["original_count"] = content["count"]

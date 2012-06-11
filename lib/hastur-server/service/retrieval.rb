@@ -370,7 +370,7 @@ module Hastur
         def query_hastur
           stub! if params["format"] == "rollup"
           unless ["message", "value", "count"].include?(params["format"])
-            hastur_error 405, "Illegal output option: '#{params["format"]}'"
+            hastur_error 404, "Illegal output option: '#{params["format"]}'"
           end
 
           uuids = params["uuid"].split(",")
@@ -378,7 +378,7 @@ module Hastur
           msg_names = params["name"] ? params["name"].split(",") : []
 
           unless types.any? { |t| TYPES[:all].include?(t) }
-            hastur_error 405, "Invalid type(s): '#{types}'"
+            hastur_error 404, "Invalid type(s): '#{types}'"
           end
 
           # Some message types are day bucketed and are only expected once a day, like registrations,
@@ -439,9 +439,6 @@ module Hastur
           end
 
           output = {}
-          types = {}
-
-          # TODO: add paging - return and reuse last column name in each row?
 
           if ["value", "message", "count"].include?(params["format"])
             # Hastur::Cassandra.get returns the following format:
@@ -449,25 +446,14 @@ module Hastur
             # This REST API returns:
             #   { :uuid => { :name => { :timestamp => value/object } } }
 
-            sample_count = 0
-            name_count = 0
-
             values.each do |values_for_name_opts|
               values_for_name_opts.each do |uuid, node_data|
                 # hash1: {"gauge"=>{"hastur.agent.utime"=>{1338517798448399=>"{\"type\"
                 output[uuid] ||= {}
-                types[uuid] ||= {}
                 node_data.each do |type, ts_values|
                   # ts_values maps { :name => { :timestamp => value/object } }
                   # This will return a structure without the types.
                   output[uuid].merge!(ts_values)
-                  name_count += ts_values.size
-
-                  ts_values.keys.each do |name|
-                    types[uuid][name] = type
-                  end
-
-                  sample_count += ts_values.values.map(&:size).inject(0, &:+)
                 end
 
                 # workaround: we're getting overlaps or unsorted data at this point that causes
@@ -499,15 +485,42 @@ module Hastur
               end
             end
 
-            output["uuid_count"] = output.size
-            output["name_count"] = name_count
-            output["count"] = sample_count
-            output["types"] = types
+            add_counts_to(output, values)
           else
             hastur_error 404, "Unhandled output format: '#{params["format"]}'!"
           end
 
           json output
+        end
+
+        def add_counts_to(output, values)
+          types = {}
+          name_count = 0
+          sample_count = 0
+
+          values.each do |values_for_name_opts|
+            values_for_name_opts.each do |uuid, node_data|
+              types[uuid] ||= {}
+              node_data.each do |type, ts_values|
+                name_count += ts_values.size
+                ts_values.keys.each do |name|
+                  types[uuid][name] ||= []
+                  types[uuid][name] << type
+                end
+
+                sample_count += ts_values.values.map(&:size).inject(&:+)
+              end
+
+              types[uuid].each do |name, _|
+                types[uuid][name] = types[uuid][name].uniq
+              end
+            end
+          end
+
+          output["uuid_count"] = output.size
+          output["name_count"] = name_count
+          output["count"] = sample_count
+          output["types"] = types
         end
 
         #
@@ -558,7 +571,7 @@ module Hastur
         # Returns an error & status code indicating the method is not implemented yet.
         #
         def stub!(route = "unspecified")
-          hastur_error 405, "this route (#{route}) is just a stub and is not implemented yet"
+          hastur_error 404, "this route (#{route}) is just a stub and is not implemented yet"
         end
 
         #
