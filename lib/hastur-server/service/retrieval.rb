@@ -75,7 +75,7 @@ module Hastur
         end
       end
 
-      before "" do
+      before do
         if request['Origin']
           response['Access-Control-Allow-Origin'] = "*"
         end
