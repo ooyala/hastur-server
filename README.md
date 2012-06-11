@@ -1,33 +1,62 @@
 Overview
 --------
 
-Hastur is a new monitoring system focused on removing any barriers to entry
-for engineers who need their systems monitored. Many of the components are
-built from existing open source projects, making Hastur mostly a new way
-to (not) manage monitoring configuration. The communication and most points
-of scalability are built on top of ZeroMQ, allowing the agent daemon to be
-thin and simple.
+Hastur is a monitoring system focused on removing any barriers to
+entry for engineers who need their systems monitored.
 
-Hastur supports RESTful querying of data using the retrieval service and
-streaming examination of data using triggers.
+The communication and most points of scalability are built on top of
+ZeroMQ, allowing the agent daemon to be thin and simple.
+
+Message storage is done with Cassandra, a highly-scalable key-value
+store with excellent support for time-series data.
+
+Hastur supports RESTful querying of data using the retrieval service
+and streaming examination of data using triggers.
 
 Components
 ----------
 
-* hastur-agent.rb
-* hastur-core.rb (router plus sink)
+* Hastur Agent - a daemon that runs on individual monitored boxes.
+  The agent is often installed via a Debian package with a
+  self-contained Ruby installation to avoid system dependencies.
 
-(in progress)
+* Hastur Core - a server daemon that receives messages and writes them
+  to Cassandra.
 
-* hastur-sink-stats-to-graphite.rb
+* Hastur Retrieval service - a REST server to retrieve batches of
+  messages from Cassandra and return them as JSON.  This also
+  retrieves hostname data, UUID messages sources and message names to
+  allow exploration of who is sending what data.
+
+* Hastur Syndicator - a server daemon to receive events from Core and
+  send them out to workers with triggers as a realtime stream.
 
 Architecture
 ------------
 
+Individual hosts are assigned a UUID identifier and run an agent
+daemon.  The agent opens a UDP port (normally 8150) for local use.
+The agent sends back system information always, and also forwards
+Hastur messages from individual Hastur-enabled applications.
+
+The agent forwards messages to the Core servers, which then store
+them, forward them to streaming Syndicators and write to Cassandra for
+later retrieval.
+
+Using ZeroMQ and/or Cassandra, each component other than the agent can
+have as many copies as desired for availability and/or fault
+tolerance.  The agent isn't duplicated because, fundamentally, Hastur
+cannot provide fault tolerance at the single-host level.  That must
+be done by the application(s), if at all.
+
 Development
 -----------
 
-Install ZeroMQ & bundle install from the root directory. Look at the integration tests under tests/integration.
+Install ZeroMQ 2.x
+Install Cassandra 1.1
+
+Also, bundle install from the root directory. Look at the integration
+tests under tests/integration.
 
 Debugging Tips
 --------------
@@ -50,17 +79,19 @@ port to see if the same data is making it through the agent.
 Dependencies
 ------------
 
-* Ruby 1.9.3 (1.9.2 probably works)
-* ZeroMQ 2.x (2.2.11) or 3.1.x
+* Ruby 1.9.3
+* ZeroMQ 2.x (2.2.11) - some changes required for 3.x
 * Gems in Gemfile
 
 Deployment
 ----------
 
-TBD, probably puppet + fezzik
+The agent is deployed via Debian packages (other methods later)
+Core is deployed via scp
+Triggers - automated deployment pending
 
-Triggers
---------
+README for Triggers
+-------------------
 
 ## Usage
 
