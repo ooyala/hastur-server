@@ -56,7 +56,7 @@ module Hastur
                             hb_process hb_agent hb_pluginv1
                             event log error
                             reg_agent reg_process reg_pluginv1
-                            info_agent info_process]
+                            info_agent info_process info_ohai]
       }.freeze
 
       # TODO(al) use the schema to build these lists
