@@ -504,7 +504,7 @@ module Hastur
             output["count"] = sample_count
             output["types"] = types
           else
-            hastur_error 405, "Unhandled output format: '#{params["format"]}'!"
+            hastur_error 404, "Unhandled output format: '#{params["format"]}'!"
           end
 
           json output
