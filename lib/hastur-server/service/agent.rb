@@ -98,6 +98,8 @@ module Hastur
             _fail(m, e)
           end
         end
+
+        @logger.info "Hastur agent up and running."
       end
 
       def _fail(message, e)
@@ -303,7 +305,8 @@ module Hastur
             })
             msg = Hastur::Message::Info::Ohai.new :from => @uuid, :data => info
             _send(msg)
-          rescue
+          rescue Exception => e
+            @logger.info "ohai failed: #{e}"
           end
           @last_ohai_info = Time.now
         end
@@ -419,7 +422,7 @@ module Hastur
       # Sets a variable so run()'s loop will exit on its next iteration.
       #
       def shutdown
-        @logger.debug "Setting running to false."
+        @logger.info "Hastur agent shutting down normally."
         @running = false
         @router_socket.close
         @udp_socket.close
