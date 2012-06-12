@@ -231,7 +231,8 @@ module Hastur
       # Parameters may be comma-separated values when specifying multiple of a given item.
       #
       # @param format One of "message", "value", "count" or "rollup" for output format
-      # @param start Starting timestamp, default 5 minutes ago
+      # @param start Starting timestamp, default 5 minutes ago unless querying only
+      #   registration and info types, then default 1 day ago
       # @param end Ending timestamp, default now
       # @param ago How many microseconds back to query - an alternative to start/end
       # @param uuid UUID(s) to query for
@@ -252,7 +253,8 @@ module Hastur
       # Parameters may be comma-separated values when specifying multiple of a given item.
       #
       # @param format One of "message", "value", "count" or "rollup" for output format
-      # @param start Starting timestamp, default 5 minutes ago
+      # @param start Starting timestamp, default 5 minutes ago unless querying only
+      #   registration and info types, then default 1 day ago
       # @param end Ending timestamp, default now
       # @param ago How many microseconds back to query - an alternative to start/end
       # @param uuid UUID(s) to query for
@@ -273,7 +275,8 @@ module Hastur
       # Parameters may be comma-separated values when specifying multiple of a given item.
       #
       # @param format One of "message", "value", "count" or "rollup" for output format
-      # @param start Starting timestamp, default 5 minutes ago
+      # @param start Starting timestamp, default 5 minutes ago unless querying only
+      #   registration and info types, then default 1 day ago
       # @param end Ending timestamp, default now
       # @param ago How many microseconds back to query - an alternative to start/end
       # @param uuid UUID(s) to query for
@@ -294,7 +297,8 @@ module Hastur
       # Parameters may be comma-separated values when specifying multiple of a given item.
       #
       # @param format One of "message", "value", "count" or "rollup" for output format
-      # @param start Starting timestamp, default 5 minutes ago
+      # @param start Starting timestamp, default 5 minutes ago unless querying only
+      #   registration and info types, then default 1 day ago
       # @param end Ending timestamp, default now
       # @param ago How many microseconds back to query - an alternative to start/end
       # @param uuid UUID(s) to query for
