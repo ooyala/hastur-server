@@ -72,7 +72,7 @@ module Hastur
     end
 
     def usec_to_time(ts)
-      Time.at(ts / USEC_ONE_SECOND).utc
+      Time.at(ts.to_f / USEC_ONE_SECOND.to_f).utc
     end
 
     #
