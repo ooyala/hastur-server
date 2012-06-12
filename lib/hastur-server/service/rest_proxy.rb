@@ -2,12 +2,15 @@ require "multi_json"
 require 'goliath'
 require 'em-synchrony/em-http'
 require "hastur/eventmachine"
+require "hastur-server/time_util"
+require "time"
 
 MultiJson.use :yajl
 
 module Hastur
   module Service
     class RestProxy < Goliath::API
+      include Hastur::TimeUtil
       use Goliath::Rack::Params
       use Goliath::Rack::JSONP
 
@@ -24,6 +27,10 @@ module Hastur
         unless @backend
           raise "Initialization error: could not determine backend server, try --backend <url>"
         end
+
+        @cname_cache = {}
+        @ohai_cache = {}
+        @uuid_cache = {}
 
         super
       end
@@ -82,7 +89,7 @@ module Hastur
         headers = { 'X-Goliath' => 'Proxy', 'X-Hastur-Format' => format }
         content = MultiJson.load req.response
 
-        if format and not req.error
+        if not req.error
           content = format_data(format, content, env.params)
         end
 
@@ -122,6 +129,19 @@ module Hastur
         # downsample the data
         if param_is_true("sample", params)
           resample_data(content, types, params)
+        end
+
+        if param_is_true("translate", params)
+          params["translate"].split(',').each do |xlate|
+            from, to = xlate.split ':'
+            case from
+            when "date"
+              STDERR.puts "rewriting date from #{from} to #{to}"
+              content = rewrite_timestamps(content, types, to)
+            when "uuid"
+              content = rewrite_uuids(content, types, to)
+            end
+          end
         end
 
         # two_lists / ordered / datatable are mutually exclusive
@@ -165,34 +185,19 @@ module Hastur
         output
       end
 
-      # workaround: we're getting overlaps or unsorted data at this point that causes
-      # the series to be jacked up due to out-of-order items, this re-sorts the keys on
-      # each row but shouldn't end up doing a lot of copying since it reuses the value reference
-      def reorder_data(content, types, params)
-        reformat_output content, types do |key, name|
-          row = {}
-          old = content[key].delete name
-          old.keys.sort.each do |ts|
-            row[ts] = old[ts]
-          end
-
-          content[key][name] = row
-        end
-      end
-
       # only reformat compound entries on /value, and never if ?raw is specified
       # "explodes" compound values into multiple stats with the original keys as extra .foo on the name
       # E.g. /proc/stats goes from a big hash with cpu, cpu0, etc. in it
       # to linux.proc.stat.cpu, linux.proc.stat.cpu0, etc..
       def reformat_compound_values(content, types, params)
         reformat_output content, types do |key, name|
-          if types[key][name] == "compound"
+          if types[key][name].first == "compound"
             # modify content in-place to make it a little faster and (maybe) save memory
             content[key][name].each do |timestamp, values|
               if values.respond_to? :keys
                 values.each do |inner_name, inner_value|
                   newname = [name, inner_name].join('.')
-                  types[key][newname] = "compound"
+                  types[key][newname] = ["compound"]
                   content[key][newname] ||= {}
                   content[key][newname][timestamp] = inner_value
                 end
@@ -229,6 +234,37 @@ module Hastur
 
             content["count"] = count
           end
+        end
+      end
+
+      def rewrite_timestamps(content, types, to)
+        rewrite = proc { |ts| ts.to_i }
+        case to
+        when "iso8601"
+          rewrite = proc { |ts| usec_to_time(ts).iso8601(6) }
+        when "unix"
+          rewrite = proc { |ts| ts.to_i / 1_000_000 }
+        when "millis"
+          rewrite = proc { |ts| ts.to_i / 1_000 }
+        else
+          # error
+          STDERR.puts "invalid date format: '#{to}'"
+        end
+
+        reformat_output content, types do |key, name|
+          row = {}
+          content[key][name].each do |ts, val|
+            row[rewrite.call(ts)] = val
+          end
+          row
+        end
+      end
+
+      def rewrite_uuids(content, types, to)
+        case to
+        when "hostname"
+        when "ec2-public"
+        when "cname"
         end
       end
 
@@ -297,7 +333,7 @@ module Hastur
           content[uuid].each do |name, series|
             series.values.each_with_index do |val, idx|
               row = [ { :v => timestamps[idx] } ]
-              if %w[gauge counter mark].include?(types[uuid][name])
+              if %w[gauge counter mark].include?(types[uuid][name].first)
                 row << { :v => val["value"] }
               else
                 # TODO(al) 2012-06-07 handle compound types for datatable
