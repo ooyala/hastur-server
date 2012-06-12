@@ -48,7 +48,7 @@ namespace :hastur do
     :zlib    => "http://zlib.net/zlib-1.2.6.tar.gz",
     :openssl => "http://www.openssl.org/source/openssl-1.0.1a.tar.gz",
     :yaml    => "http://pyyaml.org/download/libyaml/yaml-0.1.4.tar.gz",
-    :libffi  => "http://al-dev1.sv2/libffi-3.0.11.tar.gz", # temporary, upstream does not have an http url
+    :libffi  => "http://mirrors.kernel.org/sources.redhat.com/libffi/libffi-3.0.11.tar.gz",
     :ruby    => "http://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.3-p194.tar.gz",
     :zeromq  => "http://download.zeromq.org/zeromq-2.2.0.tar.gz",
   }
