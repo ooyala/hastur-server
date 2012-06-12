@@ -79,6 +79,7 @@ module Hastur
         if request['Origin']
           response['Access-Control-Allow-Origin'] = "*"
         end
+        Hastur.mark 'hastur.rest.uri', request.url
       end
 
       #
@@ -368,6 +369,8 @@ module Hastur
         # "consistency" - Cassandra read consistency
         #
         def query_hastur
+          query_started = Hastur.timestamp
+
           stub! if params["format"] == "rollup"
           unless ["message", "value", "count"].include?(params["format"])
             hastur_error 404, "Illegal output option: '#{params["format"]}'"
@@ -489,6 +492,15 @@ module Hastur
           else
             hastur_error 404, "Unhandled output format: '#{params["format"]}'!"
           end
+
+          query_ended = Hastur.timestamp
+          Hastur.gauge(
+            'hastur.rest.db.query_time',
+            query_ended - query_started,
+            query_ended,
+            :unit => :usecs,
+            :request => request.url
+          )
 
           json output
         end
