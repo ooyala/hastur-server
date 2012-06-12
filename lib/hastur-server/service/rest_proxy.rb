@@ -20,6 +20,11 @@ module Hastur
             break
           end
         end
+
+        unless @backend
+          raise "Initialization error: could not determine backend server, try --backend <url>"
+        end
+
         super
       end
 
@@ -72,7 +77,6 @@ module Hastur
           json_options[:pretty] = true
         end
 
-        STDERR.puts "GET #{url.join('/')} #{req_params}"
         req = EM::HttpRequest.new(url.join('/')).get query: req_params
 
         headers = { 'X-Goliath' => 'Proxy', 'X-Hastur-Format' => format }
