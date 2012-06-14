@@ -14,8 +14,10 @@ class TimeUtilTest < Scope::TestCase
 
     should "convert to ruby time" do
       assert_equal Time.at(1_234_567_890), usec_to_time(1_234_567_890_000_000)
-      assert_equal Time.at(1_111_111_111), usec_to_time(1_111_111_111_111_111)
-      assert_equal Time.at(1_000_000_000), usec_to_time(1_000_000_000_000_009)
+      # comparing times with subseconds to a time with subseconds doesn't fail like you'd expect,
+      # it fails with a ruby exception blaming Time#==, so just truncate the subseconds off for this
+      assert_equal Time.at(1_111_111_111).utc, usec_to_time(1_111_111_111_111_111).round(0)
+      assert_equal Time.at(1_000_000_000), usec_to_time(1_000_000_000_000_009).round(0)
     end
   end
 
