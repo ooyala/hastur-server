@@ -72,7 +72,7 @@ module Hastur
           rescue Hastur::ZMQError => e
             @logger.error "Error reading from ZeroMQ socket.", { :exception => e }
           rescue Exception => e
-            @logger.error e.to_s, { :exception => e }
+            @logger.error e.to_s, { :message => e.message, :backtrace => e.backtrace }
           end
         end
       end
