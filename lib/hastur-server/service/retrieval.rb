@@ -556,8 +556,15 @@ module Hastur
         # @return [String] Serialized JSON content
         #
         def json(content)
-          response['Content-Type'] = "application/json"
-          MultiJson.dump(content) + "\n"
+          # when the cb parameter is specified, return a JSONP response
+          if params["cb"]
+            response['Content-Type'] = "text/javascript"
+            "#{params["cb"]}(#{MultiJson.dump(content)});\n"
+          # otherwise, just make it regular JSON
+          else
+            response['Content-Type'] = "application/json"
+            MultiJson.dump(content) + "\n"
+          end
         end
 
         #
