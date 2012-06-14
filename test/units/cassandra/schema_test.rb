@@ -239,6 +239,17 @@ class CassandraSchemaTest < Scope::TestCase
       assert_equal({}, out)
     end
 
+    should "query an info_process from InfoProcessArchive" do
+      @cass_client.expects(:multi_get).with(:InfoProcessArchive, [ "#{FAKE_UUID}-1329782400000000" ],
+                                            :count => 10_000, :finish => "\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :start => "\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
+        returns({})
+      @cass_client.expects(:insert).with(:InfoProcessMetadata, "#{FAKE_UUID}-#{ROW_DAY_TS}",
+                                         { "last_access" => NOWISH_TIMESTAMP}, {})
+      out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "info_process", 1329858724285438, 1329858724285440)
+      assert_equal({}, out)
+    end
+
     should "query an event from EventArchive with multiple client UUIDs" do
       day_ts = "1329782400000000"
       @cass_client.expects(:multi_get).with(:EventArchive,
