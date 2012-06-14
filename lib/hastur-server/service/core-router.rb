@@ -118,20 +118,21 @@ module Hastur
             content = message[-2].copy_out_string
             envelope = Hastur::Envelope.parse content
             if envelope.type_id == @noop_type_id
+              # noops are used to maintain the reverse path for acks from core -> agent
               @agents[envelope.from] = message[0].copy_out_string
-              @logger.debug "Dropping no-op message"
             else
               # forward the message, sans the ZMQ envelope
               message.shift
               send_to @firehose_socket, message
-              @logger.debug "Forwarded message type #{envelope.type_id} to firehose"
             end
           rescue Exception => e
-            @logger.warn "Exception while forwarding message: #{e.inspect}"
-            @logger.warn "Envelope: #{envelope.to_hash}" if envelope
-            @logger.warn "Envelope Raw: #{content.inspect}" if content
             payload = message[-1].copy_out_string rescue "<error>"
-            @logger.warn "Payload: #{payload}"
+            @logger.warn("Exception while forwarding message: #{e}", {
+              :backtrace    => e.backtrace,
+              :envelope     => envelope.to_hash,
+              :raw_envelope => content.inspect,
+              :payload      => payload,
+            })
           ensure
             # close all of the zmq messages or we might leak C memory
             message.each do |m| m.close end
