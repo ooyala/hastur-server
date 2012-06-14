@@ -298,10 +298,11 @@ module Hastur
           begin
             ohai = Ohai::System.new
             ohai.all_plugins
-            # Hastur requires all bodies to have timestamps, and we like them to have UUID's
+            # Hastur requires all bodies to have timestamps, and we like them to have UUID's and labels
             info = ohai.data.merge({
               "uuid" => @uuid,
-              "timestamp" => Hastur.timestamp
+              "timestamp" => Hastur.timestamp,
+              "labels" => Hastur.send(:default_labels),
             })
             msg = Hastur::Message::Info::Ohai.new :from => @uuid, :data => info
             _send(msg)
