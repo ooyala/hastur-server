@@ -155,8 +155,8 @@ module Hastur
     # @option options [Boolean] :reversed Return in reverse order
     #
     def get(cass_client, agent_uuid, type, start_timestamp, end_timestamp, options = {})
-      if end_timestamp - start_timestamp > 72 * ONE_HOUR
-        raise "Don't query more than 3 days at once yet!"
+      if end_timestamp - start_timestamp > 32 * ONE_DAY
+        raise "Querying more than a month at a time is unsupported."
       end
 
       # Make sure type is a list
