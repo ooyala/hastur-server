@@ -90,6 +90,8 @@ module Hastur
       uuid = options.delete(:uuid) || hash[:uuid] || hash[:from]
       raise "No UUID given!" unless uuid
 
+      hash["labels"] ||= {}
+
       name = schema[:name] ? hash["name"] : nil
       value = hash["value"]
       timestamp_usec = hash["timestamp"]
