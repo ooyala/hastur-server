@@ -225,6 +225,77 @@ module Hastur
       end
 
       #
+      # @!method /api/lookup/hostname/:uuid
+      #
+      # Gets the various network names / hostnames for the given uuid(s). Returns a simple
+      # hash something like:
+      # { :hostname => "gandalf", :fqdn => "gandalf.thewhite.com", :utsname => "gandalf.thewhite.com",
+      #   :names => [ "gandalf", "gandalf.thewhite.com" ] }
+      #
+      # @param uuid UUID(s) to query for
+      # @param start Starting timestamp, default 5 minutes ago unless querying only
+      #   registration and info types, then default 1 day ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      #
+      get "/api/lookup/hostname/:uuid" do
+        start_ts, end_ts = get_start_end :one_day
+        uuids = params[:uuid].split(",")
+
+        # might want to cache some of this if this route gets hammered ...
+        cnames = Hastur::Cassandra.lookup_by_key cass_client, :cnames, start_ts, end_ts, :count => 1_000_000
+        ohais  = Hastur::Cassandra.get cass_client, uuids, "info_ohai", start_ts, end_ts, :count => 1
+        regs   = Hastur::Cassandra.get cass_client, uuids, "reg_agent", start_ts, end_ts, :count => 1
+
+        out = {}
+        uuids.each do |uuid|
+          sys = { :hostname => nil, :fqdn => nil, :utsname => nil, :cnames => [] }
+
+          # first, try the registration information
+          if regs[uuid] and regs[uuid]["reg_agent"]
+            reg_ts, reg = regs[uuid]["reg_agent"][""].shift
+            sys[:hostname] = reg["hostname"]
+            sys[:fqdn]     = reg["fqdn"]
+            sys[:utsname]  = reg["fqdn"]
+          end
+
+          # use ohai to fill in additional info, including EC2 info
+          if ohais[uuid] and ohais[uuid]["info_ohai"]
+            ohai_ts, ohai_json = ohais[uuid]["info_ohai"][""].shift
+            ohai = MultiJson.load ohai_json rescue {}
+
+            # prefer the registration data, since Ohai stupidly calls "hostname -s" for hostname
+            sys[:hostname] ||= ohai["hostname"]
+            sys[:fqdn]     ||= ohai["fqdn"]
+            sys[:utsname]  ||= ohai["fqdn"]
+
+            if ohai["ec2"]
+              # in case somebody sets local hostnames on ec2 machines, save it as utsname
+              # this can't really be accurate until we add FFI in uname(2) or read from /proc/sys/kernel
+              sys[:utsname]  = sys[:fqdn]
+              # use the EC2 info regardless of what the OS says
+              sys[:hostname] = ohai["ec2"]["local_hostname"]
+              sys[:fqdn]     = ohai["ec2"]["public_hostname"]
+            end
+          end
+
+          # hosts can have any number of cnames
+          sys.values.each do |name|
+            if cnames.has_key? name
+              sys[:cnames] << cnames[name]
+            end
+          end
+
+          # provide a simple array of all known network names
+          sys[:all] = sys.values.flatten.uniq
+
+          out[uuid] = sys
+        end
+
+        json out
+      end
+
+      #
       # @!method /api/node/:uuid/type/:type/:format
       #
       # Retrieve Hastur messages by UUID & type.
