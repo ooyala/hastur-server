@@ -54,4 +54,5 @@ EOS
   s.add_runtime_dependency "pony"
   s.add_runtime_dependency "pry"
   s.add_runtime_dependency "ohai"
+  s.add_runtime_dependency "sys-uname"
 end

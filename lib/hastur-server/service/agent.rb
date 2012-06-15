@@ -5,6 +5,7 @@ require 'uuid'
 require 'socket'
 require 'termite'
 require 'ohai/system'
+require 'sys/uname'
 
 require "hastur/api"
 require "hastur-server/version"
@@ -274,18 +275,24 @@ module Hastur
       def poll_registration_timeout
         # re-register the agent once a day
         if Time.now - @last_agent_reg > 86400
+          uname = Sys::Uname.uname
           reg_info = {
             :from      => @uuid,
             :source    => self.class.to_s,
             :hostname  => Socket.gethostname,
+            # nodename is the kernel's idea of its network name, which isn't always the same as hostname
+            :nodename  => uname.nodename,
+            :sysname   => uname.sysname, # e.g. "Linux"
+            :machine   => uname.machine, # e.g. "x86_64"
             :ipv4      => IPSocket.getaddress(Socket.gethostname),
             :timestamp => ::Hastur::Util.timestamp
           }
 
-          msg = Hastur::Message::Reg::Agent.new :from => @uuid, :data => reg_info
+          @logger.debug "Attempting to register agent #{@uuid}", reg_info
 
-          @logger.debug "Attempting to register agent #{@uuid}: #{msg.to_json}"
+          msg = Hastur::Message::Reg::Agent.new :from => @uuid, :data => reg_info
           _send(msg)
+
           @last_agent_reg = Time.now
         end
       end
