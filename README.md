@@ -42,7 +42,7 @@ Architecture
 ------------
 
 Individual hosts are assigned a UUID identifier and run an agent
-daemon.  The agent opens a UDP port (normally 8150) for local use.
+daemon.  The agent opens a UDP port (normally 8125) for local use.
 The agent sends back system information always, and also forwards
 Hastur messages from individual Hastur-enabled applications.
 
