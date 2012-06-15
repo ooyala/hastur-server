@@ -96,9 +96,9 @@ build_hastur () {
   require $personality chroot $path bash -c "cd /tmp/hastur-server && rake --trace $target"
 }
 
-for arch in i386 amd64
+for arch in amd64 i386
 do
-  for dist in hardy lucid precise
+  for dist in lucid precise lucid
   do
     root="$ROOT_ROOT/$dist-$arch"
 
