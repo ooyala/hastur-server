@@ -185,6 +185,7 @@ module Hastur
     #
     def lookup_by_key(cass_client, kind, start_timestamp, end_timestamp, options={})
       data = Hash.new
+      options = { :count => 10_000 }.merge(options)
       usec_aligned_chunks(start_timestamp, end_timestamp, :day).each do |ts|
         cass_client.get('LookupByKey', "#{kind}-#{ts}", options).each do |key,value|
           data[key] = value
