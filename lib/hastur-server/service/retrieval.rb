@@ -202,7 +202,7 @@ module Hastur
           hastur_error 404, "None of #{params[:uuid]} have sent any messages recently."
         else
           array = req_uuids.map do |uuid|
-            node = {}
+            node = { :hostname => "#{root_uri}/api/lookup/hostname/#{uuid}" }
             TYPES.each do |type,subtypes|
               if TYPES_WITH_VALUES.include?(type.to_s)
                 node["#{type}/value"] = "#{root_uri}/api/node/#{uuid}/type/#{type}/value"
@@ -253,10 +253,11 @@ module Hastur
 
           # first, try the registration information
           if regs[uuid] and regs[uuid]["reg_agent"]
-            reg_ts, reg = regs[uuid]["reg_agent"][""].shift
-            sys[:hostname] = reg["hostname"]
-            sys[:fqdn]     = reg["fqdn"]
-            sys[:utsname]  = reg["fqdn"]
+            reg_ts, reg_json = regs[uuid]["reg_agent"][""].shift
+            reg = MultiJson.load reg_json rescue {}
+            # we only send the fqdn as hostname right now, need to add uname(2) fields
+            # agent currently sends :hostname => Socket.gethostname
+            sys[:hostname] = sys[:fqdn] = sys[:utsname] = reg["hostname"]
           end
 
           # use ohai to fill in additional info, including EC2 info
