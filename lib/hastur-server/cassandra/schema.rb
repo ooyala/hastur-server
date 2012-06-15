@@ -183,10 +183,10 @@ module Hastur
     # @example
     #   names = Hastur::Cassandra.lookup_by_key(client, "name", Time.now - 86401, Time.now)
     #
-    def lookup_by_key(cass_client, kind, start_timestamp, end_timestamp)
+    def lookup_by_key(cass_client, kind, start_timestamp, end_timestamp, options={})
       data = Hash.new
       usec_aligned_chunks(start_timestamp, end_timestamp, :day).each do |ts|
-        cass_client.get('LookupByKey', "#{kind}-#{ts}").each do |key,value|
+        cass_client.get('LookupByKey', "#{kind}-#{ts}", options).each do |key,value|
           data[key] = value
         end
       end
