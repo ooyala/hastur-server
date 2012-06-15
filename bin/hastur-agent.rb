@@ -24,6 +24,7 @@ opts = Trollop::options do
   opt :heartbeat,   "Heartbeat interval", :default => 30
   opt :ack_timeout, "Time between unacked message resends", :default => 10
   opt :pidfile,     "Location of pidfile", :type => String
+  opt :debug,       "Enable debug logging", :default => false
   opt :no_agent_stats, "disable sending of agent stats, mostly for tests"
   opt :no_proc_stats, "disable sending of process stats, mostly for tests"
 end
@@ -50,7 +51,12 @@ end
 opts[:routers] = opts[:router]
 opts[:port] = opts[:port].to_i
 opts[:logger] = Termite::Logger.new
-opts[:logger].level = Logger::INFO # TODO: make this configurable (al, 2012-05-02)
+
+if opts[:debug]
+  opts[:logger].level = Logger::DEBUG
+else
+  opts[:logger].level = Logger::INFO
+end
 
 agent = Hastur::Service::Agent.new(opts)
 
@@ -65,7 +71,11 @@ end
   end
 end
 
+opts[:logger].debug "calling run ..."
+
 agent.run
+
+opts[:logger].debug "run exited ..."
 
 if opts[:pidfile]
   File.unlink(opts[:pidfile]) if File.exists?(opts[:pidfile])
