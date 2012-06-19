@@ -104,8 +104,10 @@ module Hastur
       insert_options = { }
       insert_options[:consistency] = options[:consistency] if options[:consistency]
       now_ts = ::Hastur::Util.timestamp.to_s
+
       cass_client.batch do |client|
         client.insert(schema[:archive_cf], key, { colname => json_string }, insert_options)
+
         client.insert(schema[:metadata_cf], key,
                       { "last_write" => now_ts, "last_access" => now_ts }, insert_options)
 
@@ -113,16 +115,17 @@ module Hastur
         client.insert(cf, key, { colname => value.to_msgpack }, insert_options) if cf
 
         # Insert into "saw UUID in this time period" row
-        client.insert(:LookupByKey, "uuid-#{one_day_ts}", { uuid => "" }, {})
+        client.insert(:LookupByKey, "uuid-#{one_day_ts}", { uuid => "" }, insert_options)
 
         # Insert into "saw message name in this time period" row
         if schema[:name]
           type_id = Hastur::Message.symbol_to_type_id(schema[:type])
-          client.insert(:LookupByKey, "name-#{one_day_ts}", { "#{name}-#{type_id}-#{uuid}" => "" }, {})
+          colkey = [name, type_id, uuid].join('-')
+          client.insert(:LookupByKey, "name-#{one_day_ts}", { colkey => "" }, insert_options)
         end
 
         # Insert into "saw this UUID for this app name" row
-        client.insert(:LookupByKey, "app_name-#{one_day_ts}", { "#{app_name}-#{uuid}" => "" }, {})
+        client.insert(:LookupByKey, "app_name-#{one_day_ts}", { "#{app_name}-#{uuid}" => "" }, insert_options)
       end
     end
 

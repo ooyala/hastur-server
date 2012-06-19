@@ -129,7 +129,7 @@ module Hastur
             payload = message[-1].copy_out_string rescue "<error>"
             @logger.warn("Exception while forwarding message: #{e}", {
               :backtrace    => e.backtrace,
-              :envelope     => envelope.to_hash,
+              :envelope     => envelope.to_hash rescue nil,
               :raw_envelope => content.inspect,
               :payload      => payload,
             })

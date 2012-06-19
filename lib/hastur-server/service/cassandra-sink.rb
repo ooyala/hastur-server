@@ -32,7 +32,7 @@ module Hastur
         @data_uri = opts[:data_uri]
         @ack_uri = opts[:ack_uri]
         @socktype = opts[:socktype] || ZMQ::PULL
-        @logger = Termite::Logger.new
+        @logger = opts[:logger] || Termite::Logger.new
 
         sopt = { :hwm => opts[:hwm] || 1, :linger => opts[:linger] || 10 }
 
@@ -70,7 +70,7 @@ module Hastur
             Hastur::Cassandra.insert(@client, message.payload, envelope.type_symbol.to_s, :uuid => uuid)
             envelope.to_ack.send(@ack_socket) if envelope.ack?
           rescue Hastur::ZMQError => e
-            @logger.error "Error reading from ZeroMQ socket.", { :exception => e }
+            @logger.error "Error reading from ZeroMQ socket.", { :exception => e, :backtrace => e.backtrace }
           rescue Exception => e
             @logger.error e.to_s, { :message => e.message, :backtrace => e.backtrace }
           end

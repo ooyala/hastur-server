@@ -24,12 +24,17 @@ EOS
   opt :return,    "Direct routing URI      (PULL)", :default => "tcp://*:8127"
   opt :firehose,  "Agent event URI          (PUB)", :default => "tcp://*:8128"
   opt :pidfile,   "Location of pidfile",            :type => :string
+  opt :debug,     "Enable debug logging",           :default => false
   opt :no_sink,   "Turn off sink, use only router"
   opt :cassandra, "Cassandra server list", :default => ["127.0.0.1:9160"], :type => :strings, :multi => true
 end
 
 logger = Termite::Logger.new
 ctx = ZMQ::Context.new
+
+if opts[:debug]
+  logger.level = Logger::DEBUG
+end
 
 uris = {
   :agent_router    => "tcp://*:8126", # router incoming messages from agents
@@ -41,7 +46,8 @@ router = Hastur::Service::CoreRouter.new(
   opts[:uuid],
   :router_uri   => opts[:router],
   :return_uri   => opts[:return],
-  :firehose_uri => opts[:firehose]
+  :firehose_uri => opts[:firehose],
+  :logger       => opts[:logger],
 )
 
 sink = Hastur::Service::CassandraSink.new(
@@ -49,7 +55,8 @@ sink = Hastur::Service::CassandraSink.new(
   :data_uri  => opts[:firehose],
   :keyspace  => 'Hastur',
   :cassandra => opts[:cassandra],
-  :socktype  => ZMQ::SUB
+  :socktype  => ZMQ::SUB,
+  :logger    => logger,
 ) unless opts[:no_sink]
 
 # must subscribe to empty string to get everything
