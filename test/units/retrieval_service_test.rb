@@ -77,7 +77,7 @@ EVENT_2 = <<JSON
 }
 JSON
 
-NODE_RESOURCE_KEYS = %w[metric/value metric/message counter/value counter/message gauge/value gauge/message mark/value mark/message compound/value compound/message heartbeat/value heartbeat/message hb_process/value hb_process/message hb_agent/value hb_agent/message hb_pluginv1/value hb_pluginv1/message event/message log/message error/message registration/message reg_agent/message reg_process/message reg_pluginv1/message info/message info_agent/message info_process/message info_ohai/message all/message]
+NODE_RESOURCE_KEYS = %w[metric/value metric/message counter/value counter/message gauge/value gauge/message mark/value mark/message compound/value compound/message heartbeat/value heartbeat/message hb_process/value hb_process/message hb_agent/value hb_agent/message hb_pluginv1/value hb_pluginv1/message event/message log/message error/message registration/message reg_agent/message reg_process/message reg_pluginv1/message info/message info_agent/message info_process/message info_ohai/message all/message hostname]
 
 class RetrievalServiceTest < MiniTest::Unit::TestCase
   include Rack::Test::Methods
