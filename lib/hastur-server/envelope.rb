@@ -115,10 +115,10 @@ module Hastur
       # make sure :to/:from are proper UUID's in 36-byte hex, but don't be
       # opinionated about them beyond that
       unless Hastur::Util.valid_uuid?(opts[:to])
-        raise ArgumentError.new(":to => '#{opts[:to]}' is not a valid UUID")
+        raise ArgumentError.new(":to => #{opts[:to].inspect} is not a valid UUID")
       end
       unless Hastur::Util.valid_uuid?(opts[:from])
-        raise ArgumentError.new(":from => '#{opts[:from]}' is not a valid UUID")
+        raise ArgumentError.new(":from => #{opts[:from].inspect} is not a valid UUID")
       end
 
       @version   = opts[:version]  || VERSION
