@@ -35,7 +35,7 @@ module Hastur
             :timestamp      => Hastur::Util.timestamp,
             :labels         => {
               :mocked => true,
-              :version => Hastur::VERSION,
+              :version => Hastur::SERVER_VERSION,
             }
           }
         ).send(self.socket)

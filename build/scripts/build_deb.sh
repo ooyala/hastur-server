@@ -63,7 +63,7 @@ popd
 $HASTUR_GEM_CMD install fpm
 
 # get the hastur version
-HASTUR_VERSION=$($HASTUR_RUBY_CMD -rhastur-server/version -e "puts Hastur::VERSION")
+HASTUR_VERSION=$($HASTUR_RUBY_CMD -rhastur-server/version -e "puts Hastur::SERVER_VERSION")
 
 # build a package with the effing package manager
 $HASTUR_FPM_CMD --provides hastur-server \

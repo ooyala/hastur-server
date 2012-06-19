@@ -4,7 +4,7 @@ require "hastur-server/version"
 
 Gem::Specification.new do |s|
   s.name        = "hastur-server"
-  s.version     = Hastur::VERSION
+  s.version     = Hastur::SERVER_VERSION
   s.authors     = ["Noah Gibbs"]
   s.email       = ["noah@ooyala.com"]
   s.homepage    = ""

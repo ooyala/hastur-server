@@ -14,7 +14,7 @@ end
 def fpm_common_options
   [
     %w[-a native -m team-tna@ooyala.com -t deb --license MIT --vendor Ooyala --depends libuuid1 -s dir],
-    "--version", Hastur::VERSION,
+    "--version", Hastur::SERVER_VERSION,
     "--iteration", `lsb_release -c`.strip.split(/:\s+/)[1].gsub(/\W/, '+') || "unknown"
   ].flatten
 end
@@ -318,7 +318,7 @@ namespace :hastur do
     Dir.chdir PROJECT_TOP
     run_required "#{File.join(PATHS[:bindir], 'rake')} build"
 
-    gemfile = File.join(PROJECT_TOP, "pkg", "hastur-server-#{Hastur::VERSION}.gem")
+    gemfile = File.join(PROJECT_TOP, "pkg", "hastur-server-#{Hastur::SERVER_VERSION}.gem")
     unless File.exists? gemfile
       abort "build failed or paths are not correct: could not find #{gemfile}"
     end

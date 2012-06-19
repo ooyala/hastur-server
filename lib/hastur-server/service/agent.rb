@@ -338,7 +338,7 @@ module Hastur
               :value          => delta,
               :timestamp      => now,
               :labels         => {
-                :version => Hastur::VERSION,
+                :version => Hastur::SERVER_VERSION,
                 :period  => @heartbeat,
               }
             }
