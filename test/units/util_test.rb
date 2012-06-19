@@ -32,6 +32,7 @@ class UtilTest < Scope::TestCase
       # Exception while forwarding message: :to => '4a259c4d-49aa-a6cd-49bb-fb955482' is not a valid UUID
       valid_uuid? "4a259c4d-49aa-a6cd-49bb-fb955482"
       valid_uuid? "4a259c4d49aaa6cd49bbfb955482"
+      valid_uuid? "5be70def-4ebb-bbdb-068a-997a84e9"
     end
 
     should "disallow invalid UUIDs" do
