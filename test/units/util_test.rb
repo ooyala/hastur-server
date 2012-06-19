@@ -23,6 +23,26 @@ class UtilTest < Scope::TestCase
     end
   end
 
+  context "validate UUID" do
+    should "allow valid UUIDs" do
+      valid_uuid? "00000000-0000-0000-0000-00000000"
+      valid_uuid? "ffffffff-ffff-ffff-ffff-ffffffff"
+
+      # got an error on this one in production on 2012-06-19
+      # Exception while forwarding message: :to => '4a259c4d-49aa-a6cd-49bb-fb955482' is not a valid UUID
+      valid_uuid? "4a259c4d-49aa-a6cd-49bb-fb955482"
+      valid_uuid? "4a259c4d49aaa6cd49bbfb955482"
+    end
+
+    should "disallow invalid UUIDs" do
+      refute valid_uuid?("")
+      refute valid_uuid?(" ")
+      refute valid_uuid?("0-a-f-a-f")
+      refute valid_uuid?("33584b74-49d9-4b86-990e-78b69925a4ex") # x is invalid
+      refute valid_uuid?("g3584b74-49d9-4b86-990e-78b69925a4e3") # g is invalid
+    end
+  end
+
   context "to_valid_zmq_uri" do
     should "Allow valid URIs" do
       # Check 0.0.0.0, * and localhost
