@@ -77,8 +77,8 @@ module Hastur
         @last_heartbeat    = Hastur::Util.timestamp - @heartbeat
         @last_ack_check    = Time.now - @ack_interval
         @last_noop_blast   = Time.now - @noop_interval
-        @last_agent_reg    = Time.now - 129600 # 1.5 days
-        @last_ohai_info    = Time.now - 129600 # 1.5 days
+        @last_agent_reg    = Time.now - 86400 # no delay
+        @last_ohai_info    = Time.now - 86340 # 60 second delay
         @last_stat_flush   = Time.now
 
         @counters = {
@@ -275,18 +275,30 @@ module Hastur
       def poll_registration_timeout
         # re-register the agent once a day
         if Time.now - @last_agent_reg > 86400
-          uname = Sys::Uname.uname
           reg_info = {
             :from      => @uuid,
             :source    => self.class.to_s,
             :hostname  => Socket.gethostname,
-            # nodename is the kernel's idea of its network name, which isn't always the same as hostname
-            :nodename  => uname.nodename,
-            :sysname   => uname.sysname, # e.g. "Linux"
-            :machine   => uname.machine, # e.g. "x86_64"
             :ipv4      => IPSocket.getaddress(Socket.gethostname),
             :timestamp => ::Hastur::Util.timestamp
           }
+
+          begin
+            uname = Sys::Uname.uname
+            # nodename is the kernel's idea of its network name, which isn't always the same as hostname
+            reg_info[:nodename] = uname.nodename
+            reg_info[:sysname]  = uname.sysname
+            reg_info[:machine]  = uname.machine
+          rescue Exception => e
+            @logger.info "Could not call uname(2): #{e}", e.backtrace
+          end
+
+          # this is an Ooyala standard file for setting the user-facing hostname
+          # it should be stored and always returned first in the cname list if it's set
+          if File.exists?("/etc/cnames")
+            cnames = File.read("/etc/cnames") rescue ""
+            reg_info[:etc_cnames] = cnames.split(/\s+/)
+          end
 
           @logger.debug "Attempting to register agent #{@uuid}", reg_info
 
