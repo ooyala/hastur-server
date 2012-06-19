@@ -247,6 +247,10 @@ module Hastur
         ohais  = Hastur::Cassandra.get cass_client, uuids, "info_ohai", start_ts, end_ts, :count => 1
         regs   = Hastur::Cassandra.get cass_client, uuids, "reg_agent", start_ts, end_ts, :count => 1
 
+        unless ohais.keys.any? and regs.keys.any?
+          hastur_error 404, "None of #{params[:uuid]} have registered recently. Try restarting the agent."
+        end
+
         out = {}
         uuids.each do |uuid|
           sys = { :hostname => nil, :fqdn => nil, :utsname => nil, :cnames => [] }
