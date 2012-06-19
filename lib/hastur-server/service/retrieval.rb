@@ -247,7 +247,7 @@ module Hastur
         ohais  = Hastur::Cassandra.get cass_client, uuids, "info_ohai", start_ts, end_ts, :count => 1
         regs   = Hastur::Cassandra.get cass_client, uuids, "reg_agent", start_ts, end_ts, :count => 1
 
-        unless ohais.keys.any? and regs.keys.any?
+        unless ohais.keys.any? or regs.keys.any?
           hastur_error 404, "None of #{params[:uuid]} have registered recently. Try restarting the agent."
         end
 
@@ -262,6 +262,11 @@ module Hastur
             # we only send the fqdn as hostname right now, need to add uname(2) fields
             # agent currently sends :hostname => Socket.gethostname
             sys[:hostname] = sys[:fqdn] = sys[:utsname] = reg["hostname"]
+
+            # /etc/cnames is an Ooyala standard for setting the system's human-facing name
+            if reg["etc_cnames"]
+              sys[:cnames] = reg["etc_cnames"]
+            end
           end
 
           # use ohai to fill in additional info, including EC2 info
@@ -290,6 +295,8 @@ module Hastur
               sys[:cnames] << cnames[name]
             end
           end
+          # don't sort! etc_cnames values should always come first, alphabetical is useless
+          sys[:cnames] = sys[:cnames].uniq
 
           # provide a simple array of all known network names
           sys[:all] = sys.values.flatten.uniq
