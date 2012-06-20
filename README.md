@@ -94,7 +94,7 @@ Deployment
 ----------
 
 The agent is deployed via Debian packages (other methods later)
-Core is deployed via scp
+Core is deployed via debian packages
 Triggers - automated deployment pending
 
 README for Triggers
