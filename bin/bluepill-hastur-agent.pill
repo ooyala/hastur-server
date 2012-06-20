@@ -31,7 +31,7 @@ Bluepill.application("hastur_agent") do |app|
     process.working_dir = "/"
     process.pid_file = PIDFILE
     process.daemonize = true
-    process.start_grace_time = 15.seconds
+    process.start_grace_time = 5.seconds
     process.stop_grace_time = 30.seconds
     process.restart_grace_time = 45.seconds
     process.checks :mem_usage, :every => 120.seconds, :below => 100.megabytes, :times => [3,5]
