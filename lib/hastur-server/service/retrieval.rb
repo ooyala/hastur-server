@@ -225,20 +225,22 @@ module Hastur
       end
 
       #
-      # @!method /api/lookup/hostname/:uuid
+      # @!method /api/lookup/hostname/uuid/:uuid
       #
-      # Gets the various network names / hostnames for the given uuid(s). Returns a simple
-      # hash something like:
-      # { :hostname => "gandalf", :fqdn => "gandalf.thewhite.com", :utsname => "gandalf.thewhite.com",
-      #   :names => [ "gandalf", "gandalf.thewhite.com" ] }
+      # Gets the various network names / hostnames for the given uuid(s).
       #
       # @param uuid UUID(s) to query for
       # @param start Starting timestamp, default 5 minutes ago unless querying only
       #   registration and info types, then default 1 day ago
       # @param end Ending timestamp, default now
       # @param ago How many microseconds back to query - an alternative to start/end
+      # @return [Hash{String => String}] hash of network names known to Hastur
+      # @example
+      #   curl -s http://hastur/api/lookup/hostname/uuid/4fb46081-f677-4604-878b-9d5b1f5addd9
+      #   { :hostname => "gandalf", :fqdn => "gandalf.thewhite.com", :nodename => "gandalf.thewhite.com",
+      #     :names => [ "gandalf", "gandalf.thewhite.com" ] }
       #
-      get "/api/lookup/hostname/:uuid" do
+      get "/api/lookup/hostname/uuid/:uuid" do
         start_ts, end_ts = get_start_end :one_day
         uuids = params[:uuid].split(",")
 
@@ -253,15 +255,17 @@ module Hastur
 
         out = {}
         uuids.each do |uuid|
-          sys = { :hostname => nil, :fqdn => nil, :utsname => nil, :cnames => [] }
+          sys = { :hostname => nil, :fqdn => nil, :nodename => nil, :cnames => [] }
 
           # first, try the registration information
           if regs[uuid] and regs[uuid]["reg_agent"]
             reg_ts, reg_json = regs[uuid]["reg_agent"][""].shift
             reg = MultiJson.load reg_json rescue {}
+
             # we only send the fqdn as hostname right now, need to add uname(2) fields
             # agent currently sends :hostname => Socket.gethostname
-            sys[:hostname] = sys[:fqdn] = sys[:utsname] = reg["hostname"]
+            sys[:hostname] = reg["hostname"]
+            sys[:nodename] = reg["nodename"]
 
             # /etc/cnames is an Ooyala standard for setting the system's human-facing name
             if reg["etc_cnames"]
@@ -274,15 +278,11 @@ module Hastur
             ohai_ts, ohai_json = ohais[uuid]["info_ohai"][""].shift
             ohai = MultiJson.load ohai_json rescue {}
 
-            # prefer the registration data, since Ohai stupidly calls "hostname -s" for hostname
-            sys[:hostname] ||= ohai["hostname"]
+            # ohai's 'hostname' is useless, it uses hostname -s to get it
+            sys[:hostname] ||= ohai["fqdn"]
             sys[:fqdn]     ||= ohai["fqdn"]
-            sys[:utsname]  ||= ohai["fqdn"]
 
             if ohai["ec2"]
-              # in case somebody sets local hostnames on ec2 machines, save it as utsname
-              # this can't really be accurate until we add FFI in uname(2) or read from /proc/sys/kernel
-              sys[:utsname]  = sys[:fqdn]
               # use the EC2 info regardless of what the OS says
               sys[:hostname] = ohai["ec2"]["local_hostname"]
               sys[:fqdn]     = ohai["ec2"]["public_hostname"]
@@ -299,9 +299,68 @@ module Hastur
           sys[:cnames] = sys[:cnames].uniq
 
           # provide a simple array of all known network names
-          sys[:all] = sys.values.flatten.uniq
+          # reverse the flattened list so the cnames come first
+          sys[:all] = sys.values.flatten.reverse.uniq
 
           out[uuid] = sys
+        end
+
+        json out
+      end
+
+      #
+      # @!method /api/lookup/uuid/hostname
+      #
+      # Fetch the whole hostname -> UUID lookup table. Primarily intended for the proxy
+      # so it can cache it. Might be useful elsewhere.
+      #
+      # @param start Starting timestamp, default 5 minutes ago unless querying only
+      #   registration and info types, then default 1 day ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @return [Hash{String => String}] hash of hostname => uuid
+      # @example
+      #   curl -s http://hastur/api/lookup/uuid/hostname
+      #   {"gandalf.thewhite.com":"4fb46081-f677-4604-878b-9d5b1f5addd9",
+      #    "frodo.shire.com":"e006683a-2bbd-4919-912a-07f64cbe7348", ...}
+      #
+      get "/api/lookup/uuid/hostname" do
+        start_ts, end_ts = get_start_end :one_day
+        json Hastur::Cassandra.lookup_by_key(cass_client, "host-uuid", start_ts, end_ts)
+      end
+
+      #
+      # @!method /api/lookup/uuid/hostname/:hostname
+      #
+      # Get the UUID for a hostname. This relies on a quite a number of datapoints coming
+      # together and is strictly best-effort. At a minimum the node will have to have registered
+      # and ideally have a sane hostname to start with. The lookup table must also be up-to-date
+      # and is managed by an external scheduler.
+      #
+      # @param hostname(s) to translate, a comma-separated list is allowed
+      # @param start Starting timestamp, default 5 minutes ago unless querying only
+      #   registration and info types, then default 1 day ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      #
+      # @example
+      #   curl -s http://hastur/api/lookup/uuid/hostname/gandalf.thewhite.com
+      #   {"gandalf.thewhite.com":"4fb46081-f677-4604-878b-9d5b1f5addd9"}
+      #
+      # @example
+      #   curl -s http://hastur/api/lookup/uuid/hostname/gandalf.thewhite.com,frodo.shire.com
+      #   {"gandalf.thewhite.com":"4fb46081-f677-4604-878b-9d5b1f5addd9",
+      #    "frodo.shire.com":"e006683a-2bbd-4919-912a-07f64cbe7348"}
+      #
+      get "/api/lookup/uuid/hostname/:hostname" do
+        start_ts, end_ts = get_start_end :one_day
+        hostnames = params[:hostname].split(",")
+        lookup = Hastur::Cassandra.lookup_by_key(cass_client, "host-uuid", start_ts, end_ts)
+
+        # just rely on the lookup table and sink most of the logic there in a scheduled job
+        out = {}
+        hostnames.each do |host|
+          out[host] = lookup[host]
         end
 
         json out
