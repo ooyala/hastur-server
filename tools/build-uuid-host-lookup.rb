@@ -90,7 +90,7 @@ end
 # write into a daily bucket, overwrite is the common case
 bucket_ts = Hastur::TimeUtil.usec_truncate end_ts, :one_day
 
-example = { :LookupByKey => { "uuid-host-#{bucket_ts}" => out } }
+example = { :LookupByKey => { "host-uuid-#{bucket_ts}" => out } }
 puts MultiJson.dump(example, :pretty => true)
 
-cass_client.insert(:LookupByKey, "uuid-host-#{bucket_ts}", out)
+cass_client.insert(:LookupByKey, "host-uuid-#{bucket_ts}", out)
