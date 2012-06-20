@@ -1,4 +1,5 @@
 require "ffi-rzmq"
+require "hastur/api"
 require "hastur-server/message"
 require "hastur-server/router"
 
@@ -69,7 +70,7 @@ module Hastur
             end
           end
         else
-          @logger.error ZMQ::Util.error_string
+          Hastur.event "hastur.router.zmq.error", ZMQ::Util.error_string
         end
       end
 
@@ -86,6 +87,7 @@ module Hastur
           message
         else
           @logger.error ZMQ::Util.error_string
+          Hastur.event "hastur.router.zmq.error", ZMQ::Util.error_string
           false
         end
       end
@@ -102,7 +104,33 @@ module Hastur
           true
         else
           @logger.error ZMQ::Util.error_string
+          Hastur.event "hastur.router.zmq.error", ZMQ::Util.error_string
           false
+        end
+      end
+
+      #
+      # record errors in regular logs and in Hastur events
+      #
+      # @param [Array<ZMQ::Message>] message
+      # @param [Exception] e
+      #
+      def record_message_exception(message, e)
+        raw = message.map { |m| m.copy_out_string rescue 'FAIL' }
+        edata = { :exception => e.inspect, :backtrace => e.backtrace, :raw_messages => raw }
+
+        @logger.warn "Exception while forwarding message: #{e}", edata
+        Hastur.event "hastur.router.exception", e.to_s, 'hastur-admin', MultiJson.dump(edata)
+      end
+
+      #
+      # count up the number of bytes in a multi-part zeromq message
+      #
+      # @param [Array<ZMQ::Message>] message
+      #
+      def message_bytes(message)
+        message.reduce(0) do |sum, msg|
+          sum + (msg.size rescue 0)
         end
       end
 
@@ -125,14 +153,11 @@ module Hastur
               message.shift
               send_to @firehose_socket, message
             end
+
+            Hastur.counter "hastur.router.messages.forwarded", 1
+            Hastur.counter "hastur.router.firehose.bytes", message_bytes(message)
           rescue Exception => e
-            payload = message[-1].copy_out_string rescue "<error>"
-            @logger.warn("Exception while forwarding message: #{e}", {
-              :backtrace    => e.backtrace,
-              :envelope     => (envelope.to_hash rescue nil),
-              :raw_envelope => content.inspect,
-              :payload      => payload,
-            })
+            record_message_exception message, e
           ensure
             # close all of the zmq messages or we might leak C memory
             message.each do |m| m.close end
@@ -144,13 +169,22 @@ module Hastur
       # read from the return socket, insert the socket ID, write to the router socket
       #
       def forward_return_to_router
-        message = read_from @return_socket
+        begin
+          message = read_from @return_socket
 
-        if message
-          envelope = Hastur::Envelope.parse message[-2].copy_out_string
-          agent_id = @agents[envelope.from]
-          message.unshift ::ZMQ::Message.new(agent_id)
-          send_to @router_socket, message
+          if message
+            envelope = Hastur::Envelope.parse message[-2].copy_out_string
+            agent_id = @agents[envelope.from]
+            message.unshift ::ZMQ::Message.new(agent_id)
+            send_to @router_socket, message
+
+            Hastur.counter "hastur.router.messages.returned", 1
+            Hastur.counter "hastur.router.return.bytes", message_bytes(message)
+          end
+        rescue
+          record_message_exception message, e
+        ensure
+          message.each do |m| m.close end
         end
       end
     end
