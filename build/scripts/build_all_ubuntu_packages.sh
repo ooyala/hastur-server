@@ -98,7 +98,7 @@ build_hastur () {
 
 for arch in amd64 i386
 do
-  for dist in lucid precise lucid
+  for dist in lucid precise hardy
   do
     root="$ROOT_ROOT/$dist-$arch"
 
