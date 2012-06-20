@@ -1,0 +1,71 @@
+(copy/paste from an email -- should be turned into a proper doc)
+
+Hostname / UUID lookup are now available on the Hastur REST service. This
+is a precursor to the proxy being able to do automatic translation.
+
+New hosts may not show up in the lookup for 5-10 minutes since there's a
+scheduled job that runs every 5 minutes to update the lookup row.
+
+Sharp eyes will notice that when you ask for a UUID's hostname you actually
+get a few different names. This is because very few networks actually
+manage to keep the FQDN / hostname / nodename in sync. All three are buggy
+in various scenarios, so we just return all 3.
+
+Most people at Ooyala use the "cnames" field for display.
+
+Where available, EC2 public / internal hostnames overwrite fqdn / hostname,
+In the "gandalf" example below, all three of fqdn/nodename/hostname are
+different (the system hostname is modified to match the cname on this machine,
+which is discouraged).
+
+The cnames array should contain all cnames for a host. The order is:
+  * /etc/cnames in the order it is on the host
+  * DNS info in the order it was seen in the zonefile
+
+/etc/cnames is the canonical location Ooyala ops supports for specifying a
+human name and is set up on most hosts now. Hastur agent fetches this file
+daily and sends it with agent registrations, that are used in building this
+data.
+
+al@spaceghost ~ $ curl -s
+http://hastur.thewhite.com/api/lookup/uuid/hostname/gandalf.thewhite.com
+{"gandalf.thewhite.com":"18bf3fd2-9e73-4315-b855-487416be77a4"}
+
+al@spaceghost ~ $ curl -s
+http://hastur.thewhite.com/api/lookup/hostname/uuid/18bf3fd2-9e73-4315-b855-487416be77a4|json_pp
+{
+   "18bf3fd2-9e73-4315-b855-487416be77a4" : {
+      "fqdn" : "ec2-1-1-1-1.compute-1.amazonaws.com",
+      "cnames" : [
+         "gandalf.thewhite.com"
+      ],
+      "nodename" : "gandalf.thewhite.com",
+      "hostname" : "ip-10-0-0-2.ec2.internal",
+      "all" : [
+         "gandalf.thewhite.com",
+         "ec2-1-1-1-1.compute-1.amazonaws.com",
+         "ip-10-0-0-2.ec2.internal"
+      ]
+   }
+}
+
+al@spaceghost ~ $ curl -s
+http://hastur.thewhite.com/api/lookup/uuid/hostname/al-dev1.internal
+{"al-dev1.internal":"1647f962-6b78-4bc9-be2a-f4726b9e220d"}
+
+al@spaceghost ~ $ curl -s
+http://hastur.thewhite.com/api/lookup/hostname/uuid/1647f962-6b78-4bc9-be2a-f4726b9e220d|json_pp
+{
+   "1647f962-6b78-4bc9-be2a-f4726b9e220d" : {
+      "fqdn" : "v3.u25-r4.internal",
+      "cnames" : [
+         "al-dev1.internal"
+      ],
+      "nodename" : "v3.u25-r4.internal",
+      "hostname" : "v3.u25-r4.internal",
+      "all" : [
+         "al-dev1.internal",
+         "v3.u25-r4.internal"
+      ]
+   }
+}
