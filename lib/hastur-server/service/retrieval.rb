@@ -623,6 +623,10 @@ module Hastur
                 if params["format"] == "message" and not param_is_true(:raw)
                   output[uuid].keys.each do |name|
                     output[uuid][name].keys.each do |ts|
+                      # MultiJson gets really upset if you ask it to decode a ruby Hash that ends up
+                      # being stringified - TODO(al,2012-06-21) figure out why hashes are appearing in this data
+                      next unless output[uuid][name][ts].kind_of? String
+
                       begin
                         output[uuid][name][ts] = MultiJson.load output[uuid][name][ts]
                       rescue Exception => e
