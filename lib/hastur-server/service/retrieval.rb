@@ -666,7 +666,7 @@ module Hastur
                   types[uuid][name] << type
                 end
 
-                sample_count += ts_values.values.map(&:size).inject(&:+)
+                sample_count += ts_values.values.compact.map(&:size).inject(&:+)
               end
 
               types[uuid].each do |name, _|
