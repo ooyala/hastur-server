@@ -6,6 +6,7 @@
     "value"      : true,
     "granularity": 300000000,
     "values_cf"  : "StatGauge",
+    "rollup_cf"  : "GaugeRollup",
     "name_cf"    : "GaugeNameDay",
     "metadata_cf": "GaugeMetadata"
   },
@@ -16,6 +17,7 @@
     "value"      : true,
     "granularity": 300000000,
     "values_cf"  : "StatCounter",
+    "rollup_cf"  : "CounterRollup",
     "name_cf"    : "CounterNameDay",
     "metadata_cf": "CounterMetadata"
   },
@@ -26,6 +28,7 @@
     "value"      : true,
     "granularity": 3600000000,
     "values_cf"  : "StatMark",
+    "rollup_cf"  : "MarkRollup",
     "name_cf"    : "MarkNameDay",
     "metadata_cf": "MarkMetadata"
   },
@@ -36,6 +39,7 @@
     "value"      : true,
     "granularity": 3600000000,
     "values_cf"  : "StatCompound",
+    "rollup_cf"  : "CompoundRollup",
     "name_cf"    : "CompoundNameDay",
     "metadata_cf": "CompoundMetadata"
   },

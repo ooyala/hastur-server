@@ -106,6 +106,26 @@ CREATE COLUMN FAMILY HBPluginV1
   and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
 
+# Per-UUID rollups
+# Row key: UUID-interval-rounded_timestamp
+# Col key: stat_name-[rounded_timestamp].pack('Q>')
+CREATE COLUMN FAMILY CounterRollup
+  with comparator='BytesType(reversed=true)'
+  and compression_options = null
+  and compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY GaugeRollup
+  with comparator='BytesType(reversed=true)'
+  and compression_options = null
+  and compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY MarkRollup
+  with comparator='BytesType(reversed=true)'
+  and compression_options = null
+  and compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY CompoundRollup
+  with comparator='BytesType(reversed=true)'
+  and compression_options = null
+  and compaction_strategy = 'LeveledCompactionStrategy';
+
 # Per-UUID metadata, stored daily, for message types.
 # Row key: UUID-timestamp (rounded to day)
 # Col key: varies widely
