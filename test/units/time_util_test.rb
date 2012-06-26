@@ -1,6 +1,7 @@
 require_relative "../test_helper"
 require "hastur-server/time_util"
 require "date"
+require "time"
 
 class TimeUtilTest < Scope::TestCase
   include Hastur::TimeUtil
@@ -82,6 +83,32 @@ class TimeUtilTest < Scope::TestCase
       assert_equal 3, usec_aligned_chunks(times["5:01"], times["5:14"], :five_minutes).length
       assert_equal 4, usec_aligned_chunks(times["5:01"], times["5:15"], :five_minutes).length
       assert_equal 4, usec_aligned_chunks(times["5:00"], times["5:16"], :five_minutes).length
+    end
+  end
+
+  # months chunk to an "epoch" on the first of each month rather than some fixed interval
+  # as is done for regular periods like hours / minutes /days
+  context "mini-epoch chunking" do
+    should "return sensible ranges for month chunks" do
+      # fetch month chunks for 2012-03-03 to 2012-05-09 which should come out to
+      # [ '2012-01-01T00:00:00', '2012-01-31T23:59:59',
+      #   '2012-02-01T00:00:00', '2012-02-30T23:59:59',
+      #   '2012-03-01T00:00:00', '2012-03-31T23:59:59' ]
+      start_dt = usec_epoch Time.iso8601("2012-01-03T01:02:03-07:00")
+      end_dt = usec_epoch Time.iso8601("2012-03-09T12:13:14-07:00")
+      chunks = usec_aligned_chunks start_dt, end_dt, :one_month
+      assert_equal 3, chunks.count
+
+      # cross a bunch of years
+      start_dt = usec_epoch Time.iso8601("1999-12-31T23:59:59Z")
+      end_dt = usec_epoch Time.iso8601("2012-03-09T12:13:14-07:00")
+      chunks = usec_aligned_chunks start_dt, end_dt, :one_month
+
+      # should come out to 12 years and 4 months after truncation == 148 months
+      assert_equal 148, chunks.count
+      times = chunks.map { |ts| usec_to_time(ts) }
+      assert_equal times[0].iso8601, "1999-12-01T00:00:00Z"
+      assert_equal times[-1].iso8601, "2012-03-01T00:00:00Z"
     end
   end
 end

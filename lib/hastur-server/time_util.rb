@@ -123,7 +123,7 @@ module Hastur
       when 0..USEC_ONE_DAY
         usec_truncate_subday timestamp, boundary
       else
-        raise "Cannot reliably truncate to a meaningful interval larger than one day. (#{boundary})"
+        raise "Cannot truncate the given interval of #{boundary.inspect}"
       end
     end
 
@@ -160,6 +160,14 @@ module Hastur
     # If the end is exactly on the chunk boundary, the chunk starting with that timestamp will be included
     # in the list. If you want non-inclusive, use boundary value - 1usec.
     #
+    # This does not support month/year chunks since they do not have deterministic lengths.
+    # @see usec_aligned_months
+    #
+    # @param [Fixnum] start_ts
+    # @param [Fixnum] end_ts
+    # @param [Symbol,String,Fixnum] chunk
+    # @return [Array<Fixnum>] array of microsecond timestamps
+    #
     # If what you need is month of 5 minute chunks:
     # @example usec_aligned_chunks ts - USEC_ONE_DAY * 30, ts, :five_minutes
     #
@@ -168,6 +176,7 @@ module Hastur
     #   usec_aligned_chunks(start_ts - USEC_FIVE_MINUTES, end_ts + USEC_FIVE_MINUTES, :five_minutes)
     #
     def usec_aligned_chunks(start_ts, end_ts, chunk)
+      raise "invalid start/end: end is before start" unless start_ts < end_ts
       chunk_usec = usec_from_interval chunk
       start_trunc = usec_truncate start_ts, chunk
       end_trunc = usec_truncate end_ts, chunk
@@ -177,12 +186,58 @@ module Hastur
 
       # always return at least the first chunk
       out = [start_trunc]
-
       chunks.times do
         out << out[-1] + chunk_usec
       end
-
       out
+    end
+
+    #
+    # This is the backend for usec_aligned_chunks for :month. Since months don't have a fixed stepping
+    # when you ask for month-aligned chunks, this function gives you "mini-epochs" for the first of each
+    # month at midnight in the interval truncated to 1 second.
+    #
+    # This likely isn't perfect and relies on Ruby's Time.to_date to do the heavy lifting.
+    #
+    # @param [Fixnum] start_ts
+    # @param [Fixnum] end_ts
+    # @return [Array<Fixnum>] array of microsecond timestamps aligned to 1st of month at midnight
+    #
+    # @example
+    #   usec_aligned_months 1337037303683032, 1340666103683032
+    #   [1335830400000000, 1338508800000000]
+    #
+    def usec_aligned_months(start_ts, end_ts)
+      raise "invalid start/end: end is before start" unless start_ts < end_ts
+      start_dt = usec_to_time(start_ts).to_date
+      end_dt   = usec_to_time(end_ts).to_date
+      first = { :year => start_dt.year, :month => start_dt.month }
+      last  = { :year => end_dt.year,   :month => end_dt.month   }
+
+      # there's probably a better way to do this, but this passes the tests for now ...
+      chunks = []
+      current = first.clone
+      while current[:year] <= last[:year]
+        while current[:month].between? 1, 12
+          chunks << Time.utc(current[:year], current[:month], 1).to_i * USEC_ONE_SECOND
+
+          if current[:year] == last[:year] and current[:month] == last[:month]
+            break
+          elsif current[:month] < 12
+            current[:month] += 1
+          elsif current[:month] == 12
+            current[:month] = 1
+            break
+          end
+        end
+
+        if current[:year] == last[:year] and current[:month] == last[:month]
+          break
+        end
+
+        current[:year] += 1
+      end
+      chunks
     end
 
     #
@@ -208,6 +263,10 @@ module Hastur
       when :two_days, "two_days"              ; USEC_ONE_DAY * 2
       when :week, :one_week, "one_week"       ; USEC_ONE_WEEK
       when /\A\d+\Z/ ; interval.to_i
+      when :month, "month", :one_month, "one_month", :year, "year", :one_year, "one_year"
+        raise "cannot convert #{interval.inspect} to microseconds because there is no sensible conversion"
+      else
+        raise "unrecognized or unsupported interval: #{interval.inspect}"
       end
     end
   end
