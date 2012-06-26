@@ -176,7 +176,7 @@ module Hastur
     #   usec_aligned_chunks(start_ts - USEC_FIVE_MINUTES, end_ts + USEC_FIVE_MINUTES, :five_minutes)
     #
     def usec_aligned_chunks(start_ts, end_ts, chunk)
-      raise "invalid start/end: end is before start" unless start_ts < end_ts
+      raise "invalid start/end: end is before start" unless start_ts <= end_ts
       chunk_usec = usec_from_interval chunk
       start_trunc = usec_truncate start_ts, chunk
       end_trunc = usec_truncate end_ts, chunk
@@ -208,7 +208,7 @@ module Hastur
     #   [1335830400000000, 1338508800000000]
     #
     def usec_aligned_months(start_ts, end_ts)
-      raise "invalid start/end: end is before start" unless start_ts < end_ts
+      raise "invalid start/end: end is before start" unless start_ts <= end_ts
       start_dt = usec_to_time(start_ts).to_date
       end_dt   = usec_to_time(end_ts).to_date
       first = { :year => start_dt.year, :month => start_dt.month }

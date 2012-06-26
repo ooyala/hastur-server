@@ -96,13 +96,13 @@ class TimeUtilTest < Scope::TestCase
       #   '2012-03-01T00:00:00', '2012-03-31T23:59:59' ]
       start_dt = usec_epoch Time.iso8601("2012-01-03T01:02:03-07:00")
       end_dt = usec_epoch Time.iso8601("2012-03-09T12:13:14-07:00")
-      chunks = usec_aligned_chunks start_dt, end_dt, :one_month
+      chunks = usec_aligned_months start_dt, end_dt
       assert_equal 3, chunks.count
 
       # cross a bunch of years
       start_dt = usec_epoch Time.iso8601("1999-12-31T23:59:59Z")
       end_dt = usec_epoch Time.iso8601("2012-03-09T12:13:14-07:00")
-      chunks = usec_aligned_chunks start_dt, end_dt, :one_month
+      chunks = usec_aligned_months start_dt, end_dt
 
       # should come out to 12 years and 4 months after truncation == 148 months
       assert_equal 148, chunks.count
