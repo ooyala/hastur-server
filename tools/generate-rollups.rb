@@ -111,7 +111,6 @@ module Hastur
           rollup[key][:timestamps] << timestamp # will be deleted
         end
 
-        # TODO: max / min
         rollup.each do |key, col_rollup|
           # both lists need to be in order, there's no need to maintain the tuples
           values = col_rollup.delete(:values).sort
@@ -130,8 +129,8 @@ module Hastur
           # median is just p50
           last = values.count - 1
           [10, 25, 50, 75, 90, 95, 99].each do |percentile|
-            rank = (col_rollup[:count] * (percentile / 100) + 0.5).round
-            col_rollup["p#{percentile}"] = values[rank]
+            rank = (col_rollup[:count] * (percentile / 100.0) + 0.5).round
+            col_rollup["p#{percentile}".to_sym] = values[rank]
           end
 
           # compute the variance & standard deviation
@@ -161,15 +160,9 @@ module Hastur
 
       # http://en.wikipedia.org/wiki/Standard_deviation
       def stddev(list)
-        dsum = 0
-        avg = list.reduce(:+) / list.count
-        list.each do |v|
-          diff = v - avg
-          dsum += diff * diff
-        end
-
-        variance = dsum / list.count
-
+        avg = list.reduce(&:+) / list.count.to_f
+        dsum = list.map { |v| (v - avg) ** 2 }.reduce(&:+)
+        variance = dsum / list.count.to_f
         return Math.sqrt(variance), variance, avg
       end
 
