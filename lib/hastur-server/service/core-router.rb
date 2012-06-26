@@ -143,15 +143,13 @@ module Hastur
         if message
           begin
             # cache the ZMQ envelope to route messages back to agents
-            content = message[-2].copy_out_string
-            envelope = Hastur::Envelope.parse content
+            envelope = Hastur::Envelope.parse message[-2].copy_out_string
             if envelope.type_id == @noop_type_id
               # noops are used to maintain the reverse path for acks from core -> agent
               @agents[envelope.from] = message[0].copy_out_string
             else
-              # forward the message, sans the ZMQ envelope
-              message.shift
-              send_to @firehose_socket, message
+              # forward the message, sans the ZMQ envelope, rely on sender to close those messages
+              send_to @firehose_socket, message.slice!(-2, 2)
             end
 
             Hastur.counter "hastur.router.messages.forwarded", 1
