@@ -125,6 +125,18 @@ CREATE COLUMN FAMILY CompoundRollup
   with comparator='BytesType(reversed=true)'
   and compression_options = null
   and compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY HBAgentRollup
+  with comparator='BytesType(reversed=true)'
+  and compression_options = null
+  and compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY HBProcessRollup
+  with comparator='BytesType(reversed=true)'
+  and compression_options = null
+  and compaction_strategy = 'LeveledCompactionStrategy';
+CREATE COLUMN FAMILY HBPluginV1Rollup
+  with comparator='BytesType(reversed=true)'
+  and compression_options = null
+  and compaction_strategy = 'LeveledCompactionStrategy';
 
 # Per-UUID metadata, stored daily, for message types.
 # Row key: UUID-timestamp (rounded to day)

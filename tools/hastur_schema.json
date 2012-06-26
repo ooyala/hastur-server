@@ -71,6 +71,7 @@
     "value"      : true,
     "granularity": 300000000,
     "values_cf"  : "HBProcess",
+    "rollup_cf"  : "HBProcessRollup",
     "name_cf"    : "HBProcessNameDay",
     "metadata_cf": "HBProcessMetadata"
   },
@@ -81,6 +82,7 @@
     "value"      : true,
     "granularity": 3600000000,
     "values_cf"  : "HBAgent",
+    "rollup_cf"  : "HBAgentRollup",
     "metadata_cf": "HBAgentMetadata"
   },
   "hb_pluginv1": {
@@ -90,6 +92,7 @@
     "value"      : true,
     "granularity": 3600000000,
     "values_cf"  : "HBPluginV1",
+    "rollup_cf"  : "HBPluginV1Rollup",
     "name_cf"    : "HBPluginV1NameDay",
     "metadata_cf": "HBPluginV1Metadata"
   },
