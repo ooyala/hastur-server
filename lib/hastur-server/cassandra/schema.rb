@@ -25,7 +25,7 @@ module Hastur
     # A Hastur Schema is a mapping of strings to symbols to values.
     # The top level strings are the type names, the symbols are
     # attributes of those types (:type, :archive_cf, :granularity,
-    # :name, :name_cf, :value, :values_cf, :metadata_cf).
+    # :name, :name_cf, :value, :values_cf, :rollup_cf, :metadata_cf).
 
     def current_schemas
       # Frozen hash or nil
@@ -333,9 +333,15 @@ module Hastur
       options_by_type = {}
 
       msg_schemas.each do |schema|
-        type = schema[:type]
+        if options[:value_only] and schema[:values_cf]
+          cf = schema[:values_cf]
+        elsif options[:rollup_only] and schema[:rollup_cf]
+          cf = schema[:rollup_cf]
+        else
+          cf = schema[:archive_cf]
+        end
 
-        cf = (options[:value_only] && schema[:values_cf]) ? schema[:values_cf] : schema[:archive_cf]
+        type = schema[:type]
         cf_by_type[type] = cf
 
         row_keys_by_type[type] = agent_uuids.map do |uuid|

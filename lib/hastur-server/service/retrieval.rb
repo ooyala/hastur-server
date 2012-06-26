@@ -58,6 +58,7 @@ module Hastur
                             reg_agent reg_process reg_pluginv1
                             info_agent info_process info_ohai]
       }.freeze
+      FORMATS = %w[message value count rollup].freeze
 
       # TODO(al) use the schema to build these lists
       TYPES_WITH_VALUES = ["metric", TYPES[:metric], "heartbeat", TYPES[:heartbeat]].flatten.freeze
@@ -517,8 +518,7 @@ module Hastur
         def query_hastur
           query_started = Hastur.timestamp
 
-          stub! if params["format"] == "rollup"
-          unless ["message", "value", "count"].include?(params["format"])
+          unless FORMATS.include?(params["format"])
             hastur_error 404, "Illegal output option: '#{params["format"]}'"
           end
 
@@ -543,6 +543,7 @@ module Hastur
           cass_options = {}
           cass_options[:reversed] = true if param_is_true("reversed")
           cass_options[:value_only] = true if params["format"] == "value"
+          cass_options[:rollup_only] = true if params["format"] == "rollup"
           cass_options[:count_columns] = true if params["format"] == "count"
 
           # "count" vs "limit" is an unfortunate naming situation.
@@ -589,7 +590,8 @@ module Hastur
 
           output = {}
 
-          if ["value", "message", "count"].include?(params["format"])
+          #if ["value", "message", "count"].include?(params["format"])
+          if FORMATS.include?(params["format"])
             # Hastur::Cassandra.get returns the following format:
             #   { :uuid => { :type => { :name => { :timestamp => value/object } } } }
             # This REST API returns:
