@@ -6,9 +6,9 @@ require 'openssl'
 module Hastur
   # parsing & creating Hastur envelopes, V1
   # Format:
-  # field: version to           from         ack    sequence timestamp uptime   hmac     router
-  # type:  <int16> <int128>     <int128>     <int8> <int64>  <int64>   <int64>  <int256> <int128> ....
-  # pack:  n       H8H4H4H4H12  H8H4H4H4H12  C      Q>       Q>        Q>       H64      H8H4H4H4H12
+  # field: version type   to           from         ack    resend sequence timestamp uptime   hmac     router
+  # type:  <int16> <int8> <int128>     <int128>     <int8> <int8> <int64>  <int64>   <int64>  <int256> <int128> ....
+  # pack:  n       C      H8H4H4H4H12  H8H4H4H4H12  C      C      Q>       Q>        Q>       H64      H8H4H4H4H12
   #
   # Version doesn't really have to be bumped unless one of these fields
   # changes type incompatibly.  For example, we can add an HMAC field on the
@@ -73,7 +73,9 @@ module Hastur
     def pack
       routers = ''
       if @routers.any?
-        routers = @routers.select { |r| r.length == 36 }.map { |r| r.split('-').pack('H8H4H4H4H12') }.join('')
+        routers = @routers.select { |r|
+          Hastur::Util.valid_uuid?(r)
+        }.map { |r| r.split('-').pack('H8H4H4H4H12') }.join('')
       end
 
       [
