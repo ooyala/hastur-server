@@ -23,19 +23,20 @@ module Hastur
       extend self
 
       #
-      # Generate rollups for the given CF in the provided time range.
+      # Generate rollups for the given CF in the provided time range. Reads from and writes to
+      # Cassandra using the Hastur JSON schema definition. Generated columns will overwrite any
+      # existing entries with the same column key.
+      # Writes out row keys in the form of uuid-rollup_interval-weekly_bucket.
       #
       # @param [String] archive which Archive CF to roll up, e.g. 'gauge', 'counter'
       # @param [Fixnum] start_ts beginning of the period to roll up
       # @param [Fixnum] end_ts end of the period to roll up
       # @example
       #   end_ts = Hastur::TimeUtil.epoch_usec
-      #   start_ts = end_ts - Hastur::TimeUtil::USEC_ONE_DAY
+      #   start_ts = end_ts - Hastur::TimeUtil::USEC_ONE_HOUR
       #   Hastur::Cassandra::Rollup.rollup cass_client, 'gauge', start_ts, end_ts
       #
-      def rollup(cass_client, archive, start_ts, end_ts)
-        #uuids = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
-        uuids = { "6bbaffa0-7140-012f-1b93-001e6713f84b" => "" }
+      def rollups_for_range(cass_client, archive, uuids, start_ts, end_ts)
         schema = Hastur::Cassandra.schema_by_type archive
         buckets = usec_aligned_chunks(start_ts, end_ts, schema[:granularity])
 
@@ -56,7 +57,7 @@ module Hastur
             # gauge/counter are bucketed at 5 minutes and will always want 5 minute rollups
             # while there aren't currently any < 5min buckets, it's feasible so that's supported too
             if schema[:granularity] <= USEC_FIVE_MINUTES and bucket == usec_truncate(bucket, :five_minutes)
-              rollup = compute(row, USEC_FIVE_MINUTES)
+              rollup = rollup_row(row, USEC_FIVE_MINUTES)
               cass_client.insert schema[:rollup_cf], "#{uuid}-five_minutes-#{week_bucket}", encode(rollup, bucket)
             end
 
@@ -67,7 +68,7 @@ module Hastur
 
             # build hourly rollups if the granularity is smaller than that and we've hit an hour boundary
             if schema[:granularity] <= USEC_ONE_HOUR and bucket == usec_truncate(bucket, :one_hour)
-              rollup = compute(merge_rows(hourly), USEC_ONE_HOUR)
+              rollup = rollup_row(merge_rows(hourly), USEC_ONE_HOUR)
               row_bucket = usec_truncate(bucket, :one_week)
               cass_client.insert schema[:rollup_cf], "#{uuid}-one_hour-#{week_bucket}", encode(rollup, bucket)
               hourly = {}
@@ -75,7 +76,7 @@ module Hastur
 
             # same thing, but for a day
             if schema[:granularity] <= USEC_ONE_DAY and bucket == usec_truncate(bucket, :one_day)
-              rollup = compute(merge_rows(daily), USEC_ONE_DAY)
+              rollup = rollup_row(merge_rows(daily), USEC_ONE_DAY)
               cass_client.insert schema[:rollup_cf], "#{uuid}-one_day-#{week_bucket}", encode(rollup, bucket)
               daily = {}
             end
@@ -84,10 +85,8 @@ module Hastur
         end
       end
 
-      private
-
       #
-      # pack in the same messagepack format used in Hastur::Cassandra::Schema
+      # Pack in the same messagepack format used in Hastur::Cassandra::Schema
       #
       # @param [Hash{String => Object}] columns columns to pack & rekey
       # @param [Fixnum] bucket_ts bucket timestamp for column key
@@ -103,7 +102,12 @@ module Hastur
         out
       end
 
-      # simple helper for merging a hash of rows into a single large row
+      #
+      # A simple helper for merging a hash of rows into a single large row.
+      #
+      # @param [Hash{String => Hash{String => String}}]
+      # @return [Hash{String => String}]
+      #
       def merge_rows(source)
         out = {}
         source.values.each do |row|
@@ -118,8 +122,11 @@ module Hastur
       # @param [Hash{String => String}] row data row to roll up
       # @param [Fixnum] bucket_interval time length the rollup is supposed to cover
       # @return [Hash{String => Hash{Symbol => Numeric}}]
+      # @example
+      #   row = cass_client.get "GaugeValue", "a5e99f80-9825-012f-6a61-22000a1cdd06-1340496000000000"
+      #   rollup = rollup_row row, Hastur::TimeUtil::USEC_FIVE_MINUTES
       #
-      def compute(row, bucket_interval)
+      def rollup_row(row, bucket_interval)
         rollup = {}
 
         row.each do |col, packval|
@@ -183,6 +190,7 @@ module Hastur
       end
 
       #
+      # Simple standard deviation.
       # http://en.wikipedia.org/wiki/Standard_deviation
       #
       # @param [Array<Numeric>] list of values
@@ -227,9 +235,10 @@ end
 cass_client = ::Cassandra.new(opts[:keyspace], opts[:cassandra].flatten)
 cass_client.disable_node_auto_discovery!
 
-#last_ts = Hastur::TimeUtil.usec_truncate Hastur::TimeUtil.usec_epoch, :five_minutes
-#Hastur::Cassandra::Rollup.check_db_rollups(cass_client, last_ts, Hastur::TimeUtil::USEC_ONE_DAY)
-
 end_ts = Hastur::TimeUtil.usec_epoch
-start_ts = end_ts - Hastur::TimeUtil::USEC_ONE_DAY
-Hastur::Cassandra::Rollup.rollup cass_client, 'gauge', start_ts, end_ts
+start_ts = end_ts - Hastur::TimeUtil::USEC_ONE_HOUR
+
+uuids = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
+
+Hastur::Cassandra::Rollup.rollups_for_range cass_client, 'gauge', uuids, start_ts, end_ts
+Hastur::Cassandra::Rollup.rollups_for_range cass_client, 'counter', uuids, start_ts, end_ts
