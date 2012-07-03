@@ -69,6 +69,8 @@ uuids.keys.each do |uuid|
     if ohai["ec2"]
       out[ohai["ec2"]["local_hostname"]] = uuid
       out[ohai["ec2"]["public_hostname"]] = uuid
+      # these are currently globally unique, but supposedly that's not guaranteed ...
+      out[ohai["ec2"]["instance_id"]] = uuid
     end
   end
 
