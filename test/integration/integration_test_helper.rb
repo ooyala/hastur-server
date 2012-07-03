@@ -5,6 +5,7 @@ require_relative "../hastur_simplecov"
 require "minitest/unit"
 require "multi_json"
 require "hastur-server/libc_ffi"
+require "hastur-server/util"
 
 # For testing Hastur components, use the local version *first*.
 $LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..", "..", "lib")

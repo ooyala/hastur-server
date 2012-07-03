@@ -1,17 +1,12 @@
-#!/usr/bin/env ruby
-
 require "cassandra/1.0"
 require "cassandra/constants"
 require "hastur/api"
-require "hastur-server/cassandra/rollups"
 require "hastur-server/cassandra/schema"
 require "hastur-server/time_util"
 require "msgpack"
 require "termite"
-require "trollop"
 require "time"
 
-# TODO(al) make this into a regular module so it can do on-the-fly rollups for the retrieval service
 # TODO(al) rollup up composite columns, probably in a separate program
 # TODO(al) error handling
 # TODO(al) test test test test test!
@@ -226,19 +221,3 @@ module Hastur
     end
   end
 end
-
-opts = Trollop::options do
-  opt :cassandra, "Cassandra server list", :default => ["127.0.0.1:9202"], :type => :strings, :multi => true
-  opt :keyspace, "Cassandra Keyspace to use", :default => "Hastur"
-end
-
-cass_client = ::Cassandra.new(opts[:keyspace], opts[:cassandra].flatten)
-cass_client.disable_node_auto_discovery!
-
-end_ts = Hastur::TimeUtil.usec_epoch
-start_ts = end_ts - Hastur::TimeUtil::USEC_ONE_HOUR
-
-uuids = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
-
-Hastur::Cassandra::Rollup.rollups_for_range cass_client, 'gauge', uuids, start_ts, end_ts
-Hastur::Cassandra::Rollup.rollups_for_range cass_client, 'counter', uuids, start_ts, end_ts
