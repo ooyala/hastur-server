@@ -455,6 +455,25 @@ module Hastur
         query_hastur
       end
 
+      #
+      # @!method /statusz
+      #
+      # A simple health check that hits Cassandra.
+      #
+      get "/api/statusz" do
+        begin
+          # cass_client.ring will fail if no successful queries have run
+          cass_client.get "GaugeArchive", " "
+          ring = cass_client.ring
+          out = ring.map do |r|
+            { :start_token => r.start_token, :end_token => r.end_token, :endpoints => r.endpoints }
+          end
+          json out, true
+        rescue Exception => e
+          hastur_error 500, "Cassandra is not available.", e.backtrace
+        end
+      end
+
       private
 
       THRIFT_OPTIONS = {
@@ -703,7 +722,7 @@ module Hastur
         # @param [Hash] content
         # @return [String] Serialized JSON content
         #
-        def json(content)
+        def json(content, pretty = false)
           # when the cb parameter is specified, return a JSONP response
           if params["cb"]
             response['Content-Type'] = "text/javascript"
@@ -711,7 +730,7 @@ module Hastur
           # otherwise, just make it regular JSON
           else
             response['Content-Type'] = "application/json"
-            MultiJson.dump(content) + "\n"
+            MultiJson.dump(content, :pretty => pretty) + "\n"
           end
         end
 
