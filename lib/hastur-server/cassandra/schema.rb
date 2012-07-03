@@ -9,8 +9,8 @@ require "hastur-server/message"
 
 module Hastur
   module Cassandra
-    extend self
     include Hastur::TimeUtil
+    extend self
 
     # These constants aren't so much "public" as they are useful
     # in-module and we don't care about securing them.
