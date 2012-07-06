@@ -43,6 +43,12 @@ module Hastur
     def self.parse(msg)
       parts = msg.unpack(PACK)
 
+      0.upto(HMAC_IDX).each do |idx|
+        if parts[idx].nil?
+          raise "Incomplete or not an envelope: #{msg.inspect}"
+        end
+      end
+
       # the router can append its UUID to the end of the envelope before sending it on so we have
       # traceroute-like functionality (and debug-ability)
       routers = []
