@@ -9,7 +9,6 @@
 
 require "cassandra/1.0"
 require "hastur/api"
-require "hastur-server/cassandra/rollups"
 require "hastur-server/cassandra/schema"
 require "hastur-server/time_util"
 require "multi_json"
