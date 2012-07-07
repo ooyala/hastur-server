@@ -188,7 +188,6 @@ module Hastur
       # @param end Ending timestamp, default now
       # @param ago How many microseconds back to query - an alternative to start/end
       # @param uuid UUID(s) to query for
-      # @param consistency Cassandra read consistency
       #
       get "/api/node/:uuid" do
         start_ts, end_ts = get_start_end :one_day
@@ -427,7 +426,6 @@ module Hastur
       # @param type Message type(s) to query for
       # @param limit Maximum number of values to return
       # @param reversed Return earliest first instead of latest first
-      # @param consistency Cassandra read consistency
       #
       get "/api/node/:uuid/type/:type/:format" do
         query_hastur
@@ -449,7 +447,6 @@ module Hastur
       # @param type Message type(s) to query for
       # @param limit Maximum number of values to return
       # @param reversed Return earliest first instead of latest first
-      # @param consistency Cassandra read consistency
       #
       get "/api/node/:uuid/name/:name/:format" do
         query_hastur
@@ -471,7 +468,6 @@ module Hastur
       # @param type Message type(s) to query for
       # @param limit Maximum number of values to return
       # @param reversed Return earliest first instead of latest first
-      # @param consistency Cassandra read consistency
       #
       get "/api/node/:uuid/type/:type/name/:name/:format" do
         query_hastur
@@ -493,7 +489,6 @@ module Hastur
       # @param type Message type(s) to query for
       # @param limit Maximum number of values to return
       # @param reversed Return earliest first instead of latest first
-      # @param consistency Cassandra read consistency
       #
       get "/api/node/:uuid/type/:type/:format" do
         query_hastur
@@ -576,7 +571,6 @@ module Hastur
         # "reversed" - return results in reverse order - only matters with "limit"
         # "limit" - max number of results to return
         # "raw" - don't merge messages into the return data, return it as escaped json inside the json
-        # "consistency" - Cassandra read consistency
         #
         def query_hastur
           query_started = Hastur.timestamp
@@ -603,7 +597,7 @@ module Hastur
 
           start_ts, end_ts = get_start_end default_span
 
-          cass_options = {}
+          cass_options = { :consistency => Cassandra::Constants::LOCAL_QUORUM }
           cass_options[:reversed] = true if param_is_true("reversed")
 
           case params["format"]
@@ -633,10 +627,6 @@ module Hastur
                 name_option_list << { :name => name }
               end
             end
-          end
-
-          if params["consistency"]
-            cass_options[:consistency] = params["consistency"].to_i
           end
 
           values = []
