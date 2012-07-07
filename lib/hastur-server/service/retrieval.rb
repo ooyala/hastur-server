@@ -368,6 +368,50 @@ module Hastur
       end
 
       #
+      # @!method /api/lookup/name/:name
+      #
+      # Lookup all of the UUID's for a stat name.
+      #
+      # @param start Starting timestamp, default one day ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @param name Message name(s) to query for - supports wildcard suffix matching
+      # @return [Hash{String => Array<String>}] hash of { "name" => [ "uuid" ] }
+      # @example
+      #   http://hastur/api/lookup/name/awesome.things
+      #   http://hastur/api/lookup/name/awful.*
+      #
+      get "/api/lookup/name/:name" do
+        start_ts, end_ts = get_start_end :one_day
+        json uuids_for_name(params["name"], start_ts, end_ts)
+      end
+
+      #
+      # @!method /api/name/:name/:format
+      #
+      # Retrieve metrics by stat name.
+      #
+      # @param format One of "message", "value", "count" or "rollup" for output format
+      # @param start Starting timestamp, default 5 minutes ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @param name Message name(s) to query for - supports wildcards
+      # @param limit Maximum number of values to return
+      # @param reversed Return earliest first instead of latest first
+      # @example
+      #   http://hastur/api/name/my.app.404/value
+      #   http://hastur/api/name/my.app.*/message?ago=one_day
+      #
+      get "/api/name/:name/:format" do
+        name_start_ts, name_end_ts = get_start_end :one_day
+        name_uuids = uuids_for_name(params["name"], name_start_ts, name_end_ts)
+        params["uuid"] = name_uuids.values.flatten.uniq.join(',')
+        # hmm name matching will happen twice, but not a big deal yet
+        # once in uuids_for_name and once in query_hastur, so it should probably be a helper
+        query_hastur
+      end
+
+      #
       # @!method /api/node/:uuid/type/:type/:format
       #
       # Retrieve Hastur messages by UUID & type.
@@ -561,9 +605,12 @@ module Hastur
 
           cass_options = {}
           cass_options[:reversed] = true if param_is_true("reversed")
-          cass_options[:value_only] = true if params["format"] == "value"
-          cass_options[:rollup_only] = true if params["format"] == "rollup"
-          cass_options[:count_columns] = true if params["format"] == "count"
+
+          case params["format"]
+          when "value"  ; cass_options[:value_only] = true
+          when "rollup" ; cass_options[:rollup_only] = true
+          when "count"  ; cass_options[:count_columns] = true
+          end
 
           # "count" vs "limit" is an unfortunate naming situation.
           # Cassandra uses "count" to mean "how many results,
@@ -609,7 +656,6 @@ module Hastur
 
           output = {}
 
-          #if ["value", "message", "count"].include?(params["format"])
           if FORMATS.include?(params["format"])
             # Hastur::Cassandra.get returns the following format:
             #   { :uuid => { :type => { :name => { :timestamp => value/object } } } }
@@ -655,6 +701,8 @@ module Hastur
                       end
                     end
                   end
+                elsif params["format"] == "rollup"
+                  STDERR.puts output, values
                 end
               end
             end
@@ -704,6 +752,54 @@ module Hastur
           output["name_count"] = name_count
           output["count"] = sample_count
           output["types"] = types
+        end
+
+        #
+        # Parse a name-type_id-uuid key and return it in 3 parts, handles names
+        # with dashes in them by popping off the end after split.
+        #
+        # @param [String] key - key as stored in Cassandra
+        # @return [Array<String,Fixnum,String>] name, type_id, uuid
+        # @example
+        #   key = 'collectd.contextswitch-11-079c8b32-8a95-11e1-a1b9-123138124754'
+        #   name, type_id, uuid = parse_name_lookup(key)
+        #
+        def parse_name_lookup(key)
+          parts = key.split '-'
+          uuid = parts.pop(5).join '-'
+          type_id = parts.pop.to_i
+          name = parts.join '-'
+          [name, type_id, uuid]
+        end
+
+        def uuids_for_name(match_name, start_ts, end_ts)
+          lookup = Hastur::Cassandra.lookup_by_key(cass_client, "name", start_ts, end_ts)
+          out = {}
+
+          if match_name.end_with? '*'
+            match = match_name.chop
+            # /name/* return all names
+            if match.length == 0
+              fun = proc { true }
+            # /name/foo.* prefix matching
+            else
+              fun = proc { |name| name.start_with?(match) }
+            end
+          # /name/foo.bar exact match
+          else
+            fun = proc { |name| name == match_name }
+          end
+
+          lookup.keys.each do |key|
+            name, type_id, uuid = parse_name_lookup(key)
+            if fun.call(name)
+              out[name] ||= []
+              out[name] << uuid
+            end
+          end
+
+          out.values.each { |v| v.uniq! }
+          out
         end
 
         #
