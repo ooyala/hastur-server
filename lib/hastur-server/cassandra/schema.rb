@@ -102,7 +102,7 @@ module Hastur
       one_day_ts = time_segment_for_timestamp(timestamp_usec, ONE_DAY)
 
       insert_options = { }
-      insert_options[:consistency] = options[:consistency] if options[:consistency]
+      insert_options[:consistency] = options[:consistency] || ::Cassandra::Constants::TWO
       now_ts = ::Hastur::Util.timestamp.to_s
 
       cass_client.batch do |client|
@@ -354,7 +354,7 @@ module Hastur
           segments.map { |seg| "#{uuid}-#{seg}" }
         end.flatten
 
-        cass_options = { :count => 10_000 }
+        cass_options = { :count => 10_000, :consistency => ::Cassandra::Constants::TWO }
         CASS_GET_OPTIONS.each do |opt|
           cass_options[opt] = options[opt] if options.has_key?(opt)
         end
