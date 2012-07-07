@@ -167,7 +167,6 @@ module Hastur
       # Retrieves a list of currently registered Hastur-enabled nodes
       #
       get "/api/node" do
-        h = {}
         start_ts, end_ts = get_start_end :one_day
         uuid_hash = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
 
@@ -597,7 +596,7 @@ module Hastur
 
           start_ts, end_ts = get_start_end default_span
 
-          cass_options = { :consistency => Cassandra::Constants::LOCAL_QUORUM }
+          cass_options = {}
           cass_options[:reversed] = true if param_is_true("reversed")
 
           case params["format"]
