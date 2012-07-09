@@ -788,7 +788,7 @@ module Hastur
             end
           end
 
-          out.values.each { |v| v.uniq! }
+          out.values.each(&:uniq!)
           out
         end
 
