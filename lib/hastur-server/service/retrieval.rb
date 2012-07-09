@@ -696,7 +696,10 @@ module Hastur
               end
             end
 
-            add_counts_to(output, values)
+            # TODO(al) figure out the right behavior when counts don't really make sense,
+            # e.g. when the request was /api/name/:name and counts are all over the place
+            # maybe these fields should be dropped?
+            add_counts_to(output, values) rescue nil
           else
             hastur_error 404, "Unhandled output format: '#{params["format"]}'!"
           end
@@ -754,6 +757,8 @@ module Hastur
         #   name, type_id, uuid = parse_name_lookup(key)
         #
         def parse_name_lookup(key)
+          # uuid & type_id are fixed format, names are not and may contain dashes,
+          # so this has to work back-to-front to avoid breaking on names with dashes
           parts = key.split '-'
           uuid = parts.pop(5).join '-'
           type_id = parts.pop.to_i
@@ -765,15 +770,11 @@ module Hastur
           lookup = Hastur::Cassandra.lookup_by_key(cass_client, "name", start_ts, end_ts)
           out = {}
 
+          # /name/foo.* prefix matching
           if match_name.end_with? '*'
             match = match_name.chop
-            # /name/* return all names
-            if match.length == 0
-              fun = proc { true }
-            # /name/foo.* prefix matching
-            else
-              fun = proc { |name| name.start_with?(match) }
-            end
+            # start_with? "" always returns true, so /name/* just works
+            fun = proc { |name| name.start_with?(match) }
           # /name/foo.bar exact match
           else
             fun = proc { |name| name == match_name }
