@@ -221,11 +221,9 @@ class RetrievalServiceTest < MiniTest::Unit::TestCase
                 }
               })
 
-    hash = get_response_data "/api/node/#{A1UUID}/type/all/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}&raw=true"
+    hash = get_response_data "/api/node/#{A1UUID}/type/all/message?start=#{FAKE_TS1}&end=#{FAKE_TS2}"
 
-    assert_equal( { A1UUID => { "" => { FAKE_TS1.to_s => AGENT_REG_1 } },
-                    "uuid_count" => 1, "count" => 1, "name_count" => 1,
-                    "types" => { A1UUID => { "" => ["reg_agent"] } } }, hash )
+    assert_equal( { A1UUID => { "" => { FAKE_TS1.to_s => MultiJson.load(AGENT_REG_1) } } }, hash )
   end
 
   def test_retrieval_multiple_types
