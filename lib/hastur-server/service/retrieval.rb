@@ -81,6 +81,9 @@ module Hastur
           response['Access-Control-Allow-Origin'] = "*"
         end
         Hastur.mark 'hastur.rest.uri', request.url
+
+        # grab a timestamp at the beginning of each request to use in repeated calls to get_start_end
+        env[:hastur_timestamp] = Hastur.timestamp
       end
 
       #
@@ -381,7 +384,17 @@ module Hastur
       #
       get "/api/lookup/name/:name" do
         start_ts, end_ts = get_start_end :one_day
-        json uuids_for_name(params["name"], start_ts, end_ts)
+        names = {}
+        lookup_name(params[:name], start_ts, end_ts).each do |item|
+          if names.has_key? item[:name]
+            names[item[:name]][item[:uuid]] = nil
+          else
+            names[item[:name]] = { item[:uuid] => nil }
+          end
+        end
+        # convert the hash back to a unique array
+        names.keys.each { |name| names[name] = names[name].keys }
+        json names
       end
 
       #
@@ -402,10 +415,16 @@ module Hastur
       #
       get "/api/name/:name/:format" do
         name_start_ts, name_end_ts = get_start_end :one_day
-        name_uuids = uuids_for_name(params["name"], name_start_ts, name_end_ts)
-        params["uuid"] = name_uuids.values.flatten.uniq.join(',')
-        # hmm name matching will happen twice, but not a big deal yet
-        # once in uuids_for_name and once in query_hastur, so it should probably be a helper
+        uuids = {}
+        types = {}
+        lookup_name(params[:name], name_start_ts, name_end_ts).each do |item|
+          uuids[item[:uuid]] = nil
+          types[Hastur::Message.type_id_to_symbol(item[:type_id])] = nil
+        end
+
+        params[:uuid] = uuids.keys.join ','
+        params[:type] = types.keys.join ','
+
         query_hastur
       end
 
@@ -506,7 +525,8 @@ module Hastur
           out = ring.map do |r|
             { :start_token => r.start_token, :end_token => r.end_token, :endpoints => r.endpoints }
           end
-          json out, true
+          params[:pretty] = true
+          json out
         rescue Exception => e
           hastur_error 500, "Cassandra is not available.", e.backtrace
         end
@@ -521,15 +541,15 @@ module Hastur
       }
 
       helpers do
-
         #
-        # Get the time range tuple.  Use params or the default period (in seconds).
+        # Get the time range tuple.
         #
+        # @param [Hash{String => String}] params
         # @param [Symbol,String,Fixnum] default delta from current time for start_ts
         # @return Array<Fixnum> start and end epoch usec values
         #
         def get_start_end(default_delta = :five_minutes)
-          now = Hastur.timestamp
+          now = env[:hastur_timestamp] || Hastur.timestamp
 
           if params[:end]
             end_ts = Hastur.timestamp(params[:end].to_i)
@@ -552,8 +572,48 @@ module Hastur
           (types || "all").split(",").map { |type| TYPES[type.to_sym] || type }.flatten.uniq
         end
 
-        def param_is_true(name)
-          params[name] && !["", "0", "false", "no", "f"].include?(params[name].downcase)
+        def param_is_true(value)
+          value && !["", "0", "false", "no", "f"].include?(value.downcase)
+        end
+
+        #
+        # Evaluate HTTP query parameters and build a hash of Cassandra query parameters, then return a list
+        # of per message name option hashes based off that. The list is necessary for column range queries
+        # that are passed in the options hash to Hastur::Cassandra.get.
+        #
+        # "count" vs "limit" is an unfortunate naming situation. Cassandra uses "count" to mean "how many
+        # results, maximum?"  We use it to mean "please return a count of my results."  We use "limit" for
+        # Cassandra's "count". Cassandra uses get_count or count_columns for "please return a count of my
+        # results."  I don't think we can win here, Cassandra-naming-wise.
+        #
+        # @return [Array<Hash{Symbol => Object}>] options hash for Hastur::Cassandra.get
+        #
+        def build_name_option_list
+          cass_options = {}
+          cass_options[:reversed] = true if param_is_true(params[:reversed])
+          cass_options[:count] = params[:limit].to_i if params[:limit]
+
+          case params[:format]
+          when "value"  ; cass_options[:value_only] = true
+          when "rollup" ; cass_options[:rollup_only] = true
+          when "count"  ; cass_options[:count_columns] = true
+          end
+
+          if params[:name]
+            name_option_list = []
+            names = params[:name].split ","
+
+            names.each do |name|
+              if name.end_with?("*")
+                name_option_list << cass_options.merge(:name_prefix => name.chop)
+              else
+                name_option_list << cass_options.merge(:name => name)
+              end
+            end
+            name_option_list
+          else
+            [ cass_options ]
+          end
         end
 
         #
@@ -572,15 +632,12 @@ module Hastur
         # "raw" - don't merge messages into the return data, return it as escaped json inside the json
         #
         def query_hastur
-          query_started = Hastur.timestamp
-
-          unless FORMATS.include?(params["format"])
-            hastur_error 404, "Illegal output option: '#{params["format"]}'"
+          unless FORMATS.include?(params[:format])
+            hastur_error 404, "Illegal output option: '#{params[:format]}'"
           end
 
-          uuids = params["uuid"].split(",")
-          types = type_list_from_string(params["type"])
-          msg_names = params["name"] ? params["name"].split(",") : []
+          uuids = params[:uuid].split(",")
+          types = type_list_from_string(params[:type])
 
           unless types.any? { |t| TYPES[:all].include?(t) }
             hastur_error 404, "Invalid type(s): '#{types}'"
@@ -595,155 +652,113 @@ module Hastur
           end
 
           start_ts, end_ts = get_start_end default_span
+          name_option_list = build_name_option_list
 
-          cass_options = {}
-          cass_options[:reversed] = true if param_is_true("reversed")
-
-          case params["format"]
-          when "value"  ; cass_options[:value_only] = true
-          when "rollup" ; cass_options[:rollup_only] = true
-          when "count"  ; cass_options[:count_columns] = true
-          end
-
-          # "count" vs "limit" is an unfortunate naming situation.
-          # Cassandra uses "count" to mean "how many results,
-          # maximum?"  We use it to mean "please return a count of my
-          # results."  We use "limit" for Cassandra's "count".
-          # Cassandra uses get_count or count_columns for "please
-          # return a count of my results."  I don't think we can win
-          # here, Cassandra-naming-wise.
-          cass_options[:count] = params["limit"].to_i if params["limit"]
-
-          name_option_list = []
-          if msg_names == []
-            name_option_list << {}
-          else
-            msg_names.each do |name|
-              if name.include?("*")
-                prefix = name.split("*", 2)[0]
-                name_option_list << { :name_prefix => prefix }
-              else
-                name_option_list << { :name => name }
-              end
+          values = Hastur.time "hastur.rest.db.query_time" do
+            name_option_list.map do |options|
+              Hastur::Cassandra.get(cass_client, uuids, types, start_ts, end_ts, options)
             end
           end
 
-          values = []
-          name_option_list.each do |name_opts|
-            query_options = cass_options.merge(name_opts)
+          if FORMATS.include?(params[:format])
+            output = sort_series_keys(flatten_rows(values))
 
-            @logger.debug("Querying cassandra:", {
-              :uuids    => uuids,
-              :types    => types,
-              :start_ts => start_ts,
-              :end_ts   => end_ts,
-              :options  => query_options,
-            })
-
-            values << Hastur::Cassandra.get(cass_client, uuids, types, start_ts, end_ts, query_options)
-          end
-
-          output = {}
-
-          if FORMATS.include?(params["format"])
-            # Hastur::Cassandra.get returns the following format:
-            #   { :uuid => { :type => { :name => { :timestamp => value/object } } } }
-            # This REST API returns:
-            #   { :uuid => { :name => { :timestamp => value/object } } }
-
-            values.each do |values_for_name_opts|
-              values_for_name_opts.each do |uuid, node_data|
-                # hash1: {"gauge"=>{"hastur.agent.utime"=>{1338517798448399=>"{\"type\"
-                output[uuid] ||= {}
-                node_data.each do |type, ts_values|
-                  # ts_values maps { :name => { :timestamp => value/object } }
-                  # This will return a structure without the types.
-                  output[uuid].merge!(ts_values)
-                end
-
-                # workaround: we're getting overlaps or unsorted data at this point that causes
-                # the series to be jacked up due to out-of-order items, this re-sorts the keys on
-                # each row but shouldn't end up doing a lot of copying since it reuses the value reference
-                output.each do |uuid, name_vals|
-                  name_vals.each do |name, ts_vals|
-                    new = {}
-                    ts_vals.keys.sort.each do |ts|
-                      new[ts] = ts_vals[ts]
-                    end
-                    output[uuid][name] = new
-                  end
-                end
-
-                # deserialize the JSON unless the user asks for raw messages so that most use cases
-                # only have to deserialize once, so far this doesn't seem to have a speed impact
-                if params["format"] == "message" and not param_is_true(:raw)
-                  output[uuid].keys.each do |name|
-                    output[uuid][name].keys.each do |ts|
-                      # MultiJson gets really upset if you ask it to decode a ruby Hash that ends up
-                      # being stringified - TODO(al,2012-06-21) figure out why hashes are appearing in this data
-                      next unless output[uuid][name][ts].kind_of? String
-
-                      begin
-                        output[uuid][name][ts] = MultiJson.load output[uuid][name][ts]
-                      rescue Exception => e
-                        hastur_error 501, "JSON parsing failed for: '#{output[uuid][name][ts]}' #{e}"
-                      end
-                    end
-                  end
-                elsif params["format"] == "rollup"
-                  STDERR.puts output, values
-                end
-              end
+            if params[:format] == "message"
+              output = deserialize_json_messages(output)
             end
-
-            # TODO(al) figure out the right behavior when counts don't really make sense,
-            # e.g. when the request was /api/name/:name and counts are all over the place
-            # maybe these fields should be dropped?
-            add_counts_to(output, values) rescue nil
           else
-            hastur_error 404, "Unhandled output format: '#{params["format"]}'!"
+            hastur_error 404, "Unhandled output format: '#{params[:format]}'!"
           end
-
-          query_ended = Hastur.timestamp
-          Hastur.gauge(
-            'hastur.rest.db.query_time',
-            query_ended - query_started,
-            query_ended,
-            :unit => :usecs,
-            :request => request.url
-          )
 
           json output
         end
 
-        def add_counts_to(output, values)
-          types = {}
-          name_count = 0
-          sample_count = 0
-
+        #
+        # We sometimes fetch multiple rows of data from Cassandra and the data returned
+        # by Hastur::Cassandra.get isn't an exact match for the JSON format, so merge the rows
+        # and drop the type information.
+        #
+        # Hastur::Cassandra.get returns the following format:
+        #   { :uuid => { :type => { :name => { :timestamp => value/object } } } }
+        # This REST API returns:
+        #   { :uuid => { :name => { :timestamp => value/object } } }
+        #
+        # @param [Hash] values Hastur::Cassandra.get formatted hash
+        # @return [Hash] Hastur V1 output hash
+        #
+        def flatten_rows(values)
+          output = {}
           values.each do |values_for_name_opts|
             values_for_name_opts.each do |uuid, node_data|
-              types[uuid] ||= {}
+              # hash1: {"gauge"=>{"hastur.agent.utime"=>{1338517798448399=>"{\"type\"
+              output[uuid] ||= {}
               node_data.each do |type, ts_values|
-                name_count += ts_values.size
-                ts_values.keys.each do |name|
-                  types[uuid][name] ||= []
-                  types[uuid][name] << type
-                end
-
-                sample_count += ts_values.values.compact.map(&:size).inject(&:+)
-              end
-
-              types[uuid].each do |name, _|
-                types[uuid][name] = types[uuid][name].uniq
+                # ts_values maps { :name => { :timestamp => value/object } }
+                # This will return a structure without the types.
+                output[uuid].merge!(ts_values)
               end
             end
           end
 
-          output["uuid_count"] = output.size
-          output["name_count"] = name_count
-          output["count"] = sample_count
-          output["types"] = types
+          output
+        end
+
+        #
+        # Due to the merging of series, there can be overlap and the results are always unsorted. Even though
+        # JSON/javascript specify associative arrays as unordered, we try to deliver sorted results anyways.
+        # We should probably drop this step and specify the V1 JSON format as unordered, but the expectation
+        # has already been set with internal users.
+        #
+        # I tried both in-place modification and this version and was surprised to find copying to a whole
+        # new top-level is measurably faster and as a bonus is a pure function.
+        #
+        # @param [Hash] Hastur V1 output hash
+        # @return [Hash] same format, but with the all the series ordered
+        #
+        def sort_series_keys(values)
+          output = {}
+          values.each do |uuid, name_series|
+            output[uuid] = {}
+            name_series.each do |name, series|
+              output[uuid][name] = {}
+              series.keys.sort.each do |ts|
+                output[uuid][name][ts] = series[ts]
+              end
+            end
+          end
+
+          output
+        end
+
+        #
+        # deserialize JSON messages in the return hash so the end-user can deserialize in one pass
+        #
+        # @param [Hash] Hastur V1 output hash
+        # @return [Hash] same format, but with the all the series ordered
+        #
+        def deserialize_json_messages(data)
+          output = {}
+          data.each do |uuid, name_series|
+            output[uuid] = {}
+            name_series.each do |name, series|
+              output[uuid][name] = {}
+              series.each do |ts, value|
+                # MultiJson gets really upset if you ask it to decode a ruby Hash that ends up
+                # being stringified - TODO(al,2012-06-21) figure out why hashes are appearing in this data
+                unless value.kind_of? String
+                  @logger.debug "BUG: Got a ruby hash where a JSON string was expected."
+                  next
+                end
+
+                begin
+                  output[uuid][name][ts] = MultiJson.load value
+                rescue Exception => e
+                  hastur_error 501, "JSON parsing failed for: #{value}: #{e}", e.backtrace
+                end
+              end
+            end
+          end
+          output
         end
 
         #
@@ -751,10 +766,11 @@ module Hastur
         # with dashes in them by popping off the end after split.
         #
         # @param [String] key - key as stored in Cassandra
-        # @return [Array<String,Fixnum,String>] name, type_id, uuid
+        # @return [Hash{:name => String, :type_id => Fixnum, :uuid => String}]
         # @example
         #   key = 'collectd.contextswitch-11-079c8b32-8a95-11e1-a1b9-123138124754'
-        #   name, type_id, uuid = parse_name_lookup(key)
+        #   item = parse_name_lookup(key)
+        #   {:name => 'collectd.contextswitch', :type_id => 11, :uuid => '079c8b32-8a95-11e1-a1b9-123138124754'}
         #
         def parse_name_lookup(key)
           # uuid & type_id are fixed format, names are not and may contain dashes,
@@ -763,13 +779,19 @@ module Hastur
           uuid = parts.pop(5).join '-'
           type_id = parts.pop.to_i
           name = parts.join '-'
-          [name, type_id, uuid]
+          { :name => name, :type_id => type_id, :uuid => uuid }
         end
 
-        def uuids_for_name(match_name, start_ts, end_ts)
-          lookup = Hastur::Cassandra.lookup_by_key(cass_client, "name", start_ts, end_ts)
-          out = {}
-
+        #
+        # Look up message names in the "name-" LookupByKey row.
+        # @see parse_name_lookup
+        #
+        # @param [String] match_name the name to look up
+        # @param [Fixnum] start_ts
+        # @param [Fixnum] end_ts
+        # @return [Array<Hash{Symbol => String,Fixnum}>]
+        #
+        def lookup_name(match_name, start_ts, end_ts)
           # /name/foo.* prefix matching
           if match_name.end_with? '*'
             match = match_name.chop
@@ -780,16 +802,17 @@ module Hastur
             fun = proc { |name| name == match_name }
           end
 
-          lookup.keys.each do |key|
-            name, type_id, uuid = parse_name_lookup(key)
-            if fun.call(name)
-              out[name] ||= []
-              out[name] << uuid
-            end
-          end
+          lookup = Hastur::Cassandra.lookup_by_key(cass_client, "name", start_ts, end_ts)
 
-          out.values.each(&:uniq!)
-          out
+          lookup.keys.map do |key|
+            item = parse_name_lookup(key)
+
+            if fun.call(item[:name])
+              item
+            else
+              nil
+            end
+          end.compact
         end
 
         #
@@ -808,15 +831,15 @@ module Hastur
         # @param [Hash] content
         # @return [String] Serialized JSON content
         #
-        def json(content, pretty = false)
+        def json(content)
           # when the cb parameter is specified, return a JSONP response
-          if params["cb"]
+          if params[:cb]
             response['Content-Type'] = "text/javascript"
-            "#{params["cb"]}(#{MultiJson.dump(content)});\n"
+            "#{params[:cb]}(#{MultiJson.dump(content)});\n"
           # otherwise, just make it regular JSON
           else
             response['Content-Type'] = "application/json"
-            MultiJson.dump(content, :pretty => pretty) + "\n"
+            MultiJson.dump(content, :pretty => params[:pretty]) + "\n"
           end
         end
 
@@ -825,6 +848,7 @@ module Hastur
         # {"error": "message"} and the same message in the statusText header.
         #
         def hastur_error(code=501, message="FAIL", bt=nil)
+          params[:pretty] = true
           headers "statusText" => message
           halt(code, json({
               :error => message,
@@ -832,15 +856,6 @@ module Hastur
               :backtrace => bt.kind_of?(Array) ? bt[0..10] : bt
             })
           )
-        end
-
-        #
-        # Ensures that a particular param is present. An HTTP 404 is returned otherwise.
-        #
-        def check_present(p, human_name = nil)
-          unless params[p]
-            hastur_error 404, "#{human_name || p} param is required!"
-          end
         end
 
         #
