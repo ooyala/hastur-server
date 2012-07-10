@@ -21,6 +21,7 @@ module Hastur
     ONE_HOUR = 12 * FIVE_MINUTES
     ONE_DAY = 24 * ONE_HOUR
     ONE_WEEK = 7 * ONE_DAY
+    DEFAULT_CONSISTENCY = ::Cassandra::Constants::TWO
 
     # A Hastur Schema is a mapping of strings to symbols to values.
     # The top level strings are the type names, the symbols are
@@ -101,8 +102,7 @@ module Hastur
       key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec, schema[:granularity] || ONE_DAY)
       one_day_ts = time_segment_for_timestamp(timestamp_usec, ONE_DAY)
 
-      insert_options = { }
-      insert_options[:consistency] = options[:consistency] || ::Cassandra::Constants::TWO
+      insert_options = { :consistency => options[:consistency] || DEFAULT_CONSISTENCY }
       now_ts = ::Hastur::Util.timestamp.to_s
 
       cass_client.batch do |client|
@@ -189,6 +189,7 @@ module Hastur
     def lookup_by_key(cass_client, kind, start_timestamp, end_timestamp, options={})
       data = Hash.new
       options = { :count => 10_000 }.merge(options)
+      # this isn't defined in the schema (yet?) so the bucket is hard-coded to one day everywhere
       usec_aligned_chunks(start_timestamp, end_timestamp, :day).each do |ts|
         cass_client.get('LookupByKey', "#{kind}-#{ts}", options).each do |key,value|
           data[key] = value
@@ -250,6 +251,26 @@ module Hastur
       # Similarly, the time_segment is a timestamp in seconds rather than a compressed
       # 64-bit number.
       "#{uuid}-#{time_segment}"
+    end
+
+    #
+    # Generate a list of row keys from a uuid, bucket size, and time range.
+    #
+    # @param [Array<String>] uuids array of 36-byte uuids
+    # @param [Symbol,Fixnum] bucket_size row's bucket size either symbol or number of usecs
+    # @param [Fixnum] start_timestamp start of the range
+    # @param [Fixnum] end_timestamp end of the range
+    # @return [Array<String>] array of row keys
+    #
+    def row_keys(uuids, bucket_size, start_timestamp, end_timestamp)
+      times = usec_aligned_chunks(start_timestamp, end_timestamp, bucket_size)
+      out = []
+      times.each do |ts|
+        uuids.each do |uuid|
+          out << "#{uuid}-#{ts}"
+        end
+      end
+      out
     end
 
     def col_name(name, timestamp)
@@ -344,17 +365,10 @@ module Hastur
         type = schema[:type]
         cf_by_type[type] = cf
 
-        row_keys_by_type[type] = agent_uuids.map do |uuid|
-          segments = segments_for_timestamps(start_timestamp, end_timestamp, schema[:granularity])
-          segments.map { |seg| "#{uuid}-#{seg}" }
-        end.flatten
+        row_keys_by_type[type] = row_keys(agent_uuids, schema[:granularity], start_timestamp, end_timestamp)
+        metadata_row_keys_by_type[type] = row_keys(agent_uuids, ONE_DAY, start_timestamp, end_timestamp)
 
-        metadata_row_keys_by_type[type] = agent_uuids.map do |uuid|
-          segments = segments_for_timestamps(start_timestamp, end_timestamp, ONE_DAY)
-          segments.map { |seg| "#{uuid}-#{seg}" }
-        end.flatten
-
-        cass_options = { :count => 10_000, :consistency => ::Cassandra::Constants::TWO }
+        cass_options = { :count => 10_000, :consistency => DEFAULT_CONSISTENCY }
         CASS_GET_OPTIONS.each do |opt|
           cass_options[opt] = options[opt] if options.has_key?(opt)
         end
