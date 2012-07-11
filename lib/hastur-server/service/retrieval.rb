@@ -85,6 +85,9 @@ module Hastur
 
         # grab a timestamp at the beginning of each request to use in repeated calls to get_start_end
         env[:hastur_timestamp] = Hastur.timestamp
+
+        # default to pretty printing for non-XHR requests
+        params[:pretty] = true unless request.xhr?
       end
 
       #
