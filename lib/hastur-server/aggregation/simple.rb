@@ -5,17 +5,17 @@ module Hastur
     extend self
 
     @functions.merge!({
-      "sum"   => :sum,
-      "diff"  => :diff,
-      "min"   => :min,
-      "max"   => :max,
-      "first" => :first,
-      "last"  => :last,
-      "slice" => :slice
+      "integral"   => :integral,
+      "derivative" => :derivative,
+      "min"        => :min,
+      "max"        => :max,
+      "first"      => :first,
+      "last"       => :last,
+      "slice"      => :slice
     })
 
     #
-    # Remove all but the first [n=1] elements in the series.
+    # Remove all but the first <count> elements in the series.
     #
     # @param [Hash] series
     # @param [Fixnum] count default 1
@@ -26,7 +26,7 @@ module Hastur
     end
 
     #
-    # Remove all but the last [n=1] elements in the series.
+    # Remove all but the last <count> elements in the series.
     #
     # @param [Hash] series
     # @param [Fixnum] count default 1
@@ -75,7 +75,7 @@ module Hastur
     #   sum(100) - start with an arbitrary number
     #   last(sum()) - get the final (total) value of the summed series
     #
-    def sum(series, seed=0)
+    def integral(series, seed=0)
       map_over series, seed do |val,total|
         [val + total, val + total]
       end
@@ -92,7 +92,7 @@ module Hastur
     # @option seed Numeric use the given number for the first subraction
     # @return [Hash] series
     #
-    def diff(series, seed=:first)
+    def derivative(series, seed=:first)
       map_over series, seed do |val,previous|
         [previous - val, val]
       end
@@ -130,41 +130,6 @@ module Hastur
         end
       end
       last(map_over(series, :first, &minproc))
-    end
-
-    #
-    # Map over a series and yield the given proc for each entry, tracking
-    # state using the tuple returned by the proc.
-    #
-    # @param [Hash] series
-    # @param [Symbol,Numeric] seed how to seed the difference
-    # @option seed :first peek at the first value to initialize the state variable
-    # @option seed :shift pop the first entry in the series to init the state
-    # @option seed Numeric use the given number to init the state
-    # @param [Array<Object>] *args additional arguments
-    # @yield [Numeric, Numeric, ...] call the block with the current value, the state
-    #        value, and any extra arguments passed into map_over.
-    # @return [Hash] series
-    #
-    def map_over(series, seed, *args)
-      new_series = {}
-      series.each do |uuid, name_series|
-        new_series[uuid] = {}
-        name_series.each do |name, series|
-          new_series[uuid][name] = {}
-
-          case seed
-            when :shift  ; state = series.delete(series.keys.first)
-            when :first  ; state = series[series.keys.first]
-            when Numeric ; state = seed
-          end
-
-          series.each do |ts,val|
-            new_series[uuid][name][ts], state = yield val, state, *args
-          end
-        end
-      end
-      new_series
     end
   end
 end
