@@ -6,6 +6,7 @@ require "hastur/api"
 require "hastur-server/cassandra/schema"
 require "hastur-server/cassandra/rollup"
 require "hastur-server/time_util"
+require "hastur-server/aggregation"
 require "multi_json"
 require "termite"
 
@@ -668,6 +669,11 @@ module Hastur
             end
           else
             hastur_error 404, "Unhandled output format: '#{params[:format]}'!"
+          end
+
+          if params[:fun]
+            expr = CGI::unescape(params[:fun])
+            output = Hastur::Aggregation.evaluate(expr, output)
           end
 
           json output
