@@ -10,9 +10,9 @@ module Hastur
     #
     # @param [Hash] series
     # @param [Symbol,Numeric] seed how to seed the difference
-    # @option seed :first peek at the first value to initialize the state variable
-    # @option seed :shift pop the first entry in the series to init the state
-    # @option seed Numeric use the given number to init the state
+    #   :first peek at the first value to initialize the state variable
+    #   :shift pop the first entry in the series to init the state
+    #   Numeric use the given number to init the state
     # @param [Array<Object>] *args additional arguments
     # @yield [Numeric, Numeric, ...] call the block with the current value, the state
     #        value, and any extra arguments passed into map_over.
