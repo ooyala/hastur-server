@@ -3,6 +3,7 @@ require "hastur-server/aggregation/merge"
 require "hastur-server/aggregation/lookup"
 require "hastur-server/aggregation/compound"
 require "hastur-server/aggregation/formats"
+require "hastur-server/aggregation/rollup"
 
 module Hastur
   module Aggregation
@@ -24,7 +25,7 @@ module Hastur
         if fun.kind_of? Symbol
           series = self.send fun, series, *args
         else
-          raise InvalidAggFunError.new fun.inspect
+          raise InvalidAggFunError.new "not a valid function: #{fun.inspect}"
         end
       end
       series
@@ -48,7 +49,7 @@ module Hastur
           elsif exp =~ /\A\w+\Z/
             exp
           else
-            raise InvalidAggSyntaxError.new exp.inspect
+            raise InvalidAggSyntaxError.new "syntax error in expression: #{exp.inspect}"
           end
         end
       end
