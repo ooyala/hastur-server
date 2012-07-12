@@ -20,7 +20,7 @@ module Hastur
       new_series = { "" => {} }
       series.each do |uuid, name_series|
         name_series.each do |name, series|
-          new_series[""][name] = {}
+          new_series[""][name] ||= {}
           series.each do |ts,val|
             # add 1 usec until collision is past
             while new_series[""][name].has_key? ts
@@ -36,7 +36,7 @@ module Hastur
     def merge_names(series)
       new_series = {}
       series.each do |uuid, name_series|
-        new_series[uuid] = { "" => {} }
+        new_series[uuid] ||= { "" => {} }
         name_series.each do |name, series|
           series.each do |ts,val|
             # add 1 usec until collision is past
