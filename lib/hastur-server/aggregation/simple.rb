@@ -9,6 +9,7 @@ module Hastur
       "derivative" => :derivative,
       "min"        => :min,
       "max"        => :max,
+      "sum"        => :sum,
       "first"      => :first,
       "last"       => :last,
       "slice"      => :slice,
@@ -180,6 +181,18 @@ module Hastur
       end
       each_subseries_in map_over(series, :first, &minproc) do |name, subseries|
         { :min => subseries.values.last }
+      end
+    end
+
+    #
+    # Add up all the values in each series.
+    #
+    # @param [Hash] series
+    # @return [Hash] series
+    #
+    def sum(series, seed=0)
+      each_subseries_in integral(series, seed) do |name, subseries|
+        { :sum => subseries.values.last }
       end
     end
   end
