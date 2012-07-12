@@ -9,7 +9,7 @@ module Hastur
     extend self
     attr_reader :cass_client
     attr_writer :start_ts, :end_ts
-    @functions.merge! "cname" => :cname
+    @functions.merge! "cname" => :cname, "fqdn" => :fqdn, "hostname" => :hostname
     @cass_client = @start_ts = @end_ts = nil
 
     def cass_client=(client)
@@ -21,25 +21,31 @@ module Hastur
     end
 
     def end_ts
-      @end_ts || epoch_usec
+      @end_ts || usec_epoch
+    end
+
+    def hostname(series)
+      fqdn(cname(series))
     end
 
     def cname(series)
-      names = network_names_for_uuids(series.keys, start_ts, end_ts)
+      names = Hastur::Cassandra.network_names_for_uuids(cass_client, series.keys, start_ts, end_ts)
       series.keys.each do |uuid|
         if names[uuid][:cnames] and names[uuid][:cnames].any?
           series[names[uuid][:cnames][0]] = series.delete uuid
         end
       end
+      series
     end
 
     def fqdn(series)
-      names = network_names_for_uuids(series.keys, start_ts, end_ts)
+      names = Hastur::Cassandra.network_names_for_uuids(cass_client, series.keys, start_ts, end_ts)
       series.keys.each do |uuid|
-        if names[uuid][:fqdn] and names[uuid][:fqdn].any?
-          series[names[uuid][:fqdn][0]] = series.delete uuid
+        if names[uuid][:fqdn]
+          series[names[uuid][:fqdn]] = series.delete uuid
         end
       end
+      series
     end
   end
 end
