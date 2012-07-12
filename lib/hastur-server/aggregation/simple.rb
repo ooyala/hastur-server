@@ -141,7 +141,7 @@ module Hastur
     #
     def derivative(series, seed=:first)
       map_over series, seed do |val,previous|
-        [previous - val, val]
+        [val - previous, val]
       end
     end
 
