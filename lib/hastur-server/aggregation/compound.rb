@@ -32,12 +32,20 @@ module Hastur
     #   /api/name/linux.proc.stat?fun=compound(processes,procs_running,procs_blocked)
     #
     def compound(series, *keys)
-      keys.each do |key|
-        map_expand series, key do |ts,val,name|
-          sname = [name,key].join('.')
-          { sname => { ts => val[key] } }
+      new_series = {}
+      series.each do |uuid, name_series|
+        new_series[uuid] = {}
+        name_series.each do |name, subseries|
+          keys.each do |key|
+            new_name = "#{name}.#{key}"
+            new_series[uuid][new_name] = {}
+            subseries.each do |ts,hash|
+              new_series[uuid][new_name][ts] = hash[key]
+            end
+          end
         end
       end
+      new_series
     end
 
     #
@@ -50,37 +58,25 @@ module Hastur
     #   /api/name/linux.proc.stat?fun=compound_list(cpu0,cpu1)
     #
     def compound_list(series, *keys)
-      keys.each do |key|
-        map_expand series, key do |ts,val,name|
+      new_series = {}
+      series.each do |uuid, name_series|
+        new_series[uuid] = {}
+        name_series.each do |name, subseries|
           out = {}
           unless FIELDS.has_key? name
             raise UnsupportedCompoundTypeError.new "#{name} is not a supported compound type"
           end
 
-          FIELDS[name].each_with_index do |sub,idx|
-            sname = [name,key,sub].join('.')
-            out[sname] ||= {}
-            out[sname][ts] = val[key][idx]
-          end
-          out
-        end
-      end
-    end
-
-    #
-    # @param [Hash] series
-    # @param [Symbol,Numeric] seed how to seed the difference
-    # @yield [Numeric, Numeric, ...] call the block with the current value, the state
-    #        value, and any extra arguments passed into map_over.
-    # @return [Hash] series
-    #
-    def map_expand(series, key)
-      new_series = {}
-      series.each do |uuid, name_series|
-        new_series[uuid] = {}
-        name_series.each do |name, series|
-          series.each do |ts,val|
-            new_series[uuid].merge! yield ts, val, name
+          keys.each do |key|
+            # initialize the new series
+            FIELDS[name].each do |field|
+              new_series[uuid]["#{name}.#{key}.#{field}"] ||= {}
+            end
+            subseries.each do |ts,hash|
+              FIELDS[name].each_with_index do |field, idx|
+                new_series[uuid]["#{name}.#{key}.#{field}"][ts] = hash[key][idx]
+              end
+            end
           end
         end
       end
