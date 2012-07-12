@@ -85,7 +85,8 @@ module Hastur
     end
 
     #
-    # Remove null/nil values from the series entirely.
+    # Remove non-numeric (e.g. null, strings) values from the series, or if you provide a replacement
+    # value, replace those entries in the series with that value.
     #
     # @param [Hash] series
     # @param [String,Numeric,FalseClass] replace optional value to replace nil/null in the series
@@ -94,7 +95,7 @@ module Hastur
       each_subseries_in series do |name, subseries|
         new_subseries = {}
         subseries.each do |ts,val|
-          if val
+          if Numeric === val
             new_subseries[ts] = val
           elsif replace
             new_subseries[ts] = replace
