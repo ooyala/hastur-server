@@ -52,7 +52,7 @@ module Hastur
       # http://en.wikipedia.org/wiki/Percentiles
       # median is just p50
       last = values.count - 1
-      [10, 25, 50, 75, 90, 95, 99].each do |percentile|
+      [1, 5, 10, 25, 50, 75, 90, 95, 99].each do |percentile|
         rank = (rollup[:count] * (percentile / 100.0) + 0.5).round
         rollup["p#{percentile}".to_sym] = values[rank]
       end
