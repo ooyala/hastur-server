@@ -11,7 +11,9 @@ module Hastur
       "max"        => :max,
       "first"      => :first,
       "last"       => :last,
-      "slice"      => :slice
+      "slice"      => :slice,
+      "resample"   => :resample,
+      "compact"    => :compact
     })
 
     #
@@ -60,15 +62,58 @@ module Hastur
     end
 
     #
+    # Cut the series down to the requested number of samples using a simple mod & drop function.
+    # The time step is not guaranteed to be uniform and is not normalized.
+    #
+    # @example
+    #   resample(100) - return 100 samples evenly distributed across the series
+    #
+    def resample(series, samples)
+      each_subseries_in series do |name, subseries|
+        new_subseries = {}
+        count = 0
+        sample_every = (subseries.count / samples).floor
+
+        subseries.each do |ts,val|
+          if count % sample_every == 0
+            new_subseries[ts] = val
+          end
+          count = count + 1
+        end
+        new_subseries
+      end
+    end
+
+    #
+    # Remove null/nil values from the series entirely.
+    #
+    # @param [Hash] series
+    # @param [String,Numeric,FalseClass] replace optional value to replace nil/null in the series
+    #
+    def compact(series, replace=false)
+      each_subseries_in series do |name, subseries|
+        new_subseries = {}
+        subseries.each do |ts,val|
+          if val
+            new_subseries[ts] = val
+          elsif replace
+            new_subseries[ts] = replace
+          end
+        end
+        new_subseries
+      end
+    end
+
+    #
     # Replace the series with the running sum for each timestamp.
     #
     # @param [Hash] series
     # @param [Fixnum] first_idx the starting index
     # @param [Fixnum] last_idx the final index
     # @return [Hash] series
-    # @option seed :first peek at the first value in the series for the first subtraction
-    # @option seed :shift pop the first value in the series for the first subtraction
-    # @option seed Numeric use the given number for the first subraction
+    #   :first peek at the first value in the series for the first subtraction
+    #   :shift pop the first value in the series for the first subtraction
+    #   Numeric use the given number for the first subraction
     # @example
     #   sum() - start with 0 by default
     #   sum(shift) - shift the first value to initialize, series will be 1 item smaller
@@ -87,9 +132,9 @@ module Hastur
     #
     # @param [Hash] series
     # @param [Symbol,Numeric] seed optional how to seed the difference
-    # @option seed :first peek at the first value in the series for the first subtraction
-    # @option seed :shift pop the first value in the series for the first subtraction
-    # @option seed Numeric use the given number for the first subraction
+    #   :first peek at the first value in the series for the first subtraction
+    #   :shift pop the first value in the series for the first subtraction
+    #   Numeric use the given number for the first subraction
     # @return [Hash] series
     #
     def derivative(series, seed=:first)
