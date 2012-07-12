@@ -17,7 +17,7 @@ module Hastur
     # @param start_ts
     # @param end_ts
     #
-    def network_names_for_uuids(uuids, start_ts, end_ts)
+    def network_names_for_uuids(cass_client, uuids, start_ts, end_ts)
       cnames = Hastur::Cassandra.lookup_by_key cass_client, :cnames, start_ts, end_ts, :count => 1_000_000
       ohais  = Hastur::Cassandra.get cass_client, uuids, "info_ohai", start_ts, end_ts, :count => 1
       regs   = Hastur::Cassandra.get cass_client, uuids, "reg_agent", start_ts, end_ts, :count => 1
@@ -91,7 +91,7 @@ module Hastur
     # @param [Fixnum] start_ts
     # @param [Fixnum] end_ts
     #
-    def uuids_for_hostnames(hostnames, start_ts, end_ts)
+    def uuids_for_hostnames(cass_client, hostnames, start_ts, end_ts)
       lookup = Hastur::Cassandra.lookup_by_key(cass_client, "host-uuid", start_ts, end_ts)
 
       # just rely on the lookup table and sink most of the logic there in a scheduled job
