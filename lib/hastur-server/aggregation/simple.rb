@@ -159,6 +159,9 @@ module Hastur
         end
       end
       last(map_over(series, :first, &maxproc))
+      each_subseries_in map_over(series, :first, &maxproc) do |name, subseries|
+        { :max => subseries.values.last }
+      end
     end
 
     #
@@ -175,7 +178,9 @@ module Hastur
           [min, min]
         end
       end
-      last(map_over(series, :first, &minproc))
+      each_subseries_in map_over(series, :first, &minproc) do |name, subseries|
+        { :min => subseries.values.last }
+      end
     end
   end
 end
