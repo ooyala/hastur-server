@@ -37,10 +37,10 @@ Examples (you can probably just click on them):
 curl -s http://hastur/api/name/ds.test.*/value?ago=one_hour
 
 # this currently has nulls in it, which makes graphing libs cranky
-curl -s http://hastur/api/name/ds.test.bloomberg.s3.bps/value?ago=one_day
+curl -s http://hastur/api/name/ds.test.customer.s3.bps/value?ago=one_day
 
 # workaround the issue by setting all non-numeric values to 0
-curl -s 'http://hastur/api/name/ds.test.bloomberg.s3.bps/value?ago=one_day&fun=compact(0)'
+curl -s 'http://hastur/api/name/ds.test.customer.s3.bps/value?ago=one_day&fun=compact(0)'
 
 # count how many times the eraseAttempt was called in the OTS job handler in the last 5 minutes
 curl -s 'http://hastur/api/name/ots.job_handler.eraseAttempt.times_called/value?fun=sum()'
