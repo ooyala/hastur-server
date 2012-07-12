@@ -1,0 +1,105 @@
+On Wed, Jul 11, 2012 at 9:18 PM, Al Tobey wrote:
+
+I've pushed the latest master of the Hastur retrieval service to production. It includes a few goodies people have been asking for.
+
+* Retrieval service v1 routes & formats are officially a contract as of this release. If we break compatibility, we'll fix it, excepting major bugs in the contract itself.
+
+* json pretty-print is the default unless Sinatra thinks it's being accessed via XHR
+
+* /api/name/:name is officially supported now
+
+* basic aggregation functions are now available, more advanced are in progress
+
+* always read/write Cassandra at consistency = QUORUM for great justice
+
+Aggregation is only 2 days old, so there are some rough edges. It's only a few new lines in the retrieval service itself that only get run if you say ?fun= so I'm not worried about it breaking anything not using it.
+
+   * hostname - return the "most estbestest" hostname instead of UUIDs for the top-level hash keys (heuristic, generally cname -> ec2 public -> fqdn -> utsname -> hostname)
+   * cname - return CNAMEs instead of UUIDs, but still UUIDs if the cname isn't known to hastur (hint: upgrade your agent)
+   * fqdn - return the best-guess FQDN instead of UUIDs
+   * integral - "rolling sum" of the series
+   * derivative - "rolling diff" - each value is replaced with the difference between it and the previous value, handy for counters stored as gauge
+   * merge - squash nodes / names, e.g. to merge multiple nodes' data into a single series or multiple stats into the same per-node series
+   * min
+   * max
+   * first
+   * last
+   * slice - select a range of samples from within each series, maybe not that useful, but it's the backend of first/last so I exposed it
+   * resample - use a simple (maybe too simple) mod-based sampling algorithm to reduce each series to the given number of samples
+   * compact - remove non-numeric entries, replace with whatever argument provided
+   * rollup - compute a bunch of rollups for numeric data, use with "append" to add it to the end of your series (example below)
+
+Aggregations are implemented with a dead simple expression parser that supports almost nothing interesting. Functions should be arbitrarily nestable and data is always returned in the 3-level hash format regardless of what kinds of transformations occur. In the future we'll add some format translations, but those will only be applicable as the outer-most function.
+
+Examples (you can probably just click on them):
+
+# get every entry for every uuid named ds.test.*
+curl -s http://hastur/api/name/ds.test.*/value?ago=one_hour
+
+# this currently has nulls in it, which makes graphing libs cranky
+curl -s http://hastur/api/name/ds.test.bloomberg.s3.bps/value?ago=one_day
+
+# workaround the issue by setting all non-numeric values to 0
+curl -s 'http://hastur/api/name/ds.test.bloomberg.s3.bps/value?ago=one_day&fun=compact(0)'
+
+# count how many times the eraseAttempt was called in the OTS job handler in the last 5 minutes
+curl -s 'http://hastur/api/name/ots.job_handler.eraseAttempt.times_called/value?fun=sum()'
+
+# I'm not convinced merge() is robust yet, but it's handy ...
+curl -s 'http://hastur/api/name/ots.job_handler.eraseAttempt.times_called/value?fun=sum(merge(name,merge(uuid)))&ago=one_hour'
+
+# get rollups for all OTS job_handler data, use compact to filter out any non-numeric data which currently breaks rollup()
+curl -s 'http://hastur/api/name/ots.job_handler.*/value?fun=rollup(compact())'
+
+# get all of the job_handler data with rollups appended (considering making this a default)
+curl -s 'http://hastur/api/name/ots.job_handler.*/value?fun=rollup(true,compact())'
+
+# everybody loves UUID's right? In any case, maybe you sometimes want human-readable names ...
+curl -s 'http://hastur/api/name/hastur.rest.db.query_time/value?ago=one_hour&fun=hostname(rollup())'
+
+# same thing! but who wants to type that ...
+curl -s 'http://hastur/api/name/hastur.rest.db.query_time/value?ago=one_hour&fun=fqdn(cname((rollup())))'
+
+# everything should have an FQDN, but they're largely useless in our environment
+curl -s 'http://hastur/api/name/hastur.rest.db.query_time/value?ago=one_hour&fun=fqdn(rollup())'
+
+# notice that 6bbaffa0-7140-012f-1b93-001e6713f84b doesn't have a CNAME, spaceghost.mtv is an A record
+curl -s 'http://hastur/api/name/hastur.rest.db.query_time/value?ago=one_hour&fun=cname(rollup())'
+
+Because I'm pleased with the rollups here's an example return value ....
+Most of the items are pretty straightforward.
+* p1 - p99 are percentiles
+* Period is computed using standard deviation of the timestamp deltas, variance will tell you how useful period is.
+  In this case, queries run at essentially random intervals so variance is large showing the period is useless.
+
+curl -s http://hastur/api/name/hastur.rest.db.query_time/value?ago=one_hour&fun=rollup(merge(uuid))
+{
+
+  "": {
+    "hastur.rest.db.query_time": {
+      "min": 0.009474495,
+      "max": 10.646586978,
+      "range": 10.637112483000001,
+      "sum": 113.298400376,
+      "count": 194,
+      "first_ts": 1342062321917543,
+      "last_ts": 1342065814215905,
+      "elapsed": 3492298362,
+      "p1": 0.016527888,
+      "p5": 0.021435136,
+      "p10": 0.022881297,
+      "p25": 0.02592192,
+      "p50": 0.03082856,
+      "p75": 0.182142584,
+      "p90": 3.50760736,
+      "p95": 4.71089976,
+      "p99": 10.646586978,
+      "stddev": 1.4928794464970445,
+      "variance": 2.228689041773322,
+      "average": 0.5840123730721649,
+      "period": 18094810.16580311,
+      "jitter": 34106837.41239568
+    }
+  }
+}
+
