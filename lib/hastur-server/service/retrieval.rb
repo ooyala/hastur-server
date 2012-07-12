@@ -799,7 +799,7 @@ module Hastur
         end
 
         #
-        # Look up message names in the "name-" LookupByKey row.
+        # Look up message names in the "name-" LookupByKey row. Handles comma-separated lists.
         # @see parse_name_lookup
         #
         # @param [String] match_name the name to look up
@@ -807,28 +807,31 @@ module Hastur
         # @param [Fixnum] end_ts
         # @return [Array<Hash{Symbol => String,Fixnum}>]
         #
-        def lookup_name(match_name, start_ts, end_ts)
-          # /name/foo.* prefix matching
-          if match_name.end_with? '*'
-            match = match_name.chop
-            # start_with? "" always returns true, so /name/* just works
-            fun = proc { |name| name.start_with?(match) }
-          # /name/foo.bar exact match
-          else
-            fun = proc { |name| name == match_name }
-          end
-
+        def lookup_name(names_in, start_ts, end_ts)
+          names_out = []
+          names = names_in.split /,/
           lookup = Hastur::Cassandra.lookup_by_key(cass_client, "name", start_ts, end_ts)
 
-          lookup.keys.map do |key|
-            item = parse_name_lookup(key)
-
-            if fun.call(item[:name])
-              item
+          names.each do |match_name|
+            # /name/foo.* prefix matching
+            if match_name.end_with? '*'
+              match = match_name.chop
+              # start_with? "" always returns true, so /name/* just works
+              fun = proc { |name| name.start_with?(match) }
+            # /name/foo.bar exact match
             else
-              nil
+              fun = proc { |name| name == match_name }
             end
-          end.compact
+
+            lookup.keys.map do |key|
+              item = parse_name_lookup(key)
+
+              if fun.call(item[:name])
+                names_out << item
+              end
+            end
+          end
+          names_out
         end
 
         #
