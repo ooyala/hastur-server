@@ -426,8 +426,9 @@ module Hastur
           types[Hastur::Message.type_id_to_symbol(item[:type_id])] = nil
         end
 
-        params[:uuid] = uuids.keys.join ','
-        params[:type] = types.keys.join ','
+        # interestingly, allow query params to cut down the uuid/type
+        params[:uuid] ||= uuids.keys.join ','
+        params[:type] ||= types.keys.join ','
 
         query_hastur
       end
@@ -676,6 +677,12 @@ module Hastur
 
           if params[:fun]
             expr = CGI::unescape(params[:fun])
+
+            # pass values needed for hitting Cassandra in
+            Hastur::Aggregation.cass_client = cass_client
+            Hastur::Aggregation.start_ts = params[:start]
+            Hastur::Aggregation.start_ts = params[:end]
+
             output = Hastur::Aggregation.evaluate(expr, output)
           end
 
@@ -857,14 +864,15 @@ module Hastur
         # {"error": "message"} and the same message in the statusText header.
         #
         def hastur_error(code=501, message="FAIL", bt=nil)
-          params[:pretty] = true
           headers "statusText" => message
+
+          @logger.error request.url, :error => message, :url => request.url
+
           halt(code, json({
               :error => message,
               :url => request.url,
               :backtrace => bt.kind_of?(Array) ? bt[0..10] : bt
-            })
-          )
+          }))
         end
 
         #
