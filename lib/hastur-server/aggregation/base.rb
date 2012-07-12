@@ -19,20 +19,37 @@ module Hastur
     # @return [Hash] series
     #
     def map_over(series, seed, *args)
+      each_subseries_in series do |name, subseries|
+        case seed
+          when :shift  ; state = subseries.delete(subseries.first.first)
+          when :first  ; state = subseries[subseries.first.first]
+          when Numeric ; state = seed
+        end
+
+        new_series = {}
+        subseries.each do |ts,val|
+          new_series[ts], state = yield val, state, *args
+        end
+        new_series
+      end
+    end
+
+    #
+    # Wrap up some boilerplate loops for rewriting one level shallower than map_over.
+    #
+    # @param [Hash] series
+    # @yield name, subseries
+    # @yieldreturn [Object] data to be placed under new_series[key][name]
+    # will drop the name from the results entirely if false/nil
+    #
+    def each_subseries_in(series)
       new_series = {}
       series.each do |uuid, name_series|
         new_series[uuid] = {}
-        name_series.each do |name, series|
-          new_series[uuid][name] = {}
-
-          case seed
-            when :shift  ; state = series.delete(series.keys.first)
-            when :first  ; state = series[series.keys.first]
-            when Numeric ; state = seed
-          end
-
-          series.each do |ts,val|
-            new_series[uuid][name][ts], state = yield val, state, *args
+        name_series.each do |name, subseries|
+          new_series[uuid][name] = yield name, subseries
+          unless new_series[uuid][name]
+            new_series[uuid].delete name
           end
         end
       end
