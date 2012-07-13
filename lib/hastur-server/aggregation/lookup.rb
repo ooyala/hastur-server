@@ -10,7 +10,17 @@ module Hastur
     @functions.merge! "cname" => :cname, "fqdn" => :fqdn, "hostname" => :hostname
 
     def hostname(series, control)
-      fqdn(cname(series, control))
+      names = do_lookup(series, control)
+      puts names
+      new_series = {}
+      series.keys.each do |uuid|
+        if names[uuid][:cnames] and names[uuid][:cnames].any?
+          new_series[names[uuid][:cnames].first] = series[uuid]
+        elsif names[uuid][:all] and names[uuid][:all].any?
+          new_series[names[uuid][:all].first] = series[uuid]
+        end
+      end
+      return new_series, control
     end
 
     def cname(series, control)
