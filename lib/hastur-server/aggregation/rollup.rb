@@ -10,20 +10,36 @@ module Hastur
     # rather than replacing it.
     #
     # @param [Hash] series
-    # @param [Boolean] append default false append to series rather than replacing it
+    # @param [String] delivery how to deliver the series
+    #   "merge" means merge the rollup into the time series hash
+    #   "replace" will replace the time series with the rollup data by itself
+    #   default: add a new "$name.rollup" for each series
     # @return [Hash] series
+    # @example
+    #   /api/name/linux.proc.stat/value?fun=rollup(derivative(compound(cpu)))
+    #   /api/name/linux.proc.stat/value?fun=rollup(merge,derivative(compound(cpu)))
+    #   /api/name/linux.proc.stat/value?fun=rollup(replace,derivative(compound(cpu)))
     #
-    def rollup(series, append=false)
-      each_subseries_in series do |name, subseries|
-        if subseries.count > 0
+    def rollup(series, delivery="series")
+      new_series = {}
+      series.each do |uuid, name_series|
+        new_series = { uuid => {} }
+        name_series.each do |name, subseries|
+          next unless subseries.count > 0
+
           rollup = compute_rollups subseries.keys, subseries.values
-          if append
-            subseries.merge rollup
+          case delivery
+          when "merge"
+            new_series[uuid][name] = subseries.merge rollup
+          when "replace"
+            new_series[uuid][name] = rollup
           else
-            rollup
+            new_series[uuid][name] = subseries
+            new_series[uuid]["#{name}.rollup"] = rollup
           end
         end
       end
+      new_series
     end
 
     #
