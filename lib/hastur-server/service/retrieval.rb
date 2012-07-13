@@ -6,6 +6,7 @@ require "hastur/api"
 require "hastur-server/cassandra/schema"
 require "hastur-server/cassandra/rollup"
 require "hastur-server/time_util"
+require "hastur-server/util"
 require "hastur-server/aggregation"
 require "multi_json"
 require "termite"
@@ -641,8 +642,18 @@ module Hastur
             hastur_error 404, "Illegal output option: '#{params[:format]}'"
           end
 
-          uuids = params[:uuid].split(",")
           types = type_list_from_string(params[:type])
+
+          # TODO: move to a method
+          day_start_ts, day_end_ts = get_start_end :one_day
+          uuid_lookup = Hastur::Cassandra.lookup_by_key(cass_client, "host-uuid", day_start_ts, day_end_ts)
+          uuids = params[:uuid].split(",").map do |maybe_uuid|
+            if Hastur::Util.valid_uuid?(maybe_uuid)
+              maybe_uuid
+            else
+              uuid_lookup[maybe_uuid]
+            end
+          end.compact
 
           unless types.any? { |t| TYPES[:all].include?(t) }
             hastur_error 404, "Invalid type(s): '#{types}'"
