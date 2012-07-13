@@ -13,7 +13,7 @@ module Hastur
     extend self
 
     # series = { uuid => { name => { timestamp => value, ... } } }
-    def evaluate(string, series)
+    def evaluate(string, series, control)
       exp = tokenize(string)
 
       until exp.none?
@@ -24,7 +24,7 @@ module Hastur
 
         fun = args.pop
         if fun.kind_of? Symbol
-          series = self.send fun, series, *args
+          series, control = self.send fun, series, control, *args
         else
           raise InvalidAggFunError.new "not a valid function: #{fun.inspect}"
         end

@@ -63,7 +63,9 @@ module Hastur
     }
 
     #
-    # Extract keys from a plain hash stored in a compound value.
+    # Extract keys from a plain hash stored in a compound value. This is only really valid
+    # as the inner-most function, as this is how compounds are translated to work well with
+    # all the other functions.
     #
     # @param [Hash] series
     # @return [Hash] series
@@ -71,7 +73,7 @@ module Hastur
     #   /api/name/linux.proc.uptime?fun=compound(uptime,idle)
     #   /api/name/linux.proc.stat?fun=compound(processes,procs_running,procs_blocked)
     #
-    def compound(series, *keys)
+    def compound(series, control, *keys)
       new_series = {}
       series.each do |uuid, name_series|
         new_series[uuid] = {}
@@ -113,7 +115,7 @@ module Hastur
           end
         end
       end
-      new_series
+      return new_series, control
     end
 
     #
@@ -125,7 +127,7 @@ module Hastur
     #   /api/name/linux.proc.stat?fun=compound_list(cpu)
     #   /api/name/linux.proc.stat?fun=compound_list(cpu0,cpu1)
     #
-    def compound_list(series, *keys)
+    def compound_list(series, control, *keys)
       new_series = {}
       series.each do |uuid, name_series|
         new_series[uuid] = {}
@@ -148,7 +150,7 @@ module Hastur
           end
         end
       end
-      new_series
+      return new_series, control
     end
   end
 end

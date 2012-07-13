@@ -679,11 +679,10 @@ module Hastur
             expr = CGI::unescape(params[:fun])
 
             # pass values needed for hitting Cassandra in
-            Hastur::Aggregation.cass_client = cass_client
-            Hastur::Aggregation.start_ts = params[:start]
-            Hastur::Aggregation.start_ts = params[:end]
+            control = { :cass_client => cass_client }
+            control[:start_ts], control[:end_ts] = get_start_end :one_day
 
-            output = Hastur::Aggregation.evaluate(expr, output)
+            output = Hastur::Aggregation.evaluate(expr, output, control)
           end
 
           json output

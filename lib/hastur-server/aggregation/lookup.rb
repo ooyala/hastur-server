@@ -7,45 +7,43 @@ module Hastur
   module Aggregation
     include Hastur::TimeUtil
     extend self
-    attr_reader :cass_client
-    attr_writer :start_ts, :end_ts
     @functions.merge! "cname" => :cname, "fqdn" => :fqdn, "hostname" => :hostname
-    @cass_client = @start_ts = @end_ts = nil
 
-    def cass_client=(client)
-      @cass_client = client
+    def hostname(series, control)
+      fqdn(cname(series, control))
     end
 
-    def start_ts
-      @start_ts || end_ts - USEC_TWO_DAYS
-    end
-
-    def end_ts
-      @end_ts || usec_epoch
-    end
-
-    def hostname(series)
-      fqdn(cname(series))
-    end
-
-    def cname(series)
-      names = Hastur::Cassandra.network_names_for_uuids(cass_client, series.keys, start_ts, end_ts)
+    def cname(series, control)
+      names = do_lookup(series, control)
+      new_series = {}
       series.keys.each do |uuid|
         if names[uuid][:cnames] and names[uuid][:cnames].any?
-          series[names[uuid][:cnames][0]] = series.delete uuid
+          new_series[names[uuid][:cnames][0]] = series[uuid]
         end
       end
-      series
+      return new_series, control
     end
 
-    def fqdn(series)
-      names = Hastur::Cassandra.network_names_for_uuids(cass_client, series.keys, start_ts, end_ts)
+    def fqdn(series, control)
+      names = do_lookup(series, control)
+      new_series = {}
       series.keys.each do |uuid|
         if names[uuid][:fqdn]
-          series[names[uuid][:fqdn]] = series.delete uuid
+          new_series[names[uuid][:fqdn]] = series[uuid]
         end
       end
-      series
+      return new_series, control
+    end
+
+    private
+
+    def do_lookup(series, control)
+      Hastur::Cassandra.network_names_for_uuids(
+        control[:cass_client],
+        series.keys,
+        control[:start_ts],
+        control[:end_ts]
+      )
     end
   end
 end

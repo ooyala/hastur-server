@@ -20,26 +20,30 @@ module Hastur
     #   /api/name/linux.proc.stat/value?fun=rollup(merge,derivative(compound(cpu)))
     #   /api/name/linux.proc.stat/value?fun=rollup(replace,derivative(compound(cpu)))
     #
-    def rollup(series, delivery="series")
+    def rollup(series, control, delivery="series")
       new_series = {}
       series.each do |uuid, name_series|
         new_series = { uuid => {} }
         name_series.each do |name, subseries|
-          next unless subseries.count > 0
-
-          rollup = compute_rollups subseries.keys, subseries.values
-          case delivery
-          when "merge"
-            new_series[uuid][name] = subseries.merge rollup
-          when "replace"
-            new_series[uuid][name] = rollup
-          else
+          if skip_name?(control, name)
             new_series[uuid][name] = subseries
-            new_series[uuid]["#{name}.rollup"] = rollup
+          else
+            next unless subseries.count > 0
+
+            rollup = compute_rollups subseries.keys, subseries.values
+            case delivery
+            when "merge"
+              new_series[uuid][name] = subseries.merge rollup
+            when "replace"
+              new_series[uuid][name] = rollup
+            else
+              new_series[uuid][name] = subseries
+              new_series[uuid]["#{name}.rollup"] = rollup
+            end
           end
         end
       end
-      new_series
+      return new_series, control
     end
 
     #

@@ -18,31 +18,35 @@ module Hastur
     # This assumes it has been given a counter and that you're OK with getting
     # possibly huge numbers. It also assumes that it's an increasing counter.
     #
-    def unrollover(series, ignore=nil)
-      each_subseries_in series do |name, subseries|
-        new_subseries = {}
+    def unrollover(series, control, ignore=nil)
+      each_subseries_in series, control do |name, subseries|
+        if skip_name?(control, name)
+          subseries
+        else
+          new_subseries = {}
 
-        # track the previous value, once a rollover is detected, start adding it to new values
-        prev = subseries.first.last
-        last_in_previous_series = nil
+          # track the previous value, once a rollover is detected, start adding it to new values
+          prev = subseries.first.last
+          last_in_previous_series = nil
 
-        # sort the timestamps again just to be sure, otherwise things will get very weird
-        subseries.keys.sort.each do |ts|
-          val = subseries[ts]
+          # sort the timestamps again just to be sure, otherwise things will get very weird
+          subseries.keys.sort.each do |ts|
+            val = subseries[ts]
 
-          if prev > val
-            last_in_previous_series = prev
+            if prev > val
+              last_in_previous_series = prev
+            end
+
+            if last_in_previous_series
+              new_subseries[ts] = val + last_in_previous_series
+            else
+              new_subseries[ts] = val
+            end
+
+            prev = val
           end
-
-          if last_in_previous_series
-            new_subseries[ts] = val + last_in_previous_series
-          else
-            new_subseries[ts] = val
-          end
-
-          prev = val
+          new_subseries
         end
-        new_subseries
       end
     end
   end

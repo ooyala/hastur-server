@@ -24,8 +24,8 @@ module Hastur
     # @param [Fixnum] count default 1
     # @return [Hash] series
     #
-    def first(series, count=1)
-      slice(series, 0, count-1)
+    def first(series, control, count=1)
+      slice(series, control, 0, count-1)
     end
 
     #
@@ -35,8 +35,8 @@ module Hastur
     # @param [Fixnum] count default 1
     # @return [Hash] series
     #
-    def last(series, count=1)
-      slice(series, count * -1, -1)
+    def last(series, control, count=1)
+      slice(series, control, count * -1, -1)
     end
 
     #
@@ -47,19 +47,23 @@ module Hastur
     # @param [Fixnum] last_idx the final index
     # @return [Hash] series
     #
-    def slice(series, first_idx, last_idx)
+    def slice(series, control, first_idx, last_idx)
       new_series = {}
       series.each do |uuid, name_series|
         new_series[uuid] = {}
         name_series.each do |name, ts_val|
-          new_series[uuid][name] = {}
-          keys = ts_val.keys[first_idx..last_idx]
-          keys.each do |ts|
-            new_series[uuid][name][ts] = ts_val[ts]
+          if skip_name?(control, name)
+            ts_val
+          else
+            new_series[uuid][name] = {}
+            keys = ts_val.keys[first_idx..last_idx]
+            keys.each do |ts|
+              new_series[uuid][name][ts] = ts_val[ts]
+            end
           end
         end
       end
-      new_series
+      return new_series, control
     end
 
     #
@@ -69,8 +73,8 @@ module Hastur
     # @example
     #   resample(100) - return 100 samples evenly distributed across the series
     #
-    def resample(series, samples)
-      each_subseries_in series do |name, subseries|
+    def resample(series, control, samples)
+      each_subseries_in series, control do |name, subseries|
         new_subseries = {}
         count = 0
         sample_every = (subseries.count / samples).floor
@@ -92,8 +96,8 @@ module Hastur
     # @param [Hash] series
     # @param [String,Numeric,FalseClass] replace optional value to replace nil/null in the series
     #
-    def compact(series, replace=false)
-      each_subseries_in series do |name, subseries|
+    def compact(series, control, replace=false)
+      each_subseries_in series, control do |name, subseries|
         new_subseries = {}
         subseries.each do |ts,val|
           if Numeric === val
@@ -122,8 +126,8 @@ module Hastur
     #   sum(100) - start with an arbitrary number
     #   last(sum()) - get the final (total) value of the summed series
     #
-    def integral(series, seed=0)
-      map_over series, seed do |val,total|
+    def integral(series, control, seed=0)
+      map_over series, control, seed do |val,total|
         [val + total, val + total]
       end
     end
@@ -139,8 +143,8 @@ module Hastur
     #   Numeric use the given number for the first subraction
     # @return [Hash] series
     #
-    def derivative(series, seed=:first)
-      map_over series, seed do |val,previous|
+    def derivative(series, control, seed=:first)
+      map_over series, control, seed do |val,previous|
         [val - previous, val]
       end
     end
@@ -151,17 +155,9 @@ module Hastur
     # @param [Hash] series
     # @return [Hash] series
     #
-    def max(series, ignore=nil)
-      maxproc = proc do |val,max|
-        if val > max
-          [val, val]
-        else
-          [max, max]
-        end
-      end
-      last(map_over(series, :first, &maxproc))
-      each_subseries_in map_over(series, :first, &maxproc) do |name, subseries|
-        { :max => subseries.values.last }
+    def max(series, control, ignore=nil)
+      each_subseries_in series, control do |name, subseries|
+        { :max => subseries.values.sort.last }
       end
     end
 
@@ -171,16 +167,9 @@ module Hastur
     # @param [Hash] series
     # @return [Hash] series
     #
-    def min(series, ignore=nil)
-      minproc = proc do |val,min|
-        if val < min
-          [val, val]
-        else
-          [min, min]
-        end
-      end
-      each_subseries_in map_over(series, :first, &minproc) do |name, subseries|
-        { :min => subseries.values.last }
+    def min(series, control, ignore=nil)
+      each_subseries_in series, control do |name, subseries|
+        { :min => subseries.values.sort.first }
       end
     end
 
@@ -190,8 +179,8 @@ module Hastur
     # @param [Hash] series
     # @return [Hash] series
     #
-    def sum(series, seed=0)
-      each_subseries_in integral(series, seed) do |name, subseries|
+    def sum(series, control, seed=0)
+      each_subseries_in integral(series, control, seed), control do |name, subseries|
         { :sum => subseries.values.last }
       end
     end
