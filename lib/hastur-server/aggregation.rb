@@ -4,6 +4,7 @@ require "hastur-server/aggregation/lookup"
 require "hastur-server/aggregation/compound"
 require "hastur-server/aggregation/formats"
 require "hastur-server/aggregation/rollup"
+require "hastur-server/aggregation/heuristics"
 
 module Hastur
   module Aggregation
@@ -35,18 +36,26 @@ module Hastur
     # Tokenize an aggregation expression.
     #
     # @param [String] string aggregation expression in a string
-    # @return [Array<String,Symbol,Fixnum,Float>] tokens
+    # @return [Array<String,Symbol,Fixnum,Float,Boolean,nil>] tokens
     #
     def tokenize(string)
       parts = string.split(/\s*[\(\)]\s*/).map do |token|
         token.split(/\s*,\s*/).map do |exp|
+          # avoid :to_sym on random input, symbols are never gc'ed
           if @functions.has_key? exp
             @functions[exp]
           elsif exp =~ /\A[\-\+]?\d+\Z/
             exp.to_i
           elsif exp =~ /\A[\-\+]?\d*\.\d+\Z/
             exp.to_f
-          elsif exp =~ /\A\w+\Z/
+          elsif "true" === exp
+            true
+          elsif "false" === exp
+            false
+          elsif "null" === exp or "nil" === exp
+            nil
+          # bare strings, but restricted to the following pattern
+          elsif exp =~ /\A[-\.\w]+\Z/
             exp
           else
             raise InvalidAggSyntaxError.new "syntax error in expression: #{exp.inspect}"
