@@ -7,6 +7,7 @@ module Hastur
     @functions.merge!({
       "integral"   => :integral,
       "derivative" => :derivative,
+      "scale"      => :scale,
       "min"        => :min,
       "max"        => :max,
       "sum"        => :sum,
@@ -75,17 +76,21 @@ module Hastur
     #
     def resample(series, control, samples)
       each_subseries_in series, control do |name, subseries|
-        new_subseries = {}
-        count = 0
-        sample_every = (subseries.count / samples).floor
+        if samples < subseries.count
+          new_subseries = {}
+          count = 0
+          sample_every = (subseries.count / samples).floor
 
-        subseries.each do |ts,val|
-          if count % sample_every == 0
-            new_subseries[ts] = val
+          subseries.each do |ts,val|
+            if count % sample_every == 0
+              new_subseries[ts] = val
+            end
+            count = count + 1
           end
-          count = count + 1
+          new_subseries
+        else
+          subseries
         end
-        new_subseries
       end
     end
 
@@ -143,9 +148,19 @@ module Hastur
     #   Numeric use the given number for the first subraction
     # @return [Hash] series
     #
-    def derivative(series, control, seed=:first)
+    def derivative(series, control, seed="first")
       map_over series, control, seed do |val,previous|
         [val - previous, val]
+      end
+    end
+
+    #
+    # Multiply each value in the series by the given constant. Handy for bytes to bits,
+    # sectors to bytes, or positive to negative.
+    #
+    def scale(series, control, multiplier=1)
+      map_over series, control, multiplier do |val,previous|
+        [val * multiplier, val]
       end
     end
 

@@ -59,8 +59,27 @@ module Hastur
           end
         end
         sample
+      },
+      "linux.proc.net.dev" => proc { |sample|
+        compound_list_to_hash sample, "linux.proc.net.dev"
+      },
+      "linux.proc.diskstats" => proc { |sample|
+        compound_list_to_hash sample, "linux.proc.diskstats"
       }
     }
+
+    #
+    # Translate a flat compound list to a hash using one of the defined field lists.
+    #
+    def compound_list_to_hash(sample, name)
+      sample.keys.each do |key|
+        row = sample.delete(key)
+        FIELDS[name].each_with_index do |field, idx|
+          sample["#{key}.#{field}"] = row[idx] if row[idx]
+        end
+      end
+      sample
+    end
 
     #
     # Extract keys from a plain hash stored in a compound value. This is only really valid

@@ -26,10 +26,11 @@ module Hastur
     #
     def map_over(series, control, seed, *args)
       each_subseries_in series, control do |name, subseries|
-        case seed
-          when :shift  ; state = subseries.delete(subseries.first.first)
-          when :first  ; state = subseries[subseries.first.first]
-          when Numeric ; state = seed
+        first = subseries.first
+        state = case seed
+          when "shift" ; subseries.delete(first.first)
+          when "first" ; first.last
+          when Numeric ; seed
         end
 
         new_subseries = {}
