@@ -643,17 +643,7 @@ module Hastur
           end
 
           types = type_list_from_string(params[:type])
-
-          # TODO: move to a method
-          day_start_ts, day_end_ts = get_start_end :one_day
-          uuid_lookup = Hastur::Cassandra.lookup_by_key(cass_client, "host-uuid", day_start_ts, day_end_ts)
-          uuids = params[:uuid].split(",").map do |maybe_uuid|
-            if Hastur::Util.valid_uuid?(maybe_uuid)
-              maybe_uuid
-            else
-              uuid_lookup[maybe_uuid]
-            end
-          end.compact
+          uuids = uuid_or_hostname_to_uuids params[:uuid].split(',')
 
           unless types.any? { |t| TYPES[:all].include?(t) }
             hastur_error 404, "Invalid type(s): '#{types}'"
@@ -697,6 +687,29 @@ module Hastur
           end
 
           json output
+        end
+
+        #
+        # Take a list of nodes, where the names may be UUIDs or network names and
+        # return a list of just UUIDs. Hostnames that cannot be resolved are dropped
+        # from the list.
+        #
+        # @param [Array<String>] nodes list of UUIDs and network names
+        # @return [Array<String>] uuids list of 36-byte UUIDs
+        #
+        def uuid_or_hostname_to_uuids(nodes)
+          # node registration is daily, bucket the lookup on day boundary if unspecified
+          day_start_ts, day_end_ts = get_start_end :one_day
+
+          uuid_lookup = Hastur::Cassandra.lookup_by_key(cass_client, "host-uuid", day_start_ts, day_end_ts)
+
+          nodes.flatten.map do |maybe_uuid|
+            if Hastur::Util.valid_uuid?(maybe_uuid)
+              maybe_uuid
+            else
+              uuid_lookup[maybe_uuid]
+            end
+          end.compact
         end
 
         #
