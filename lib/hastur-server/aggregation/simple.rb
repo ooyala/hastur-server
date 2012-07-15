@@ -58,6 +58,7 @@ module Hastur
           else
             new_series[uuid][name] = {}
             keys = ts_val.keys[first_idx..last_idx]
+            raise "Index out of range. #{first_idx}..#{last_idx} out of 0..#{ts_val.count-1}." unless keys and keys.any?
             keys.each do |ts|
               new_series[uuid][name][ts] = ts_val[ts]
             end
