@@ -132,7 +132,9 @@ module Hastur
           # skip any non-numeric entries since we can't really make sense of them
           next unless val.kind_of? Numeric
 
-          key, _, timestamp = colkey.unpack("a#{col.bytesize - 9}aQ>")
+          key, _, timestamp = col.unpack("a#{col.bytesize - 9}aQ>")
+          values[key] ||= []
+          timestamps[key] ||= []
           values[key] << val
           timestamps[key] << timestamp
         end
