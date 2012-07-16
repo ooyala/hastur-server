@@ -16,28 +16,32 @@ module Hastur
     #   default: add a new "$name.rollup" for each series
     # @return [Hash] series
     # @example
+    #   /api/name/foo.*.times_called/value?fun=rollup()
     #   /api/name/linux.proc.stat/value?fun=rollup(derivative(compound(cpu)))
     #   /api/name/linux.proc.stat/value?fun=rollup(merge,derivative(compound(cpu)))
     #   /api/name/linux.proc.stat/value?fun=rollup(replace,derivative(compound(cpu)))
     #
     def rollup(series, control, delivery="series")
+      interval = control[:end_ts] - control[:start_ts] rescue nil
+
       new_series = {}
       series.each do |uuid, name_series|
         new_series = { uuid => {} }
         name_series.each do |name, subseries|
-          if skip_name?(control, name)
-            new_series[uuid][name] = subseries
-          else
-            next unless subseries.count > 0
+          new_series[uuid][name] = subseries
+          unless skip_name?(control, name)
+            if subseries.count > 0
+              rollup = compute_rollups subseries.keys, subseries.values, interval
+            else
+              rollup = { :count => 0, :status => "no samples available to roll up" }
+            end
 
-            rollup = compute_rollups subseries.keys, subseries.values
             case delivery
             when "merge"
               new_series[uuid][name] = subseries.merge rollup
             when "replace"
               new_series[uuid][name] = rollup
             else
-              new_series[uuid][name] = subseries
               new_series[uuid]["#{name}.rollup"] = rollup
             end
           end
@@ -53,7 +57,7 @@ module Hastur
     #
     # also used in cassandra/rollup.rb
     #
-    def compute_rollups(timestamps, values)
+    def compute_rollups(timestamps, values, interval=nil)
       # both lists need to be in order, but the time/value relationship is not important
       timestamps.sort!
       values.sort!
@@ -67,6 +71,7 @@ module Hastur
         :first_ts   => timestamps[0],
         :last_ts    => timestamps[-1],
         :elapsed    => timestamps[-1] - timestamps[0],
+        :interval   => interval,
       }
 
       # http://en.wikipedia.org/wiki/Percentiles
