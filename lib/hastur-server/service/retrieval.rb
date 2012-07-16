@@ -390,7 +390,7 @@ module Hastur
       get "/api/lookup/name/:name" do
         start_ts, end_ts = get_start_end :one_day
         names = {}
-        lookup_name(params[:name], start_ts, end_ts).each do |item|
+        lookup_name(params[:name].split(','), start_ts, end_ts).each do |item|
           if names.has_key? item[:name]
             names[item[:name]][item[:uuid]] = nil
           else
@@ -422,7 +422,7 @@ module Hastur
         name_start_ts, name_end_ts = get_start_end :one_day
         uuids = {}
         types = {}
-        lookup_name(params[:name], name_start_ts, name_end_ts).each do |item|
+        lookup_name(params[:name].split(','), name_start_ts, name_end_ts).each do |item|
           uuids[item[:uuid]] = nil
           types[Hastur::Message.type_id_to_symbol(item[:type_id])] = nil
         end
@@ -592,9 +592,10 @@ module Hastur
         # Cassandra's "count". Cassandra uses get_count or count_columns for "please return a count of my
         # results."  I don't think we can win here, Cassandra-naming-wise.
         #
+        # @param [Array<String>] want_names
         # @return [Array<Hash{Symbol => Object}>] options hash for Hastur::Cassandra.get
         #
-        def build_name_option_list
+        def build_name_option_list(want_names)
           cass_options = {}
           cass_options[:reversed] = true if param_is_true(params[:reversed])
           cass_options[:count] = params[:limit].to_i if params[:limit]
@@ -605,13 +606,17 @@ module Hastur
           when "count"  ; cass_options[:count_columns] = true
           end
 
-          if params[:name]
+          if want_names.any?
             name_option_list = []
-            names = params[:name].split ","
 
-            names.each do |name|
-              if name.end_with?("*")
-                name_option_list << cass_options.merge(:name_prefix => name.chop)
+            want_names.each do |name|
+              if name.include? '*'
+                match = name.split('*')
+                if name.start_with?('*')
+                  raise "Invalid name search '#{name}'. Suffix matching is not supported."
+                else
+                  name_option_list << cass_options.merge(:name_prefix => match[0])
+                end
               else
                 name_option_list << cass_options.merge(:name => name)
               end
@@ -644,6 +649,7 @@ module Hastur
 
           types = type_list_from_string(params[:type])
           uuids = uuid_or_hostname_to_uuids params[:uuid].split(',')
+          names = params[:name] ? params[:name].split(',') : []
 
           unless types.any? { |t| TYPES[:all].include?(t) }
             hastur_error 404, "Invalid type(s): '#{types}'"
@@ -658,7 +664,7 @@ module Hastur
           end
 
           start_ts, end_ts = get_start_end default_span
-          name_option_list = build_name_option_list
+          name_option_list = build_name_option_list names
 
           values = Hastur.time "hastur.rest.db.query_time" do
             name_option_list.map do |options|
@@ -674,6 +680,13 @@ module Hastur
             end
           else
             hastur_error 404, "Unhandled output format: '#{params[:format]}'!"
+          end
+
+          # Some queries go directly to a Cassandra range scan, which only matches prefixes
+          # so a second pass is required to reduce the data down to only what was requested
+          # for infix wildcards.
+          if names.select {|n| n.include?('*') }.any?
+            filter_out_unwanted_names output, names
           end
 
           if params[:fun]
@@ -698,6 +711,9 @@ module Hastur
         # @return [Array<String>] uuids list of 36-byte UUIDs
         #
         def uuid_or_hostname_to_uuids(nodes)
+          # avoid the Cassandra lookup if all the nodes are already UUIDs
+          return nodes unless nodes.reject { |node| Hastur::Util.valid_uuid?(node) }.any?
+
           # node registration is daily, bucket the lookup on day boundary if unspecified
           day_start_ts, day_end_ts = get_start_end :one_day
 
@@ -822,6 +838,62 @@ module Hastur
         end
 
         #
+        # Check if a given message name string matches the possibly wildcarded
+        # match string. Does not use RE evaluation and is safe to use with query parameters.
+        #
+        # @param [String] name
+        # @param [String] match either exact or wildcard match
+        # @return [Boolean] true if matches
+        #
+        def name_matches?(name, match)
+          if match.include? '*'
+            parts = match.split '*'
+            first = parts.shift
+
+            # if it's a leading *, this works because start_with?("") always returns true
+            # and has a length of 0 so the position stays at 0, which is correct
+            if name.start_with?(first)
+              # check for suffix match right away, accounting for a final * which split doesn't return
+              if not match.end_with? '*' and not name.end_with?(parts.pop)
+                return false
+              end
+
+              # check any internal wildcards
+              position = first.length
+              parts.each do |p|
+                # find the substring starting at the position end of the last match
+                found = name.index(p, position)
+                if found and found >= position
+                  position = found + p.length # end of the matched substr
+                else
+                  return false
+                end
+              end
+            end
+          elsif name == match
+            true
+          end
+        end
+
+        #
+        # Modify the output hash in-place, deleting any name keys that don't match what the user requested.
+        #
+        # @param [Hash] output to be modified
+        # @param [Array<String>] list of names
+        #
+        def filter_out_unwanted_names(output, names)
+          names.each do |match|
+            output.keys.each do |uuid|
+              output[uuid].keys.each do |name|
+                unless name_matches?(name, match)
+                  output[uuid].delete name
+                end
+              end
+            end
+          end
+        end
+
+        #
         # Look up message names in the "name-" LookupByKey row. Handles comma-separated lists.
         # @see parse_name_lookup
         #
@@ -830,26 +902,17 @@ module Hastur
         # @param [Fixnum] end_ts
         # @return [Array<Hash{Symbol => String,Fixnum}>]
         #
-        def lookup_name(names_in, start_ts, end_ts)
+        def lookup_name(names, start_ts, end_ts)
           names_out = []
-          names = names_in.split /,/
           lookup = Hastur::Cassandra.lookup_by_key(cass_client, "name", start_ts, end_ts)
 
           names.each do |match_name|
-            # /name/foo.* prefix matching
-            if match_name.end_with? '*'
-              match = match_name.chop
-              # start_with? "" always returns true, so /name/* just works
-              fun = proc { |name| name.start_with?(match) }
-            # /name/foo.bar exact match
-            else
-              fun = proc { |name| name == match_name }
-            end
-
+            # this will get slower as we get more names in the db, at which point we should
+            # add prefix range querying to lookup_by_key where possible
             lookup.keys.map do |key|
               item = parse_name_lookup(key)
 
-              if fun.call(item[:name])
+              if name_matches?(item[:name], match_name)
                 names_out << item
               end
             end
