@@ -24,7 +24,7 @@ module Hastur
 
         fun = args.pop
         if fun.kind_of? Symbol
-          series, control = self.send fun, series, control, *args
+          series, control = self.send fun, series, control, *args.reverse
         else
           raise InvalidAggFunError.new "not a valid function: #{fun.inspect}"
         end
