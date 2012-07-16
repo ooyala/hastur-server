@@ -196,7 +196,8 @@ module Hastur
     # @return [Hash] series
     #
     def sum(series, control, seed=0)
-      each_subseries_in integral(series, control, seed), control do |name, subseries|
+      itgl, control = integral series, control, seed
+      each_subseries_in itgl, control do |name, subseries|
         { :sum => subseries.values.last }
       end
     end
