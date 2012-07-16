@@ -3,6 +3,7 @@ require "cassandra/constants"
 require "hastur/api"
 require "hastur-server/cassandra/schema"
 require "hastur-server/time_util"
+require "hastur-server/aggregation/rollup"
 require "msgpack"
 require "termite"
 require "time"
@@ -115,14 +116,15 @@ module Hastur
       # Compute a rollup from the given "row" of data.
       #
       # @param [Hash{String => String}] row data row to roll up
-      # @param [Fixnum] bucket_interval time length the rollup is supposed to cover
       # @return [Hash{String => Hash{Symbol => Numeric}}]
       # @example
       #   row = cass_client.get "GaugeValue", "a5e99f80-9825-012f-6a61-22000a1cdd06-1340496000000000"
       #   rollup = rollup_row row, Hastur::TimeUtil::USEC_FIVE_MINUTES
       #
       def rollup_row(row, bucket_interval)
-        rollup = {}
+        values = {}
+        timestamps = {}
+        out = {}
 
         row.each do |col, packval|
           next if col =~ /collectd/
@@ -130,93 +132,16 @@ module Hastur
           # skip any non-numeric entries since we can't really make sense of them
           next unless val.kind_of? Numeric
 
-          key, timestamp = init(rollup, col)
-
-          rollup[key][:values] << val # will be deleted
-          rollup[key][:timestamps] << timestamp # will be deleted
+          key, _, timestamp = colkey.unpack("a#{col.bytesize - 9}aQ>")
+          values[key] << val
+          timestamps[key] << timestamp
         end
 
-        rollup.each do |key, col_rollup|
-          # both lists need to be in order, there's no need to maintain the tuples
-          values = col_rollup.delete(:values).sort
-          timestamps = col_rollup.delete(:timestamps).sort
-
-          col_rollup[:interval] = bucket_interval
-          col_rollup[:min]      = values[0]
-          col_rollup[:max]      = values[-1]
-          col_rollup[:range]    = values[-1] - values[0]
-          col_rollup[:sum]      = values.reduce(:+)
-          col_rollup[:count]    = values.count
-          col_rollup[:first_ts] = timestamps[0]
-          col_rollup[:last_ts]  = timestamps[-1]
-          col_rollup[:elapsed]  = timestamps[0] - timestamps[-1]
-
-          # http://en.wikipedia.org/wiki/Percentiles
-          # median is just p50
-          last = values.count - 1
-          [10, 25, 50, 75, 90, 95, 99].each do |percentile|
-            rank = (col_rollup[:count] * (percentile / 100.0) + 0.5).round
-            col_rollup["p#{percentile}".to_sym] = values[rank]
-          end
-
-          # compute the variance & standard deviation
-          stddev, variance, average = stddev(values)
-          col_rollup[:stddev]   = stddev
-          col_rollup[:variance] = variance
-          col_rollup[:average]  = average
-
-          # period standard deviation (quality)
-          if timestamps.count > 1
-            # convert the timestamps to a list of intervals
-            last_ts = timestamps.shift
-            intervals = []
-            timestamps.each do |ts|
-              intervals << ts - last_ts
-              last_ts = ts
-            end
-
-            stddev, variance, average = stddev(intervals)
-            col_rollup[:period] = average
-            col_rollup[:jitter] = stddev
-          end
+        values.keys.each do |key|
+          out[key] = Hastur::Aggregation.compute_rollups timestamps[key], values[key], bucket_interval
         end
 
-        return rollup
-      end
-
-      #
-      # Simple standard deviation.
-      # http://en.wikipedia.org/wiki/Standard_deviation
-      #
-      # @param [Array<Numeric>] list of values
-      # @return [Float, Float, Float] stddev, variance, average
-      #
-      def stddev(list)
-        avg = list.reduce(&:+) / list.count.to_f
-        dsum = list.map { |v| (v - avg) ** 2 }.reduce(&:+)
-        variance = dsum / list.count.to_f
-        return Math.sqrt(variance), variance, avg
-      end
-
-      #
-      # Unpack the column key and initialize the rollup slot if necessary.
-      #
-      # @param [Hash{String => Hash}] rollup
-      # @param [String] colkey still-encoded column key
-      #
-      def init(rollup, colkey)
-        key, _, timestamp = colkey.unpack("a#{colkey.bytesize - 9}aQ>")
-        rollup[key] ||= {
-          :count      => 0,
-          :sum        => 0,
-          :average    => 0,
-          :period     => 0,
-          :first_ts   => nil,
-          :last_ts    => nil,
-          :values     => [],
-          :timestamps => [],
-        }
-        return key, timestamp
+        return out
       end
     end
   end
