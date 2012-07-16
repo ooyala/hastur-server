@@ -15,6 +15,7 @@ module Hastur
       "last"       => :last,
       "slice"      => :slice,
       "resample"   => :resample,
+      "histogram"  => :histogram,
       "compact"    => :compact
     })
 
@@ -92,6 +93,60 @@ module Hastur
         else
           subseries
         end
+      end
+    end
+
+    # is this a proper histogram?
+    # @example /api/name/ots.*.times_called/value?fun=histogram(10,merge(uuid))&ago=one_hour"
+    # @example /api/name/ots.*.times_called/value?fun=histogram(10,avg,merge(uuid))&ago=one_hour"
+    # what else besides summing makes sense?
+    def histogram(series, control, buckets=10, agg="add", *args)
+      puts "buckets: #{buckets} agg: #{agg} args: #{args}"
+      each_subseries_in series, control do |name, subseries|
+        new_subseries = {}
+        bucket_counts = {}
+
+        # rely on request timestamps provided in control - especially with counters,
+        # there will be variable numbers of samples available so ranges will be inconsistent
+        min_ts = control[:start_ts]
+        max_ts = control[:end_ts]
+
+        range = max_ts - min_ts
+        bucket_usecs = (range / buckets).floor
+
+        # initialize the buckets - all buckets should exist in output
+        0.upto(buckets-1).map do |bucket|
+          key = min_ts +  bucket * bucket_usecs
+          new_subseries[key] = 0
+          bucket_counts[key] = 0
+        end
+
+        bucket = min_ts
+        subseries.keys.sort.each do |ts|
+          # advance to the next bucket if necessary
+          until ts.between?(bucket, bucket + bucket_usecs - 1) do
+            bucket = bucket + bucket_usecs
+          end
+
+          new_subseries[bucket] = new_subseries[bucket] + subseries[ts]
+          bucket_counts[bucket] = bucket_counts[bucket] + 1
+        end
+
+        case agg
+        when "avg"
+          new_subseries.keys.each do |bucket|
+            if bucket_counts[bucket] > 0
+              new_subseries[bucket] = new_subseries[bucket] / bucket_counts[bucket]
+            end
+          end
+        when "cnt"
+          new_subseries.keys.each do |bucket|
+            new_subseries[bucket] = bucket_counts[bucket]
+          end
+        # nothing to do for "add", it's already done
+        end
+
+        new_subseries
       end
     end
 
