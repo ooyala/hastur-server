@@ -43,7 +43,7 @@ SERIES = {
 class AggregationTest < Scope::TestCase
   context "verify expression parsing works for basic aggregations" do
     should "last(integral())" do
-      sum = Hastur::Aggregation.evaluate("last(integral())", SERIES)
+      sum = Hastur::Aggregation.evaluate("last(integral())", SERIES, {})
       refute_nil sum
       assert_kind_of Hash, sum
       assert_kind_of Hash, sum[UUID1]
@@ -57,26 +57,26 @@ class AggregationTest < Scope::TestCase
     end
 
     should "derivative()" do
-      diff = Hastur::Aggregation.evaluate("derivative()", SERIES)
-      assert_equal  0, diff[UUID1]["foo.bar.baz"][1341965000000000]
-      assert_equal  0, diff[UUID1]["foo.bar.baz"][1341965100000000]
-      assert_equal  0, diff[UUID1]["foo.bar.baz"][1341965200000000]
-      assert_equal  0, diff[UUID1]["foo.bar.win"][1341965000000000]
-      assert_equal -2, diff[UUID1]["foo.bar.win"][1341965100000000]
-      assert_equal  0, diff[UUID2]["foo.bar.win"][1341965000000000]
-      assert_equal -2, diff[UUID2]["foo.bar.win"][1341965100000000]
-      assert_equal -2, diff[UUID2]["foo.bar.win"][1341967100000000]
+      diff = Hastur::Aggregation.evaluate("derivative()", SERIES, {})
+      assert_equal 0, diff[UUID1]["foo.bar.baz"][1341965000000000]
+      assert_equal 0, diff[UUID1]["foo.bar.baz"][1341965100000000]
+      assert_equal 0, diff[UUID1]["foo.bar.baz"][1341965200000000]
+      assert_equal 0, diff[UUID1]["foo.bar.win"][1341965000000000]
+      assert_equal 2, diff[UUID1]["foo.bar.win"][1341965100000000]
+      assert_equal 0, diff[UUID2]["foo.bar.win"][1341965000000000]
+      assert_equal 2, diff[UUID2]["foo.bar.win"][1341965100000000]
+      assert_equal 2, diff[UUID2]["foo.bar.win"][1341967100000000]
     end
 
     should "merge(uuid,derivative())" do
-      series = Hastur::Aggregation.evaluate("merge(uuid,derivative())", SERIES)
+      series = Hastur::Aggregation.evaluate("merge(uuid,derivative())", SERIES, {})
       assert series.has_key? ""
       refute series.has_key? UUID1
       refute series.has_key? UUID2
     end
 
     should "merge(name,derivative())" do
-      series = Hastur::Aggregation.evaluate("merge(name,derivative())", SERIES)
+      series = Hastur::Aggregation.evaluate("merge(name,derivative())", SERIES, {})
       assert series[UUID1].has_key? ""
       assert series[UUID2].has_key? ""
       refute series[UUID1].has_key? "foo.bar.baz"
@@ -85,12 +85,12 @@ class AggregationTest < Scope::TestCase
     end
 
     should "derivative(merge(uuid))" do
-      series = Hastur::Aggregation.evaluate("derivative(merge(uuid))", SERIES)
+      series = Hastur::Aggregation.evaluate("derivative(merge(uuid))", SERIES, {})
       assert series.has_key? ""
     end
 
     should "integral(merge(name))" do
-      series = Hastur::Aggregation.evaluate("integral(merge(name))", SERIES)
+      series = Hastur::Aggregation.evaluate("integral(merge(name))", SERIES, {})
       assert series[UUID1].has_key? ""
       assert series[UUID2].has_key? ""
       assert_equal UUID1_BAZ_SUM, series[UUID1][""][1341967100000000]
@@ -98,14 +98,14 @@ class AggregationTest < Scope::TestCase
     end
 
     should "max()" do
-      series = Hastur::Aggregation.evaluate("max()", SERIES)
+      series = Hastur::Aggregation.evaluate("max()", SERIES, {})
       assert_equal  1, series[UUID1]["foo.bar.baz"].values.first
       assert_equal 41, series[UUID1]["foo.bar.win"].values.first
       assert_equal 42, series[UUID2]["foo.bar.win"].values.first
     end
 
     should "min()" do
-      series = Hastur::Aggregation.evaluate("min()", SERIES)
+      series = Hastur::Aggregation.evaluate("min()", SERIES, {})
       assert_equal 1, series[UUID1]["foo.bar.baz"].values.first
       assert_equal 1, series[UUID1]["foo.bar.win"].values.first
       assert_equal 2, series[UUID2]["foo.bar.win"].values.first
