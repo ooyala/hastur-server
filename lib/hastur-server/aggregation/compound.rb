@@ -50,15 +50,16 @@ module Hastur
 
       # let compound() auto-explode /proc/stat which is where we get CPU usage
       "linux.proc.stat" => proc { |sample|
+        new_sample = {}
         sample.keys.each do |key|
           if key.start_with? "cpu"
-            row = sample.delete(key)
+            row = sample[key]
             FIELDS["linux.proc.stat"].each_with_index do |field, idx|
-              sample["#{key}.#{field}"] = row[idx] if row[idx]
+              new_sample["#{key}.#{field}"] = row[idx] if row[idx]
             end
           end
         end
-        sample
+        new_sample
       },
       "linux.proc.net.dev" => proc { |sample|
         compound_list_to_hash sample, "linux.proc.net.dev"
@@ -106,9 +107,11 @@ module Hastur
 
           # procs are defined above for exploding / translating compact lists into key/value pairs
           if TRANSLATE[name]
+            new_subseries = {}
             subseries.each do |ts,val|
-              subseries[ts] = TRANSLATE[name].call val
+              new_subseries[ts] = TRANSLATE[name].call val
             end
+            subseries = new_subseries
 
             # the list of keys is variable per-system, unless given a list of keys,
             # set the list of keys to match what was seen on the system
