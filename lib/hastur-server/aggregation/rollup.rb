@@ -26,7 +26,7 @@ module Hastur
 
       new_series = {}
       series.each do |uuid, name_series|
-        new_series = { uuid => {} }
+        new_series[uuid] = {}
         name_series.each do |name, subseries|
           new_series[uuid][name] = subseries
           unless skip_name?(control, name)
