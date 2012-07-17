@@ -294,9 +294,9 @@ class CassandraSchemaTest < Scope::TestCase
                                               :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                               :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
           returns({
-                    "uuid1-1234567890" => { },   # Delete row with empty hash
-                    "uuid2-0987654321" => nil,   # Delete row with nil
-                    "uuid3-1234500000" => {
+                    "#{FAKE_UUID2}-1234567890" => { },   # Delete row with empty hash
+                    "#{FAKE_UUID3}-0987654321" => nil,   # Delete row with nil
+                    "#{FAKE_UUID}-1234500000" => {
                       "this.is.a.mark-#{@coded_ts_37}" => "".to_msgpack,
                       "this.is.a.mark-#{@coded_ts_38}" => "".to_msgpack,
                       "this.is.a.mark-#{@coded_ts_39}" => "".to_msgpack,
@@ -311,7 +311,7 @@ class CassandraSchemaTest < Scope::TestCase
                                     :name => "this.is.a.mark", :value_only => true)
 
         assert_equal({
-                       "uuid3" => {
+                       "#{FAKE_UUID}" => {
                          "mark" => {
                            "this.is.a.mark" => {
                              1329858724285438 => "",
@@ -327,9 +327,9 @@ class CassandraSchemaTest < Scope::TestCase
         get_opts = DEFOPTS.merge(:count => 10_000)
         @cass_client.expects(:multi_get).with(:StatMark, [ "#{FAKE_UUID}-#{ROW_HOUR_TS}" ], get_opts).
           returns({
-                    "uuid1-1234567890" => { },   # Delete row with empty hash
-                    "uuid2-0987654321" => nil,   # Delete row with nil
-                    "uuid3-1234500000" => {
+                    "#{FAKE_UUID2}-1234567890" => { },   # Delete row with empty hash
+                    "#{FAKE_UUID3}-0987654321" => nil,   # Delete row with nil
+                    "#{FAKE_UUID}-1234500000"  => {
                       "this.is.a.mark-#{@coded_ts_37}" => "".to_msgpack,
                       "this.is.a.mark-#{@coded_ts_38}" => "".to_msgpack,
                       "this.is.a.mark-#{@coded_ts_39}" => "".to_msgpack,
@@ -357,7 +357,7 @@ class CassandraSchemaTest < Scope::TestCase
 
         # get_all_stats filters rows by date
         assert_equal({
-                       "uuid3" => {
+                       "#{FAKE_UUID}" => {
                          "mark" => {
                            "this.is.a.mark" => {
                              1329858724285438 => "",
