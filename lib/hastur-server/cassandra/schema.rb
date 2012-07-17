@@ -21,7 +21,8 @@ module Hastur
     ONE_HOUR = 12 * FIVE_MINUTES
     ONE_DAY = 24 * ONE_HOUR
     ONE_WEEK = 7 * ONE_DAY
-    DEFAULT_CONSISTENCY = ::Cassandra::Constants::ONE
+    DEFAULT_WRITE_CONSISTENCY = ::Cassandra::Constants::TWO
+    DEFAULT_READ_CONSISTENCY = ::Cassandra::Constants::ONE
 
     # A Hastur Schema is a mapping of strings to symbols to values.
     # The top level strings are the type names, the symbols are
@@ -102,7 +103,7 @@ module Hastur
       key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec, schema[:granularity] || ONE_DAY)
       one_day_ts = time_segment_for_timestamp(timestamp_usec, ONE_DAY)
 
-      insert_options = { :consistency => options[:consistency] || DEFAULT_CONSISTENCY }
+      insert_options = { :consistency => options[:consistency] || DEFAULT_WRITE_CONSISTENCY }
       now_ts = ::Hastur::Util.timestamp.to_s
 
       cass_client.batch do |client|
@@ -374,7 +375,7 @@ module Hastur
         row_keys_by_type[type] = row_keys(agent_uuids, granularity, start_ts, end_ts, options)
         metadata_row_keys_by_type[type] = row_keys(agent_uuids, meta_granularity, start_ts, end_ts, options)
 
-        cass_options = { :count => 10_000, :consistency => DEFAULT_CONSISTENCY }
+        cass_options = { :count => 10_000, :consistency => DEFAULT_READ_CONSISTENCY }
         CASS_GET_OPTIONS.each do |opt|
           cass_options[opt] = options[opt] if options.has_key?(opt)
         end
