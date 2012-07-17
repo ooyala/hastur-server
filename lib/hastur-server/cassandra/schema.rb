@@ -21,7 +21,7 @@ module Hastur
     ONE_HOUR = 12 * FIVE_MINUTES
     ONE_DAY = 24 * ONE_HOUR
     ONE_WEEK = 7 * ONE_DAY
-    DEFAULT_CONSISTENCY = ::Cassandra::Constants::TWO
+    DEFAULT_CONSISTENCY = ::Cassandra::Constants::ONE
 
     # A Hastur Schema is a mapping of strings to symbols to values.
     # The top level strings are the type names, the symbols are
@@ -262,12 +262,18 @@ module Hastur
     # @param [Fixnum] end_timestamp end of the range
     # @return [Array<String>] array of row keys
     #
-    def row_keys(uuids, bucket_size, start_timestamp, end_timestamp)
+    def row_keys(uuids, bucket_size, start_timestamp, end_timestamp, options={})
       times = usec_aligned_chunks(start_timestamp, end_timestamp, bucket_size)
       out = []
       times.each do |ts|
         uuids.each do |uuid|
-          out << "#{uuid}-#{ts}"
+          if options[:rollup_period]
+            out << "#{uuid}-#{options[:rollup_period]}-#{ts}"
+          end
+
+          unless options[:rollup_only]
+            out << "#{uuid}-#{ts}"
+          end
         end
       end
       out
@@ -282,17 +288,12 @@ module Hastur
     end
 
     def uuid_from_row_key(row_key)
-      row_key.split("-")[0..-2].join("-")
+      row_key.split("-")[0..4].join("-")
     end
 
     def col_name_to_name_and_timestamp(col_name)
-      time_packed = col_name[-8..-1]
-      timestamp = time_packed.unpack("Q>")[0].to_i
-
-      # Skip col_name[-9], which is the dash between name and packed timestamp
-      name = col_name[0..-10]
-
-      [ name, timestamp ]
+      name, _, timestamp = col_name.unpack("a#{col_name.bytesize - 9}aQ>")
+      [ name, timestamp.to_i ]
     end
 
     #
@@ -320,18 +321,19 @@ module Hastur
     #
     # Basic raw low-level getter.  See .get() for options and params,
     # but types must be converted to schemas already.
+    # TODO(al) this method is too big and must be broken up
     #
-    def raw_get_all(cass_client, agent_uuids, msg_schemas, start_timestamp, end_timestamp, options = {})
+    def raw_get_all(cass_client, agent_uuids, msg_schemas, start_ts, end_ts, options = {})
       if (options[:name] && options[:name_prefix]) ||
           (options[:name] || options[:name_prefix]) && (options[:start] || options[:finish])
         raise "Error: you can have at most one of :name, :name_prefix or :start/:finish in raw_get_all!"
       end
 
       # Make sure start_timestamp and end_timestamp are in the right order.
-      if start_timestamp > end_timestamp
-        tmp = end_timestamp
-        end_timestamp = start_timestamp
-        start_timestamp = tmp
+      if start_ts > end_ts
+        tmp = end_ts
+        end_ts = start_ts
+        start_ts = tmp
       end
 
       # Coerce to list
@@ -354,10 +356,14 @@ module Hastur
       options_by_type = {}
 
       msg_schemas.each do |schema|
+        granularity = schema[:granularity]
+        meta_granularity = USEC_ONE_DAY
+
         if options[:value_only] and schema[:values_cf]
           cf = schema[:values_cf]
-        elsif options[:rollup_only] and schema[:rollup_cf]
+        elsif options[:rollup_period] and schema[:rollup_cf]
           cf = schema[:rollup_cf]
+          granularity = meta_granularity = USEC_ONE_WEEK
         else
           cf = schema[:archive_cf]
         end
@@ -365,8 +371,8 @@ module Hastur
         type = schema[:type]
         cf_by_type[type] = cf
 
-        row_keys_by_type[type] = row_keys(agent_uuids, schema[:granularity], start_timestamp, end_timestamp)
-        metadata_row_keys_by_type[type] = row_keys(agent_uuids, ONE_DAY, start_timestamp, end_timestamp)
+        row_keys_by_type[type] = row_keys(agent_uuids, granularity, start_ts, end_ts, options)
+        metadata_row_keys_by_type[type] = row_keys(agent_uuids, meta_granularity, start_ts, end_ts, options)
 
         cass_options = { :count => 10_000, :consistency => DEFAULT_CONSISTENCY }
         CASS_GET_OPTIONS.each do |opt|
@@ -383,12 +389,12 @@ module Hastur
         elsif schema[:name] && options[:name]
           # For a named schema like stats or heartbeats, tell Cassandra what column range to query.
           # Reverse the timestamps.  We use a reverse comparator, we have to.
-          cass_options[:finish] = col_name(options[:name], start_timestamp)
-          cass_options[:start] = col_name(options[:name], end_timestamp)
+          cass_options[:finish] = col_name(options[:name], start_ts)
+          cass_options[:start] = col_name(options[:name], end_ts)
         elsif !schema[:name]
           # For an unnamed schema like events, tell Cassandra what column range to query
-          cass_options[:finish] = col_name(nil, start_timestamp) unless options[:finish]
-          cass_options[:start] = col_name(nil, end_timestamp) unless options[:start]
+          cass_options[:finish] = col_name(nil, start_ts) unless options[:finish]
+          cass_options[:start] = col_name(nil, end_ts) unless options[:start]
         else
           # The schema has a name, but we're not specifying it.  Don't specify a start
           # or finish unless the caller explicitly gave one.
@@ -444,12 +450,16 @@ module Hastur
           col_hash.each do |col_key, value|
             name, timestamp = col_name_to_name_and_timestamp(col_key)
 
-            if timestamp <= end_timestamp && timestamp >= start_timestamp
-              val = options[:value_only] ? MessagePack.unpack(value) : value
+            if timestamp <= end_ts && timestamp >= start_ts
+              hash[name] ||= {}
 
               # This happens even if name is nil
-              hash[name] ||= {}
-              hash[name][timestamp] = val
+              if options[:value_only] or options[:rollup_period] or schema[:rollup_cf]
+                hash[name][timestamp] = MessagePack.unpack value
+              else
+                hash[name][timestamp] = value
+              end
+
             end
           end
         end

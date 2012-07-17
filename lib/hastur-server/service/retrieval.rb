@@ -65,6 +65,7 @@ module Hastur
       # TODO(al) use the schema to build these lists
       TYPES_WITH_VALUES = ["metric", TYPES[:metric], "heartbeat", TYPES[:heartbeat]].flatten.freeze
       DEFAULT_DAY_BUCKET = ["registration", TYPES[:registration], "info", TYPES[:info]].flatten.freeze
+      ROLLUP_PERIODS = %w[five_minutes one_hour one_day]
 
       configure do
         set :show_exceptions, false
@@ -606,6 +607,13 @@ module Hastur
           when "count"  ; cass_options[:count_columns] = true
           end
 
+          if params[:rollup_period] or params[:format] == "rollup"
+            unless ROLLUP_PERIODS.include?(params[:rollup_period])
+              raise "Invalid or missing rollup period: #{params[:rollup_period].inspect}"
+            end
+            cass_options[:rollup_period] = params[:rollup_period]
+          end
+
           if want_names.any?
             name_option_list = []
 
@@ -666,6 +674,7 @@ module Hastur
           start_ts, end_ts = get_start_end default_span
           name_option_list = build_name_option_list names
 
+          # query cassandra
           values = Hastur.time "hastur.rest.db.query_time" do
             name_option_list.map do |options|
               Hastur::Cassandra.get(cass_client, uuids, types, start_ts, end_ts, options)
@@ -689,6 +698,7 @@ module Hastur
             filter_out_unwanted_names output, names
           end
 
+          # apply aggregation functions if requested
           if params[:fun]
             expr = CGI::unescape(params[:fun])
 
