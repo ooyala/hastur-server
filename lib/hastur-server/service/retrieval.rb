@@ -233,6 +233,22 @@ module Hastur
       end
 
       #
+      # @!method /api/lookup/hostname/uuid
+      #
+      # Gets all network names / hostnames for all uuids.
+      #
+      # @param start Starting timestamp default 24hrs ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @return [Hash{String => String}] hash of network names known to Hastur
+      #
+      get "/api/lookup/hostname/uuid" do
+        start_ts, end_ts = get_start_end :one_day
+        uuids = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
+        json Hastur::Cassandra.network_names_for_uuids(cass_client, uuids.keys, start_ts, end_ts)
+      end
+
+      #
       # @!method /api/lookup/hostname/uuid/:uuid
       #
       # Gets the various network names / hostnames for the given uuid(s).
@@ -251,69 +267,7 @@ module Hastur
       get "/api/lookup/hostname/uuid/:uuid" do
         start_ts, end_ts = get_start_end :one_day
         uuids = params[:uuid].split(",")
-
-        # might want to cache some of this if this route gets hammered ...
-        cnames = Hastur::Cassandra.lookup_by_key cass_client, :cnames, start_ts, end_ts, :count => 1_000_000
-        ohais  = Hastur::Cassandra.get cass_client, uuids, "info_ohai", start_ts, end_ts, :count => 1
-        regs   = Hastur::Cassandra.get cass_client, uuids, "reg_agent", start_ts, end_ts, :count => 1
-
-        unless ohais.keys.any? or regs.keys.any?
-          hastur_error 404, "None of #{params[:uuid]} have registered recently. Try restarting the agent."
-        end
-
-        out = {}
-        uuids.each do |uuid|
-          sys = { :hostname => nil, :fqdn => nil, :nodename => nil, :cnames => [] }
-
-          # first, try the registration information
-          if regs[uuid] and regs[uuid]["reg_agent"]
-            reg_ts, reg_json = regs[uuid]["reg_agent"][""].shift
-            reg = MultiJson.load reg_json rescue {}
-
-            # we only send the fqdn as hostname right now, need to add uname(2) fields
-            # agent currently sends :hostname => Socket.gethostname
-            sys[:hostname] = reg["hostname"]
-            sys[:nodename] = reg["nodename"]
-
-            # /etc/cnames is an Ooyala standard for setting the system's human-facing name
-            if reg["etc_cnames"]
-              sys[:cnames] = reg["etc_cnames"]
-            end
-          end
-
-          # use ohai to fill in additional info, including EC2 info
-          if ohais[uuid] and ohais[uuid]["info_ohai"]
-            ohai_ts, ohai_json = ohais[uuid]["info_ohai"][""].shift
-            ohai = MultiJson.load ohai_json rescue {}
-
-            # ohai's 'hostname' is useless, it uses hostname -s to get it
-            sys[:hostname] ||= ohai["fqdn"]
-            sys[:fqdn]     ||= ohai["fqdn"]
-
-            if ohai["ec2"]
-              # use the EC2 info regardless of what the OS says
-              sys[:hostname] = ohai["ec2"]["local_hostname"]
-              sys[:fqdn]     = ohai["ec2"]["public_hostname"]
-            end
-          end
-
-          # hosts can have any number of cnames
-          sys.values.each do |name|
-            if cnames.has_key? name
-              sys[:cnames] << cnames[name]
-            end
-          end
-          # don't sort! etc_cnames values should always come first, alphabetical is useless
-          sys[:cnames] = sys[:cnames].uniq
-
-          # provide a simple array of all known network names
-          # reverse the flattened list so the cnames come first
-          sys[:all] = sys.values.flatten.reverse.uniq
-
-          out[uuid] = sys
-        end
-
-        json out
+        json Hastur::Cassandra.network_names_for_uuids(cass_client, uuids, start_ts, end_ts)
       end
 
       #
@@ -390,7 +344,7 @@ module Hastur
       get "/api/lookup/name" do
         start_ts, end_ts = get_start_end :one_day
         lookup = Hastur::Cassandra.lookup_by_key(cass_client, "name", start_ts, end_ts)
-        out = { :uuid => {}, :name => {} }
+        out = {}
 
         lookup.keys.each do |key|
           info = parse_name_lookup(key)
