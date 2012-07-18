@@ -293,8 +293,13 @@ module Hastur
     end
 
     def col_name_to_name_and_timestamp(col_name)
-      name, _, timestamp = col_name.unpack("a#{col_name.bytesize - 9}aQ>")
-      [ name, timestamp.to_i ]
+      time_packed = col_name[-8..-1]
+      timestamp = time_packed.unpack("Q>")[0].to_i
+
+      # Skip col_name[-9], which is the dash between name and packed timestamp
+      name = col_name[0..-10]
+
+      [ name, timestamp ]
     end
 
     #
@@ -455,7 +460,7 @@ module Hastur
               hash[name] ||= {}
 
               # This happens even if name is nil
-              if options[:value_only] or options[:rollup_period] or schema[:rollup_cf]
+              if options[:value_only] or options[:rollup_period] or options[:rollup_only]
                 hash[name][timestamp] = MessagePack.unpack value
               else
                 hash[name][timestamp] = value
