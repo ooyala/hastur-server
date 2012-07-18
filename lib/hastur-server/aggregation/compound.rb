@@ -66,7 +66,9 @@ module Hastur
       },
       "linux.proc.diskstats" => proc { |sample|
         compound_list_to_hash sample, "linux.proc.diskstats"
-      }
+      },
+      "linux.proc.meminfo" => proc { |sample| sample },
+      "linux.proc.uptime" => proc { |sample| sample },
     }
 
     #
