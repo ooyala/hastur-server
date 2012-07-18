@@ -89,7 +89,9 @@ ROW_HOUR_TS = 1329858000000000
 
 ROW_DAY_TS = Hastur::Cassandra.send(:time_segment_for_timestamp, ROW_TS, Hastur::Cassandra::ONE_DAY).to_s
 
-DEFOPTS = { :consistency => Hastur::Cassandra::DEFAULT_CONSISTENCY }
+# for cassandra consistency
+ONE = 1
+DEFOPTS = { :consistency => ONE }
 
 class CassandraSchemaTest < Scope::TestCase
   setup do
@@ -99,7 +101,6 @@ class CassandraSchemaTest < Scope::TestCase
   end
 
   context "Cassandra message schema" do
-
     should "insert a gauge into GaugeArchive and StatGauge" do
       json = GAUGE_JSON
       row_key = "#{FAKE_UUID}-#{ROW_TS}"
@@ -113,7 +114,7 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with(:LookupByKey, "name-#{ROW_DAY_TS}",
                                          { "this.is.a.gauge-11-#{FAKE_UUID}" => "" }, DEFOPTS)
       @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
-      Hastur::Cassandra.insert(@cass_client, json, "gauge", :uuid => FAKE_UUID)
+      Hastur::Cassandra.insert(@cass_client, json, "gauge", :uuid => FAKE_UUID, :consistency => ONE)
     end
 
     should "insert a counter into CounterArchive and StatCounter" do
@@ -129,7 +130,7 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with(:LookupByKey, "name-#{ROW_DAY_TS}",
                                          { "totally.a.counter-12-#{FAKE_UUID}" => "" }, DEFOPTS)
       @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
-      Hastur::Cassandra.insert(@cass_client, json, "counter", :uuid => FAKE_UUID)
+      Hastur::Cassandra.insert(@cass_client, json, "counter", :uuid => FAKE_UUID, :consistency => ONE)
     end
 
     should "insert a mark into MarkArchive and StatMark" do
@@ -145,7 +146,7 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with(:LookupByKey, "name-#{ROW_DAY_TS}",
                                          { "marky.mark-10-#{FAKE_UUID}" => "" }, DEFOPTS)
       @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
-      Hastur::Cassandra.insert(@cass_client, json, "mark", :uuid => FAKE_UUID)
+      Hastur::Cassandra.insert(@cass_client, json, "mark", :uuid => FAKE_UUID, :consistency => ONE)
     end
 
     should "insert an event into EventArchive" do
@@ -160,7 +161,7 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with(:LookupByKey, "name-#{ROW_DAY_TS}",
                                          { "fake.event.name-1-#{FAKE_UUID}" => "" }, DEFOPTS)
       @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
-      Hastur::Cassandra.insert(@cass_client, json, "event", :uuid => FAKE_UUID)
+      Hastur::Cassandra.insert(@cass_client, json, "event", :uuid => FAKE_UUID, :consistency => ONE)
     end
 
     should "insert a reg_process into RegProcessArchive" do
@@ -173,12 +174,12 @@ class CassandraSchemaTest < Scope::TestCase
                                            "last_access" => NOWISH_TIMESTAMP }, DEFOPTS)
       @cass_client.expects(:insert).with(:LookupByKey, "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, DEFOPTS)
       @cass_client.expects(:insert).with(:LookupByKey, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
-      Hastur::Cassandra.insert(@cass_client, json, "reg_process", :uuid => FAKE_UUID)
+      Hastur::Cassandra.insert(@cass_client, json, "reg_process", :uuid => FAKE_UUID, :consistency => ONE)
     end
 
     should "query a gauge from StatGauge" do
       @cass_client.expects(:multi_get).with(:StatGauge, [ "#{FAKE_UUID}-#{ROW_TS}" ],
-                                            :consistency => DEFOPTS[:consistency],
+                                            :consistency => ONE,
                                             :count => 10_000,
                                             :finish => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :start => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
@@ -187,13 +188,13 @@ class CassandraSchemaTest < Scope::TestCase
                                          { "last_access" => NOWISH_TIMESTAMP}, {})
       out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "gauge",
                                   1329858724285438, 1329858724285440,
-                                  :name => "this.is.a.gauge", :value_only => true)
+                                  :name => "this.is.a.gauge", :value_only => true, :consistency => ONE)
       assert_equal({}, out)
     end
 
     should "query a counter from StatCounter" do
       @cass_client.expects(:multi_get).with(:StatCounter, [ "#{FAKE_UUID}-#{ROW_TS}" ],
-                                            :consistency => DEFOPTS[:consistency],
+                                            :consistency => ONE,
                                             :count => 10_000,
                                             :finish => "some.counter-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :start => "some.counter-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
@@ -202,13 +203,13 @@ class CassandraSchemaTest < Scope::TestCase
                                          { "last_access" => NOWISH_TIMESTAMP}, {})
       out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "counter",
                                   1329858724285438, 1329858724285440,
-                                  :name => "some.counter", :value_only => true)
+                                  :name => "some.counter", :value_only => true, :consistency => ONE)
       assert_equal({}, out)
     end
 
     should "query a mark from StatMark" do
       @cass_client.expects(:multi_get).with(:StatMark, [ "#{FAKE_UUID}-#{ROW_HOUR_TS}" ],
-                                            :consistency => DEFOPTS[:consistency],
+                                            :consistency => ONE,
                                             :count => 10_000,
                                             :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
@@ -217,13 +218,14 @@ class CassandraSchemaTest < Scope::TestCase
                                          { "last_access" => NOWISH_TIMESTAMP}, {})
       out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "mark",
                                   1329858724285438, 1329858724285440,
-                                  :name => "this.is.a.mark", :value_only => true)
+                                  :name => "this.is.a.mark", :value_only => true, :consistency => ONE)
+      assert_equal({}, out)
       assert_equal({}, out)
     end
 
     should "query a gauge from GaugeArchive" do
       @cass_client.expects(:multi_get).with(:GaugeArchive, [ "#{FAKE_UUID}-#{ROW_TS}" ],
-                                            :consistency => DEFOPTS[:consistency],
+                                            :consistency => ONE,
                                             :count => 10_000,
                                             :finish => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :start => "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
@@ -231,30 +233,33 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with(:GaugeMetadata, "#{FAKE_UUID}-#{ROW_DAY_TS}",
                                          { "last_access" => NOWISH_TIMESTAMP}, {})
       out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "gauge",
-                                       1329858724285438, 1329858724285440, :name => "this.is.a.gauge")
+                                       1329858724285438, 1329858724285440, :name => "this.is.a.gauge",
+                                       :consistency => ONE)
       assert_equal({}, out)
     end
 
     should "query an event from EventArchive" do
       @cass_client.expects(:multi_get).with(:EventArchive, [ "#{FAKE_UUID}-1329782400000000" ],
-                                            :consistency => DEFOPTS[:consistency],
-                                            :count => 10_000).
+                                            :consistency => ONE, :count => 10_000).
         returns({})
       @cass_client.expects(:insert).with(:EventMetadata, "#{FAKE_UUID}-#{ROW_DAY_TS}",
                                          { "last_access" => NOWISH_TIMESTAMP}, {})
-      out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "event", 1329858724285438, 1329858724285440)
+      out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "event",
+                                       1329858724285438, 1329858724285440, DEFOPTS)
       assert_equal({}, out)
     end
 
     should "query an info_process from InfoProcessArchive" do
       @cass_client.expects(:multi_get).with(:InfoProcessArchive, [ "#{FAKE_UUID}-1329782400000000" ],
-                                            :consistency => DEFOPTS[:consistency],
-                                            :count => 10_000, :finish => "\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
+                                            :consistency => ONE,
+                                            :count => 10_000,
+                                            :finish => "\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                             :start => "\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
         returns({})
       @cass_client.expects(:insert).with(:InfoProcessMetadata, "#{FAKE_UUID}-#{ROW_DAY_TS}",
                                          { "last_access" => NOWISH_TIMESTAMP}, {})
-      out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "info_process", 1329858724285438, 1329858724285440)
+      out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "info_process",
+                                       1329858724285438, 1329858724285440, DEFOPTS)
       assert_equal({}, out)
     end
 
@@ -264,8 +269,7 @@ class CassandraSchemaTest < Scope::TestCase
                                             [ "#{FAKE_UUID}-#{day_ts}",
                                               "#{FAKE_UUID2}-#{day_ts}",
                                               "#{FAKE_UUID3}-#{day_ts}" ],
-                                            :consistency => DEFOPTS[:consistency],
-                                            :count => 10_000).
+                                            :consistency => ONE, :count => 10_000).
         returns({})
       @cass_client.expects(:insert).with(:EventMetadata, "#{FAKE_UUID}-#{day_ts}",
                                          { "last_access" => NOWISH_TIMESTAMP}, {})
@@ -274,7 +278,7 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with(:EventMetadata, "#{FAKE_UUID3}-#{day_ts}",
                                          { "last_access" => NOWISH_TIMESTAMP}, {})
       out = Hastur::Cassandra.get(@cass_client, [ FAKE_UUID, FAKE_UUID2, FAKE_UUID3 ], "event",
-                                  1329858724285438, 1329858724285440)
+                                  1329858724285438, 1329858724285440, DEFOPTS)
       assert_equal({}, out)
     end
 
@@ -289,7 +293,7 @@ class CassandraSchemaTest < Scope::TestCase
 
       should "prepare a stat from Cassandra representation with get" do
         @cass_client.expects(:multi_get).with(:StatMark, [ "#{FAKE_UUID}-#{ROW_HOUR_TS}" ],
-                                              :consistency => DEFOPTS[:consistency],
+                                              :consistency => ONE,
                                               :count => 10_000,
                                               :finish => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE",
                                               :start => "this.is.a.mark-\x00\x04\xB9\x7F\xDC\xDC\xCC\x00").
@@ -308,7 +312,7 @@ class CassandraSchemaTest < Scope::TestCase
                                            { "last_access" => NOWISH_TIMESTAMP}, {})
         out = Hastur::Cassandra.get(@cass_client, FAKE_UUID, "mark",
                                     1329858724285438, 1329858724285440,
-                                    :name => "this.is.a.mark", :value_only => true)
+                                    :name => "this.is.a.mark", :value_only => true, :consistency => ONE)
 
         assert_equal({
                        "#{FAKE_UUID}" => {
@@ -353,7 +357,7 @@ class CassandraSchemaTest < Scope::TestCase
                                            { "last_access" => NOWISH_TIMESTAMP}, {})
         out = Hastur::Cassandra.get_all_stats(@cass_client, FAKE_UUID,
                                               1329858724285438, 1329858724285440,
-                                              :value_only => true)
+                                              :value_only => true, :consistency => ONE)
 
         # get_all_stats filters rows by date
         assert_equal({
