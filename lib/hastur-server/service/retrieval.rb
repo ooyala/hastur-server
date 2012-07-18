@@ -375,6 +375,37 @@ module Hastur
       end
 
       #
+      # @!method /api/lookup/name
+      #
+      # Return all UUIDs and all names for that UUID in the same
+      # { uuid => { name => {} } } format as data.
+      #
+      # @param start Starting timestamp, default one day ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @param fun An aggregation function to apply before returning the data
+      # @example
+      #   http://hastur/api/lookup/name
+      #
+      get "/api/lookup/name" do
+        start_ts, end_ts = get_start_end :one_day
+        lookup = Hastur::Cassandra.lookup_by_key(cass_client, "name", start_ts, end_ts)
+        out = { :uuid => {}, :name => {} }
+
+        lookup.keys.each do |key|
+          info = parse_name_lookup(key)
+          out[info[:uuid]] ||= {}
+          out[info[:uuid]][info[:name]] = {}
+        end
+
+        if params[:fun]
+          out = apply_functions(params[:fun], out)
+        end
+
+        json out
+      end
+
+      #
       # @!method /api/lookup/name/:name
       #
       # Lookup all of the UUID's for a stat name.
@@ -698,18 +729,30 @@ module Hastur
             filter_out_unwanted_names output, names
           end
 
-          # apply aggregation functions if requested
           if params[:fun]
-            expr = CGI::unescape(params[:fun])
-
-            # pass values needed for hitting Cassandra in
-            control = { :cass_client => cass_client }
-            control[:start_ts], control[:end_ts] = get_start_end :one_day
-
-            output = Hastur::Aggregation.evaluate(expr, output, control)
+            output = apply_functions(params[:fun], output)
           end
 
           json output
+        end
+
+        #
+        # Apply Hastur aggregation functions. Sets up control information
+        # used by the aggregations in some cases and runs the evaluation,
+        # returning the transformed result.
+        #
+        # @param [String] fun aggregation function string, will be unescaped!
+        # @param [Hash] series
+        # @return [Hash] series
+        #
+        def apply_functions(fun, series)
+          expr = CGI::unescape(fun)
+
+          # pass values needed for hitting Cassandra in
+          control = { :cass_client => cass_client }
+          control[:start_ts], control[:end_ts] = get_start_end :one_day
+
+          Hastur::Aggregation.evaluate(expr, series, control)
         end
 
         #
