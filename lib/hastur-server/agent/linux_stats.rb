@@ -58,12 +58,13 @@ module Hastur
 
       def proc_net_dev
         stats = Hash.new
-        File.readlines('/proc/net/dev').map(&:chomp).map(&:strip).each do |line|
-          values = line.split(/\s+/)
-          if values[0].end_with? ':'
-            values[0].chop!
-            stats[values.shift] = values.map(&:to_i)
-          end
+        lines = File.readlines('/proc/net/dev')
+        lines.shift(2) # remove text headers
+        lines.map(&:chomp).map(&:strip).each do |line|
+          # split on : first, there may not be whitespace between the iface name and first counter
+          iface, numbers = line.split ':', 2
+          values = numbers.strip.split /\s+/
+          stats[iface] = values.map(&:to_i)
         end
         stats
       end
