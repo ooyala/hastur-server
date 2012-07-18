@@ -73,7 +73,7 @@ module Hastur
 
         # provide a simple array of all known network names
         # reverse the flattened list so the cnames come first
-        sys[:all] = sys.values.flatten.reverse.uniq
+        sys[:all] = sys.values.flatten.compact.reverse.uniq
 
         out[uuid] = sys
       end
