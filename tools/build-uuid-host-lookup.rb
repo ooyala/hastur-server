@@ -30,10 +30,12 @@ start_ts = end_ts - Hastur::TimeUtil::USEC_TWO_DAYS
 puts "Starting on: #{Hastur::TimeUtil.usec_to_time(start_ts).iso8601}"
 puts "Ending on: #{Hastur::TimeUtil.usec_to_time(end_ts).iso8601}"
 
-cnames = Hastur::Cassandra.lookup_by_key cass_client, :cnames, start_ts, end_ts
-uuids  = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
-ohais  = Hastur::Cassandra.get cass_client, uuids.keys, "info_ohai", start_ts, end_ts
-regs   = Hastur::Cassandra.get cass_client, uuids.keys, "reg_agent", start_ts, end_ts
+opts = { :consistency => ::Cassandra::Constants::TWO }
+
+cnames = Hastur::Cassandra.lookup_by_key cass_client, :cnames, start_ts, end_ts, opts
+uuids  = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts, opts
+ohais  = Hastur::Cassandra.get cass_client, uuids.keys, "info_ohai", start_ts, end_ts, opts
+regs   = Hastur::Cassandra.get cass_client, uuids.keys, "reg_agent", start_ts, end_ts, opts
 
 # partially borrowed from the retrieval service's uuid -> hostname route
 out = {}
