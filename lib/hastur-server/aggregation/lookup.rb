@@ -10,11 +10,12 @@ module Hastur
     @functions.merge! "cname" => :cname, "fqdn" => :fqdn, "hostname" => :hostname
 
     def hostname(series, control)
-      names = do_lookup(series, control)
-      puts names
+      names = do_lookup(series, control) rescue {}
       new_series = {}
       series.keys.each do |uuid|
-        if names[uuid][:cnames] and names[uuid][:cnames].any?
+        if not names.has_key? uuid
+          new_series[uuid] = series[uuid]
+        elsif names[uuid][:cnames] and names[uuid][:cnames].any?
           new_series[names[uuid][:cnames].first] = series[uuid]
         elsif names[uuid][:all] and names[uuid][:all].any?
           new_series[names[uuid][:all].first] = series[uuid]
@@ -24,10 +25,12 @@ module Hastur
     end
 
     def cname(series, control)
-      names = do_lookup(series, control)
+      names = do_lookup(series, control) rescue {}
       new_series = {}
       series.keys.each do |uuid|
-        if names[uuid][:cnames] and names[uuid][:cnames].any?
+        if not names.has_key? uuid
+          new_series[uuid] = series[uuid]
+        elsif names[uuid][:cnames] and names[uuid][:cnames].any?
           new_series[names[uuid][:cnames][0]] = series[uuid]
         end
       end
@@ -35,10 +38,12 @@ module Hastur
     end
 
     def fqdn(series, control)
-      names = do_lookup(series, control)
+      names = do_lookup(series, control) rescue {}
       new_series = {}
       series.keys.each do |uuid|
-        if names[uuid][:fqdn]
+        if not names.has_key? uuid
+          new_series[uuid] = series[uuid]
+        elsif names[uuid][:fqdn]
           new_series[names[uuid][:fqdn]] = series[uuid]
         end
       end
