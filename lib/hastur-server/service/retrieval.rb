@@ -421,6 +421,42 @@ module Hastur
       end
 
       #
+      # @!method /api/type/:type
+      #
+      # Retrieve by type.
+      #
+      # @param start Starting timestamp, default 5 minutes ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @param name Message name(s) to query for - supports wildcards
+      # @param limit Maximum number of values to return
+      # @param reversed Return earliest first instead of latest first
+      # @example
+      #   http://hastur/api/type/event?ago=one_minute
+      #   http://hastur/api/type/mark
+      #
+      get "/api/type/:type" do
+        name_start_ts, name_end_ts = get_start_end :one_day
+        lookup = Hastur::Cassandra.lookup_by_key(cass_client, "name", name_start_ts, name_end_ts)
+
+        type_ids = params[:type].split(',').map do |type|
+          TYPES.values.flatten.include?(type) ? Hastur::Message.symbol_to_type_id(type.to_sym) : nil
+        end.compact
+
+        uuids = lookup.keys.map do |key|
+          item = parse_name_lookup(key)
+          type_ids.include?(item[:type_id]) ? item[:uuid] : nil
+        end
+
+        params[:uuid] = uuids.uniq.compact.join ','
+        params[:format] = "message"
+
+        puts params.inspect
+
+        query_hastur
+      end
+
+      #
       # @!method /api/node/:uuid/type/:type/:format
       #
       # Retrieve Hastur messages by UUID & type.
