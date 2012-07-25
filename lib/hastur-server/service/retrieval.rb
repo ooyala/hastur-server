@@ -451,8 +451,6 @@ module Hastur
         params[:uuid] = uuids.uniq.compact.join ','
         params[:format] = "message"
 
-        puts params.inspect
-
         query_hastur
       end
 
