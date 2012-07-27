@@ -55,4 +55,5 @@ EOS
   s.add_runtime_dependency "pry"
   s.add_runtime_dependency "ohai"
   s.add_runtime_dependency "sys-uname"
+  s.add_runtime_dependency "minitest", "~>3.2.0"
 end
