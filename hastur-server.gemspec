@@ -37,6 +37,7 @@ EOS
   s.add_development_dependency "simplecov"
   s.add_development_dependency "test-unit", "~>2.4.3"
   s.add_development_dependency "rack-test"
+  s.add_development_dependency "minitest", "~>3.2.0"
   s.add_runtime_dependency "sinatra"
   s.add_runtime_dependency "httparty"
   s.add_runtime_dependency "yajl-ruby"
@@ -55,5 +56,4 @@ EOS
   s.add_runtime_dependency "pry"
   s.add_runtime_dependency "ohai"
   s.add_runtime_dependency "sys-uname"
-  s.add_runtime_dependency "minitest", "~>3.2.0"
 end
