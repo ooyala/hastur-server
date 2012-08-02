@@ -39,6 +39,7 @@ EOS
   s.add_development_dependency "rack-test"
   s.add_development_dependency "minitest", "~>3.2.0"
   s.add_runtime_dependency "sinatra"
+  s.add_runtime_dependency "grape"
   s.add_runtime_dependency "httparty"
   s.add_runtime_dependency "yajl-ruby"
   s.add_runtime_dependency "multi_json", "~>1.3.2"
