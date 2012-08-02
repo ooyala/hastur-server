@@ -143,6 +143,7 @@ module Hastur
           new_subseries.keys.each do |bucket|
             new_subseries[bucket] = bucket_counts[bucket]
           end
+        when "add"
         # nothing to do for "add", it's already done
         end
 
