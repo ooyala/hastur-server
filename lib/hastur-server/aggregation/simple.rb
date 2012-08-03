@@ -97,10 +97,14 @@ module Hastur
       end
     end
 
-    # is this a proper histogram?
+    #
+    # Aggregate values into histogram buckets. Supports add, avg, and count. Buckets are computed
+    # based on time range so empty buckets are entirely possible. Empty buckets are initialized to 0.
+    # Defaults to 'add'.
+    #
     # @example /api/name/ots.*.times_called/value?fun=histogram(10,merge(uuid))&ago=one_hour"
     # @example /api/name/ots.*.times_called/value?fun=histogram(10,avg,merge(uuid))&ago=one_hour"
-    # what else besides summing makes sense?
+    #
     def histogram(series, control, buckets=10, agg="add", *args)
       each_subseries_in series, control do |name, subseries|
         new_subseries = {}
