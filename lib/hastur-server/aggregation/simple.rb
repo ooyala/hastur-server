@@ -102,7 +102,6 @@ module Hastur
     # @example /api/name/ots.*.times_called/value?fun=histogram(10,avg,merge(uuid))&ago=one_hour"
     # what else besides summing makes sense?
     def histogram(series, control, buckets=10, agg="add", *args)
-      puts "buckets: #{buckets} agg: #{agg} args: #{args}"
       each_subseries_in series, control do |name, subseries|
         new_subseries = {}
         bucket_counts = {}
