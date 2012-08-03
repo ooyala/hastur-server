@@ -16,6 +16,7 @@ module Hastur
       "slice"      => :slice,
       "resample"   => :resample,
       "histogram"  => :histogram,
+      "log"        => :log,
       "compact"    => :compact
     })
 
@@ -147,6 +148,22 @@ module Hastur
         # nothing to do for "add", it's already done
         end
 
+        new_subseries
+      end
+    end
+
+    #
+    # Get the logarithm of each value in the series. Default base 10.
+    #
+    # @param [Hash] series
+    # @param [Numeric] base default 10
+    #
+    def log(series, control, base=10)
+      each_subseries_in series, control do |name, subseries|
+        new_subseries = {}
+        subseries.each do |ts,val|
+          new_subseries[ts] = Math.log val, base
+        end
         new_subseries
       end
     end
