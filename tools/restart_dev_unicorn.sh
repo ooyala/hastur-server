@@ -48,6 +48,7 @@ export RUBYLIB="$DIR/lib:$RUBYLIB"
 cat > "${DIR}/${USER}-config.ru" <<EOF
 \$LOAD_PATH.unshift File.dirname(__FILE__)
 
+require "multi_json"
 require "hastur-server/service/retrieval"
 
 # defined on most of our Hastur boxes via hastur-deploy
@@ -58,7 +59,9 @@ File.foreach("/opt/hastur/conf/cassandra-servers.txt") do |line|
   cassandra_servers << line unless line.empty?
 end
 
-run Rack::URLMap.new("/" => Hastur::Service::Retrieval.new(cassandra_servers))
+ENV['CASSANDRA_URIS'] = MultiJson.dump(cassandra_servers, :pretty => false)
+
+run Rack::URLMap.new("/" => Hastur::Service::Retrieval.new)
 EOF
 
 cat > "${DIR}/${USER}-unicorn.conf" <<EOF

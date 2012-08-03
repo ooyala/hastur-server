@@ -8,6 +8,6 @@ $:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
 require "cassandra/1.0"
 require "hastur-server/service/retrieval"
 
-cassandra_servers = [ '127.0.0.1:9202' ]
+ENV['CASSANDRA_URIS'] = '["127.0.0.1:9202"]'
 
-run Rack::URLMap.new("/" => Hastur::Service::Retrieval.new(cassandra_servers))
+run Rack::URLMap.new("/" => Hastur::Service::Retrieval.new)

@@ -121,7 +121,7 @@ module Hastur
       #
       def query_hastur(params)
         unless FORMATS.include?(params[:kind])
-          error! "Illegal output option: #{params[:kind].inspect}", 404
+          hastur_error! "Illegal output option: #{params[:kind].inspect}", 404
         end
 
         types = type_list_from_string(params[:type])
@@ -129,7 +129,7 @@ module Hastur
         names = params[:name] ? params[:name].split(',') : []
 
         unless types.any? { |t| TYPES[:all].include?(t) }
-          error! "Invalid type(s): '#{types}'", 404
+          hastur_error! "Invalid type(s): '#{types}'", 404
         end
 
         # Some message types are day bucketed and are only expected once a day, like registrations,
@@ -157,7 +157,7 @@ module Hastur
             output = deserialize_json_messages(output)
           end
         else
-          error! "Unsupported data type: #{params[:kind].inspect}!", 404
+          hastur_error! "Unsupported data type: #{params[:kind].inspect}!", 404
         end
 
         # Some queries go directly to a Cassandra range scan, which only matches prefixes
@@ -292,14 +292,14 @@ module Hastur
               # MultiJson gets really upset if you ask it to decode a ruby Hash that ends up
               # being stringified - TODO(al,2012-06-21) figure out why hashes are appearing in this data
               unless value.kind_of? String
-                @logger.debug "BUG: Got a ruby hash where a JSON string was expected."
+                logger.debug "BUG: Got a ruby hash where a JSON string was expected."
                 next
               end
 
               begin
                 output[uuid][name][ts] = MultiJson.load value
               rescue Exception => e
-                error! "JSON parsing failed for stored message: #{value.inspect} #{e.inspect}", 501
+                hastur_error! "JSON parsing failed for stored message: #{value.inspect} #{e.inspect}", 501
               end
             end
           end
@@ -447,7 +447,61 @@ module Hastur
         @cass_client
       end
 
+      ## The remaining methods have extra logic to support both Sinatra and Grape
+
+      #
+      # Get a logger handle from the framework.
+      #
+      # @return [Logger]
+      #
       def logger
+        if self.is_a? Grape::API
+          API.logger
+        else
+          @logger ||= Logger.new
+        end
+      end
+
+      #
+      # Dump to JSON string. Sinatra only.
+      #
+      # @param [Hash] content
+      # @return [String] Serialized JSON content
+      #
+      def json(content)
+        # when the cb parameter is specified, return a JSONP response
+        if params[:cb]
+          response['Content-Type'] = "text/javascript"
+          "#{params[:cb]}(#{MultiJson.dump(content)});\n"
+        # otherwise, just make it regular JSON
+        else
+          response['Content-Type'] = "application/json"
+          MultiJson.dump(content, :pretty => params[:pretty]) + "\n"
+        end
+      end
+
+      #
+      # Calls through to the framework's error handlers with the provided information.
+      # Throws :error for Grape and calls halt() for Sinatra.
+      #
+      def hastur_error!(code=501, message="FAIL", bt=[])
+        error = {
+          :status => code,
+          :message => message,
+          :backtrace => bt.kind_of?(Array) ? bt[0..10] : bt
+        }
+
+        # remove this after getting the loggers to do the right thing
+        STDERR.puts MultiJson.dump(error, :pretty => true)
+
+        if self.is_a? Grape::API
+          throw :error, error
+        elsif self.is_a? Sinatra::Base
+          error[:url] = request.url
+          halt json(error)
+        else
+          abort "BUG: not a Grape::API or Sinatra::Base"
+        end
       end
     end
   end
