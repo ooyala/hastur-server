@@ -9,6 +9,7 @@ require "hastur-server/cassandra/rollup"
 require "hastur-server/util"
 require "hastur-server/aggregation"
 require "multi_json"
+require "csv"
 
 module Hastur
   module API
@@ -276,6 +277,9 @@ module Hastur
         output
       end
 
+      def flatten_to_array(values)
+      end
+
       #
       # deserialize JSON messages in the return hash so the end-user can deserialize in one pass
       #
@@ -463,14 +467,29 @@ module Hastur
       end
 
       #
-      # Dump to JSON string. Sinatra only.
+      # Serialize output.
+      # Uses params[:format], defaults to JSON.
+      # If params[:cb] is set, output is JSONP with the specified callback.
       #
       # @param [Hash] content
-      # @return [String] Serialized JSON content
+      # @return [String] Serialized content
       #
-      def json(content)
+      def serialize(content, params)
         # when the cb parameter is specified, return a JSONP response
-        if params[:cb]
+        if params[:format] == "csv"
+          response['Content-Type'] = "text/csv"
+          CSV.generate do |csv|
+            csv << %w[node name timestamp value]
+            content.each do |uuid, name_series|
+              name_series.each do |name, ts_val|
+                ts_val.each do |ts, val|
+                  csv << [uuid, name, ts, val]
+                end
+              end
+            end
+          end
+        elsif params[:format] == "jsonp" or params[:cb]
+          hastur_error!("cb callback parameter is required for jsonp!", 501) unless params[:cb]
           response['Content-Type'] = "text/javascript"
           "#{params[:cb]}(#{MultiJson.dump(content)});\n"
         # otherwise, just make it regular JSON
@@ -498,7 +517,7 @@ module Hastur
           throw :error, error
         elsif self.is_a? Sinatra::Base
           error[:url] = request.url
-          halt json(error)
+          halt serialize(error, {})
         else
           abort "BUG: not a Grape::API or Sinatra::Base"
         end

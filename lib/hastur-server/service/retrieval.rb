@@ -91,7 +91,7 @@ module Hastur
       # @return [Hash{String=>Array<String>}]
       #
       get "/api/type" do
-        json TYPES
+        serialize TYPES, params
       end
 
       #
@@ -112,7 +112,7 @@ module Hastur
           end
         end
 
-        json h
+        serialize h, params
       end
 
       #
@@ -143,7 +143,7 @@ module Hastur
           }
         end
 
-        json array
+        serialize array, params
       end
 
       #
@@ -159,7 +159,7 @@ module Hastur
           uuid_hash[uuid] = "#{root_uri}/api/node/#{uuid}"
         end
 
-        json uuid_hash
+        serialize uuid_hash, params
       end
 
       #
@@ -204,7 +204,7 @@ module Hastur
             end
             node
           end
-          json array
+          serialize array
         end
       end
 
@@ -221,7 +221,8 @@ module Hastur
       get "/api/lookup/hostname/uuid" do
         start_ts, end_ts = get_start_end :one_day
         uuids = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
-        json Hastur::Cassandra.network_names_for_uuids(cass_client, uuids.keys, start_ts, end_ts)
+        out = Hastur::Cassandra.network_names_for_uuids(cass_client, uuids.keys, start_ts, end_ts)
+        serialize out, params
       end
 
       #
@@ -243,7 +244,8 @@ module Hastur
       get "/api/lookup/hostname/uuid/:uuid" do
         start_ts, end_ts = get_start_end :one_day
         uuids = params[:uuid].split(",")
-        json Hastur::Cassandra.network_names_for_uuids(cass_client, uuids, start_ts, end_ts)
+        out = Hastur::Cassandra.network_names_for_uuids(cass_client, uuids, start_ts, end_ts)
+        serialize out, params
       end
 
       #
@@ -264,7 +266,8 @@ module Hastur
       #
       get "/api/lookup/uuid/hostname" do
         start_ts, end_ts = get_start_end :one_day
-        json Hastur::Cassandra.lookup_by_key(cass_client, "host-uuid", start_ts, end_ts)
+        out = Hastur::Cassandra.lookup_by_key(cass_client, "host-uuid", start_ts, end_ts)
+        serialize out, params
       end
 
       #
@@ -301,7 +304,7 @@ module Hastur
           out[host] = lookup[host]
         end
 
-        json out
+        serialize out, params
       end
 
       #
@@ -332,7 +335,7 @@ module Hastur
           out = apply_functions(params[:fun], out)
         end
 
-        json out
+        serialize out, params
       end
 
       #
@@ -361,7 +364,7 @@ module Hastur
         end
         # convert the hash back to a unique array
         names.keys.each { |name| names[name] = names[name].keys }
-        json names
+        serialize names, params
       end
 
       #
@@ -393,7 +396,7 @@ module Hastur
         params[:uuid] ||= uuids.keys.join ','
         params[:type] ||= types.keys.join ','
 
-        json query_hastur(params)
+        serialize query_hastur(params), params
       end
 
       #
@@ -427,7 +430,7 @@ module Hastur
         params[:uuid] = uuids.uniq.compact.join ','
         params[:kind] = "message"
 
-        json query_hastur(params)
+        serialize query_hastur(params), params
       end
 
       #
@@ -448,7 +451,7 @@ module Hastur
       # @param reversed Return earliest first instead of latest first
       #
       get "/api/node/:uuid/type/:type/:kind" do
-        json query_hastur(params)
+        serialize query_hastur(params), params
       end
 
       #
@@ -469,7 +472,7 @@ module Hastur
       # @param reversed Return earliest first instead of latest first
       #
       get "/api/node/:uuid/name/:name/:kind" do
-        json query_hastur(params)
+        serialize query_hastur(params), params
       end
 
       #
@@ -490,7 +493,7 @@ module Hastur
       # @param reversed Return earliest first instead of latest first
       #
       get "/api/node/:uuid/type/:type/name/:name/:kind" do
-        json query_hastur(params)
+        serialize query_hastur(params), params
       end
 
       #
@@ -511,7 +514,7 @@ module Hastur
       # @param reversed Return earliest first instead of latest first
       #
       get "/api/node/:uuid/type/:type/:kind" do
-        json query_hastur(params)
+        serialize query_hastur(params), params
       end
 
       #
@@ -528,7 +531,7 @@ module Hastur
             { :start_token => r.start_token, :end_token => r.end_token, :endpoints => r.endpoints }
           end
           params[:pretty] = true
-          json out
+          serialize out, params
         rescue Exception => e
           hastur_error! "Cassandra is not available.", 500, e.backtrace
         end
