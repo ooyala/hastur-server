@@ -58,9 +58,7 @@ module Hastur
       end
 
       before do
-        if request['Origin']
-          response['Access-Control-Allow-Origin'] = "*"
-        end
+        response['Access-Control-Allow-Origin'] = "*"
         Hastur.mark 'hastur.rest.uri', request.url
 
         # grab a timestamp at the beginning of each request to use in repeated calls to get_start_end
