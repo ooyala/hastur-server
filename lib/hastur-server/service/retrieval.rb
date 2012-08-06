@@ -76,11 +76,11 @@ module Hastur
       # @return [Hash{String=>URI}] keys are names, values are resource URIs
       #
       get "/api" do
-        json({
+        serialize({
           :type     => "#{root_uri}/api/type",
           :app      => "#{root_uri}/api/app",
           :node     => "#{root_uri}/api/node",
-        })
+        }, params)
       end
 
       #
@@ -204,7 +204,7 @@ module Hastur
             end
             node
           end
-          serialize array
+          serialize array, params
         end
       end
 
