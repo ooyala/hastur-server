@@ -121,13 +121,15 @@ module Hastur
       # "raw" - don't merge messages into the return data, return it as escaped json inside the json
       #
       def query_hastur(params)
-        unless FORMATS.include?(params[:kind])
-          hastur_error! "Illegal output option: #{params[:kind].inspect}", 404
-        end
-
+        kind = params[:kind]
         types = type_list_from_string(params[:type])
         uuids = uuid_or_hostname_to_uuids params[:uuid].split(',')
         names = params[:name] ? params[:name].split(',') : []
+        labels = params[:label] ? params[:label].split(',') : []
+
+        unless FORMATS.include? kind
+          hastur_error! "Illegal output option: #{kind.inspect}", 404
+        end
 
         unless types.any? { |t| TYPES[:all].include?(t) }
           hastur_error! "Invalid type(s): '#{types}'", 404
@@ -151,14 +153,14 @@ module Hastur
           end
         end
 
-        if FORMATS.include?(params[:kind])
+        if FORMATS.include? kind
           output = sort_series_keys(flatten_rows(values))
 
-          if params[:kind] == "message"
+          if kind == "message"
             output = deserialize_json_messages(output)
           end
         else
-          hastur_error! "Unsupported data type: #{params[:kind].inspect}!", 404
+          hastur_error! "Unsupported data type: #{kind.inspect}!", 404
         end
 
         # Some queries go directly to a Cassandra range scan, which only matches prefixes
@@ -275,9 +277,6 @@ module Hastur
         end
 
         output
-      end
-
-      def flatten_to_array(values)
       end
 
       #
