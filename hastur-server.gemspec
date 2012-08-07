@@ -52,7 +52,6 @@ EOS
   s.add_runtime_dependency "rainbow"
   s.add_runtime_dependency "msgpack"
   s.add_runtime_dependency "hastur", "~>1.2.8"
-  s.add_runtime_dependency "algorithms"
   s.add_runtime_dependency "pony"
   s.add_runtime_dependency "pry"
   s.add_runtime_dependency "ohai"
