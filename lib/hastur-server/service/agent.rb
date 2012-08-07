@@ -10,7 +10,6 @@ require 'sys/uname'
 require "hastur/api"
 require "hastur-server/version"
 require "hastur-server/util"
-require "hastur-server/agent/plugin_v1_exec"
 require "hastur-server/agent/linux_stats"
 require "hastur-server/input/json"
 require "hastur-server/input/statsd"
@@ -61,7 +60,6 @@ module Hastur
         raise ArgumentError.new ":heartbeat must be between 1.0 and 300.0" unless opts[:heartbeat].between? 1, 300
 
         @acks              = {}
-        @plugins           = {}
         @logger            = opts[:logger] || Termite::Logger.new
         @ctx               = ZMQ::Context.new
         @poller            = ZMQ::Poller.new
@@ -180,7 +178,7 @@ module Hastur
           # amount of user/system cpu time in seconds
           Hastur.gauge("hastur.agent.utime", t.utime, curr_time)
           Hastur.gauge("hastur.agent.stime", t.stime, curr_time)
-          # completed child processes' (plugins) user/system cpu time in seconds (always 0 on Windows NT)
+          # completed child processes' user/system cpu time in seconds (always 0 on Windows NT)
           Hastur.gauge("hastur.agent.cutime", t.cutime, curr_time)
           Hastur.gauge("hastur.agent.cstime", t.cstime, curr_time)
 
@@ -193,30 +191,6 @@ module Hastur
 
           # reset things
           @last_stat_flush = curr_time
-        end
-      end
-
-      #
-      # Cycles through the plugins that are in question, and sends messages to Hastur
-      # if the plugin is done with its execution.
-      #
-      def poll_plugin_pids
-        @plugins.each do |pid,plugin|
-          if plugin.done?
-            plugin_hash = plugin.to_hash
-            msg = Hastur::Message::HB::PluginV1.new(
-              :from => @uuid,
-              :data => {
-                :name           => plugin_hash[:name],
-                :value          => nil, # should this be the resultcode?
-                :timestamp      => nil, # take the default
-                :labels         => plugin_hash
-              }
-            )
-            _send msg
-            # TODO: call plugin.stat (when it's ready) and send along a stat too
-            @plugins.delete pid
-          end
         end
       end
 
@@ -256,12 +230,6 @@ module Hastur
               Hastur::Message::Error.new :from => @uuid,
                 :payload => "Received an unexpected ack with ID: '#{ack_key}'"
             end
-          when Hastur::Message::Cmd::PluginV1
-            # TODO: add hmac authentication of plugin exec messages
-            config = msg.decode
-            plugin = Hastur::Agent::PluginV1Exec.new(config[:plugin_path], config[:plugin_args], config[:plugin])
-            pid = plugin.run
-            @plugins[pid] = plugin
           else
             Hastur::Message::Error.new :from => @uuid,
               :payload => "Received an unsupported #{msg.class} message."
@@ -410,7 +378,6 @@ module Hastur
           poll_ohai_info_timeout
           poll_heartbeat_timeout
           poll_ack_timeouts
-          poll_plugin_pids
           poll_zmq rescue nil # Temp: 2012-05-02, should properly detect & log bad messages
           send_agent_stats unless @no_agent_stats
 

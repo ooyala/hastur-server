@@ -127,14 +127,12 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     assert Hastur::Message.symbol?(:mark)
     assert Hastur::Message.symbol?(:log)
     assert Hastur::Message.symbol?(:error)
-    assert Hastur::Message.symbol?(:reg_pluginv1)
     refute Hastur::Message.symbol?(:foobar)
     refute Hastur::Message.type_id?(0),  "0 must not be a message type"
     assert Hastur::Message.type_id?(4),  "2 must be a message type"
     assert Hastur::Message.type_id?(10), "10 must be a message type"
     assert Hastur::Message.type_id?(20), "20 must be a message type"
     assert Hastur::Message.type_id?(30), "30 must be a message type"
-    assert Hastur::Message.type_id?(40), "40 must be a message type"
     refute Hastur::Message.type_id?(75), "75 must not be a message type"
 
     assert_equal Hastur::Message::Stat::Counter, Hastur::Message.symbol_to_class(:counter)

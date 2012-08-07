@@ -5,7 +5,6 @@ require 'hastur-server/util'
 require 'hastur-server/envelope'
 require 'hastur-server/message/base'
 require 'hastur-server/message/ack'
-require 'hastur-server/message/cmd'
 require 'hastur-server/message/error'
 require 'hastur-server/message/event'
 require 'hastur-server/message/noop'
@@ -21,12 +20,10 @@ module Hastur
     module Reg
       class Agent    < Simple ; end
       class Process  < Simple ; end
-      class PluginV1 < Simple ; end
     end
     module HB
       class Agent    < Simple ; end
       class Process  < Simple ; end
-      class PluginV1 < Simple ; end
     end
     module Stat
       class Mark     < Simple ; end
@@ -55,13 +52,9 @@ module Hastur
       # registrations
       Hastur::Message::Reg::Agent     => 20,
       Hastur::Message::Reg::Process   => 21,
-      Hastur::Message::Reg::PluginV1  => 22,
       # heartbeats
       Hastur::Message::HB::Agent      => 30,
       Hastur::Message::HB::Process    => 31,
-      Hastur::Message::HB::PluginV1   => 32,
-      # commands
-      Hastur::Message::Cmd::PluginV1  => 40,
       # info
       Hastur::Message::Info::Process  => 50,
       Hastur::Message::Info::Agent    => 51,
@@ -82,11 +75,8 @@ module Hastur
       :compound     => Hastur::Message::Stat::Compound,
       :reg_agent    => Hastur::Message::Reg::Agent,
       :reg_process  => Hastur::Message::Reg::Process,
-      :reg_pluginv1 => Hastur::Message::Reg::PluginV1,
       :hb_agent     => Hastur::Message::HB::Agent,
       :hb_process   => Hastur::Message::HB::Process,
-      :hb_pluginv1  => Hastur::Message::HB::PluginV1,
-      :cmd_pluginv1 => Hastur::Message::Cmd::PluginV1,
       :info_agent   => Hastur::Message::Info::Agent,
       :info_process => Hastur::Message::Info::Process,
       :info_ohai    => Hastur::Message::Info::Ohai,
