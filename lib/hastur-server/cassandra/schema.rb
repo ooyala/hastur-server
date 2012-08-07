@@ -22,7 +22,7 @@ module Hastur
     ONE_DAY = 24 * ONE_HOUR
     ONE_WEEK = 7 * ONE_DAY
     DEFAULT_WRITE_CONSISTENCY = ::Cassandra::Constants::TWO
-    DEFAULT_READ_CONSISTENCY = ::Cassandra::Constants::ONE
+    DEFAULT_READ_CONSISTENCY = ::Cassandra::Constants::TWO
 
     # A Hastur Schema is a mapping of strings to symbols to values.
     # The top level strings are the type names, the symbols are
