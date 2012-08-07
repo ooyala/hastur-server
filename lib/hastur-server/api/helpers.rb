@@ -1,4 +1,5 @@
 require "grape"
+require "logger"
 require "cassandra/1.0"
 require "cgi"
 require "hastur/api"
@@ -119,13 +120,14 @@ module Hastur
       # "reversed" - return results in reverse order - only matters with "limit"
       # "limit" - max number of results to return
       # "raw" - don't merge messages into the return data, return it as escaped json inside the json
+      # "labels" - filter on labels using label=<label>:<value>,... format, url encoded
       #
       def query_hastur(params)
         kind = params[:kind]
         types = type_list_from_string(params[:type])
         uuids = uuid_or_hostname_to_uuids params[:uuid].split(',')
         names = params[:name] ? params[:name].split(',') : []
-        labels = params[:label] ? params[:label].split(',') : []
+        labels = params[:label] ? CGI::unescape(params[:label]).split(',') : []
 
         unless FORMATS.include? kind
           hastur_error! "Illegal output option: #{kind.inspect}", 404
@@ -133,6 +135,16 @@ module Hastur
 
         unless types.any? { |t| TYPES[:all].include?(t) }
           hastur_error! "Invalid type(s): '#{types}'", 404
+        end
+
+        if labels.any?
+          # flip kind to message when splitting on label, then convert back to
+          # value format after the query
+          if kind == "value"
+            params[:kind] = "message"
+          elsif kind != "message"
+            hastur_error! "filtering on labels is only valid for /value and /message data formats", 404
+          end
         end
 
         # Some message types are day bucketed and are only expected once a day, like registrations,
@@ -156,8 +168,16 @@ module Hastur
         if FORMATS.include? kind
           output = sort_series_keys(flatten_rows(values))
 
-          if kind == "message"
+          if params[:kind] == "message"
             output = deserialize_json_messages(output)
+          end
+
+          if labels.any?
+            output = filter_by_label(output, labels)
+
+            if kind == "value" and params[:kind] == "message"
+              output = convert_messages_to_values(output)
+            end
           end
         else
           hastur_error! "Unsupported data type: #{kind.inspect}!", 404
@@ -295,7 +315,7 @@ module Hastur
               # MultiJson gets really upset if you ask it to decode a ruby Hash that ends up
               # being stringified - TODO(al,2012-06-21) figure out why hashes are appearing in this data
               unless value.kind_of? String
-                logger.debug "BUG: Got a ruby hash where a JSON string was expected."
+                logger.debug "BUG: Got a ruby hash where a JSON string was expected: #{value.inspect}"
                 next
               end
 
@@ -304,6 +324,84 @@ module Hastur
               rescue Exception => e
                 hastur_error! "JSON parsing failed for stored message: #{value.inspect} #{e.inspect}", 501
               end
+            end
+          end
+        end
+        output
+      end
+
+      #
+      # Iterate over all messages and filter on labels.
+      #
+      def filter_by_label(data, labels)
+        # finish parsing the query string into two lookup hashes
+        must = {}
+        must_not = {}
+        labels.each do |lv|
+          label, value = lv.split ':', 2
+          if label.start_with? '!'
+            must_not[label.slice(1, label.length)] = value
+          else
+            must[label] = value
+          end
+        end
+
+        # iterate over every item in the series and apply the filter in a very brutal manner
+        # this could be a little more terse with in-place modification, but it copies to be
+        # consistent with other filtering passes
+        output = {}
+        data.each do |uuid, name_series|
+          output[uuid] = {}
+          name_series.each do |name, series|
+            output[uuid][name] = {}
+            series.each do |ts, value|
+              labels = value["labels"]
+
+              if must.none?
+                output[uuid][name][ts] = value
+              else
+                must.each do |l,v|
+                  if v.nil?
+                    if labels.has_key?(l)
+                      output[uuid][name][ts] = value
+                    else
+                      output[uuid][name].delete(ts)
+                    end
+                  elsif not labels.has_key?(l) or labels[l].to_s != v
+                    output[uuid][name].delete ts
+                  else
+                    output[uuid][name][ts] = value
+                  end
+                end
+              end
+
+              unless must_not.none?
+                must_not.each do |l,v|
+                  if v.nil? and labels.has_key? l
+                    output[uuid][name].delete ts
+                  elsif labels[l] and labels[l].to_s == v
+                    output[uuid][name].delete ts
+                  end
+                end
+              end
+            end
+          end
+        end
+        output
+      end
+
+      #
+      # When the user requests /value but filters on label, we fetch the messages
+      # then need to convert back to value format, dumping most of the message.
+      #
+      def convert_messages_to_values(data)
+        output = {}
+        data.each do |uuid, name_series|
+          output[uuid] = {}
+          name_series.each do |name, series|
+            output[uuid][name] = {}
+            series.each do |ts, value|
+              output[uuid][name][ts] = value["value"]
             end
           end
         end
@@ -461,7 +559,7 @@ module Hastur
         if self.is_a? Grape::API
           API.logger
         else
-          @logger ||= Logger.new
+          @logger ||= Logger.new STDERR
         end
       end
 
