@@ -30,6 +30,8 @@ Bluepill.application("hastur_agent") do |app|
     process.stop_signals = [:quit, 15.seconds, :term, 5.seconds, :kill]
     process.working_dir = "/"
     process.pid_file = PIDFILE
+    process.uid = "role-hastur"
+    process.gid = "role-hastur"
     process.daemonize = true
     process.start_grace_time = 5.seconds
     process.stop_grace_time = 30.seconds
