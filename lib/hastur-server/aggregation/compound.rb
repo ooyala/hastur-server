@@ -67,8 +67,8 @@ module Hastur
       "linux.proc.diskstats" => proc { |sample|
         compound_list_to_hash sample, "linux.proc.diskstats"
       },
-      "linux.proc.meminfo" => proc { |sample| sample },
-      "linux.proc.uptime" => proc { |sample| sample },
+      # default to assume it's a straight hash / map, including linux.proc.{meminfo,uptime}
+      :default => proc { |sample| sample },
     }
 
     #
@@ -94,6 +94,7 @@ module Hastur
     # @example
     #   /api/name/linux.proc.uptime?fun=compound(uptime,idle)
     #   /api/name/linux.proc.stat?fun=compound(processes,procs_running,procs_blocked)
+    #   /api/name/whatever/rollup?rollup_period=one_day&fun=compound()
     #
     def compound(series, control, *keys)
       new_series = {}
@@ -108,23 +109,24 @@ module Hastur
           end
 
           # procs are defined above for exploding / translating compact lists into key/value pairs
-          if TRANSLATE[name]
-            new_subseries = {}
-            subseries.each do |ts,val|
-              new_subseries[ts] = TRANSLATE[name].call val
-            end
-            subseries = new_subseries
+          # :default is for plain single-level hashes / maps
+          processor = TRANSLATE.has_key?(name) ? TRANSLATE[name] : TRANSLATE[:default]
 
-            # the list of keys is variable per-system, unless given a list of keys,
-            # set the list of keys to match what was seen on the system
-            nkeys = subseries.first.last.keys
+          new_subseries = {}
+          subseries.each do |ts,val|
+            new_subseries[ts] = processor.call val
+          end
+          subseries = new_subseries
 
-            # but if the user has said which key they want, try to return just what they requested
-            # only allow matching on the first field though, not the expanded fields
-            # e.g. compound(cpu) is ok but compound(cpu.user) isn't
-            if keys.any?
-              nkeys = nkeys.select { |nk| keys.include?(nk.split('.')[-2]) or keys.include?(nk) }
-            end
+          # the list of keys is variable per-system, unless given a list of keys,
+          # set the list of keys to match what was seen on the system
+          nkeys = subseries.first.last.keys
+
+          # but if the user has said which key they want, try to return just what they requested
+          # only allow matching on the first field though, not the expanded fields
+          # e.g. compound(cpu) is ok but compound(cpu.user) isn't
+          if keys.any?
+            nkeys = nkeys.select { |nk| keys.include?(nk.split('.')[-2]) or keys.include?(nk) }
           end
 
           # now flatten the key/values into many series for output
