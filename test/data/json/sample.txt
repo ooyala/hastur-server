@@ -1,3 +1,0 @@
-{ "uuid":"thisismyuuid", "method":"schedule", "plugin":"fake plugin", "plugin_path":"../test/data/plugins/sample.rb", "plugin_args":"random.1", "interval":"10 seconds" }
-{ "uuid":"thisismyuuid", "method":"schedule", "plugin":"fake plugin", "plugin_path":"../test/data/plugins/sample.rb", "plugin_args":"random.2", "interval":"10 seconds" }
-{ "uuid":"thisismyuuid", "method":"schedule", "plugin":"fake plugin", "plugin_path":"../test/data/plugins/sample.rb", "plugin_args":"random.3", "interval":"10 seconds" }

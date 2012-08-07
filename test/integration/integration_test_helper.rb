@@ -20,7 +20,6 @@ HASTUR_CORE_BIN="#{HASTUR_ROOT}/bin/hastur-core.rb"
 HASTUR_AGENT_BIN="#{HASTUR_ROOT}/bin/hastur-agent.rb"
 HASTUR_MSGTOOL_BIN="#{HASTUR_ROOT}/tools/msgtool.rb"
 HASTUR_CASS_SINK_BIN="#{HASTUR_ROOT}/bin/cass-sink.rb"
-HASTUR_SCHEDULER="#{HASTUR_ROOT}/bin/run-scheduler.rb"
 HASTUR_REGISTRATION_ROLLUP_BIN="#{HASTUR_ROOT}/bin/registration-rollups.rb"
 
 TRIGGER_SYNDICATOR_BIN = File.join(HASTUR_ROOT, "bin", "trigger-syndicator")

@@ -104,7 +104,6 @@ public
     # start cassandra
     @topology.start :cassandra
     create_all_column_families(@topology[:cassandra]) # helper
-    # start everything else but the scheduler
     @topology.start_all
     # wait for the row to show up in Cassandra
     client = @topology[:cassandra].client

@@ -38,9 +38,7 @@ with large numbers of stats and rolls up data we want to keep (hence, round-robi
 
 ## Does this replace Nagios?
 
-Two answers: not yet and sortof. We initially laid in support for Nagios-style monitoring that is still in the code,
-but we're not using it at this time and the scheduler isn't robust. That said, we'd love to see somebody work on
-building a robust scheduler for plugins.
+Not really. A system with sufficient metric coverage can leave behind most Nagios checks.
 
 ## Why can't I query by hostname?
 
