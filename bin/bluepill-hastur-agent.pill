@@ -1,14 +1,10 @@
 # hastur-agent bluepill
-#
-# TODO: lookup DNS RR record ... into an array
-# e.g. nslookup hastur-core.ooyala.com
-# TODO: (eventually), determine region / AZ and look up e.g. hastur-core.sv2.ooyala.com / hastur-core.us-east-1, etc.
-ROUTERS = %w[
-  hastur-core1.us-east-1.ooyala.com
-  hastur-core2.us-east-1.ooyala.com
-  hastur-core3.us-east-1.ooyala.com
-]
-ROUTER_PORT="8126"
+require 'hastur-server/ooyala_config'
+
+# Other sites should replace this with their own list, either by
+# creating a custom Hastur::MyConfig or just by setting ROUTERS
+# to a list of ZeroMQ URIs.
+ROUTERS = Hastur::OoyalaConfig.get_routers
 
 # modern Linux boxes use /run
 if File.directory? "/run"
@@ -24,9 +20,7 @@ Bluepill.application("hastur_agent") do |app|
       "PATH" => "/opt/hastur/bin:/opt/local/bin:/usr/local/bin:/usr/local/sbin:/bin:/usr/bin:/sbin:/usr/sbin",
       "LD_LIBRARY_PATH" => "/opt/hastur/lib",
     }
-    # TODO: change --router args to be built from / set from DNS RR records
-    router_string = ROUTERS.map{ |router| "--router tcp://#{router}:#{ROUTER_PORT}" }.join(" ")
-    process.start_command = "/opt/hastur/bin/hastur-agent.rb #{router_string}"
+    process.start_command = "/opt/hastur/bin/hastur-agent.rb #{ROUTERS.join(' ')}"
     process.stop_signals = [:quit, 15.seconds, :term, 5.seconds, :kill]
     process.working_dir = "/"
     process.pid_file = PIDFILE
