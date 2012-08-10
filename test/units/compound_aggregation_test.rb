@@ -72,26 +72,26 @@ SERIES2 = {
 
 class CompoundAggregationTest < Scope::TestCase
   context "verify expression parsing works for compound aggregations" do
-    should "compound(uptime)" do
-      series = Hastur::Aggregation.evaluate("compound(uptime)", SERIES1, {})
+    should "compound(:uptime)" do
+      series = Hastur::Aggregation.evaluate("compound(:uptime)", SERIES1, {})
       puts series
       assert series.has_key? UUID1
     end
-    should "compound(uptime,idle)" do
-      series = Hastur::Aggregation.evaluate("compound(uptime,idle)", SERIES1, {})
+    should "compound(:uptime,:idle)" do
+      series = Hastur::Aggregation.evaluate("compound(:uptime,:idle)", SERIES1, {})
       assert series.has_key? UUID1
     end
-    should "compound_list(cpu)" do
-      series = Hastur::Aggregation.evaluate("compound_list(cpu)", SERIES2, {})
+    should "compound_list(:cpu)" do
+      series = Hastur::Aggregation.evaluate("compound_list(:cpu)", SERIES2, {})
       assert series.has_key? UUID2
     end
-    should "compound_list(cpu0,cpu1,cpu2)" do
-      series = Hastur::Aggregation.evaluate("compound_list(cpu0,cpu1,cpu2)", SERIES2, {})
+    should "compound_list(:cpu0,:cpu1,:cpu2)" do
+      series = Hastur::Aggregation.evaluate("compound_list(:cpu0,:cpu1,:cpu2)", SERIES2, {})
       assert series.has_key? UUID2
     end
-    should "compound(processes,procs_running,procs_blocked)" do
+    should "compound(:processes,:procs_running,:procs_blocked)" do
       series = Hastur::Aggregation.evaluate(
-        "compound(processes,procs_running,procs_blocked)",
+        "compound(:processes,:procs_running,:procs_blocked)",
         SERIES2, {}
       )
       assert series.has_key? UUID2

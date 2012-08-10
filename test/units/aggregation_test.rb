@@ -68,15 +68,15 @@ class AggregationTest < Scope::TestCase
       assert_equal 2, diff[UUID2]["foo.bar.win"][1341967100000000]
     end
 
-    should "merge(uuid,derivative())" do
-      series = Hastur::Aggregation.evaluate("merge(uuid,derivative())", SERIES, {})
+    should "merge(:uuid,derivative())" do
+      series = Hastur::Aggregation.evaluate("merge(:uuid,derivative())", SERIES, {})
       assert series.has_key? ""
       refute series.has_key? UUID1
       refute series.has_key? UUID2
     end
 
-    should "merge(name,derivative())" do
-      series = Hastur::Aggregation.evaluate("merge(name,derivative())", SERIES, {})
+    should "merge(:name,derivative())" do
+      series = Hastur::Aggregation.evaluate("merge(:name,derivative())", SERIES, {})
       assert series[UUID1].has_key? ""
       assert series[UUID2].has_key? ""
       refute series[UUID1].has_key? "foo.bar.baz"
@@ -84,13 +84,13 @@ class AggregationTest < Scope::TestCase
       refute series[UUID2].has_key? "foo.bar.win"
     end
 
-    should "derivative(merge(uuid))" do
-      series = Hastur::Aggregation.evaluate("derivative(merge(uuid))", SERIES, {})
+    should "derivative(merge(:uuid))" do
+      series = Hastur::Aggregation.evaluate("derivative(merge(:uuid))", SERIES, {})
       assert series.has_key? ""
     end
 
-    should "integral(merge(name))" do
-      series = Hastur::Aggregation.evaluate("integral(merge(name))", SERIES, {})
+    should "integral(merge(:name))" do
+      series = Hastur::Aggregation.evaluate("integral(merge(:name))", SERIES, {})
       assert series[UUID1].has_key? ""
       assert series[UUID2].has_key? ""
       assert_equal UUID1_BAZ_SUM, series[UUID1][""][1341967100000000]
