@@ -23,7 +23,7 @@ Bluepill.application("hastur_agent") do |app|
       "PATH" => "/opt/hastur/bin:/opt/local/bin:/usr/local/bin:/usr/local/sbin:/bin:/usr/bin:/sbin:/usr/sbin",
       "LD_LIBRARY_PATH" => "/opt/hastur/lib",
     }
-    process.start_command = "/opt/hastur/bin/hastur-agent.rb --router #{ROUTERS.join(' ')}"
+    process.start_command = "/opt/hastur/bin/hastur-agent.rb #{ROUTERS.map { |r| "--router #{r}" }.join(' ')}"
     process.stop_signals = [:quit, 15.seconds, :term, 5.seconds, :kill]
     process.working_dir = "/"
     process.pid_file = "#{RUNDIR}/hastur-agent.pid"
