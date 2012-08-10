@@ -95,7 +95,7 @@ module Hastur
           new_subseries[bin_ts] = compute_rollups(
             new_subseries[bin_ts][:timestamps],
             new_subseries[bin_ts][:values],
-            bin_usecs
+            bin_usecs, bin_ts, (bin_ts + bin_usecs)
           )
         end
 
@@ -110,14 +110,14 @@ module Hastur
     #
     # also used in cassandra/rollup.rb
     #
-    def compute_rollups(timestamps, values, interval=nil)
+    def compute_rollups(timestamps, values, interval=nil, first_ts=nil, last_ts=nil)
       # both lists need to be in order, but the time/value relationship is not important
       timestamps.sort!
       values.sort!
 
-      unless timestamps.count >= 2 and values.count >= 2
-        return { :error => "at least two samples are required to roll up" }
-      end
+      first_ts ||= timestamps.first
+      last_ts  ||= timestamps.last
+      elapsed  = ((last_ts || 0) - (first_ts || 0))
 
       rollup = {
         :min        => values[0],
@@ -125,11 +125,29 @@ module Hastur
         :range      => (values[-1] - values[0] rescue 0),
         :sum        => (values.reduce(:+) rescue 0),
         :count      => values.count,
-        :first_ts   => timestamps[0],
-        :last_ts    => timestamps[-1],
-        :elapsed    => (timestamps[-1] - timestamps[0] rescue 0),
+        :first_ts   => first_ts,
+        :last_ts    => last_ts,
+        :elapsed    => elapsed,
         :interval   => interval,
       }
+
+      # compute the variance & standard deviation
+      if timestamps.count >= 1 and values.count >= 1
+        stddev, variance, average = stddev(values.compact)
+        rollup[:stddev]   = stddev
+        rollup[:variance] = variance
+        rollup[:average]  = average
+      else
+        [:stddev, :variance, :average].each { |k| rollup[k] = nil }
+      end
+
+      # null out remaining fields if there aren't enough samples to compute useful values
+      unless timestamps.count >= 2 and values.count >= 2
+        [:p1, :p5, :p10, :p25, :p50, :p75, :p90, :p95, :p99, :period, :jitter].each do |p|
+          rollup[p] = nil
+        end
+        return rollup
+      end
 
       # http://en.wikipedia.org/wiki/Percentiles
       # median is just p50
@@ -137,12 +155,6 @@ module Hastur
         rank = (rollup[:count] * (percentile / 100.0) + 0.5).round
         rollup["p#{percentile}".to_sym] = values[rank]
       end
-
-      # compute the variance & standard deviation
-      stddev, variance, average = stddev(values.compact)
-      rollup[:stddev]   = stddev
-      rollup[:variance] = variance
-      rollup[:average]  = average
 
       # period standard deviation (quality)
       if timestamps.count > 1
