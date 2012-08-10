@@ -115,6 +115,10 @@ module Hastur
       timestamps.sort!
       values.sort!
 
+      unless timestamps.count >= 2 and values.count >= 2
+        return { :error => "at least two samples are required to roll up" }
+      end
+
       rollup = {
         :min        => values[0],
         :max        => values[-1],
@@ -131,7 +135,7 @@ module Hastur
       # median is just p50
       [1, 5, 10, 25, 50, 75, 90, 95, 99].each do |percentile|
         rank = (rollup[:count] * (percentile / 100.0) + 0.5).round
-        rollup["p#{percentile}".to_sym] = rank
+        rollup["p#{percentile}".to_sym] = values[rank]
       end
 
       # compute the variance & standard deviation
@@ -166,6 +170,7 @@ module Hastur
     # @return [Float, Float, Float] stddev, variance, average
     #
     def stddev(list)
+      return nil, nil, nil unless list.any?
       avg = list.reduce(&:+) / list.count.to_f
       dsum = list.map { |v| (v - avg) ** 2 }.reduce(&:+)
       variance = dsum / list.count.to_f
