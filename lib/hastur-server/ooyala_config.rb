@@ -3,6 +3,8 @@ require 'httparty'
 
 module Hastur
   module OoyalaConfig
+    extend self
+
     # we run our routers on tcp://0.0.0.0:8126
     ROUTER_PORT = 8126
 

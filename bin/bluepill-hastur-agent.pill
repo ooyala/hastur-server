@@ -1,5 +1,6 @@
 # hastur-agent bluepill
 require 'hastur-server/ooyala_config'
+require 'fileutils'
 
 # Other sites should replace this with their own list, either by
 # creating a custom Hastur::MyConfig or just by setting ROUTERS
@@ -8,10 +9,12 @@ ROUTERS = Hastur::OoyalaConfig.get_routers
 
 # modern Linux boxes use /run
 if File.directory? "/run"
-  PIDFILE = "/run/hastur-agent.pid"
+  RUNDIR="/run/hastur"
 else
-  PIDFILE = "/var/run/hastur-agent.pid"
+  RUNDIR="/var/run/hastur"
 end
+FileUtils.mkdir_p RUNDIR
+FileUtils.chown 'role-hastur', 'role-hastur', RUNDIR
 
 # If we don't specify a log file, we get syslog logging to LOCAL6 by default.
 Bluepill.application("hastur_agent") do |app|
@@ -20,10 +23,10 @@ Bluepill.application("hastur_agent") do |app|
       "PATH" => "/opt/hastur/bin:/opt/local/bin:/usr/local/bin:/usr/local/sbin:/bin:/usr/bin:/sbin:/usr/sbin",
       "LD_LIBRARY_PATH" => "/opt/hastur/lib",
     }
-    process.start_command = "/opt/hastur/bin/hastur-agent.rb #{ROUTERS.join(' ')}"
+    process.start_command = "/opt/hastur/bin/hastur-agent.rb --router #{ROUTERS.join(' ')}"
     process.stop_signals = [:quit, 15.seconds, :term, 5.seconds, :kill]
     process.working_dir = "/"
-    process.pid_file = PIDFILE
+    process.pid_file = "#{RUNDIR}/hastur-agent.pid"
     process.uid = "role-hastur"
     process.gid = "role-hastur"
     process.daemonize = true
