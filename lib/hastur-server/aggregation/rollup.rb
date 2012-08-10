@@ -65,25 +65,24 @@ module Hastur
       rollup = {
         :min        => values[0],
         :max        => values[-1],
-        :range      => values[-1] - values[0],
-        :sum        => values.reduce(:+),
+        :range      => (values[-1] - values[0] rescue 0),
+        :sum        => (values.reduce(:+) rescue 0),
         :count      => values.count,
         :first_ts   => timestamps[0],
         :last_ts    => timestamps[-1],
-        :elapsed    => timestamps[-1] - timestamps[0],
+        :elapsed    => (timestamps[-1] - timestamps[0] rescue 0),
         :interval   => interval,
       }
 
       # http://en.wikipedia.org/wiki/Percentiles
       # median is just p50
-      last = values.count - 1
       [1, 5, 10, 25, 50, 75, 90, 95, 99].each do |percentile|
         rank = (rollup[:count] * (percentile / 100.0) + 0.5).round
-        rollup["p#{percentile}".to_sym] = values[rank]
+        rollup["p#{percentile}".to_sym] = rank
       end
 
       # compute the variance & standard deviation
-      stddev, variance, average = stddev(values)
+      stddev, variance, average = stddev(values.compact)
       rollup[:stddev]   = stddev
       rollup[:variance] = variance
       rollup[:average]  = average
