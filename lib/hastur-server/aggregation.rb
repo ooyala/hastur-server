@@ -12,6 +12,9 @@ module Hastur
     class InvalidAggSyntaxError < StandardError ; end
     extend self
 
+    # common strings that appear in v1 functions, before switching to symbol style
+    ALLOWED_BARE_STRINGS = %w[ uuid name add cnt avg ]
+
     # series = { uuid => { name => { timestamp => value, ... } } }
     def evaluate(string, series, control)
       exp = tokenize(string)
@@ -54,8 +57,11 @@ module Hastur
             false
           elsif "null" === exp or "nil" === exp
             nil
-          # bare strings, but restricted to the following pattern
-          elsif exp =~ /\A[-\.\w]+\Z/
+          # symbols, but kept as strings in ruby so we don't leak bad symbols
+          elsif exp =~ /\A:[-\.\w]+\Z/
+            exp
+          # compatibility with pre-symbol keywords, deprecated 2012-08-08
+          elsif ALLOWED_BARE_STRINGS.include? exp
             exp
           else
             raise InvalidAggSyntaxError.new "syntax error in expression: #{exp.inspect}"
