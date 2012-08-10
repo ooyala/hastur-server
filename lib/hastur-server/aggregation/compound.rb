@@ -126,7 +126,7 @@ module Hastur
           # only allow matching on the first field though, not the expanded fields
           # e.g. compound(cpu) is ok but compound(cpu.user) isn't
           if keys.any?
-            nkeys = nkeys.select { |nk| keys.include?(nk.split('.')[-2]) or keys.include?(nk) }
+            nkeys = nkeys.select { |nk| keys.include?(nk.to_s.split('.')[-2]) or keys.include?(nk.to_s) }
           end
 
           # now flatten the key/values into many series for output

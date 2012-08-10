@@ -58,8 +58,8 @@ module Hastur
           elsif "null" === exp or "nil" === exp
             nil
           # symbols, but kept as strings in ruby so we don't leak bad symbols
-          elsif exp =~ /\A:[-\.\w]+\Z/
-            exp
+          elsif /\A:(?<str>[-\.\w]+)\Z/ =~ exp
+            str
           # compatibility with pre-symbol keywords, deprecated 2012-08-08
           elsif ALLOWED_BARE_STRINGS.include? exp
             exp
