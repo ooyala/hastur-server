@@ -132,13 +132,14 @@ module Hastur
       }
 
       # compute the variance & standard deviation
-      if timestamps.count >= 1 and values.count >= 1
+      if timestamps.count > 0 and values.count > 0
         stddev, variance, average = stddev(values.compact)
         rollup[:stddev]   = stddev
         rollup[:variance] = variance
         rollup[:average]  = average
       else
         [:stddev, :variance, :average].each { |k| rollup[k] = nil }
+        rollup[:error] = :no_samples
       end
 
       # null out remaining fields if there aren't enough samples to compute useful values
@@ -146,6 +147,7 @@ module Hastur
         [:p1, :p5, :p10, :p25, :p50, :p75, :p90, :p95, :p99, :period, :jitter].each do |p|
           rollup[p] = nil
         end
+        rollup[:error] = :not_enough_samples
         return rollup
       end
 
