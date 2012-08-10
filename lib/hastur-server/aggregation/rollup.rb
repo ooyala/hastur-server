@@ -3,18 +3,17 @@ require "hastur-server/aggregation/base"
 module Hastur
   module Aggregation
     extend self
-    @functions.merge!  "rollup" => :rollup
+    @functions.merge!({ "rollup" => :rollup, "bin" => :bin })
 
     #
     # Generate a rollup for each series. Given a true option, the rollup is appended to the series
     # rather than replacing it.
     #
-    # @param [Hash] series
     # @param [String] delivery how to deliver the series
     #   "merge" means merge the rollup into the time series hash
     #   "replace" will replace the time series with the rollup data by itself
     #   default: add a new "$name.rollup" for each series
-    # @return [Hash] series
+
     # @example
     #   /api/name/foo.*.times_called/value?fun=rollup()
     #   /api/name/linux.proc.stat/value?fun=rollup(derivative(compound(cpu)))
@@ -48,6 +47,60 @@ module Hastur
         end
       end
       return new_series, control
+    end
+
+    #
+    # Put the values into bins and roll the bins up.
+    #
+    # @param [Fixnum] bin_count how many bins use
+    #
+    # @example
+    #   /api/name/foo.bar/value?fun=bin(8)
+    #   /api/name/foo.bar/value?fun=compound(:stddev,bin(8))
+    #
+    def bin(series, control, bin_count=10, *args)
+      each_subseries_in series, control do |name, subseries|
+        new_subseries = {}
+
+        # rely on request timestamps provided in control - especially with counters,
+        # there will be variable numbers of samples available so ranges will be inconsistent
+        min_ts = control[:start_ts]
+        max_ts = control[:end_ts]
+
+        # compute the bin size in microseconds
+        range = max_ts - min_ts
+        bin_usecs = (range / bin_count).floor
+
+        # initialize the bins - all bins must exist in output
+        0.upto(bin_count-1).map do |bin|
+          key = min_ts +  bin * bin_usecs
+          new_subseries[key] = { :timestamps => [], :values => [] }
+        end
+
+        # move the individual entries into bins ready for rollups
+        bin_ts = min_ts
+        subseries.keys.sort.each do |ts|
+          # advance to the next bin if necessary
+          until ts.between?(bin_ts, bin_ts + bin_usecs - 1) do
+            bin_ts = bin_ts + bin_usecs
+          end
+
+          # compute_rollups requires two arrays, timestamps & values
+          new_subseries[bin_ts][:timestamps] << ts
+          new_subseries[bin_ts][:values] << subseries[ts]
+        end
+
+        # now use the rollup function to generate all of the useful aggregations
+        new_subseries.keys.each do |bin_ts|
+          new_subseries[bin_ts] = compute_rollups(
+            new_subseries[bin_ts][:timestamps],
+            new_subseries[bin_ts][:values],
+            bin_usecs
+          )
+        end
+
+        new_subseries
+      end
     end
 
     #
