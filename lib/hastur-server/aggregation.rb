@@ -13,7 +13,7 @@ module Hastur
     extend self
 
     # common strings that appear in v1 functions, before switching to symbol style
-    ALLOWED_BARE_STRINGS = %w[ uuid name add cnt avg ]
+    ALLOWED_BARE_STRINGS = %w[ uuid name add cnt avg shift first default ]
 
     # series = { uuid => { name => { timestamp => value, ... } } }
     def evaluate(string, series, control)
