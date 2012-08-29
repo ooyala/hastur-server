@@ -48,7 +48,7 @@ EOS
   s.add_runtime_dependency "uuid"
   s.add_runtime_dependency "termite"
   s.add_runtime_dependency "bluepill"
-  s.add_runtime_dependency "cassandra", "=0.12.2ooyala2"
+  s.add_runtime_dependency "cassandra", "~>0.15"
   s.add_runtime_dependency "rainbow"
   s.add_runtime_dependency "msgpack"
   s.add_runtime_dependency "hastur", "~>1.2.8"
