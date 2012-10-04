@@ -30,17 +30,12 @@ elif [ -e "$HOME/.rbenv" ] ; then
 fi
 
 UNICORN=$(which unicorn)
+PORT=8888
 
 [ -n "$UNICORN" ] || die "could not find a unicorn or hastur install"
 
 killall -u $USER unicorn
 sleep 1
-
-if [ "$USER" == "noah" ] ; then
-  PORT=8080
-else
-  PORT=8888
-fi
 
 DIR="${HOME}/hastur-server"
 export RUBYLIB="$DIR/lib:$RUBYLIB"
