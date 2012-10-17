@@ -43,6 +43,7 @@ EOS
   s.add_runtime_dependency "httparty"
   s.add_runtime_dependency "yajl-ruby"
   s.add_runtime_dependency "multi_json", "~>1.3.2"
+  s.add_runtime_dependency "ffi", "=1.1.0"  # 1.1.5 segfaults on Mac OS X
   s.add_runtime_dependency "ffi-rzmq"
   s.add_runtime_dependency "trollop"
   s.add_runtime_dependency "uuid"
