@@ -133,6 +133,10 @@ module Hastur
           hastur_error! "Illegal output option: #{kind.inspect}", 404
         end
 
+        if types.empty?
+          hastur_error! "Invalid type(s) or no data!", 404
+        end
+
         unless types.any? { |t| TYPES[:all].include?(t) }
           hastur_error! "Invalid type(s): '#{types}'", 404
         end
