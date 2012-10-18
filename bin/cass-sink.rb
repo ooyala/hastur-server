@@ -14,7 +14,7 @@ opts = Trollop::options do
                                                                                    :multi => true
   opt :acks_to,   "Router ack URI(s)",      :default => ["tcp://127.0.0.1:8134"],  :type => :strings,
                                                                                    :multi => true
-  opt :keyspace,  "Keyspace",               :default => "Hastur",                  :type => String
+  opt :keyspace,  "Keyspace",               :default => "hastur",                  :type => String
   opt :hwm,       "ZMQ message queue size", :default => 1,                         :type => :int
 end
 

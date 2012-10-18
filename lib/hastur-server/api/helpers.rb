@@ -490,7 +490,7 @@ module Hastur
       end
 
       #
-      # Look up message names in the "name-" LookupByKey row. Handles comma-separated lists.
+      # Look up message names in the "name-" lookup_by_key row. Handles comma-separated lists.
       # @see parse_name_lookup
       #
       # @param [String] match_name the name to look up
@@ -541,7 +541,7 @@ module Hastur
           uri_json = ENV['CASSANDRA_URIS'] || '["127.0.0.1:9160"]'
           @cassandra_uris = MultiJson.load uri_json
 
-          @cass_client = ::Cassandra.new("Hastur", @cassandra_uris, THRIFT_OPTIONS)
+          @cass_client = ::Cassandra.new("hastur", @cassandra_uris, THRIFT_OPTIONS)
 
           # for non-production and port-forwarded ssh, there will only be one URI and it
           # should not auto-discover nodes

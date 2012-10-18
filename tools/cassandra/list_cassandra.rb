@@ -10,7 +10,7 @@ opts = Trollop::options do
   opt :stat,     "List a single stat",                    :type => String
   opt :agent,    "Agent UUID, if any",                    :type => String
   opt :server,   "Cassandra server",                      :type => String,   :default => "127.0.0.1:9160"
-  opt :keyspace, "Cassandra keyspace",                    :type => String,   :default => "Hastur"
+  opt :keyspace, "Cassandra keyspace",                    :type => String,   :default => "hastur"
   opt :route,    "Hastur message type",                   :type => String,   :default => "stat"
   opt :date,     "Date to query for",                     :type => String
 end
@@ -19,7 +19,7 @@ agent = Cassandra.new(opts[:keyspace], opts[:server])
 
 if opts[:rows]
   # Calculate the archive row.  This is a hack because list_cassandra is breaking encapsulation by existing.
-  cf = "#{opts[:route].capitalize}Archive".to_sym
+  cf = "#{opts[:route].downcase}_archive".to_sym
 
   agent.each_key(cf.to_sym) do |key|
     puts key.inspect

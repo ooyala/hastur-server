@@ -45,7 +45,7 @@ Not really. A system with sufficient metric coverage can leave behind most Nagio
 Hostnames are often wildly inaccurate even in meticulously managed networks. They get reused, mispelled, changed by accident,
 and sometimes are totally meaningless (as in EC2). Hastur agent, by default, creates /etc/uuid if it doesn't exist and writes
 a UUID in there that it uses from then on to identify the system. As many of the network names as are available are read
-from the system and stored in Hastur's LookupByKey column family for later translation back to hostnames.  Ohai data is
+from the system and stored in Hastur's lookup_by_key column family for later translation back to hostnames.  Ohai data is
 also used in this stage where available.
 
 ## What about security?

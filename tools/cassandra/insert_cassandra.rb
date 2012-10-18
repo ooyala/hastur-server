@@ -15,7 +15,7 @@ opts = Trollop.options do
   opt :labels,  "Labels to mark as",            :default => ["tag1"],              :type => :strings
   opt :print,   "Print messages",               :default => false,                 :type => :boolean
   opt :insert,  "Write messages to C*",         :default => true,                  :type => :boolean
-  opt :keyspace,"Keyspace to write",            :default => "Hastur",              :type => String
+  opt :keyspace,"Keyspace to write",            :default => "hastur",              :type => String
   opt :host,    "Cassandra host",               :default => "127.0.0.1:9160",      :type => String
   opt :uuid,    "UUID to insert as",            :default => "fafafafa-fafa-fafa-fafa-fafafafafafa",
                                                 :type => String

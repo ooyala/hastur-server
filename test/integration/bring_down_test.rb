@@ -48,7 +48,7 @@ public
     @heartbeat_agent2 = "heartbeat-agent2"
     @start_ts         = Hastur::Util.timestamp
     @end_ts           = @start_ts + 150_000_000
-    @cf               = "HBProcessArchive"
+    @cf               = "hb_process_archive"
 
     @topology = Nodule::Topology.new(
       :alarm         => Nodule::Alarm.new(:timeout => test_timeout(100)),
@@ -58,7 +58,7 @@ public
       :router        => Nodule::ZeroMQ.new(:uri => :gen),
       :firehose      => Nodule::ZeroMQ.new(:uri => :gen),
       :return        => Nodule::ZeroMQ.new(:uri => :gen, :connect => ZMQ::PUSH),
-      :cassandra     => Nodule::Cassandra.new(:keyspace => "Hastur", :verbose => :greenio),
+      :cassandra     => Nodule::Cassandra.new(:keyspace => "hastur", :verbose => :greenio),
       :coresvc       => Nodule::Process.new(
         HASTUR_CORE_BIN,
         '--uuid',          R1UUID,
@@ -97,7 +97,7 @@ public
     @topology.start_all
     # wait for the row to show up in Cassandra
     @cass = @topology[:cassandra].client
-    wait_for_cassandra_rows @cass, "RegAgentArchive", 1, 30, true
+    wait_for_cassandra_rows @cass, "reg_agent_archive", 1, 30, true
   end
 
   def teardown

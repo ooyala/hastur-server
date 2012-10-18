@@ -525,7 +525,7 @@ module Hastur
       get "/api/statusz" do
         begin
           # cass_client.ring will fail if no successful queries have run
-          cass_client.get "GaugeArchive", " "
+          cass_client.get "gauge_archive", " "
           ring = cass_client.ring
           out = ring.map do |r|
             { :start_token => r.start_token, :end_token => r.end_token, :endpoints => r.endpoints }

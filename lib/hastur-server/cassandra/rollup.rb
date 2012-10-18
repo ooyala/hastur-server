@@ -24,7 +24,7 @@ module Hastur
       # existing entries with the same column key.
       # Writes out row keys in the form of uuid-rollup_interval-weekly_bucket.
       #
-      # @param [String] archive which Archive CF to roll up, e.g. 'gauge', 'counter'
+      # @param [String] archive which archive CF to roll up, e.g. 'gauge', 'counter'
       # @param [Fixnum] start_ts beginning of the period to roll up
       # @param [Fixnum] end_ts end of the period to roll up
       # @example

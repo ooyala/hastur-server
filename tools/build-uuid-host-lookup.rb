@@ -18,7 +18,7 @@ require "time"
 
 opts = Trollop::options do
   opt :cassandra, "Cassandra server list", :default => ["127.0.0.1:9160"], :type => :strings, :multi => true
-  opt :keyspace, "Cassandra Keyspace to use", :default => "Hastur"
+  opt :keyspace, "Cassandra Keyspace to use", :default => "hastur"
 end
 
 cass_client = ::Cassandra.new(opts[:keyspace], opts[:cassandra].flatten)
@@ -93,7 +93,7 @@ end
 # write into a daily bucket, overwrite is the common case
 bucket_ts = Hastur::TimeUtil.usec_truncate end_ts, :one_day
 
-example = { :LookupByKey => { "host-uuid-#{bucket_ts}" => out } }
+example = { :lookup_by_key => { "host-uuid-#{bucket_ts}" => out } }
 puts MultiJson.dump(example, :pretty => true)
 
-cass_client.insert(:LookupByKey, "host-uuid-#{bucket_ts}", out)
+cass_client.insert(:lookup_by_key, "host-uuid-#{bucket_ts}", out)

@@ -71,7 +71,7 @@ module Hastur
     #
     # Insert a Hastur message.  This inserts the JSON into the archive
     # column family, the value into the value column family (if
-    # relevant), and updates the metadata and LookupByKey column
+    # relevant), and updates the metadata and lookup_by_key column
     # family.
     #
     # @param [Cassandra] cass_client client object, should be connected and in the right keyspace
@@ -116,17 +116,17 @@ module Hastur
         client.insert(cf, key, { colname => value.to_msgpack }, insert_options) if cf
 
         # Insert into "saw UUID in this time period" row
-        client.insert(:LookupByKey, "uuid-#{one_day_ts}", { uuid => "" }, insert_options)
+        client.insert(:lookup_by_key, "uuid-#{one_day_ts}", { uuid => "" }, insert_options)
 
         # Insert into "saw message name in this time period" row
         if schema[:name]
           type_id = Hastur::Message.symbol_to_type_id(schema[:type])
           colkey = [name, type_id, uuid].join('-')
-          client.insert(:LookupByKey, "name-#{one_day_ts}", { colkey => "" }, insert_options)
+          client.insert(:lookup_by_key, "name-#{one_day_ts}", { colkey => "" }, insert_options)
         end
 
         # Insert into "saw this UUID for this app name" row
-        client.insert(:LookupByKey, "app_name-#{one_day_ts}", { "#{app_name}-#{uuid}" => "" }, insert_options)
+        client.insert(:lookup_by_key, "app_name-#{one_day_ts}", { "#{app_name}-#{uuid}" => "" }, insert_options)
       end
     end
 
@@ -177,7 +177,7 @@ module Hastur
     end
 
     #
-    # Get one or more rows from the LookupByKey CF and return a flattened hash.
+    # Get one or more rows from the lookup_by_key CF and return a flattened hash.
     #
     # @param cass_client The cassandra client object
     # @param [String,Symbol] prefix the row key prefix to fetch, e.g. "name", "cnames"
@@ -192,7 +192,7 @@ module Hastur
       options = { :count => 10_000 }.merge(options)
       # this isn't defined in the schema (yet?) so the bucket is hard-coded to one day everywhere
       usec_aligned_chunks(start_timestamp, end_timestamp, :day).each do |ts|
-        cass_client.get('LookupByKey', "#{kind}-#{ts}", options).each do |key,value|
+        cass_client.get('lookup_by_key', "#{kind}-#{ts}", options).each do |key,value|
           data[key] = value
         end
       end

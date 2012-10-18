@@ -58,7 +58,7 @@ if (@ARGV > 0) {
   push @opt_zonefile, grep { -f $_ } @ARGV;
 }
 
-our $keyspace = $opt_keyspace || "Hastur";
+our $keyspace = $opt_keyspace || "hastur";
 our $host     = $opt_host     || "localhost";
 our $port     = $opt_port     || 9160;
 
@@ -77,7 +77,7 @@ our $c = Cassandra::Lite->new(
 our $today_usec = DateTime->today->epoch * 1_000_000;
 our $row_key = "cnames-$today_usec";
 
-print "Generating row $keyspace/LookupByKey/$row_key from @opt_zonefile ...\n";
+print "Generating row $keyspace/lookup_by_key/$row_key from @opt_zonefile ...\n";
 
 my $key_count = 0;
 
@@ -104,7 +104,7 @@ foreach my $zonefile ( @opt_zonefile ) {
     if (my $count = keys(%names) + 0) {
         print "Writing $zonefile ... ";
         $key_count += $count;
-        $c->put("LookupByKey", $row_key, \%names);
+        $c->put("lookup_by_key", $row_key, \%names);
         print " done.\n"
     }
     else {

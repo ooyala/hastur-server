@@ -47,7 +47,7 @@ public
       :log           => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :error         => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :redio),
       :direct        => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen, :reader => :drain),
-      :cassandra     => Nodule::Cassandra.new( :keyspace => "Hastur", :verbose => :greenio ),
+      :cassandra     => Nodule::Cassandra.new( :keyspace => "hastur", :verbose => :greenio ),
       :routersvc     => Nodule::Process.new(
         HASTUR_ROUTER_BIN,
         '--uuid',          R1UUID,
@@ -107,7 +107,7 @@ public
     @topology.start_all
     # wait for the row to show up in Cassandra
     client = @topology[:cassandra].client
-    wait_for_cassandra_rows(client, "RegAgentArchive", 1, 30) do
+    wait_for_cassandra_rows(client, "reg_agent_archive", 1, 30) do
       flunk "Gave up waiting for registrations in cassandra."
     end
 

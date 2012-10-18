@@ -34,7 +34,7 @@ class BringUpTest < MiniTest::Unit::TestCase
       :error        => Nodule::ZeroMQ.new(:connect => ZMQ::PULL, :uri => :gen, :reader => :drain),
       :control      => Nodule::ZeroMQ.new(:connect => ZMQ::REP,  :uri => :gen),
       :direct       => Nodule::ZeroMQ.new(:connect => ZMQ::PUSH, :uri => :gen),
-      :cassandra    => Nodule::Cassandra.new(:keyspace => "Hastur",
+      :cassandra    => Nodule::Cassandra.new(:keyspace => "hastur",
         :stderr => :redio, :verbose => :cyanio, #:stdout => :greenio,
       ),
       :query_server => Nodule::Process.new(HASTUR_QUERY_SERVER_BIN,
@@ -102,7 +102,7 @@ class BringUpTest < MiniTest::Unit::TestCase
     sleep 0.01 until sinatra_ready
 
     # wait for the row to show up in Cassandra
-    wait_for_cassandra_rows(@topology[:cassandra].client, "RegAgentArchive", 1, 5) do
+    wait_for_cassandra_rows(@topology[:cassandra].client, "reg_agent_archive", 1, 5) do
       flunk "Gave up waiting for registration in cassandra."
     end
   end

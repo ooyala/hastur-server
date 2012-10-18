@@ -21,7 +21,7 @@ class CoreRouterTest < MiniTest::Unit::TestCase
       :mock_agent    => Hastur::Mock::NoduleAgent.new(:reader => :capture),
       :firehose      => Nodule::ZeroMQ.new(:connect => ZMQ::SUB, :uri => :gen, :reader => :capture),
       :return        => Nodule::ZeroMQ.new(:uri => :gen),
-      :cassandra     => Nodule::Cassandra.new(:keyspace => "Hastur"),
+      :cassandra     => Nodule::Cassandra.new(:keyspace => "hastur"),
       :coresvc       => Nodule::Process.new(
         HASTUR_CORE_BIN,
         '--uuid',          R1UUID,
@@ -59,7 +59,7 @@ class CoreRouterTest < MiniTest::Unit::TestCase
     # why does this take so long, even on my fast box?
     # TODO: figure out why this is timing out even on nice machines (al, 2012-04-12)
     #start = Time.now
-    #assert wait_for_cassandra_rows(@topology[:cassandra].client, "HBProcessArchive", 2, 60)
+    #assert wait_for_cassandra_rows(@topology[:cassandra].client, "hb_process_archive", 2, 60)
     #STDERR.puts "Took #{Time.now - start} seconds for the rows to show up in Cassandra."
 
     # check ack flow

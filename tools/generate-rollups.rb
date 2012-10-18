@@ -12,7 +12,7 @@ require "time"
 
 opts = Trollop::options do
   opt :cassandra, "Cassandra server list", :default => ["127.0.0.1:9202"], :type => :strings, :multi => true
-  opt :keyspace, "Cassandra Keyspace to use", :default => "Hastur"
+  opt :keyspace, "Cassandra Keyspace to use", :default => "hastur"
 end
 
 cass_client = ::Cassandra.new(opts[:keyspace], opts[:cassandra].flatten)
