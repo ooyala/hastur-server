@@ -16,6 +16,6 @@ else
   cassandra_servers = [ '127.0.0.1:9160' ]
 end
 
-use Hastur::Rack
+use Hastur::Rack, "hastur.retrieval"
 
 run Rack::URLMap.new("/" => Hastur::Service::Retrieval.new(cassandra_servers))
