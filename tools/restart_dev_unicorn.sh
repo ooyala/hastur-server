@@ -45,6 +45,7 @@ cat > "${DIR}/${USER}-config.ru" <<EOF
 
 require "multi_json"
 require "hastur-server/service/retrieval"
+require "hastur-rack"
 
 # defined on most of our Hastur boxes via hastur-deploy
 cassandra_servers = []
@@ -56,6 +57,7 @@ end
 
 ENV['CASSANDRA_URIS'] = MultiJson.dump(cassandra_servers, :pretty => false)
 
+use Hastur::Rack, "hastur.retrieval"
 run Rack::URLMap.new("/" => Hastur::Service::Retrieval.new)
 EOF
 
