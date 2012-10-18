@@ -1,4 +1,5 @@
 require "hastur-server/service/retrieval"
+require "hastur-rack"
 
 HASTUR_CASSANDRA_LIST="/opt/hastur/conf/cassandra-servers.txt"
 
@@ -14,5 +15,7 @@ if File.exists? HASTUR_CASSANDRA_LIST
 else
   cassandra_servers = [ '127.0.0.1:9160' ]
 end
+
+use Hastur::Rack
 
 run Rack::URLMap.new("/" => Hastur::Service::Retrieval.new(cassandra_servers))
