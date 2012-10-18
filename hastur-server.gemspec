@@ -58,4 +58,5 @@ EOS
   s.add_runtime_dependency "ohai"
   s.add_runtime_dependency "sys-uname"
   s.add_runtime_dependency "hastur-rack"
+  s.add_runtime_dependency "unicorn"
 end

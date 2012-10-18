@@ -71,5 +71,6 @@ stdout_path "$HOME/unicorn-hastur-access.log"
 EOF
 
 cd $DIR
-unicorn -c "${USER}-unicorn.conf" "${USER}-config.ru" -D
+bundle package
+bundle exec unicorn -c "${USER}-unicorn.conf" "${USER}-config.ru" -D
 
