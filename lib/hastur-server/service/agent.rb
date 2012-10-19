@@ -247,7 +247,7 @@ module Hastur
             :from      => @uuid,
             :source    => self.class.to_s,
             :hostname  => Socket.gethostname,
-            :ipv4      => IPSocket.getaddress(Socket.gethostname),
+            :ipv4      => (IPSocket.getaddress(Socket.gethostname) rescue "127.0.0.1"),
             :timestamp => ::Hastur::Util.timestamp
           }
 
