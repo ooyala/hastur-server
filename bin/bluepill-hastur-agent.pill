@@ -1,8 +1,11 @@
 # hastur-agent bluepill
 require 'hastur-server/ooyala_config'
 require 'fileutils'
+require 'uuid'
 
 NO_PRIVILEGE = Process.uid != 0
+UUID_FILE = "/etc/uuid" # Default location of the system's UUID
+HOME_UUID_FILE = "#{ENV['HOME']}/.hastur/uuid" # Alternate UUID location
 
 # Other sites should replace this with their own list, either by
 # creating a custom Hastur::MyConfig or just by setting ROUTERS
@@ -10,8 +13,8 @@ NO_PRIVILEGE = Process.uid != 0
 ROUTERS = Hastur::OoyalaConfig.get_routers
 
 if NO_PRIVILEGE
-  # If you're not root and running --no-privileged, put pids in /tmp/hastur
-  RUNDIR="/tmp/hastur"
+  # If you're not root and running --no-privileged, put pids in your home dir
+  RUNDIR="#{ENV['HOME']}/.hastur"
 elsif File.directory? "/run"
   # modern Linux boxes use /run
   RUNDIR="/run/hastur"
@@ -23,6 +26,25 @@ FileUtils.chown 'role-hastur', 'role-hastur', RUNDIR unless NO_PRIVILEGE
 
 hastur_dir = NO_PRIVILEGE ? File.expand_path(".") : "/opt/hastur"
 
+uuid = nil
+if File.readable?(UUID_FILE) and File.size(UUID_FILE) == 37
+  uuid = File.read(UUID_FILE).chomp
+elsif File.readable?(HOME_UUID_FILE) and File.size(HOME_UUID_FILE) == 37
+  uuid = File.read(HOME_UUID_FILE).chomp
+else
+  uuid = UUID.new.generate
+  if File.writable?(UUID_FILE) or File.writable?(File.dirname(UUID_FILE))
+    File.open(UUID_FILE, "w") { |file| file.puts uuid }
+  elsif File.writable?(HOME_UUID_FILE) or File.writable?(File.dirname(HOME_UUID_FILE))
+    File.open(HOME_UUID_FILE, "w") { |file| file.puts uuid }
+  end
+end
+
+
+if !uuid || uuid.empty?
+  raise "Can't find a UUID specification!  Add ~/.hastur/uuid or /etc/uuid!"
+end
+
 # If we don't specify a log file, we get syslog logging to LOCAL6 by default.
 Bluepill.application("hastur_agent") do |app|
   app.process("hastur_agent") do |process|
@@ -30,7 +52,8 @@ Bluepill.application("hastur_agent") do |app|
       "PATH" => "#{hastur_dir}/bin:/opt/local/bin:/usr/local/bin:/usr/local/sbin:/bin:/usr/bin:/sbin:/usr/sbin",
       "LD_LIBRARY_PATH" => "/opt/hastur/lib",
     }
-    process.start_command = "#{hastur_dir}/bin/hastur-agent.rb #{ROUTERS.map { |r| "--router #{r}" }.join(' ')}"
+    process.start_command = "#{hastur_dir}/bin/hastur-agent.rb --uuid #{uuid} " +
+      ROUTERS.map { |r| "--router #{r}" }.join(' ')
     process.stop_signals = [:quit, 15.seconds, :term, 5.seconds, :kill]
     process.working_dir = "/"
     process.pid_file = "#{RUNDIR}/hastur-agent.pid"
