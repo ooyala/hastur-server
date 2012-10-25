@@ -22,7 +22,7 @@ Hastur.no_background_thread!
 module Hastur
   module Service
     class Agent
-      attr_reader :uuid, :routers, :port, :heartbeat, :ack_interval, :noop_interval
+      attr_reader :uuid, :routers, :port, :heartbeat, :ack_interval, :noop_interval, :ohai_info
 
       #
       # Create a new Hastur Agent. This is the guts of the hastur-agent daemon, sans process setup, etc.
@@ -32,6 +32,8 @@ module Hastur
       # @option [String] :unix optional, a unix-domain socket.  If present, don't open regular socket
       # @option [Fixnum] :port default 8125 UDP port to listen on localhost
       # @option [Fixnum] :heartbeat default 30 seconds between heartbeats
+      # @option [Fixnum] :ohai_info default 3600 seconds between sending ohai_info
+      # @option [Fixnum] :agent_reg default 3600 seconds between sending agent registration
       # @option [Fixnum] :ack_interval default 30 seconds before resending unacked messages
       # @option [Fixnum] :noop_interval default 30 seconds between noop broadcasts
       # @option [Fixnum] :stats_interval default 300 send agent stats every n seconds
@@ -49,6 +51,8 @@ module Hastur
 
         opts[:port]           ||= 8125
         opts[:heartbeat]      ||= 60
+        opts[:ohai_info]      ||= 3600
+        opts[:agent_reg]      ||= 3600
         opts[:ack_interval]   ||= 30
         opts[:noop_interval]  ||= 30
         opts[:stats_interval] ||= 300
@@ -58,6 +62,12 @@ module Hastur
 
         raise ArgumentError.new ":heartbeat must be a number" unless opts[:heartbeat].kind_of? Numeric
         raise ArgumentError.new ":heartbeat must be between 1.0 and 300.0" unless opts[:heartbeat].between? 1, 300
+
+        raise ArgumentError.new ":ohai_info must be a number" unless opts[:ohai_info].kind_of? Numeric
+        raise ArgumentError.new ":ohai_info must be between 1.0 and 86400.0" unless opts[:ohai_info].between? 1, 86400
+
+        raise ArgumentError.new ":agent_reg must be a number" unless opts[:agent_reg].kind_of? Numeric
+        raise ArgumentError.new ":agent_reg must be between 1.0 and 86400.0" unless opts[:agent_reg].between? 1, 86400
 
         @acks              = {}
         @logger            = opts[:logger] || Termite::Logger.new
@@ -69,14 +79,17 @@ module Hastur
         @routers           = opts[:routers]
         @port              = opts[:port]
         @unix              = opts[:unix] # can use a unix socket for testing, should never see production
-        @heartbeat         = opts[:heartbeat] * 1_000_000 # microseconds
+        @heartbeat         = opts[:heartbeat]
+        @ohai_info         = opts[:ohai_info]
+        @agent_reg         = opts[:agent_reg]
         @stats_interval    = opts[:stats_interval]
         @no_agent_stats    = opts[:no_agent_stats]
-        @last_heartbeat    = Hastur::Util.timestamp - @heartbeat
+
+        @last_heartbeat    = Time.now - opts[:heartbeat]
         @last_ack_check    = Time.now - @ack_interval
         @last_noop_blast   = Time.now - @noop_interval
-        @last_agent_reg    = Time.now - 86400 # no delay
-        @last_ohai_info    = Time.now - 86340 # 60 second delay
+        @last_agent_reg    = Time.now - opts[:agent_reg] # no delay
+        @last_ohai_info    = Time.now - opts[:ohai_info] + 60  # 60 second delay
         @last_stat_flush   = Time.now
 
         @counters = {
@@ -241,14 +254,19 @@ module Hastur
       # Registers an agent with Hastur.
       #
       def poll_registration_timeout
-        # re-register the agent once a day
-        if Time.now - @last_agent_reg > 86400
+        now = Time.now
+        delta = now - @last_agent_reg
+
+        if delta > @agent_reg
+          @logger.debug "Sending agent registration"
+
           reg_info = {
             :from      => @uuid,
             :source    => self.class.to_s,
             :hostname  => Socket.gethostname,
             :ipv4      => (IPSocket.getaddress(Socket.gethostname) rescue "127.0.0.1"),
-            :timestamp => ::Hastur::Util.timestamp
+            :timestamp => ::Hastur::Util.timestamp,
+            :labels => Hastur.send(:default_labels).merge(:period => @agent_reg)
           }
 
           begin
@@ -273,7 +291,7 @@ module Hastur
           msg = Hastur::Message::Reg::Agent.new :from => @uuid, :data => reg_info
           _send(msg)
 
-          @last_agent_reg = Time.now
+          @last_agent_reg = now
         end
       end
 
@@ -281,22 +299,27 @@ module Hastur
       # Sends Ohai info to Hastur.
       #
       def poll_ohai_info_timeout
-        if Time.now - @last_ohai_info > 86400
+        now = Time.now
+        delta = now - @last_ohai_info
+
+        if delta > @ohai_info
           begin
+            @logger.debug "Sending OHAI info"
+
             ohai = Ohai::System.new
             ohai.all_plugins
             # Hastur requires all bodies to have timestamps, and we like them to have UUID's and labels
             info = ohai.data.merge({
               "uuid" => @uuid,
               "timestamp" => Hastur.timestamp,
-              "labels" => Hastur.send(:default_labels),
+              "labels" => Hastur.send(:default_labels).merge(:period => @ohai_info),
             })
             msg = Hastur::Message::Info::Ohai.new :from => @uuid, :data => info
             _send(msg)
           rescue Exception => e
             @logger.info "ohai failed: #{e}"
           end
-          @last_ohai_info = Time.now
+          @last_ohai_info = now
         end
       end
 
@@ -304,7 +327,7 @@ module Hastur
       # Check to see if it's time to send a heartbeat.
       #
       def poll_heartbeat_timeout
-        now = Hastur::Util.timestamp
+        now = Time.now
         delta = now - @last_heartbeat
 
         # perform heartbeat check
@@ -316,7 +339,7 @@ module Hastur
             :data => {
               :name           => "hastur.agent.heartbeat",
               :value          => delta,
-              :timestamp      => now,
+              :timestamp      => Hastur.timestamp,
               :labels         => {
                 :version => Hastur::SERVER_VERSION,
                 :period  => @heartbeat,
