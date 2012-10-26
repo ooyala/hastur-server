@@ -68,11 +68,18 @@ end
 
 router_thread = Termite::Thread.new logger do
   router.run
+  abort "router thread crashed!"
+  unless router.clean_exit?
+    abort "router thread crashed!"
+  end
 end
 
 unless opts[:no_sink]
   sink_thread = Termite::Thread.new logger do
     sink.run
+    unless sink.clean_exit?
+      abort "sink thread crashed!"
+    end
   end
 end
 

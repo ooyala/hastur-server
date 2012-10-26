@@ -46,6 +46,7 @@ module Hastur
         @ack_socket  = Hastur::Util.connect_socket @ctx, ZMQ::PUSH, @ack_uri,  sopt
 
         @running = false
+        @clean_exit = true
       end
 
       #
@@ -62,6 +63,8 @@ module Hastur
       #
       def run
         @running = true
+        @clean_exit = false
+
         while @running do
           begin
             message = Hastur::Message.recv(@data_socket)
@@ -75,6 +78,16 @@ module Hastur
             @logger.error e.to_s, { :message => e.message, :backtrace => e.backtrace }
           end
         end
+
+        @clean_exit = true
+      end
+
+      #
+      # Returns true/false depending on whether the run loop was exited cleanly.
+      # @return [Boolean] true on clean shutdown, false if exceptions occurred
+      #
+      def clean_exit?
+        @clean_exit
       end
 
       def stop

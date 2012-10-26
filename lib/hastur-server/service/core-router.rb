@@ -35,16 +35,30 @@ module Hastur
         @noop_type_id = Hastur::Message.symbol_to_type_id(:noop) # cache the value
 
         @running = false
+        @clean_exit = true
       end
 
       #
       # start the poll loop
+      # @return [Boolean] true on clean shutdown, otherwise false/nil/garbage
       #
       def run
         @running = true
+        @clean_exit = false
+
         while @running
           poll
         end
+
+        @clean_exit = true
+      end
+
+      #
+      # Returns true/false depending on whether the run loop was exited cleanly.
+      # @return [Boolean] true on clean shutdown, false if exceptions occurred
+      #
+      def clean_exit?
+        @clean_exit
       end
 
       #
