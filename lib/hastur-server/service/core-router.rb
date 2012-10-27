@@ -84,7 +84,7 @@ module Hastur
       # Poll the sockets, forward data.
       #
       def poll
-        rc = @poller.poll 1
+        rc = @poller.poll 100 # milliseconds!
         @counters['poll.count'] += 1
 
         if ::ZMQ::Util.resultcode_ok? rc
