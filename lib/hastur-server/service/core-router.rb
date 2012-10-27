@@ -34,6 +34,16 @@ module Hastur
         @agents = {}
         @noop_type_id = Hastur::Message.symbol_to_type_id(:noop) # cache the value
 
+        @last_counter_dump = Time.now
+
+        @counters = {
+          'poll.count'         => 0,
+          'messages.forwarded' => 0,
+          'firehose.bytes'     => 0,
+          'messages.returned'  => 0,
+          'return.bytes'       => 0,
+        }
+
         @running = false
         @clean_exit = true
       end
@@ -75,6 +85,8 @@ module Hastur
       #
       def poll
         rc = @poller.poll 1
+        @counters['poll.count'] += 1
+
         if ::ZMQ::Util.resultcode_ok? rc
           @poller.readables.each do |r|
             if r == @router_socket
@@ -85,6 +97,17 @@ module Hastur
           end
         else
           Hastur.event "hastur.router.zmq.error", ZMQ::Util.error_string
+        end
+
+
+        # send out counters roughly every 30 seconds, more often if things are busy
+        now = Time.now
+        if now - @last_counter_dump > 30
+          @last_counter_dump = now
+          @counters.keys.each do |name|
+            Hastur.counter "hastur.router.#{name}", @counters[name]
+            @counters[name] = 0
+          end
         end
       end
 
@@ -164,16 +187,16 @@ module Hastur
             else
               # forward the message, sans the ZMQ envelope, rely on sender to close those messages
               send_to @firehose_socket, message.slice!(-2, 2)
+              @counters['messages.forwarded'] += 1
+              @counters['firehose.bytes'] += 1
             end
-
-            Hastur.counter "hastur.router.messages.forwarded", 1
-            Hastur.counter "hastur.router.firehose.bytes", message_bytes(message)
           rescue Exception => e
             record_message_exception message, e
           ensure
             # close all of the zmq messages or we might leak C memory
             message.each do |m| m.close end
           end
+
         end
       end
 
@@ -189,9 +212,8 @@ module Hastur
             agent_id = @agents[envelope.from]
             message.unshift ::ZMQ::Message.new(agent_id)
             send_to @router_socket, message
-
-            Hastur.counter "hastur.router.messages.returned", 1
-            Hastur.counter "hastur.router.return.bytes", message_bytes(message)
+            @counters['messages.returned'] += 1
+            @counters['return.bytes'] += 1
           end
         rescue
           record_message_exception message, e
