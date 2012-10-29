@@ -8,6 +8,7 @@ require 'trollop'
 require 'socket'
 require 'termite'
 
+require "hastur/api"
 require "hastur-server/util"
 require "hastur-server/service/agent"
 
@@ -29,8 +30,9 @@ opts = Trollop::options do
   opt :no_proc_stats, "disable sending of process stats, mostly for tests"
 end
 
+# start the hastur background thread unless it was disabled on the command line
 unless opts[:no_proc_stats]
-  require "hastur"
+  Hastur.start
 end
 
 unless opts[:router].all? { |uri| Hastur::Util.valid_zmq_uri? uri }
