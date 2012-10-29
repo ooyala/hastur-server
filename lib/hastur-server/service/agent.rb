@@ -384,7 +384,10 @@ module Hastur
       # Run the main loop.
       #
       def run
-        @router_socket = Hastur::Util.connect_socket @ctx, ZMQ::DEALER, @routers, :linger => 1, :hwm => 10_000
+        # wait 1s after close/shutdown to send up to 10,000 pending messages
+        # wait 1s between attempts to reconnect to a hastur router - there are always >= 2 of them
+        sockopts = { :linger => 1_000, :hwm => 10_000, :reconnect_ivl => 1_000 }
+        @router_socket = Hastur::Util.connect_socket @ctx, ZMQ::DEALER, @routers, sockopts
         @poller.register_readable @router_socket
 
         set_up_local_ports
