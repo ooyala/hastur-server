@@ -393,7 +393,6 @@ module Hastur
 
         set_up_local_ports
 
-        Hastur.start
         @running = true
 
         last_system_stat_time = Time.now
