@@ -78,7 +78,7 @@ module Hastur
     # @param [String] json_string to be parsed & data used for the insert
     # @param [Hash] schema The schema hash for this message type
     # @param [Hash{Symbol=>Fixnum,String}] options
-    # @option options [Fixnum] :ttl, passed to the cassandra client
+    # @option options [Fixnum] :ttl, in seconds, passed to the cassandra client
     # @option options [Fixnum] :consistency, passed to the cassandra client
     # @option options [String] :uuid 36-byte agent UUID
     #
@@ -103,7 +103,8 @@ module Hastur
       key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec, schema[:granularity] || ONE_DAY)
       one_day_ts = time_segment_for_timestamp(timestamp_usec, ONE_DAY)
 
-      insert_options = { :consistency => options[:consistency] || DEFAULT_WRITE_CONSISTENCY }
+      insert_options = { :consistency => options[:consistency] || DEFAULT_WRITE_CONSISTENCY,
+        :ttl => options[:ttl] || nil }
       now_ts = ::Hastur::Util.timestamp.to_s
 
       cass_client.batch do |client|
