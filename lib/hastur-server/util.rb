@@ -146,6 +146,10 @@ module Hastur
         ok = ZMQ::Util.resultcode_ok?(rc)
         hastur_logger.error "Error setting ZMQ::LINGER: #{zmq_error}" unless ok
 
+        rc = sock.setsockopt(::ZMQ::RECONNECT_IVL, opts[:reconnect_ivl] || 100)
+        ok = ZMQ::Util.resultcode_ok?(rc)
+        hastur_logger.error "Error setting ZMQ::RECONNECT_IVL: #{zmq_error}" unless ok
+
         if ZMQ::LibZMQ.version2?
           rc = sock.setsockopt(::ZMQ::HWM, opts[:hwm]) if opts[:hwm]
         elsif ZMQ::LibZMQ.version3?
@@ -341,8 +345,8 @@ module Hastur
       # they enable is what we usually expect.  For now, have all
       # sockets use the same options.  Set socket options *before*
       # bind or connect.
-      opts[:linger] = 1 unless opts.has_key?(:linger)
-      opts[:hwm]    = 1 unless opts.has_key?(:hwm)
+      opts[:linger] = 1_000 unless opts.has_key?(:linger)
+      opts[:hwm]    = 1     unless opts.has_key?(:hwm)
 
       setsockopts(socket, opts)
 
