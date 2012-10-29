@@ -381,7 +381,8 @@ module Hastur
       end
 
       #
-      # Run the main loop.
+      # Run the main loop. To clean up, e.g. for a restart, shutdown() must be called
+      # to tear down UDP & ZeroMQ sockets.
       #
       def run
         # wait 1s after close/shutdown to send up to 10,000 pending messages
@@ -407,7 +408,7 @@ module Hastur
           poll_zmq rescue nil # Temp: 2012-05-02, should properly detect & log bad messages
           send_agent_stats unless @no_agent_stats
 
-          if select([@udp_socket], [], [], 0.25)
+          if @running and select([@udp_socket], [], [], 0.25)
             poll_udp
           end
 
@@ -427,16 +428,31 @@ module Hastur
 
         msg = Hastur::Message::Log.new :from => @uuid, :payload => "Hastur Agent #{@uuid} exiting."
         _send(msg)
-
-        @router_socket.close
       end
 
       #
-      # Sets a variable so run()'s loop will exit on its next iteration.
+      # Set the run flag to false and let the run loop exit gracefully.
       #
-      def shutdown
+      def stop
         @logger.info "Hastur agent shutting down normally."
         @running = false
+      end
+
+      #
+      # Set the run flag to false and shut down all the sockets. This can cause
+      # (mostly) harmless exceptions if it's called in the middle of the run loop
+      # and therefore should not be called for normal exit.
+      # @see :stop
+      #
+      def shutdown
+        if @running == false
+          @logger.info "Hastur agent sockets shutting down gracefully."
+        else
+          @logger.warn "Hastur agent sockets shutting down **forcefully**."
+          # make sure the run loop exits, there will be exceptions
+          @running = false
+        end
+
         @router_socket.close
         @udp_socket.close
         @ctx.terminate

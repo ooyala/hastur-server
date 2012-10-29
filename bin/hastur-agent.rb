@@ -57,7 +57,7 @@ end
 
 %w(INT TERM KILL).each do | sig |
   Signal.trap(sig) do
-    agent.shutdown
+    agent.stop
     Signal.trap(sig, "DEFAULT")
   end
 end
@@ -65,6 +65,7 @@ end
 opts[:logger].debug "calling run ..."
 
 agent.run
+agent.shutdown
 
 opts[:logger].debug "run exited ..."
 
