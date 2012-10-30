@@ -1,5 +1,6 @@
 require "multi_json"
 require "termite"
+require "hastur/api"
 require "hastur-server/time_util"
 
 # A collection of useful functions, including for the ffi-rzmq gem.
@@ -13,6 +14,23 @@ module Hastur
     #
     def hastur_logger
       @__hastur_internal_logger ||= ::Termite::Logger.new(:component => "Hastur")
+    end
+
+    #
+    # Log an exception to the logger and to hastur consistently.
+    #
+    # @param [Exception] e exception object
+    # @param [Logger] logger object
+    #
+    def log_exception(e, logger, extra=nil)
+      error = {
+        :class     => e.class.to_s,
+        :message   => "#{extra}#{extra.nil? ? '' : ' - '}#{e.inspect}",
+        :backtrace => e.backtrace
+      }
+
+      Hastur.log e.inspect, error
+      logger.error error.to_s, error
     end
 
     #
