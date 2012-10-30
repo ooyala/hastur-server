@@ -30,11 +30,6 @@ opts = Trollop::options do
   opt :no_proc_stats, "disable sending of process stats, mostly for tests"
 end
 
-# start the hastur background thread unless it was disabled on the command line
-unless opts[:no_proc_stats]
-  Hastur.start
-end
-
 unless opts[:router].all? { |uri| Hastur::Util.valid_zmq_uri? uri }
   Trollop::die :router, "must be in this format: protocol://hostname:port"
 end
@@ -64,6 +59,7 @@ end
 
 opts[:logger].debug "calling run ..."
 
+agent.setup
 agent.run
 agent.shutdown
 
