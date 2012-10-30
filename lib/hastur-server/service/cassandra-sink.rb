@@ -39,7 +39,7 @@ module Hastur
         @socktype = opts[:socktype] || ZMQ::PULL
         @logger = opts[:logger] || Termite::Logger.new
 
-        @sockopts = { :hwm => opts[:hwm] || 1, :linger => opts[:linger] || 10 }
+        @sockopts = { :hwm => opts[:hwm] || 1, :linger => opts[:linger] || 1_000 }
 
         [:data_uri, :ack_uri, :keyspace, :cassandra].each do |p|
           raise "Named parameter :#{p} is required." unless opts[p]
