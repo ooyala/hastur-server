@@ -1,3 +1,4 @@
+require 'socket'
 require 'resolv'
 require 'httparty'
 
@@ -21,14 +22,20 @@ module Hastur
     # @return [Array<String>] list of ZeroMQ URIs
     #
     def get_routers
-      # check for ec2 / find what region it's in
-      rr_name = begin
-        req = HTTParty.get 'http://169.254.169.254/latest/meta-data/placement/availability-zone', :timeout => 5
-        if req.code == 200 and /\A(?<region>\w+-\w+-\d+)[a-z]+\Z/ =~ req.body
-          "hastur-core.#{region}.ooyala.com"
+      hostname = Socket.gethostname
+
+      if hostname =~ /\.(?:sv2|mtv)\Z/
+        rr_name = "hastur-core.sv2"
+      else
+        # check for ec2 / find what region it's in
+        rr_name = begin
+          req = HTTParty.get 'http://169.254.169.254/latest/meta-data/placement/availability-zone', :timeout => 5
+          if req.code == 200 and /\A(?<region>\w+-\w+-\d+)[a-z]+\Z/ =~ req.body
+            "hastur-core.#{region}.ooyala.com"
+          end
+        rescue
+          "hastur-core.us-east-1.ooyala.com"
         end
-      rescue
-        "hastur-core.us-east-1.ooyala.com"
       end
 
       # look up the round-robin record to get all the router addresses
