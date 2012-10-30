@@ -28,26 +28,28 @@ module Hastur
       # @return [String] JSON-encoded data
       #
       def encode(data)
+        out = { :error => :unset, :class => data.class.to_s, :data => data }
+
         case data
           when Hastur::Message::Base
-            error = :message
-            data = data.to_hash
+            out[:error] = :message
+            out[:data] = data.to_hash
           when Exception
-            error = :exception
-            data = data.inspect
+            out[:error] = :exception
+            out[:data] = data.inspect
+            out[:backtrace] = data.backtrace rescue []
           when Hash
-            error = data.has_key?(:error) ? data.delete(:error) : :structured
+            out[:error] = data.has_key?(:error) ? data.delete(:error) : :structured
           when Array
-            error = :structured
+            out[:error] = :structured
           when String
-            error = :raw
-            data = data
+            out[:error] = :raw
           else
-            error = :undefined
-            data = data.inspect
+            out[:error] = :undefined
+            out[:data] = data.inspect
         end
 
-        @payload = MultiJson.dump({:error => error, :data  => data})
+        @payload = MultiJson.dump(out)
       end
     end
   end

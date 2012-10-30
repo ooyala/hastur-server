@@ -1,6 +1,6 @@
 {
   "application": "hastur-core",
   "logging": {
-    "console_print":"off"
+    "console_print":"on"
   }
 }

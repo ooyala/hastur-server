@@ -41,7 +41,6 @@ module Hastur
         }
 
         @running = false
-        @clean_exit = true
       end
 
       def setup
@@ -58,25 +57,19 @@ module Hastur
 
       #
       # start the poll loop
-      # @return [Boolean] true on clean shutdown, otherwise false/nil/garbage
       #
       def run
         @running = true
-        @clean_exit = false
-
         while @running
           poll
         end
-
-        @clean_exit = true
       end
 
       #
-      # Returns true/false depending on whether the run loop was exited cleanly.
-      # @return [Boolean] true on clean shutdown, false if exceptions occurred
+      # Return true/false of the run flag.
       #
-      def clean_exit?
-        @clean_exit
+      def running?
+        @running
       end
 
       #

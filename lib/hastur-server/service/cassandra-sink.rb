@@ -9,6 +9,11 @@ module Hastur
     class CassandraSink
       attr_reader :data_uri, :ack_uri
 
+      # retry up to 60 times with 1 second sleeps, so we wait a whole minute before
+      # discarding a message due to a cassandra node/cluster going down
+      RECONNECT_ATTEMPTS = 60
+      RECONNECT_SLEEP = 1.0
+
       #
       # @param [Hash{Symbol => Object}] opts
       # @option [ZMQ::Context] :ctx
@@ -34,19 +39,50 @@ module Hastur
         @socktype = opts[:socktype] || ZMQ::PULL
         @logger = opts[:logger] || Termite::Logger.new
 
-        sopt = { :hwm => opts[:hwm] || 1, :linger => opts[:linger] || 10 }
+        @sockopts = { :hwm => opts[:hwm] || 1, :linger => opts[:linger] || 10 }
 
         [:data_uri, :ack_uri, :keyspace, :cassandra].each do |p|
           raise "Named parameter :#{p} is required." unless opts[p]
         end
 
-        @client = ::Cassandra.new(opts[:keyspace], opts[:cassandra].flatten)
-
-        @data_socket = Hastur::Util.connect_socket @ctx, @socktype, @data_uri, sopt
-        @ack_socket  = Hastur::Util.connect_socket @ctx, ZMQ::PUSH, @ack_uri,  sopt
+        @keyspace = opts[:keyspace]
+        @cassandra_servers = opts[:cassandra].flatten
 
         @running = false
-        @clean_exit = true
+      end
+
+      #
+      # Connect to the Cassandra cluster, implementing manual server rotation.
+      #
+      # While we've been using them all along, in manual testing, arrays of servers
+      # doesn't seem to work with thrift_client, so here's a quick & dirty workaround.
+      # TODO: move this to a helper
+      # TODO: Get away from thrift_client
+      #
+      def connect_to_cassandra
+        if @client
+          @client.disconnect! rescue nil
+        end
+        @client = nil
+
+        @cassandra_servers.each do |server|
+          begin
+            c = ::Cassandra.new @keyspace, server
+            ring = c.ring
+            @client = c
+            break
+          rescue ThriftClient::NoServersAvailable
+            @logger.warn "Cassandra server #{server} seems to be unavailable."
+          end
+        end
+
+        if @client
+          @logger.info "Connected to Cassandra: #{@client.inspect}"
+        else
+          raise "Could not connect to any server in server list: #@cassandra_servers"
+        end
+
+        @client
       end
 
       #
@@ -59,41 +95,101 @@ module Hastur
       end
 
       #
-      # Enter the read/write loop.
+      # Connect to Cassandra and ZeroMQ sockets, register poller.
+      #
+      def setup
+        connect_to_cassandra
+
+        @data_socket = Hastur::Util.connect_socket @ctx, @socktype, @data_uri, @sockopts
+        @ack_socket  = Hastur::Util.connect_socket @ctx, ZMQ::PUSH, @ack_uri,  @sockopts
+
+        @poller = ZMQ::Poller.new
+        @poller.register_readable @data_socket
+      end
+
+      #
+      # Enter the read/write loop reading from ZMQ, writing to Cassandra. Retries cassandra
+      # connections manually if it fails, since the gem doesn't seem to work as expected.
+      # @return [Boolean] final value of the run flag
       #
       def run
         @running = true
-        @clean_exit = false
 
         while @running do
           begin
-            message = Hastur::Message.recv(@data_socket)
+            # the .recv method should probably just go away since it hides the error handling
+            # that would make these next two lines a lot cleaner and easier to verify (al, 2012-10-29)
+            message = Hastur::Message.recv(@data_socket, ZMQ::NonBlocking)
+            unless message.respond_to? :envelope
+              sleep 0.1
+              next
+            end
+
             envelope = message.envelope
             uuid = message.envelope.from
-            Hastur::Cassandra.insert(@client, message.payload, envelope.type_symbol.to_s, :uuid => uuid)
-            envelope.to_ack.send(@ack_socket) if envelope.ack?
           rescue Hastur::ZMQError => e
             @logger.error "Error reading from ZeroMQ socket.", { :exception => e, :backtrace => e.backtrace }
-          rescue Exception => e
-            @logger.error e.to_s, { :message => e.message, :backtrace => e.backtrace }
+          end
+
+          # manual retry/reconnect - the gem doesn't seem to do anything sane
+          # TODO: move this logic to some kind of helper
+          # we really should move this to either jruby+astyanax or maybe EM since thrift_client seems
+          # to be the problem most of the time (al, 2012-10-29)
+          try = 0
+          done = false
+          while @running and not done and try <= RECONNECT_ATTEMPTS
+            begin
+              Hastur::Cassandra.insert(@client, message.payload, envelope.type_symbol.to_s, :uuid => uuid)
+              envelope.to_ack.send(@ack_socket) if envelope.ack?
+              done = true
+            # this exception gets used gratuitously in the cassandra/thrift_client gems, but is
+            # definitely the right one to use for reconnection to the cluster
+            rescue ThriftClient::NoServersAvailable => e
+              Hastur::Util.log_exception e, @logger, "Reconnect attempt: #{try}/#{RECONNECT_ATTEMPTS}"
+
+              if try < RECONNECT_ATTEMPTS
+                try += 1
+                sleep RECONNECT_SLEEP
+                connect_to_cassandra rescue nil
+              else
+                @running = false
+                @logger.warn "Dropped message after #{try} retries: #{message}"
+                raise e
+              end
+            # all other exceptions must be logged and allowed to percolate so the daemon can die
+            # and be restarted by the supervisor
+            rescue Exception => e
+              @logger.warn "unhandled exception! Dropped message: #{message}"
+              Hastur::Util.log_exception e, @logger
+              raise e
+            end
           end
         end
 
-        @clean_exit = true
+        @running
       end
 
       #
-      # Returns true/false depending on whether the run loop was exited cleanly.
-      # @return [Boolean] true on clean shutdown, false if exceptions occurred
+      # Return true/false of the run flag.
       #
-      def clean_exit?
-        @clean_exit
+      def running?
+        @running
       end
 
+      #
+      # Set the run flag to false and let the loop exit gracefully.
+      #
       def stop
         @running = false
+      end
+
+      #
+      # Close ZeroMQ and Cassandra sockets.
+      #
+      def shutdown
         @data_socket.close
         @ack_socket.close
+        @client.disconnect! rescue nil
       end
     end
   end
