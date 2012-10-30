@@ -77,7 +77,7 @@ unless opts[:no_sink]
 
   # wait for the sink to come up before proceding to start the router
   # if they come up out of order, there's a higher chance of message loss
-  1.upto(SINK_TIMEOUT_SECONDS * 100) do |try|
+  1.upto(SINK_TIMEOUT_SECONDS * 10) do |try|
     sleep 0.1
     if sink.running?
       logger.info "Sink up and running."
