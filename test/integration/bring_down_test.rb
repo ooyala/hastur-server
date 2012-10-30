@@ -76,7 +76,7 @@ public
         '--heartbeat',    300,
         '--port',         @agent_udp_port1,
         '--no-agent-stats',
-        '--no-proc-stats',
+        '--no-system-stats',
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
       :agent2svc    => Nodule::Process.new(
@@ -87,7 +87,7 @@ public
         '--heartbeat',    300,
         '--port',         @agent_udp_port2,
         '--no-agent-stats',
-        '--no-proc-stats',
+        '--no-system-stats',
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
     )

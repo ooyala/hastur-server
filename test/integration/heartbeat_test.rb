@@ -23,14 +23,14 @@ class HeartbeatTest < MiniTest::Unit::TestCase
       :agent1svc   => Nodule::Process.new(
         HASTUR_AGENT_BIN, '--uuid', A1UUID, '--heartbeat', 1, '--router', :core_router, '--unix', :agent1unix,
         '--port', HASTUR_UDP_PORT,
-        '--no-agent-stats', '--no-proc-stats',
+        '--no-agent-stats', '--no-system-stats',
         :stdout => :greenio, :stderr => :redio, :verbose => :cyanio,
       ),
 
       :agent2svc => Nodule::Process.new(
         HASTUR_AGENT_BIN, '--uuid', A2UUID, '--heartbeat', 1, '--router', :core_router, '--unix', :agent2unix,
         '--port', Nodule::Util.random_udp_port,
-        '--no-agent-stats', '--no-proc-stats',
+        '--no-agent-stats', '--no-system-stats',
         :stdout => :greenio, :stderr => :redio, :verbose => :yellowio,
       ),
 

@@ -27,7 +27,7 @@ opts = Trollop::options do
   opt :pidfile,     "Location of pidfile", :type => String
   opt :debug,       "Enable debug logging", :default => false
   opt :no_agent_stats, "disable sending of agent stats, mostly for tests"
-  opt :no_proc_stats, "disable sending of process stats, mostly for tests"
+  opt :no_system_stats, "disable sending of process stats, mostly for tests"
 end
 
 unless opts[:router].all? { |uri| Hastur::Util.valid_zmq_uri? uri }
