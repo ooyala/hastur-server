@@ -158,7 +158,7 @@ module Hastur
       # returns the payload as-is
       #
       def to_s
-        payload
+        @payload
       end
 
       #
