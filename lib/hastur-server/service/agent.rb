@@ -309,7 +309,6 @@ module Hastur
       # Sends Ohai info to Hastur.
       #
       def poll_ohai_info_timeout(now)
-        now = Time.now
         delta = now - @last_ohai_info
 
         if delta > @ohai_info
