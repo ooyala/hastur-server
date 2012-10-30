@@ -67,8 +67,10 @@ if opts[:pidfile]
 end
 
 router_thread = Termite::Thread.new logger do
+  router.setup
   router.run
-  abort "router thread crashed!"
+  router.shutdown
+
   unless router.clean_exit?
     abort "router thread crashed!"
   end

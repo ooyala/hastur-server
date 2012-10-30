@@ -6,6 +6,8 @@ require "hastur-server/router"
 module Hastur
   module Service
     class CoreRouter
+      attr_reader :router_uri, :firehose_uri, :return_uri
+
       #
       # Create a new core router.
       # @param [String] uuid the core router's UUID (36 byte hyphenated string)
@@ -20,19 +22,13 @@ module Hastur
         @ctx = opts[:ctx] || ZMQ::Context.new
         @logger = opts[:logger] || Termite::Logger.new
 
-        sopt = { :hwm => 1_000, :linger => 10 }
-
-        @router_socket   = Hastur::Util.bind_socket @ctx, ZMQ::ROUTER, opts[:router_uri],   sopt
-        @firehose_socket = Hastur::Util.bind_socket @ctx, ZMQ::PUB,    opts[:firehose_uri], sopt
-        @return_socket   = Hastur::Util.bind_socket @ctx, ZMQ::PULL,   opts[:return_uri],   sopt
-
-        @poller = ZMQ::Poller.new
-        @poller.register_readable @router_socket
-        @poller.register_readable @return_socket
-
         # agent UUID to ZMQ envelope ID mapping cache
         @agents = {}
         @noop_type_id = Hastur::Message.symbol_to_type_id(:noop) # cache the value
+
+        @router_uri   = opts[:router_uri]
+        @firehose_uri = opts[:firehose_uri]
+        @return_uri   = opts[:return_uri]
 
         @last_counter_dump = Time.now
 
@@ -46,6 +42,18 @@ module Hastur
 
         @running = false
         @clean_exit = true
+      end
+
+      def setup
+        # buffer up to 10_000 messages, wait up to 10 seconds on shutdown for them to flush to the sink
+        sopt = { :hwm => 1_000, :linger => 10_000 }
+        @router_socket   = Hastur::Util.bind_socket @ctx, ZMQ::ROUTER, @router_uri,   sopt
+        @firehose_socket = Hastur::Util.bind_socket @ctx, ZMQ::PUB,    @firehose_uri, sopt
+        @return_socket   = Hastur::Util.bind_socket @ctx, ZMQ::PULL,   @return_uri,   sopt
+
+        @poller = ZMQ::Poller.new
+        @poller.register_readable @router_socket
+        @poller.register_readable @return_socket
       end
 
       #
@@ -76,6 +84,16 @@ module Hastur
       #
       def stop
         @running = false
+      end
+
+      def shutdown
+        @router_socket.close
+        @return_socket.close
+
+        # router flushes to firehose, so give it a little time to do work since
+        # closing pub/sub sockets will destroy pending messages
+        sleep 1.0
+        @firehose_socket.close
       end
 
       private
