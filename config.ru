@@ -12,6 +12,8 @@ if File.exists? HASTUR_CASSANDRA_LIST
     line.gsub(/\s+#.*$/, '')
     cassandra_servers << line unless line.empty?
   end
+elsif ENV['HASTUR_CASSANDRA_LIST']
+  cassandra_servers = ENV['HASTUR_CASSANDRA_LIST'].split(':').map(&:strip)
 else
   cassandra_servers = [ '127.0.0.1:9160' ]
 end
