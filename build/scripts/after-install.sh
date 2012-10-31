@@ -11,7 +11,9 @@ initscript=$(find /opt/hastur -type f -name hastur-bluepill.init | head -n 1)
 if [ -n "$initscript" ] ; then
   ln -nfs $initscript /etc/init.d/hastur-agent.init
   update-rc.d hastur-agent.init defaults
-  /etc/init.d/hastur-agent.init restart
+  /etc/init.d/hastur-agent.init stop
+  /etc/init.d/hastur-agent.init quit
+  /etc/init.d/hastur-agent.init start
 else
   echo "Could not find hastur-bluepill.init. Please notify team-tna@ooyala.com."
   exit 1
