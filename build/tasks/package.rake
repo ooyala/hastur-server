@@ -46,7 +46,7 @@ namespace :hastur do
   PACKAGES = [ :zlib, :openssl, :yaml, :libffi, :ruby, :zeromq ]
   VERSIONS = {
     :zlib    => "http://zlib.net/zlib-1.2.6.tar.gz",
-    :openssl => "http://www.openssl.org/source/openssl-1.0.1a.tar.gz",
+    :openssl => "http://www.openssl.org/source/openssl-1.0.1c.tar.gz",
     :yaml    => "http://pyyaml.org/download/libyaml/yaml-0.1.4.tar.gz",
     :libffi  => "http://mirrors.kernel.org/sources.redhat.com/libffi/libffi-3.0.11.tar.gz",
     :ruby    => "http://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.3-p194.tar.gz",
@@ -54,7 +54,7 @@ namespace :hastur do
   }
   CHECKSUMS = {
     :zlib    => "618e944d7c7cd6521551e30b32322f4a",
-    :openssl => "a0104320c0997cd33e18b8ea798609d1",
+    :openssl => "ae412727c8c15b67880aef7bd2999b2e",
     :yaml    => "36c852831d02cf90508c29852361d01b",
     :libffi  => "f69b9693227d976835b4857b1ba7d0e3",
     :ruby    => "bc0c715c69da4d1d8bd57069c19f6c0e",
