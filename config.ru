@@ -18,4 +18,4 @@ end
 
 use Hastur::Rack, "hastur.retrieval"
 
-run Rack::URLMap.new("/" => Hastur::Service::Retrieval.new(cassandra_servers))
+run Hastur::Service::Retrieval.new cassandra_servers
