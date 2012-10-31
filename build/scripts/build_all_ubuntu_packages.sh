@@ -91,6 +91,7 @@ build_hastur () {
 
   # bundle / rake are placed in the path with update-alternatives in the root setup
   # see configure_chroots.sh
+  $personality chroot $path bash -c "cd /tmp/hastur-server && rake --trace build"
   $personality chroot $path bash -c "cd /tmp/hastur-server && bundle install" # could fail, don't care
   $personality chroot $path bash -c "cd /tmp/hastur-server && rake --trace $target"
   require $personality chroot $path bash -c "cd /tmp/hastur-server && rake --trace $target"
@@ -98,11 +99,11 @@ build_hastur () {
 
 for arch in amd64 i386
 do
-  for dist in lucid precise hardy
+  for dist in precise lucid hardy
   do
     root="$ROOT_ROOT/$dist-$arch"
 
-    for pkg in agent server
+    for pkg in server agent
     do
       # only build hastur-server for precise
       if [ "$pkg" == "server" -a "$dist" != "precise" ] ; then
