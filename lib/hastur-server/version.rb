@@ -1,3 +1,3 @@
 module Hastur
-  SERVER_VERSION = "0.0.30"
+  SERVER_VERSION = "0.0.31"
 end
