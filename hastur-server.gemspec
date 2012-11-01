@@ -59,5 +59,4 @@ EOS
   s.add_runtime_dependency "sys-uname"
   s.add_runtime_dependency "hastur-rack"
   s.add_runtime_dependency "unicorn"
-  s.add_runtime_dependency "json-ruby"  # No way to do this just for JRuby :-(
 end
