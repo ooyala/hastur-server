@@ -116,57 +116,19 @@ module Hastur
         @running = true
 
         while @running do
-          begin
-            # the .recv method should probably just go away since it hides the error handling
-            # that would make these next two lines a lot cleaner and easier to verify (al, 2012-10-29)
-            message = Hastur::Message.recv(@data_socket, ZMQ::NonBlocking)
-            unless message.respond_to? :envelope
-              sleep 0.1
-              next
-            end
-
-            envelope = message.envelope
-            uuid = message.envelope.from
-          rescue Hastur::ZMQError => e
-            @logger.error "Error reading from ZeroMQ socket.", { :exception => e, :backtrace => e.backtrace }
-          end
-
-          # manual retry/reconnect - the gem doesn't seem to do anything sane
-          # TODO: move this logic to some kind of helper
-          # we really should move this to either jruby+astyanax or maybe EM since thrift_client seems
-          # to be the problem most of the time (al, 2012-10-29)
-          try = 0
-          done = false
-          while @running and not done and try <= RECONNECT_ATTEMPTS
-            begin
-              Hastur::Cassandra.insert(@client, message.payload, envelope.type_symbol.to_s, :uuid => uuid)
-              envelope.to_ack.send(@ack_socket) if envelope.ack?
-              done = true
-            # this exception gets used gratuitously in the cassandra/thrift_client gems, but is
-            # definitely the right one to use for reconnection to the cluster
-            rescue ThriftClient::NoServersAvailable => e
-              Hastur::Util.log_exception e, @logger, "Reconnect attempt: #{try}/#{RECONNECT_ATTEMPTS}"
-
-              if try < RECONNECT_ATTEMPTS
-                try += 1
-                sleep RECONNECT_SLEEP
-                connect_to_cassandra rescue nil
-              else
-                @running = false
-                @logger.warn "Dropped message after #{try} retries: #{message}"
-                raise e
-              end
-            # all other exceptions must be logged and allowed to percolate so the daemon can die
-            # and be restarted by the supervisor
-            rescue Exception => e
-              @logger.warn "unhandled exception! Dropped message: #{message}"
-              Hastur::Util.log_exception e, @logger
-              raise e
-            end
-          end
+          message = Hastur::Message.recv(@data_socket)
+          envelope = message.envelope
+          uuid = message.envelope.from
+          Hastur::Cassandra.insert(@client, message.payload, envelope.type_symbol.to_s, :uuid => uuid)
+          envelope.to_ack.send(@ack_socket) if envelope.ack?
         end
 
-        @running
+      rescue Hastur::ZMQError => e
+        @logger.error "Error reading from ZeroMQ socket.", { :exception => e, :backtrace => e.backtrace }
+      rescue Exception => e
+        @logger.warn "unhandled exception! Dropped message: #{message}"
+        Hastur::Util.log_exception e, @logger
+        raise e
       end
 
       #
