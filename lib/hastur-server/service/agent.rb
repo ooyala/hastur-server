@@ -83,6 +83,9 @@ module Hastur
         @ohai_info         = opts[:ohai_info]
         @agent_reg         = opts[:agent_reg]
         @stats_interval    = opts[:stats_interval]
+        @no_heartbeat      = opts[:no_heartbeat]
+        @no_ohai_info      = opts[:no_ohai_info]
+        @no_agent_reg      = opts[:no_agent_reg]
         @no_agent_stats    = opts[:no_agent_stats]
         @no_system_stats   = opts[:no_system_stats]
 
@@ -414,13 +417,13 @@ module Hastur
           now = Time.now
 
           poll_noop now
-          poll_registration_timeout now
-          poll_ohai_info_timeout now
-          poll_heartbeat_timeout now
+          poll_registration_timeout now unless @no_agent_reg
+          poll_ohai_info_timeout now    unless @no_ohai_info
+          poll_heartbeat_timeout now    unless @no_heartbeat
           poll_ack_timeouts now
           poll_zmq now
-          send_agent_stats(now) unless @no_agent_stats
-          send_system_stats(now) unless @no_system_stats
+          send_agent_stats(now)         unless @no_agent_stats
+          send_system_stats(now)        unless @no_system_stats
 
           if @running and select([@udp_socket], [], [], 0.25)
             poll_udp now
