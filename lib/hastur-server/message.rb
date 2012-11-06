@@ -120,6 +120,8 @@ module Hastur
       CLASS_SYMBOLS[TYPE_ID_CLASSES[type_id]]
     end
 
+    MAX_TRIES = 5
+
     #
     # receive a message from a ZeroMQ socket and return an appropriate Hastur::Message::* class,
     #
@@ -128,13 +130,28 @@ module Hastur
     # object.payload  # usually JSON
     # object.send(@socket)
     #
-    def self.recv(socket, zmq_flags=0)
+    # @param socket ZMQ::Socket The ZeroMQ socket to read messages from
+    # @param zmq_flags Fixnum ZeroMQ flags, usually 0 or ZMQ::NonBlocking
+    # @param only_test_success Boolean Only return success or failure, not the message.  Test-only.
+    # @param tries Fixnum Internal use only
+    #
+    def self.recv(socket, zmq_flags=0, only_test_success = false, tries = 0)
       raise ArgumentError.new "First argument must be a ZMQ::Socket." unless socket.kind_of? ZMQ::Socket
       messages = []
       rc = socket.recvmsgs messages, zmq_flags
-      return rc if zmq_flags != 0 and rc == -1
+      tries += 1
 
-      raise ZMQError.new "ZMQ recvmsgs failed: '#{ZMQ::Util.error_string}'" unless rc != -1
+      if rc == -1
+        return rc if zmq_flags != 0 && ZMQ.errno == ZMQ::EAGAIN  # NonBlocking, got EAGAIN
+        return rc if tries >= MAX_TRIES                          # EINTR (syscall interrupted) too many times
+        return recv(socket, zmq_flags, only_test_success, tries) if ZMQ.errno == ZMQ::EINTR
+
+        raise ZMQError.new "ZMQ recvmsgs failed: '#{ZMQ::Util.error_string}'"
+      end
+
+      # This flag is basically because ffi-zeromq uses a really hard-to-test
+      # interface for its receive function.
+      return true if only_test_success
 
       payload = messages[-1].copy_out_string
       messages.pop.close
