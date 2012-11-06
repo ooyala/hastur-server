@@ -40,10 +40,12 @@ else
   end
 end
 
-
 if !uuid || uuid.empty?
   raise "Can't find a UUID specification!  Add ~/.hastur/uuid or /etc/uuid!"
 end
+
+START_CMD = "#{hastur_dir}/bin/hastur-agent.rb --uuid #{uuid} " +
+              ROUTERS.map { |r| "--router #{r}" }.join(' ')
 
 # If we don't specify a log file, we get syslog logging to LOCAL6 by default.
 Bluepill.application("hastur_agent") do |app|
@@ -52,8 +54,7 @@ Bluepill.application("hastur_agent") do |app|
       "PATH" => "#{hastur_dir}/bin:/opt/local/bin:/usr/local/bin:/usr/local/sbin:/bin:/usr/bin:/sbin:/usr/sbin",
       "LD_LIBRARY_PATH" => "/opt/hastur/lib",
     }
-    process.start_command = "#{hastur_dir}/bin/hastur-agent.rb --uuid #{uuid} " +
-      ROUTERS.map { |r| "--router #{r}" }.join(' ')
+    process.start_command = START_CMD
     process.stop_signals = [:quit, 15.seconds, :term, 5.seconds, :kill]
     process.working_dir = "/"
     process.pid_file = "#{RUNDIR}/hastur-agent.pid"
