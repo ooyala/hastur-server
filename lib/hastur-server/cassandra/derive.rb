@@ -18,9 +18,10 @@ module Hastur
     # @param end_ts
     #
     def network_names_for_uuids(cass_client, uuids, start_ts, end_ts)
+      tmp_start_ts = start_ts - USEC_ONE_DAY * 15
       cnames = Hastur::Cassandra.lookup_by_key cass_client, :cnames, start_ts, end_ts, :count => 1_000_000
-      ohais  = Hastur::Cassandra.get cass_client, uuids, "info_ohai", start_ts, end_ts, :count => 1
-      regs   = Hastur::Cassandra.get cass_client, uuids, "reg_agent", start_ts, end_ts, :count => 1
+      ohais  = Hastur::Cassandra.get cass_client, uuids, "info_ohai", tmp_start_ts, end_ts, :count => 1
+      regs   = Hastur::Cassandra.get cass_client, uuids, "reg_agent", tmp_start_ts, end_ts, :count => 1
 
       unless ohais.keys.any? or regs.keys.any?
         raise NoDataAvailableError.new "None of #{uuids} have registered recently. Try restarting the agent(s)."

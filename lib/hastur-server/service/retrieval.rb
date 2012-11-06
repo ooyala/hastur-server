@@ -219,7 +219,7 @@ module Hastur
       # @return [Hash{String => String}] hash of network names known to Hastur
       #
       get "/api/lookup/hostname/uuid" do
-        start_ts, end_ts = get_start_end :one_day
+        start_ts, end_ts = get_start_end USEC_ONE_DAY * 15
         uuids = Hastur::Cassandra.lookup_by_key cass_client, :uuid, start_ts, end_ts
         out = Hastur::Cassandra.network_names_for_uuids(cass_client, uuids.keys, start_ts, end_ts)
         serialize out, params
@@ -242,7 +242,7 @@ module Hastur
       #     :names => [ "gandalf", "gandalf.thewhite.com" ] }
       #
       get "/api/lookup/hostname/uuid/:uuid" do
-        start_ts, end_ts = get_start_end :one_day
+        start_ts, end_ts = get_start_end USEC_ONE_DAY * 15
         uuids = params[:uuid].split(",")
         out = Hastur::Cassandra.network_names_for_uuids(cass_client, uuids, start_ts, end_ts)
         serialize out, params
