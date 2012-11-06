@@ -107,8 +107,14 @@ module Hastur
           :events      => 0,
         }
 
-        # hand a block to Hastur client so it can send directly over ZMQ instead of
-        # sendto UDP -> OS -> itself -> ZMQ
+        override_hastur_sender
+
+        @logger.info "Hastur agent up and running."
+      end
+
+      # hand a block to Hastur client so it can send directly over ZMQ instead of
+      # sendto UDP -> OS -> itself -> ZMQ
+      def override_hastur_sender
         Hastur.deliver_with do |m|
           begin
             _send(hash_to_message(m))
@@ -116,8 +122,6 @@ module Hastur
             _fail(m, e)
           end
         end
-
-        @logger.info "Hastur agent up and running."
       end
 
       def _fail(message, e)
