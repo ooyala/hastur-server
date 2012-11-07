@@ -5,11 +5,21 @@ module Hastur
     # This uses JRuby-Astyanax to implement something that looks like the Cassandra gem client
     class CassandraJavaClient
       def initialize(uris)
-        @ast_client = ::Astyanax::Client.new uris, 9160, :discovery => false
-        @keyspace = @ast_client.connect("hastur")
+        @ast_client = ::Astyanax::Client.new uris, 9160
+        @keyspace = @ast_client.connect("hastur", :discovery => false)
         @java_keyspace = @keyspace.java_keyspace
         @cfs = {}
         @batch = nil
+      end
+
+      def ast_options(options)
+        merged_options = {
+          :consistency => ::Hastur::Cassandra::CONSISTENCY_QUORUM,
+          :count => 10_000,
+        }.merge(options)
+        merged_options[:consistency] = consistency_for(merged_options[:consistency])
+
+        merged_options
       end
 
       def batch(&block)
@@ -48,9 +58,7 @@ module Hastur
       def get(cf, row_key, options = {})
         ast_cf = cf_for_name(cf)
 
-        ast_options = options.dup
-        ast_options[:consistency] = consistency_for(options[:consistency])
-        @keyspace.get(cf, row_key, ast_options)
+        @keyspace.get(cf, row_key, ast_options(options))
       end
 
       # Options:
@@ -62,9 +70,7 @@ module Hastur
       def multi_get(cf, rows, options = {})
         ast_cf = cf_for_name(cf)
 
-        ast_options = options.dup
-        ast_options[:consistency] = consistency_for(options[:consistency])
-        @keyspace.multiget(cf, row_key, ast_options)
+        @keyspace.multiget(cf, row_key, ast_options(options))
       end
 
       # Options:
@@ -76,9 +82,7 @@ module Hastur
       def multi_count_columns(cf, rows, options = {})
         ast_cf = cf_for_name(cf)
 
-        ast_options = options.dup
-        ast_options[:consistency] = consistency_for(options[:consistency])
-        @keyspace.multi_count_columns(cf, row_key, ast_options)
+        @keyspace.multi_count_columns(cf, row_key, ast_options(options))
       end
 
       # Raise exception if can't connect
@@ -100,16 +104,12 @@ module Hastur
         case ruby_consistency
         when ::Hastur::Cassandra::CONSISTENCY_ONE
           ::Astyanax::ConsistencyLevel::CL_ONE
-        when ::Hastur::Cassandra::CONSISTENCY_TWO
-          raise "No such Astyanax constant for Cass gem consistency level!"
-        when ::Hastur::Cassandra::CONSISTENCY_ZERO
-          raise "No such Astyanax constant for Cass gem consistency level!"
         when ::Hastur::Cassandra::CONSISTENCY_QUORUM
           ::Astyanax::ConsistencyLevel::CL_QUORUM
         when ::Hastur::Cassandra::CONSISTENCY_ALL
           ::Astyanax::ConsistencyLevel::CL_ALL
         else
-          raise "No such Astyanax constant for Cass gem consistency level!"
+          raise "No such Astyanax constant for Cass gem consistency level: #{ruby_consistency.inspect}"
         end
       end
     end
