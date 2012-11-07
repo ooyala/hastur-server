@@ -61,4 +61,5 @@ EOS
   s.add_runtime_dependency "hastur-rack"
   s.add_runtime_dependency "unicorn" unless RUBY_PLATFORM == "java"
   s.add_runtime_dependency "jruby-astyanax" if RUBY_PLATFORM == "java"
+  s.add_runtime_dependency "jbundler" if RUBY_PLATFORM == "java"
 end
