@@ -1,4 +1,3 @@
-require "cassandra"
 require "msgpack"
 require "multi_json"
 require "date"
@@ -15,14 +14,24 @@ module Hastur
     # These constants aren't so much "public" as they are useful
     # in-module and we don't care about securing them.
 
+    # These need to match the Cassandra gem ConsistencyLevel constants
+    CONSISTENCY_ONE = 1
+    CONSISTENCY_QUORUM = 2
+    CONSISTENCY_LOCAL_QUORUM = 3
+    CONSISTENCY_EACH_QUORUM = 4
+    CONSISTENCY_ALL = 5
+    CONSISTENCY_ANY = 6
+    CONSISTENCY_TWO = 7
+    CONSISTENCY_THREE = 8
+
     ONE_SECOND = 1_000_000
     FIVE_MINUTES = 5 * 60 * ONE_SECOND
     CASS_GET_OPTIONS = [ :consistency, :count, :start, :finish, :reversed ]
     ONE_HOUR = 12 * FIVE_MINUTES
     ONE_DAY = 24 * ONE_HOUR
     ONE_WEEK = 7 * ONE_DAY
-    DEFAULT_WRITE_CONSISTENCY = ::Cassandra::Constants::TWO
-    DEFAULT_READ_CONSISTENCY = ::Cassandra::Constants::TWO
+    DEFAULT_WRITE_CONSISTENCY = CONSISTENCY_TWO
+    DEFAULT_READ_CONSISTENCY = CONSISTENCY_TWO
 
     # A Hastur Schema is a mapping of strings to symbols to values.
     # The top level strings are the type names, the symbols are
