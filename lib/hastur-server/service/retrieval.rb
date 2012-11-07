@@ -45,6 +45,17 @@ module Hastur
       include Hastur::API::Constants
       helpers Hastur::API::Helpers
 
+      def initialize(*args)
+        if args[0].respond_to?(:each)
+          cass_servers = args.unshift
+          @cassandra_uris = cass_servers
+        else
+          @cassandra_uris = [ '127.0.0.1:9160' ]
+        end
+
+        super(*args)
+      end
+
       configure do
         set :show_exceptions, false
         error(500) do
