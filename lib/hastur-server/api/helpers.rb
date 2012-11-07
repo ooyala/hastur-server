@@ -1,6 +1,6 @@
 require "grape"
 require "logger"
-require "cassandra/1.0"
+require "cassandra/1.0" if RUBY_PLATFORM != "java"
 require "cgi"
 require "hastur/api"
 require "hastur-server/api/constants"
@@ -537,20 +537,36 @@ module Hastur
       # @return [Cassandra] cassandra client object
       #
       def cass_client
-        unless @cass_client
-          uri_json = ENV['CASSANDRA_URIS'] || '["127.0.0.1:9160"]'
-          @cassandra_uris = MultiJson.load uri_json
+        @cass_client ||= (RUBY_PLATFORM == "java") ? cass_java_client : cass_ruby_client
+      end
 
-          @cass_client = ::Cassandra.new("hastur", @cassandra_uris, THRIFT_OPTIONS)
+      private
 
-          # for non-production and port-forwarded ssh, there will only be one URI and it
-          # should not auto-discover nodes
-          if @cassandra_uris.one?
-            @cass_client.disable_node_auto_discovery!
-          end
+      def cass_java_client
+        require_relative "./cass_java_client"
+        ::Hastur::API::CassandraJavaClient.new @cassandra_uris
+      end
+
+      def cass_ruby_client
+        @cass_client = ::Cassandra.new("hastur", @cassandra_uris, THRIFT_OPTIONS)
+
+        # for non-production and port-forwarded ssh, there will only be one URI and it
+        # should not auto-discover nodes
+        if @cassandra_uris.one?
+          @cass_client.disable_node_auto_discovery!
         end
+
+        # cass_client.ring will fail if no successful queries have run
+        def @cass_client.status_check
+          STDERR.puts "MRI status check"
+          @cass_client.get "gauge_archive", " "
+          ring = @cass_client.ring
+        end
+
         @cass_client
       end
+
+      public
 
       ## The remaining methods have extra logic to support both Sinatra and Grape
 
