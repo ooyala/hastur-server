@@ -1,5 +1,7 @@
-require "cassandra/1.0"
-require "cassandra/constants"
+if RUBY_PLATFORM != "java"
+  require "cassandra/1.0"
+  require "cassandra/constants"
+end
 require "hastur/api"
 require "hastur-server/cassandra/schema"
 require "hastur-server/time_util"

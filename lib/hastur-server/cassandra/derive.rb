@@ -1,4 +1,4 @@
-require "cassandra/1.0"
+require "cassandra/1.0" if RUBY_PLATFORM != "java"
 require "hastur/api"
 require "hastur-server/cassandra/schema"
 require "hastur-server/time_util"
