@@ -14,11 +14,16 @@ module Hastur
 
       def batch(&block)
         raise "No nested batches!" if @batch
-        @batch = true
-        @insert_batch = @java_keyspace.prepare_mutation_batch
-        yield(self)
-        @insert_batch.execute
-        @batch = nil
+
+        begin
+          @batch = true
+          @insert_batch = @java_keyspace.prepare_mutation_batch
+          yield(self)
+          @insert_batch.execute
+        ensure
+          @insert_batch = nil
+          @batch = nil
+        end
       end
 
       # Options:
@@ -93,15 +98,15 @@ module Hastur
 
       def consistency_for(ruby_consistency)
         case ruby_consistency
-        when ::Cassandra::Constants::ONE
+        when ::Hastur::Cassandra::CONSISTENCY_ONE
           ::Astyanax::ConsistencyLevel::CL_ONE
-        when ::Cassandra::Constants::TWO
+        when ::Hastur::Cassandra::CONSISTENCY_TWO
           raise "No such Astyanax constant for Cass gem consistency level!"
-        when ::Cassandra::Constants::ZERO
+        when ::Hastur::Cassandra::CONSISTENCY_ZERO
           raise "No such Astyanax constant for Cass gem consistency level!"
-        when ::Cassandra::Constants::QUORUM
+        when ::Hastur::Cassandra::CONSISTENCY_QUORUM
           ::Astyanax::ConsistencyLevel::CL_QUORUM
-        when ::Cassandra::Constants::ALL
+        when ::Hastur::Cassandra::CONSISTENCY_ALL
           ::Astyanax::ConsistencyLevel::CL_ALL
         else
           raise "No such Astyanax constant for Cass gem consistency level!"
