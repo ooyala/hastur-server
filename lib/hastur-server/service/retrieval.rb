@@ -48,7 +48,7 @@ module Hastur
       def initialize(*args)
         if args[0].respond_to?(:each)
           cass_servers = args.unshift
-          @cassandra_uris = cass_servers
+          @cassandra_uris = cass_servers.flatten
         else
           @cassandra_uris = [ '127.0.0.1:9160' ]
         end
