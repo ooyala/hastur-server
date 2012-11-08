@@ -560,7 +560,7 @@ module Hastur
         def @cass_client.status_check
           STDERR.puts "MRI status check"
           @cass_client.get "gauge_archive", " "
-          ring = @cass_client.ring
+          @cass_client.ring  # this checks for connection
         end
 
         @cass_client

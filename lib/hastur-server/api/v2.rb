@@ -458,9 +458,13 @@ module Hastur
       get "/v2/statusz" do
         begin
           cass_client.status_check
-          out = ring.map do |r|
-            { :start_token => r.start_token, :end_token => r.end_token, :endpoints => r.endpoints }
+          out = {}
+          if cass_client.respond_to?(:ring)
+            out = ring.map do |r|
+              { :start_token => r.start_token, :end_token => r.end_token, :endpoints => r.endpoints }
+            end
           end
+
           params[:pretty] = true
           serialize out, params
         #rescue Exception => e
