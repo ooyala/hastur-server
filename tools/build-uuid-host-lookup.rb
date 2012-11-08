@@ -2,10 +2,9 @@
 #
 # Build an hostname -> UUID lookup table in Cassandra for the REST service to use.
 #
-# Eventually, this will be a Hastur trigger that runs in real-time when registrations
-# and Ohai data arrive. When/if we add the git commit feed, we can probably process DNS
-# updates as they occur too.
-#
+# Eventually, this will run in real-time when registrations and Ohai
+# data arrive. When/if we add the git commit feed, we can probably
+# process DNS updates as they occur too.
 
 require "cassandra/1.0"
 require "hastur/api"
