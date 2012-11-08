@@ -205,7 +205,6 @@ module Hastur
           @counters['messages.acked'] += 1
           envelope.to_ack.send(@ack_socket) if envelope.ack?
           @counters['messages.forwarded'] += 1
-          puts "messages.forwarded: #{@counters['messages.forwarded']}"
         end
       rescue Hastur::ZMQError => e
         @logger.error "Error reading from ZeroMQ socket.", { :exception => e, :backtrace => e.backtrace }
