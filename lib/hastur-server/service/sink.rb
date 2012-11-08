@@ -203,7 +203,7 @@ module Hastur
           uuid = message.envelope.from
           Hastur::Cassandra.insert(@cass_client, message.payload, envelope.type_symbol.to_s, :uuid => uuid)
           @counters['messages.acked'] += 1
-          envelope.to_ack.send(@ack_socket) if envelope.ack?
+          envelope.to_ack.send(@return_socket) if envelope.ack?
           @counters['messages.forwarded'] += 1
         end
       rescue Hastur::ZMQError => e

@@ -23,7 +23,6 @@ EOS
   opt :return,    "Direct routing URI      (PULL)", :default => "tcp://*:8127"
   opt :pidfile,   "Location of pidfile",            :type => :string
   opt :debug,     "Enable debug logging",           :default => false
-  opt :no_sink,   "Turn off sink, use only router"
   opt :cassandra, "Cassandra server list", :default => ["127.0.0.1:9160"], :type => :strings, :multi => true
 end
 
