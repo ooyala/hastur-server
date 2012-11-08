@@ -42,7 +42,7 @@ module Hastur
       def insert(cf, row_key, cols, options = {})
         ast_cf = cf_for_name(cf)
         batch = @insert_batch || @java_keyspace.prepare_mutation_batch
-        row = batch.with_row(ast_cf, row_key)
+        row = batch.with_row(ast_cf, as_row_key(row_key))
 
         cols.each { |name, val| row.put_column(name, val, options[:ttl]) }
 
@@ -58,7 +58,7 @@ module Hastur
       def get(cf, row_key, options = {})
         ast_cf = cf_for_name(cf)
 
-        @keyspace.get(cf, row_key, ast_options(options))
+        @keyspace.get(cf, as_row_key(row_key), ast_options(options))
       end
 
       # Options:
@@ -70,7 +70,7 @@ module Hastur
       def multi_get(cf, rows, options = {})
         ast_cf = cf_for_name(cf)
 
-        @keyspace.multiget(cf, row_key, ast_options(options))
+        @keyspace.multiget(cf, rows.map { |r| as_row_key(r) }, ast_options(options))
       end
 
       # Options:
@@ -82,7 +82,7 @@ module Hastur
       def multi_count_columns(cf, rows, options = {})
         ast_cf = cf_for_name(cf)
 
-        @keyspace.multi_count_columns(cf, row_key, ast_options(options))
+        @keyspace.multi_count_columns(cf, rows.map { |r| as_row_key(r) }, ast_options(options))
       end
 
       # Raise exception if can't connect
@@ -94,6 +94,10 @@ module Hastur
 
       private
 
+      def as_row_key(row_key)
+        row_key.is_a?(String) ? row_key.to_java.bytes : row_key
+      end
+
       def cf_for_name(name)
         name = name.to_s
         return @cfs[name] if @cfs[name]
@@ -104,12 +108,22 @@ module Hastur
         case ruby_consistency
         when ::Hastur::Cassandra::CONSISTENCY_ONE
           ::Astyanax::ConsistencyLevel::CL_ONE
+        when ::Hastur::Cassandra::CONSISTENCY_TWO
+          ::Astyanax::ConsistencyLevel::CL_TWO
+        when ::Hastur::Cassandra::CONSISTENCY_THREE
+          ::Astyanax::ConsistencyLevel::CL_THREE
         when ::Hastur::Cassandra::CONSISTENCY_QUORUM
           ::Astyanax::ConsistencyLevel::CL_QUORUM
+        when ::Hastur::Cassandra::CONSISTENCY_EACH_QUORUM
+          ::Astyanax::ConsistencyLevel::CL_EACH_QUORUM
+        when ::Hastur::Cassandra::CONSISTENCY_LOCAL_QUORUM
+          ::Astyanax::ConsistencyLevel::CL_LOCAL_QUORUM
         when ::Hastur::Cassandra::CONSISTENCY_ALL
           ::Astyanax::ConsistencyLevel::CL_ALL
+        when ::Hastur::Cassandra::CONSISTENCY_ANY
+          ::Astyanax::ConsistencyLevel::CL_ANY
         else
-          raise "No such Astyanax constant for Cass gem consistency level: #{ruby_consistency.inspect}"
+          raise "Unknown Astyanax constant for Cass gem consistency level: #{ruby_consistency.inspect}"
         end
       end
     end

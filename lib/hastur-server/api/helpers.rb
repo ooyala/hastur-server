@@ -54,6 +54,29 @@ module Hastur
         value && !["", "0", "false", "no", "f"].include?(value.downcase)
       end
 
+      def param_consistency
+        case params[:consistency].downcase
+        when "1", "one"
+          ::Hastur::Cassandra::CONSISTENCY_ONE
+        when "2", "two"
+          ::Hastur::Cassandra::CONSISTENCY_TWO
+        when "3", "three"
+          ::Hastur::Cassandra::CONSISTENCY_THREE
+        when "q", "quorum"
+          ::Hastur::Cassandra::CONSISTENCY_QUORUM
+        when "lq", "local", "local_quorum", "local quorum"
+          ::Hastur::Cassandra::CONSISTENCY_LOCAL_QUORUM
+        when "eq", "each", "each_quorum", "each quorum"
+          ::Hastur::Cassandra::CONSISTENCY_EACH_QUORUM
+        when "all"
+          ::Hastur::Cassandra::CONSISTENCY_ALL
+        when "any"
+          ::Hastur::Cassandra::CONSISTENCY_ANY
+        else
+          raise "Unknown cassandra consistency #{params[:consistency].inspect}!"
+        end
+      end
+
       #
       # Evaluate HTTP query parameters and build a hash of Cassandra query parameters, then return a list
       # of per message name option hashes based off that. The list is necessary for column range queries
@@ -71,6 +94,7 @@ module Hastur
         cass_options = {}
         cass_options[:reversed] = true if param_is_true(params[:reversed])
         cass_options[:count] = params[:limit].to_i if params[:limit]
+        cass_options[:consistency] = param_consistency if params[:consistency]
 
         case params[:kind]
         when "value"  ; cass_options[:value_only] = true
@@ -119,6 +143,7 @@ module Hastur
       # "name" - message name or list of message names (can append * for match-all)
       # "reversed" - return results in reverse order - only matters with "limit"
       # "limit" - max number of results to return
+      # "consistency" - Cassandra consistency to read at
       # "raw" - don't merge messages into the return data, return it as escaped json inside the json
       # "labels" - filter on labels using label=<label>:<value>,... format, url encoded
       #
@@ -134,7 +159,7 @@ module Hastur
         end
 
         if types.empty?
-          hastur_error! "Invalid type(s) or no data!", 404
+          return {}
         end
 
         unless types.any? { |t| TYPES[:all].include?(t) }

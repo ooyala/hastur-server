@@ -410,6 +410,7 @@ module Hastur
       # @param app Application name(s) to query for - supports wildcards
       # @param limit Maximum number of values to return
       # @param reversed Return earliest first instead of latest first
+      # @param consistency Cassandra consistency to read at
       # @param raw don't merge messages into the return data, return it as escaped json inside the json
       # @param labels filter on labels using label=<label>:<value>,... format, url encoded
       #
