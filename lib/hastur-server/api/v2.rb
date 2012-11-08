@@ -63,7 +63,7 @@ module Hastur
           if e.kind_of? Exception
             hastur_error! "Server exception: #{e}", 500, e.backtrace
           else
-            hastur_error! "Server error. Either you found a bug or made a malformed request.", 500, bt
+            hastur_error! "Server error. Either you found a bug or made a malformed request.", 500, e.backtrace
           end
         end
       end
