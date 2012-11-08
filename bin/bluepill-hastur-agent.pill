@@ -10,7 +10,14 @@ HOME_UUID_FILE = "#{ENV['HOME']}/.hastur/uuid" # Alternate UUID location
 # Other sites should replace this with their own list, either by
 # creating a custom Hastur::MyConfig or just by setting ROUTERS
 # to a list of ZeroMQ URIs.
-ROUTERS = Hastur::OoyalaConfig.get_routers
+routers = []
+# If present, HASTUR_ROUTERS should be of the form:
+#     tcp://127.0.0.1:9160;tcp://hastur-core1.us-east-1.ooyala.com:9160
+if ENV['HASTUR_ROUTERS']
+  routers = ENV['HASTUR_ROUTERS'].split(";")
+else
+  routers = Hastur::OoyalaConfig.get_routers
+end
 
 if NO_PRIVILEGE
   # If you're not root and running --no-privileged, put pids in your home dir
@@ -44,14 +51,40 @@ if !uuid || uuid.empty?
   raise "Can't find a UUID specification!  Add ~/.hastur/uuid or /etc/uuid!"
 end
 
+# These conditions tell whether a given environment variable is "ruby-related".
+# I stole them from the rvmsudo script.
+ENV_RUBY = [
+  /^rvm/i,
+  /^rbenv/i,
+  /^gemset/,
+  /^http_/,
+  #/^PATH/,   # Don't just use the user's path
+  /^IRBRC/,
+  "RUBY",
+  "GEM",
+]
+
+# If running unprivileged, we probably want to run with the current
+# ruby interpreter, gems, etc.  That means passing through a bunch
+# of environment variables that Bluepill won't use by default.
+ruby_path = ""
+env_extra = {}
+if NO_PRIVILEGE
+  ruby_path = RbConfig::CONFIG["bindir"] + ":"
+  ENV.each do |name, value|
+    env_extra[name] = ENV[name] if ENV_RUBY.any? { |r| name[r] }
+  end
+end
+
 START_CMD = "#{hastur_dir}/bin/hastur-agent.rb --uuid #{uuid} " +
-              ROUTERS.map { |r| "--router #{r}" }.join(' ')
+              routers.map { |r| "--router #{r}" }.join(' ')
 
 # If we don't specify a log file, we get syslog logging to LOCAL6 by default.
 Bluepill.application("hastur_agent") do |app|
   app.process("hastur_agent") do |process|
     process.environment = {
-      "PATH" => "#{hastur_dir}/bin:/opt/local/bin:/usr/local/bin:/usr/local/sbin:/bin:/usr/bin:/sbin:/usr/sbin",
+      "PATH" => "#{ruby_path}#{hastur_dir}/bin:/opt/local/bin:" +
+                  "/usr/local/bin:/usr/local/sbin:/bin:/usr/bin:/sbin:/usr/sbin",
       "LD_LIBRARY_PATH" => "/opt/hastur/lib",
     }
     process.start_command = START_CMD
