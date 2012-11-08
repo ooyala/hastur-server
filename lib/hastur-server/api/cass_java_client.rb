@@ -12,16 +12,6 @@ module Hastur
         @batch = nil
       end
 
-      def ast_options(options)
-        merged_options = {
-          :consistency => ::Hastur::Cassandra::CONSISTENCY_QUORUM,
-          :count => 10_000,
-        }.merge(options)
-        merged_options[:consistency] = consistency_for(merged_options[:consistency])
-
-        merged_options
-      end
-
       def batch(&block)
         raise "No nested batches!" if @batch
 
@@ -42,7 +32,7 @@ module Hastur
       def insert(cf, row_key, cols, options = {})
         ast_cf = cf_for_name(cf)
         batch = @insert_batch || @java_keyspace.prepare_mutation_batch
-        row = batch.with_row(ast_cf, as_row_key(row_key))
+        row = batch.with_row(ast_cf, row_key)
 
         cols.each { |name, val| row.put_column(name, val, options[:ttl]) }
 
@@ -58,7 +48,7 @@ module Hastur
       def get(cf, row_key, options = {})
         ast_cf = cf_for_name(cf)
 
-        @keyspace.get(cf, as_row_key(row_key), ast_options(options))
+        @keyspace.get(cf, row_key, ast_options(options))
       end
 
       # Options:
@@ -70,7 +60,7 @@ module Hastur
       def multi_get(cf, rows, options = {})
         ast_cf = cf_for_name(cf)
 
-        @keyspace.multiget(cf, rows.map { |r| as_row_key(r) }, ast_options(options))
+        @keyspace.multiget(cf, rows, ast_options(options))
       end
 
       # Options:
@@ -82,7 +72,7 @@ module Hastur
       def multi_count_columns(cf, rows, options = {})
         ast_cf = cf_for_name(cf)
 
-        @keyspace.multi_count_columns(cf, rows.map { |r| as_row_key(r) }, ast_options(options))
+        @keyspace.multi_count_columns(cf, rows, ast_options(options))
       end
 
       # Raise exception if can't connect
@@ -94,14 +84,20 @@ module Hastur
 
       private
 
-      def as_row_key(row_key)
-        row_key.is_a?(String) ? row_key.to_java.bytes : row_key
-      end
-
       def cf_for_name(name)
         name = name.to_s
         return @cfs[name] if @cfs[name]
-        @cfs[name] = ::Astyanax.get_column_family(name, :bytes, :bytes)
+        @cfs[name] = ::Astyanax.get_column_family(name, :text, :text)
+      end
+
+      def ast_options(options)
+        merged_options = {
+          :consistency => ::Hastur::Cassandra::CONSISTENCY_TWO,
+          :count => 10_000,
+        }.merge(options)
+        merged_options[:consistency] = consistency_for(merged_options[:consistency])
+
+        merged_options
       end
 
       def consistency_for(ruby_consistency)

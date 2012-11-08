@@ -430,8 +430,8 @@ module Hastur
           end
         # the Cassandra gem tends to return this useless and misleading exception,
         # so catch it and raise something with some useful info in it
-        rescue ThriftClient::NoServersAvailable
-          raise "query failed: type: #{type} column_family: #{cf_by_type[type]}, row_keys: #{row_keys_by_type[type]}, cass_options: #{cass_options}, options: #{options}"
+        #rescue ThriftClient::NoServersAvailable
+        #  raise "query failed: type: #{type} column_family: #{cf_by_type[type]}, row_keys: #{row_keys_by_type[type]}, cass_options: #{cass_options}, options: #{options}, reason: #{$!.message}"
         end
       end
 
