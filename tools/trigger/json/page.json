@@ -1,9 +1,0 @@
-[
-  {
-    "payload": "{\"name\": \"i.can.haz.error.naow\", \"attn\":[\"tna-pager\"], \"subject\": \"A test of paging in page.json\"}",
-    "timestamp": 1335307053158247,
-    "type": "event",
-    "from": "8e58af00-708c-012f-e468-64ce8f3a9dc2",
-    "to": "8e58af00-708c-012f-e468-64ce8f3a9dc2"
-  }
-]

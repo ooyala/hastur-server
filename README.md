@@ -10,8 +10,7 @@ ZeroMQ, allowing the agent daemon to be thin and simple.
 Message storage is done with Cassandra, a highly-scalable key-value
 store with excellent support for time-series data.
 
-Hastur supports RESTful querying of data using the retrieval service
-and streaming examination of data using triggers.
+Hastur supports RESTful querying of data using the retrieval service.
 
 Components
 ----------
@@ -28,9 +27,6 @@ Components
   retrieves hostname data, UUID messages sources and message names to
   allow exploration of who is sending what data.
 
-* Hastur Syndicator - a server daemon to receive events from Core and
-  send them out to workers with triggers as a realtime stream.
-
 API Documentation
 -----------------
 
@@ -46,9 +42,8 @@ daemon.  The agent opens a UDP port (normally 8125) for local use.
 The agent sends back system information always, and also forwards
 Hastur messages from individual Hastur-enabled applications.
 
-The agent forwards messages to the Core servers, which then store
-them, forward them to streaming Syndicators and write to Cassandra for
-later retrieval.
+The agent forwards messages to the Core servers, which then write to
+Cassandra for later retrieval.
 
 Using ZeroMQ and/or Cassandra, each component other than the agent can
 have as many copies as desired for availability and/or fault
@@ -95,4 +90,3 @@ Deployment
 
 The agent is deployed via Debian packages (other methods later)
 Core is deployed via debian packages
-Triggers - automated deployment pending
