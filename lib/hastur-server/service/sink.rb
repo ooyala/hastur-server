@@ -10,7 +10,7 @@ require "cassandra/1.0"
 module Hastur
   module Service
     class Sink
-      attr_reader :router_uri, :return_uri, :cassandra_servers, :keyspace
+      attr_reader :router_uri, :cassandra_servers, :keyspace
 
       #
       # Create a new core router.
@@ -19,28 +19,25 @@ module Hastur
       # @option [Logger] :logger
       # @option [ZMQ::Context] :ctx
       # @option [String] :router_uri Required, the ZMQ URI of the router socket
-      # @option [String] :return_uri Required, the ZMQ URI of the return/ack PULL socket
       # @option [String] :keyspace Cassandra keyspace to write to
       # @option [Array<String>] :cassandra list of cassandra servers
       #
       # @example
       #   Hastur::Service::Sink(uuid,
       #     :router_uri => 'tcp://127.0.0.1:8126',
-      #     :return_uri => 'tcp://127.0.0.1:8127',
       #     :keyspace   => 'hastur',
       #     :cassandra  => [ '127.0.0.1:9160' ],
       #   )
       #
 
       def initialize(uuid, opts={})
-        [:router_uri, :return_uri, :keyspace, :cassandra].each do |p|
+        [:router_uri, :keyspace, :cassandra].each do |p|
           raise "Named parameter :#{p} is required." unless opts[p]
         end
 
         @ctx               = opts[:ctx]    || ZMQ::Context.new
         @logger            = opts[:logger] || Termite::Logger.new
         @router_uri        = opts[:router_uri]
-        @return_uri        = opts[:return_uri]
         @keyspace          = opts[:keyspace]
         @cassandra_servers = [opts[:cassandra]].flatten
 
@@ -54,9 +51,10 @@ module Hastur
         @last_counter_dump = Time.now
         @counters = {
           'poll.count'         => 0,
+          'poll.empty'         => 0,
+          'messages.nil'       => 0,
           'messages.forwarded' => 0,
           'messages.acked'     => 0,
-          'messages.returned'  => 0,
         }
 
         @running = false
@@ -103,11 +101,8 @@ module Hastur
         connect_to_cassandra
 
         @router_socket = Hastur::Util.bind_socket @ctx, ZMQ::ROUTER, @router_uri, @sockopts
-        @return_socket = Hastur::Util.bind_socket @ctx, ZMQ::PULL,   @return_uri, @sockopts
-
         @poller = ZMQ::Poller.new
         @poller.register_readable @router_socket
-        @poller.register_readable @return_socket
       end
 
       #
@@ -139,7 +134,6 @@ module Hastur
       #
       def shutdown
         @router_socket.close
-        @return_socket.close
         @cass_client.disconnect! rescue nil
       end
 
@@ -156,8 +150,8 @@ module Hastur
           @poller.readables.each do |r|
             if r == @router_socket
               forward_router_to_cassandra
-            elsif r == @return_socket
-              forward_return_to_router
+            else
+              @counters["poll.empty"] += 1
             end
           end
         else
@@ -193,6 +187,12 @@ module Hastur
       def forward_router_to_cassandra
         start = Time.now
         message = Hastur::Message.recv(@router_socket)
+        if message.nil?
+          @logger.debug "nil message from zeromq socket"
+          @counters['messages.nil'] += 1
+          return
+        end
+
         envelope = message.envelope
 
         # cache the ZMQ envelope to route messages back to agents
@@ -202,9 +202,16 @@ module Hastur
         else
           uuid = message.envelope.from
           Hastur::Cassandra.insert(@cass_client, message.payload, envelope.type_symbol.to_s, :uuid => uuid)
-          @counters['messages.acked'] += 1
-          envelope.to_ack.send(@return_socket) if envelope.ack?
           @counters['messages.forwarded'] += 1
+
+          if envelope.ack?
+            ack = envelope.to_ack
+            # reuse the sender's ZMQ headers for the return message
+            ack.zmq_parts = message.clone_zmq_parts
+            puts ack.to_json
+            ack.send(@router_socket, :final => true)
+            @counters['messages.acked'] += 1
+          end
         end
       rescue Hastur::ZMQError => e
         @logger.error "Error reading from ZeroMQ socket.", { :exception => e, :backtrace => e.backtrace }
