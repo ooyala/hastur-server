@@ -15,7 +15,6 @@ HASTUR_CORE_COMMAND = [
   "#{HASTUR_ROOT}/bin/hastur-core.rb",
   "--router",    "tcp://0.0.0.0:8126",
   "--return",    "tcp://0.0.0.0:8127",
-  "--firehose",  "tcp://0.0.0.0:8128",
   "--cassandra", cassandra_servers,
 ].flatten.join(" ")
 
