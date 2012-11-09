@@ -265,6 +265,8 @@ module Hastur
             Hastur::Message::Error.new :from => @uuid,
               :payload => "Received an unsupported #{msg.class} message."
           end
+          # poll again or be stuck in this loop waiting for the next ZMQ message
+          @poller.poll_nonblock
         end
       end
 
