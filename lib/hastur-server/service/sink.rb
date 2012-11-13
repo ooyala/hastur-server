@@ -12,6 +12,12 @@ module Hastur
     class Sink
       attr_reader :router_uri, :cassandra_servers, :keyspace
 
+      THRIFT_OPTIONS = {
+        :timeout => 10,
+        :connect_timeout => 30,
+        :retries => 5,
+      }
+
       #
       # Create a new core router.
       # @param [String] uuid the core router's UUID (36 byte hyphenated string)
@@ -76,7 +82,7 @@ module Hastur
 
         @cassandra_servers.each do |server|
           begin
-            c = ::Cassandra.new @keyspace, server
+            c = ::Cassandra.new @keyspace, server, THRIFT_OPTIONS
             c.ring # will raise an exception if the connection is no good
             @cass_client = c
             break
@@ -187,12 +193,6 @@ module Hastur
       def forward_router_to_cassandra
         start = Time.now
         message = Hastur::Message.recv(@router_socket)
-        if message.nil?
-          @logger.debug "nil message from zeromq socket"
-          @counters['messages.nil'] += 1
-          return
-        end
-
         envelope = message.envelope
 
         # cache the ZMQ envelope to route messages back to agents
@@ -226,7 +226,9 @@ module Hastur
         raise e
       ensure
         # close all of the zmq messages or we might leak C memory
-        message.zmq_parts.each do |m| m.close end
+        if message.respond_to? :zmq_parts
+          message.zmq_parts.each do |m| m.close end
+        end
       end
 
       #
