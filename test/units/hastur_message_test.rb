@@ -105,7 +105,7 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     mock_sock = ctx.socket(ZMQ::PAIR)
 
     # Test that with generic error we return -1
-    ZMQ.expects(:errno).returns(ZMQ::EFAULT)
+    ZMQ::Util.stubs(:errno).returns(ZMQ::EFAULT)
     mock_sock.expects(:recvmsgs).with([], 0).returns(-1)
     assert_raises(Hastur::ZMQError) do
       Hastur::Message.recv(mock_sock)
@@ -134,7 +134,7 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     mock_sock = ctx.socket(ZMQ::PAIR)
 
     # Test that with EAGAIN we return -1 with NonBlock flag
-    ZMQ.expects(:errno).returns(ZMQ::EAGAIN)
+    ZMQ::Util.expects(:errno).returns(ZMQ::EAGAIN)
     mock_sock.expects(:recvmsgs).with([], ZMQ::NonBlocking).returns(-1)
     assert_equal -1, Hastur::Message.recv(mock_sock, ZMQ::NonBlocking)
 
@@ -148,7 +148,7 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     mock_sock = ctx.socket(ZMQ::PAIR)
 
     # Test that if we return EINTR MAX_TRIES times, we error out
-    ZMQ.expects(:errno).returns(ZMQ::EINTR).at_least_once
+    ZMQ::Util.expects(:errno).returns(ZMQ::EINTR).at_least_once
     mock_sock.expects(:recvmsgs).with([], 0).returns(-1).times(Hastur::Message::MAX_TRIES)
     assert_equal -1, Hastur::Message.recv(mock_sock)
 
@@ -162,7 +162,7 @@ class TestClassHasturMessage < MiniTest::Unit::TestCase
     mock_sock = ctx.socket(ZMQ::PAIR)
 
     # Test that if we return EINTR once then no error, everything works
-    ZMQ.expects(:errno).returns(ZMQ::EINTR)
+    ZMQ::Util.expects(:errno).returns(ZMQ::EINTR)
     mock_sock.expects(:recvmsgs).twice.with([], 0).returns(-1).then.returns(0)
     assert_equal true, Hastur::Message.recv(mock_sock, 0, true)
 

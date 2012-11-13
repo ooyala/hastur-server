@@ -142,8 +142,8 @@ module Hastur
       tries += 1
 
       if rc == -1
-        return rc if zmq_flags != 0 && ZMQ.errno == ZMQ::EAGAIN  # NonBlocking, got EAGAIN
-        return rc if tries >= MAX_TRIES                          # EINTR (syscall interrupted) too many times
+        return rc if zmq_flags != 0 && ZMQ::Util.errno == ZMQ::EAGAIN  # NonBlocking, got EAGAIN
+        return rc if tries >= MAX_TRIES                                # EINTR (syscall interrupted) > 5 times
         return recv(socket, zmq_flags, only_test_success, tries) if ZMQ::Util.errno == ZMQ::EINTR
 
         raise ZMQError.new "ZMQ recvmsgs failed: '#{ZMQ::Util.error_string}'"
