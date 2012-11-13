@@ -292,7 +292,7 @@ module Hastur
 
     def col_name(name, timestamp)
       if name
-        colname = "#{name}-#{[timestamp].pack("Q>")}"
+        colname = "#{name.force_encoding("UTF-8")}-#{[timestamp].pack("Q>")}"
       else
         colname = [timestamp].pack("Q>")
       end
