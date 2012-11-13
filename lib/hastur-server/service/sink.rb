@@ -164,7 +164,6 @@ module Hastur
           Hastur.event "hastur.router.zmq.error", ZMQ::Util.error_string
         end
 
-
         # send out counters roughly every 30 seconds, more often if things are busy
         now = Time.now
         if now - @last_counter_dump > 30
@@ -220,7 +219,11 @@ module Hastur
         puts "Failed after #{failed.to_f - start.to_f} seconds."
         raise e
       rescue Exception => e
-        edata = { :exception => e.inspect, :backtrace => e.backtrace, :raw_messages => message.to_hash }
+        edata = {
+          :exception    => e.inspect,
+          :backtrace    => e.backtrace,
+          :raw_messages => message.respond_to?(:to_hash) ? message.to_hash : message.to_s
+        }
         @logger.warn "Exception while forwarding message: #{e}", edata
         Hastur.event "hastur.router.exception", e.to_s, 'hastur-admin', MultiJson.dump(edata)
         raise e
