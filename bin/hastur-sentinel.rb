@@ -53,6 +53,7 @@ EOS
   opt :wait,      "Seconds to wait between checks",   :default => 30.0
   opt :timeout,   "Retrieval service timeout",        :default => 2.0
   opt :stall,     "Seconds to wait between send/get", :default => 0.5
+  opt :retries,   "Retry n times before altering",    :default => 2
   opt :pagerduty, "pagerduty API key",                :required => true, :type => String
   opt :debug,     "Enable debug logging",             :default => false
 end
@@ -132,7 +133,7 @@ def failed(req, url, query, options, elapsed, message)
   puts "#{longmess}\ncurl '#{full}'\n#{req.body rescue ''}"
 end
 
-def check(timestamp, options)
+def check(timestamp, options, try)
   base_url = options[:retrieval]
   uuid = options[:uuid]
 
@@ -154,7 +155,14 @@ def check(timestamp, options)
     d = MultiJson.load(req.body)
 
     unless d[uuid] and d[uuid][name]
-      failed req, url, query, options, elapsed, "Empty JSON object in response!"
+
+      if try >= options[:retries]
+        failed req, url, query, options, elapsed, "Empty JSON object in response after #{try} retries!"
+      else
+        puts "Empty JSON object in response! Waiting #{options[:stall]} for retry."
+        sleep options[:stall]
+        return check(timestamp, options, try + 1)
+      end
     end
 
     entry = d[uuid][name][timestamp.to_s] rescue nil
@@ -180,7 +188,7 @@ while alive
 
     sleep opts[:stall]
 
-    check now, opts.merge(agent)
+    check now, opts.merge(agent), 1
 
     sleep wait_seconds
   end
