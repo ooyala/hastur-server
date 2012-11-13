@@ -471,7 +471,7 @@ module Hastur
 
               # This happens even if name is nil
               if options[:value_only] or options[:rollup_period] or options[:rollup_only]
-                hash[name][timestamp] = MessagePack.unpack value
+                hash[name][timestamp] = MessagePack.unpack(value) rescue value
               else
                 hash[name][timestamp] = value
               end
