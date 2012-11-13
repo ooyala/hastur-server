@@ -40,7 +40,6 @@ end
 sink = Hastur::Service::Sink.new(opts[:uuid],
   :logger       => opts[:logger],
   :router_uri   => opts[:router],
-  :return_uri   => opts[:return],
   :cassandra => opts[:cassandra].flatten,
   :keyspace  => 'hastur',
 )
