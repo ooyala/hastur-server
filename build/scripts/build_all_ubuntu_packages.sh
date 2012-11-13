@@ -91,10 +91,10 @@ build_hastur () {
 
   # bundle / rake are placed in the path with update-alternatives in the root setup
   # see configure_chroots.sh
-  $personality chroot $path bash -c "cd /tmp/hastur-server && rake --trace build"
+  $personality chroot $path bash -c "cd /tmp/hastur-server && rake build --trace"
   $personality chroot $path bash -c "cd /tmp/hastur-server && bundle install" # could fail, don't care
-  $personality chroot $path bash -c "cd /tmp/hastur-server && rake --trace $target"
-  require $personality chroot $path bash -c "cd /tmp/hastur-server && rake --trace $target"
+  $personality chroot $path bash -c "cd /tmp/hastur-server && rake $target --trace"
+  require $personality chroot $path bash -c "cd /tmp/hastur-server && rake $target --trace"
 }
 
 for arch in amd64 i386

@@ -37,4 +37,4 @@ echo "
 ===============================================================================
 "
 
-COVERAGE=true bundle exec rake --trace test:integrations
+COVERAGE=true bundle exec rake test:integrations --trace
