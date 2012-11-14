@@ -62,7 +62,7 @@ run Rack::URLMap.new("/" => Hastur::Service::Retrieval.new)
 EOF
 
 cat > "${DIR}/${USER}-unicorn.conf" <<EOF
-worker_processes 5
+worker_processes 15
 working_directory "$DIR"
 listen $PORT, :tcp_nodelay => true
 timeout 60
