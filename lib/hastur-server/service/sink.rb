@@ -187,6 +187,28 @@ module Hastur
       end
 
       #
+      # Extract as much information as possible from a failed message and log it.
+      # Does not re-raise exceptions.
+      #
+      # @param [Exception] e
+      # @param [Hastur::Message] message
+      # @param [String] description
+      #
+      def log_message_failure(e, message, description="Failed to handle message:")
+        edata = {
+          :description  => description,
+          :exception    => e.inspect,
+          :backtrace    => e.backtrace,
+          :raw_messages => message.respond_to?(:to_hash) ? message.to_hash : message.inspect
+        }
+        @logger.warn "exception while forwarding message: #{e}", edata
+        Hastur.event "hastur.router.exception", e.to_s, 'hastur-admin', MultiJson.dump(edata)
+      rescue Exception => double_fault
+        bt = double_fault.backtrace
+        @logger.warn "Exception in exception handler!?: #{double_fault}\n#{bt.join("\n")}", { :backtrace => bt }
+      end
+
+      #
       # read from the router socket, write to cassandra
       #
       def forward_router_to_cassandra
@@ -212,20 +234,18 @@ module Hastur
             @counters['messages.acked'] += 1
           end
         end
+      rescue Hastur::InvalidEnvelopeError => e
+        log_message_failure e, message
       rescue Hastur::ZMQError => e
-        @logger.error "Error reading from ZeroMQ socket.", { :exception => e, :backtrace => e.backtrace }
+        log_message_failure e, message, "Error reading from ZeroMQ socket:"
+      # restarting cassandra connections at this point seems to make things even more unstable, so
+      # just re-raise and let the supervisor sort things out
       rescue CassandraThrift::Cassandra::Client::TransportException => e
         failed = Time.now
-        puts "Failed after #{failed.to_f - start.to_f} seconds."
+        log_message_failure e, message, "Cassandra write failed after #{failed.to_f - start.to_f} seconds:"
         raise e
       rescue Exception => e
-        edata = {
-          :exception    => e.inspect,
-          :backtrace    => e.backtrace,
-          :raw_messages => message.respond_to?(:to_hash) ? message.to_hash : message.to_s
-        }
-        @logger.warn "Exception while forwarding message: #{e}", edata
-        Hastur.event "hastur.router.exception", e.to_s, 'hastur-admin', MultiJson.dump(edata)
+        log_message_failure e, message, "Exception while forwarding message:"
         raise e
       ensure
         # close all of the zmq messages or we might leak C memory

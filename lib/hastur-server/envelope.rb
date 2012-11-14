@@ -16,6 +16,7 @@ module Hastur
   #
   # Numbers are big endian wherever it makes sense.
   #
+  class InvalidEnvelopeError < StandardError ; end
   class Envelope
     VERSION = 1
     DIGEST = OpenSSL::Digest::Digest.new('sha256')
@@ -45,7 +46,7 @@ module Hastur
 
       0.upto(HMAC_IDX).each do |idx|
         if parts[idx].nil?
-          raise "Incomplete or not an envelope: #{msg.inspect}"
+          raise InvalidEnvelopeError.new("Incomplete or not an envelope: #{msg.inspect}")
         end
       end
 
