@@ -24,6 +24,7 @@ EOS
   opt :pidfile,   "Location of pidfile",            :type => :string
   opt :debug,     "Enable debug logging",           :default => false
   opt :cassandra, "Cassandra server list", :default => ["127.0.0.1:9160"], :type => :strings, :multi => true
+  opt :astyanax,  "Use Astyanax client",            :default => false
 end
 
 logger = Termite::Logger.new
@@ -37,7 +38,14 @@ if opts[:pidfile]
   File.open(opts[:pidfile], "w+") { |file| file.puts Process.pid }
 end
 
+client = nil
+if opts[:astyanax]
+  require "hastur-server/api/cass_java_client"
+  client = ::Hastur::API::CassandraJavaClient.new opts[:cassandra].flatten
+end
+
 sink = Hastur::Service::Sink.new(opts[:uuid],
+  :client       => client,
   :logger       => opts[:logger],
   :router_uri   => opts[:router],
   :cassandra => opts[:cassandra].flatten,

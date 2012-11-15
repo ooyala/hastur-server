@@ -47,6 +47,9 @@ module Hastur
         @keyspace          = opts[:keyspace]
         @cassandra_servers = [opts[:cassandra]].flatten
 
+        # If opts[:client] is given, use it and don't reconnect
+        @override_cass_client = @cass_client = opts[:client]
+
         # buffer only 1 message, wait up to 2 seconds on shutdown for them to flush to cassandra
         @sockopts = { :hwm => opts[:hwm] || 1, :linger => opts[:linger] || 2_000 }
 
@@ -104,7 +107,7 @@ module Hastur
       # Connect to Cassandra and ZeroMQ sockets, register poller.
       #
       def setup
-        connect_to_cassandra
+        connect_to_cassandra unless @override_cass_client
 
         @router_socket = Hastur::Util.bind_socket @ctx, ZMQ::ROUTER, @router_uri, @sockopts
         @poller = ZMQ::Poller.new
@@ -140,7 +143,7 @@ module Hastur
       #
       def shutdown
         @router_socket.close
-        @cass_client.disconnect! rescue nil
+        (@cass_client.disconnect! rescue nil) unless @override_cass_client
       end
 
       private
