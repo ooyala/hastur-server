@@ -12,7 +12,7 @@ HOME_UUID_FILE = "#{ENV['HOME']}/.hastur/uuid" # Alternate UUID location
 # to a list of ZeroMQ URIs.
 routers = []
 # If present, HASTUR_ROUTERS should be of the form:
-#     tcp://127.0.0.1:9160;tcp://hastur-core1.us-east-1.ooyala.com:9160
+#     tcp://127.0.0.1:8126;tcp://hastur-core1.us-east-1.ooyala.com:8126
 if ENV['HASTUR_ROUTERS']
   routers = ENV['HASTUR_ROUTERS'].split(";")
 else
