@@ -356,7 +356,7 @@ module Hastur
             :data => {
               :name           => "hastur.agent.heartbeat",
               :value          => delta,
-              :timestamp      => Hastur.timestamp,
+              :timestamp      => Hastur.timestamp(now),
               :labels         => {
                 :version => Hastur::SERVER_VERSION,
                 :period  => @heartbeat,
