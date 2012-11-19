@@ -1,3 +1,6 @@
+# When deploying as a war, the hastur-server gem itself isn't installed as a gem.
+$LOAD_PATH << File.join(File.dirname(__FILE__), "lib")
+
 require "hastur-server/api/v2"
 require "hastur-rack"
 
