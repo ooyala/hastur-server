@@ -54,27 +54,31 @@ module Hastur
         value && !["", "0", "false", "no", "f"].include?(value.downcase)
       end
 
+      CONSISTENCY_PARAMS = {
+        "1" => ::Hastur::Cassandra::CONSISTENCY_ONE,
+        "one" => ::Hastur::Cassandra::CONSISTENCY_ONE,
+        "2" => ::Hastur::Cassandra::CONSISTENCY_TWO,
+        "two" => ::Hastur::Cassandra::CONSISTENCY_TWO,
+        "3" => ::Hastur::Cassandra::CONSISTENCY_THREE,
+        "three" => ::Hastur::Cassandra::CONSISTENCY_THREE,
+        "q" => ::Hastur::Cassandra::CONSISTENCY_QUORUM,
+        "quorum" => ::Hastur::Cassandra::CONSISTENCY_QUORUM,
+        "lq" => ::Hastur::Cassandra::CONSISTENCY_LOCAL_QUORUM,
+        "local_quorum" => ::Hastur::Cassandra::CONSISTENCY_LOCAL_QUORUM,
+        "local" => ::Hastur::Cassandra::CONSISTENCY_LOCAL_QUORUM,
+        "local quorum" => ::Hastur::Cassandra::CONSISTENCY_LOCAL_QUORUM,
+        "eq" => ::Hastur::Cassandra::CONSISTENCY_EACH_QUORUM,
+        "each_quorum" => ::Hastur::Cassandra::CONSISTENCY_EACH_QUORUM,
+        "each" => ::Hastur::Cassandra::CONSISTENCY_EACH_QUORUM,
+        "each quorum" => ::Hastur::Cassandra::CONSISTENCY_EACH_QUORUM,
+        "all" => ::Hastur::Cassandra::CONSISTENCY_ALL,
+        "any" => ::Hastur::Cassandra::CONSISTENCY_ANY,
+      }
+
       def param_consistency
-        case params[:consistency].downcase
-        when "1", "one"
-          ::Hastur::Cassandra::CONSISTENCY_ONE
-        when "2", "two"
-          ::Hastur::Cassandra::CONSISTENCY_TWO
-        when "3", "three"
-          ::Hastur::Cassandra::CONSISTENCY_THREE
-        when "q", "quorum"
-          ::Hastur::Cassandra::CONSISTENCY_QUORUM
-        when "lq", "local", "local_quorum", "local quorum"
-          ::Hastur::Cassandra::CONSISTENCY_LOCAL_QUORUM
-        when "eq", "each", "each_quorum", "each quorum"
-          ::Hastur::Cassandra::CONSISTENCY_EACH_QUORUM
-        when "all"
-          ::Hastur::Cassandra::CONSISTENCY_ALL
-        when "any"
-          ::Hastur::Cassandra::CONSISTENCY_ANY
-        else
-          raise "Unknown cassandra consistency #{params[:consistency].inspect}!"
-        end
+        consistency = CONSISTENCY_PARAMS[params[:consistency].downcase]
+        raise "Unknown cassandra consistency #{params[:consistency].inspect}!" unless consistency
+        consistency
       end
 
       #

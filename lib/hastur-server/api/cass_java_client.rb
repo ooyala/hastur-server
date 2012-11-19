@@ -100,27 +100,23 @@ module Hastur
         merged_options
       end
 
+      HASTUR_TO_ASTYANAX_CONSISTENCY = {
+        ::Hastur::Cassandra::CONSISTENCY_ONE => ::Astyanax::ConsistencyLevel::CL_ONE,
+        ::Hastur::Cassandra::CONSISTENCY_TWO => ::Astyanax::ConsistencyLevel::CL_TWO
+        ::Hastur::Cassandra::CONSISTENCY_THREE => ::Astyanax::ConsistencyLevel::CL_THREE,
+        ::Hastur::Cassandra::CONSISTENCY_QUORUM => ::Astyanax::ConsistencyLevel::CL_QUORUM,
+        ::Hastur::Cassandra::CONSISTENCY_EACH_QUORUM => ::Astyanax::ConsistencyLevel::CL_EACH_QUORUM,
+        ::Hastur::Cassandra::CONSISTENCY_LOCAL_QUORUM => ::Astyanax::ConsistencyLevel::CL_LOCAL_QUORUM,
+        ::Hastur::Cassandra::CONSISTENCY_ALL => ::Astyanax::ConsistencyLevel::CL_ALL,
+        ::Hastur::Cassandra::CONSISTENCY_ANY => ::Astyanax::ConsistencyLevel::CL_ANY,
+      }
       def consistency_for(ruby_consistency)
-        case ruby_consistency
-        when ::Hastur::Cassandra::CONSISTENCY_ONE
-          ::Astyanax::ConsistencyLevel::CL_ONE
-        when ::Hastur::Cassandra::CONSISTENCY_TWO
-          ::Astyanax::ConsistencyLevel::CL_TWO
-        when ::Hastur::Cassandra::CONSISTENCY_THREE
-          ::Astyanax::ConsistencyLevel::CL_THREE
-        when ::Hastur::Cassandra::CONSISTENCY_QUORUM
-          ::Astyanax::ConsistencyLevel::CL_QUORUM
-        when ::Hastur::Cassandra::CONSISTENCY_EACH_QUORUM
-          ::Astyanax::ConsistencyLevel::CL_EACH_QUORUM
-        when ::Hastur::Cassandra::CONSISTENCY_LOCAL_QUORUM
-          ::Astyanax::ConsistencyLevel::CL_LOCAL_QUORUM
-        when ::Hastur::Cassandra::CONSISTENCY_ALL
-          ::Astyanax::ConsistencyLevel::CL_ALL
-        when ::Hastur::Cassandra::CONSISTENCY_ANY
-          ::Astyanax::ConsistencyLevel::CL_ANY
-        else
+        java_consistency = HASTUR_TO_ASTYANAX_CONSISTENCY[ruby_consistency]
+        unless java_consistency
           raise "Unknown Astyanax constant for Cass gem consistency level: #{ruby_consistency.inspect}"
         end
+
+        java_consistency
       end
     end
   end
