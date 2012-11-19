@@ -102,7 +102,7 @@ module Hastur
 
       HASTUR_TO_ASTYANAX_CONSISTENCY = {
         ::Hastur::Cassandra::CONSISTENCY_ONE => ::Astyanax::ConsistencyLevel::CL_ONE,
-        ::Hastur::Cassandra::CONSISTENCY_TWO => ::Astyanax::ConsistencyLevel::CL_TWO
+        ::Hastur::Cassandra::CONSISTENCY_TWO => ::Astyanax::ConsistencyLevel::CL_TWO,
         ::Hastur::Cassandra::CONSISTENCY_THREE => ::Astyanax::ConsistencyLevel::CL_THREE,
         ::Hastur::Cassandra::CONSISTENCY_QUORUM => ::Astyanax::ConsistencyLevel::CL_QUORUM,
         ::Hastur::Cassandra::CONSISTENCY_EACH_QUORUM => ::Astyanax::ConsistencyLevel::CL_EACH_QUORUM,
