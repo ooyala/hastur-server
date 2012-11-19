@@ -18,6 +18,7 @@ Warbler::Config.new do |config|
 
   # Additional files/directories to exclude
   # config.excludes = FileList["lib/tasks/*"]
+  config.excludes = FileList["**/*~"]
 
   # Additional Java .jar files to include.  Note that if .jar files are placed
   # in lib (and not otherwise excluded) then they need not be mentioned here.
@@ -140,7 +141,7 @@ Warbler::Config.new do |config|
 
   # Include gem dependencies not mentioned specifically. Default is
   # true, uncomment to turn off.
-  config.gem_dependencies = false
+  #config.gem_dependencies = false
 
   # Array of regular expressions matching relative paths in gems to be
   # excluded from the war. Defaults to empty, but you can set it like
@@ -210,9 +211,10 @@ Warbler::Config.new do |config|
   # The script is evaluated in a Rack::Builder to load the application.
   # Examples:
   # config.webxml.rackup.path = 'WEB-INF/hello.ru'
-  config.webxml.rackup.path = 'WEB-INF/config_v2.ru'
+  # config.webxml.rackup.path = 'WEB-INF/config_v2.ru'
   # config.webxml.rackup = %{require './lib/demo'; run Rack::Adapter::Camping.new(Demo)}
   # config.webxml.rackup = require 'cgi' && CGI::escapeHTML(File.read("config.ru"))
+  config.webxml.rackup = File.read("config_v2.ru")
 
   # Control the pool of Rails runtimes. Leaving unspecified means
   # the pool will grow as needed to service requests. It is recommended
