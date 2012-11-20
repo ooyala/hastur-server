@@ -39,7 +39,6 @@ EOS
   s.add_development_dependency "rack-test"
   s.add_development_dependency "minitest", "~>3.2.0"
   s.add_runtime_dependency "sinatra"
-  s.add_runtime_dependency "grape"
   s.add_runtime_dependency "httparty"
   s.add_runtime_dependency "yajl-ruby"
   s.add_runtime_dependency "multi_json", "~>1.3.2"
@@ -48,10 +47,11 @@ EOS
   s.add_runtime_dependency "uuid"
   s.add_runtime_dependency "termite"
   s.add_runtime_dependency "bluepill"
-  s.add_runtime_dependency "cassandra", "~>0.15"
-  s.add_runtime_dependency "thrift_client", "=0.8.1" # 0.8.2 loses data!
+  s.add_runtime_dependency("cassandra", "~>0.15") unless RUBY_PLATFORM == "java"
+  s.add_runtime_dependency("thrift_client", "=0.8.1") unless RUBY_PLATFORM == "java" # 0.8.2 loses data!
   s.add_runtime_dependency "rainbow"
   s.add_runtime_dependency "msgpack"
+  s.add_runtime_dependency "msgpack-jruby" if RUBY_PLATFORM == "java"
   s.add_runtime_dependency "hastur", "~>1.2.8"
   s.add_runtime_dependency "pony"
   s.add_runtime_dependency "pry"
@@ -59,6 +59,6 @@ EOS
   s.add_runtime_dependency "sys-uname"
   s.add_runtime_dependency "hastur-rack", "~>0.0.10"
   s.add_runtime_dependency "unicorn" unless RUBY_PLATFORM == "java"
-  s.add_runtime_dependency "jruby-astyanax", "~>0.0.4" if RUBY_PLATFORM == "java"
-  s.add_runtime_dependency "jbundler" if RUBY_PLATFORM == "java"
+  s.add_runtime_dependency("jruby-astyanax", "~>0.0.4") if RUBY_PLATFORM == "java"
+  s.add_runtime_dependency "jbundler" if RUBY_PLATFORM == "java"  # TODO: remove jbundler
 end
