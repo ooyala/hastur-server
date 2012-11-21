@@ -98,8 +98,11 @@ module Hastur
 
       hash = MultiJson.load(json_string)
       raise "Cannot deserialize JSON string!" unless hash
-      uuid = options.delete(:uuid) || hash[:uuid] || hash[:from]
+      uuid = hash[:uuid] || hash[:from] || options[:uuid]
       raise "No UUID given!" unless uuid
+      ttl = options[:ttl] || hash[:ttl]
+      ttl = hash[:ttl] if ttl == true     # Fall back to next TTL if "true"
+      ttl = nil if ttl == true            # Or if nobody specified an actual TTL, bail
 
       hash["labels"] ||= {}
 

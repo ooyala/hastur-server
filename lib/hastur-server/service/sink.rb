@@ -225,7 +225,7 @@ module Hastur
           @agents[envelope.from] = message.zmq_parts[0]
         else
           uuid = message.envelope.from
-          Hastur::Cassandra.insert(@cass_client, message.payload, envelope.type_symbol.to_s, :uuid => uuid)
+          Hastur::Cassandra.insert(@cass_client, message.payload, envelope.type_symbol.to_s, :uuid => uuid, :ttl => true)
           @counters['messages.forwarded'] += 1
 
           if envelope.ack?
