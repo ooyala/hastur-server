@@ -77,6 +77,8 @@ module Hastur
 
         # default to pretty printing for non-XHR requests
         params[:pretty] = true unless request.xhr?
+
+        params[:uuid].downcase!
       end
 
       #
@@ -432,7 +434,7 @@ module Hastur
         query_uuids = []
         query_types = []
 
-        query_types.push(params[:type].split(",")) if params[:type]
+        query_types.push(params[:type].split(",").map(&:strip)) if params[:type]
 
         # Look up UUIDs and message types for the given message name, if present
         if params[:name]
@@ -444,9 +446,12 @@ module Hastur
           end
 
           # Allow query params to cut down the uuids and types arrays
-          query_uuids.push uuids.keys.join(',')
-          query_types.push types.keys.join(',')
+          query_uuids.push uuids.keys
+          query_types.push types.keys
         end
+
+        params[:uuid] = query_uuids.join(',')
+        params[:type] = query_types.join(',')
 
         serialize query_hastur(params), params
       end
