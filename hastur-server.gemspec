@@ -38,27 +38,36 @@ EOS
   s.add_development_dependency "test-unit", "~>2.4.3"
   s.add_development_dependency "rack-test"
   s.add_development_dependency "minitest", "~>3.2.0"
+
+  if RUBY_PLATFORM == "java"
+    s.add_development_dependency "jruby_astyanax-jars"
+  end
+
   s.add_runtime_dependency "sinatra"
   s.add_runtime_dependency "grape"   # TODO: remove
   s.add_runtime_dependency "httparty"
-  s.add_runtime_dependency "yajl-ruby"
   s.add_runtime_dependency "multi_json", "~>1.3.2"
   s.add_runtime_dependency "ffi-rzmq"
   s.add_runtime_dependency "trollop"
   s.add_runtime_dependency "uuid"
   s.add_runtime_dependency "termite"
   s.add_runtime_dependency "bluepill"
-  s.add_runtime_dependency("cassandra", "~>0.15") unless RUBY_PLATFORM == "java"
-  s.add_runtime_dependency("thrift_client", "=0.8.1") unless RUBY_PLATFORM == "java" # 0.8.2 loses data!
   s.add_runtime_dependency "rainbow"
-  s.add_runtime_dependency "msgpack" unless RUBY_PLATFORM == "java"
-  s.add_runtime_dependency "jruby-msgpack" if RUBY_PLATFORM == "java"
   s.add_runtime_dependency "hastur", "~>1.2.8"
   s.add_runtime_dependency "pony"
   s.add_runtime_dependency "pry"
   s.add_runtime_dependency "ohai"
   s.add_runtime_dependency "sys-uname"
   s.add_runtime_dependency "hastur-rack", "~>0.0.10"
-  s.add_runtime_dependency "unicorn" unless RUBY_PLATFORM == "java"
-  s.add_runtime_dependency("jruby-astyanax", "~>0.0.4") if RUBY_PLATFORM == "java"
+
+  if RUBY_PLATFORM == "java"
+    s.add_runtime_dependency "jruby-msgpack" if RUBY_PLATFORM == "java"
+    s.add_runtime_dependency("jruby-astyanax", "~>0.0.4") if RUBY_PLATFORM == "java"
+  else
+    s.add_runtime_dependency "yajl-ruby" unless RUBY_PLATFORM == "java"
+    s.add_runtime_dependency("cassandra", "~>0.15") unless RUBY_PLATFORM == "java"
+    s.add_runtime_dependency("thrift_client", "=0.8.1") unless RUBY_PLATFORM == "java" # 0.8.2 loses data!
+    s.add_runtime_dependency "msgpack" unless RUBY_PLATFORM == "java"
+    s.add_runtime_dependency "unicorn" unless RUBY_PLATFORM == "java"
+  end
 end
