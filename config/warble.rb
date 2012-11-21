@@ -141,7 +141,7 @@ Warbler::Config.new do |config|
 
   # Include gem dependencies not mentioned specifically. Default is
   # true, uncomment to turn off.
-  #config.gem_dependencies = false
+  config.gem_dependencies = false
 
   # Array of regular expressions matching relative paths in gems to be
   # excluded from the war. Defaults to empty, but you can set it like
