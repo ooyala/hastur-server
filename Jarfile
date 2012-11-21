@@ -1,1 +1,1 @@
-jar "com.netflix.astyanax:astyanax", "1.0.3"
+jar "com.netflix.astyanax:astyanax", "1.0.6"
