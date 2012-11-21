@@ -41,6 +41,7 @@ EOS
 
   if RUBY_PLATFORM == "java"
     s.add_development_dependency "jruby_astyanax-jars"
+    s.add_development_dependency "warbler"
   end
 
   s.add_runtime_dependency "sinatra"
