@@ -1,6 +1,6 @@
 require "bundler/gem_tasks"
 require "rake/testtask"
-require "warbler"
+require "warbler" if RUBY_PLATFORM == "java"
 
 # used in build/tasks/package.rake and below
 PROJECT_TOP = Rake.application.find_rakefile_location[1]
@@ -75,40 +75,42 @@ end
 # Warbler tasks to package for JRuby deploy
 #
 
-task :delete_retrieval_war do
-  File.unlink "retrieval_v2.war" if File.exist?("retrieval_v2.war")
+if RUBY_PLATFORM == "java"
+  task :delete_retrieval_war do
+    File.unlink "retrieval_v2.war" if File.exist?("retrieval_v2.war")
+  end
+
+  Warbler::Task.new("retrieval_war", Warbler::Config.new do |config|
+    require "jruby_astyanax-jars"
+
+    config.jar_name = "retrieval_v2"
+    config.features = ["executable"]
+
+    # See config/warble.rb for explanation of config variables
+    config.dirs = %w(lib vendor tools)
+    config.excludes = FileList["**/*~"]
+    config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
+    config.bundler = false  # This doesn't seem to turn off the gemspec
+    config.gem_dependencies = false
+    config.webserver = 'jetty'
+    config.webxml.booter = :rack
+    config.webxml.jruby.compat.version = "1.9"
+    config.webxml.rackup = File.read("config_v2.ru")
+  end)
+  # Workaround for Warbler bug (https://github.com/jruby/warbler/issues/86)
+  task :retrieval_war => :delete_retrieval_war
+
+  Warbler::Task.new("core_jar", Warbler::Config.new do |config|
+    config.jar_name = "core"
+
+    # See config/warble.rb for explanation of config variables
+    config.dirs = %w(lib vendor tools)
+    config.excludes = FileList["**/*~"]
+    config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
+    config.bundler = false  # This doesn't seem to turn off the gemspec
+    config.gem_dependencies = false
+  end)
 end
-
-Warbler::Task.new("retrieval_war", Warbler::Config.new do |config|
-  require "jruby_astyanax-jars"
-
-  config.jar_name = "retrieval_v2"
-  config.features = ["executable"]
-
-  # See config/warble.rb for explanation of config variables
-  config.dirs = %w(lib vendor tools)
-  config.excludes = FileList["**/*~"]
-  config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
-  config.bundler = false  # This doesn't seem to turn off the gemspec
-  config.gem_dependencies = false
-  config.webserver = 'jetty'
-  config.webxml.booter = :rack
-  config.webxml.jruby.compat.version = "1.9"
-  config.webxml.rackup = File.read("config_v2.ru")
-end)
-# Workaround for Warbler bug (https://github.com/jruby/warbler/issues/86)
-task :retrieval_war => :delete_retrieval_war
-
-Warbler::Task.new("core_jar", Warbler::Config.new do |config|
-  config.jar_name = "core"
-
-  # See config/warble.rb for explanation of config variables
-  config.dirs = %w(lib vendor tools)
-  config.excludes = FileList["**/*~"]
-  config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
-  config.bundler = false  # This doesn't seem to turn off the gemspec
-  config.gem_dependencies = false
-end)
 
 #
 # undesirable but useful hacks follow ...
