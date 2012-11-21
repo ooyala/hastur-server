@@ -198,7 +198,7 @@ module Hastur
     #   names = Hastur::Cassandra.lookup_by_key(client, "name", Time.now - 86401, Time.now)
     #
     def lookup_by_key(cass_client, kind, start_timestamp, end_timestamp, options={})
-      data = Hash.new
+      data = {}
       options = { :count => 10_000 }.merge(options)
       # this isn't defined in the schema (yet?) so the bucket is hard-coded to one day everywhere
       usec_aligned_chunks(start_timestamp, end_timestamp, :day).each do |ts|
