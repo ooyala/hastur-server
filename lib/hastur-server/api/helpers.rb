@@ -587,7 +587,6 @@ module Hastur
 
         # cass_client.ring will fail if no successful queries have run
         def @cass_client.status_check
-          STDERR.puts "MRI status check"
           @cass_client.get "gauge_archive", " "
           @cass_client.ring  # this checks for connection
         end
