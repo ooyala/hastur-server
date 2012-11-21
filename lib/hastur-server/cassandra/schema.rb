@@ -1,7 +1,7 @@
-require "msgpack"
 require "multi_json"
 require "date"
 
+require "hastur-server/compat_msgpack"
 require "hastur-server/util"
 require "hastur-server/time_util"
 require "hastur-server/message"

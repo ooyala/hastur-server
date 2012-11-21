@@ -115,7 +115,7 @@ Warbler::Config.new do |config|
     "termite",
     "bluepill",
     "rainbow",
-    "msgpack",
+    "jruby-msgpack",
     "pony",
     "pry",
     "ohai",
@@ -200,8 +200,6 @@ Warbler::Config.new do |config|
 
   # Set JRuby to run in 1.9 mode.
   config.webxml.jruby.compat.version = "1.9"
-
-  config.webxml.jruby.cext.enabled = true
 
   # When using the :rack booter, "Rackup" script to use.
   # - For 'rackup.path', the value points to the location of the rackup

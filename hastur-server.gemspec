@@ -51,8 +51,8 @@ EOS
   s.add_runtime_dependency("cassandra", "~>0.15") unless RUBY_PLATFORM == "java"
   s.add_runtime_dependency("thrift_client", "=0.8.1") unless RUBY_PLATFORM == "java" # 0.8.2 loses data!
   s.add_runtime_dependency "rainbow"
-  s.add_runtime_dependency "msgpack"
-  s.add_runtime_dependency "msgpack-jruby" if RUBY_PLATFORM == "java"
+  s.add_runtime_dependency "msgpack" unless RUBY_PLATFORM == "java"
+  s.add_runtime_dependency "jruby-msgpack" if RUBY_PLATFORM == "java"
   s.add_runtime_dependency "hastur", "~>1.2.8"
   s.add_runtime_dependency "pony"
   s.add_runtime_dependency "pry"

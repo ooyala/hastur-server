@@ -6,7 +6,7 @@ require "hastur/api"
 require "hastur-server/cassandra/schema"
 require "hastur-server/time_util"
 require "hastur-server/aggregation/rollup"
-require "msgpack"
+require "hastur-server/compat_msgpack"
 require "termite"
 require "time"
 
