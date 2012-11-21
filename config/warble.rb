@@ -1,6 +1,8 @@
 # Disable Rake-environment-task framework detection by uncommenting/setting to false
 Warbler.framework_detection = false
 
+require "jruby_astyanax-jars"
+
 # Warbler web application assembly configuration file
 Warbler::Config.new do |config|
   # Features: additional options controlling how the jar is built.
@@ -25,58 +27,7 @@ Warbler::Config.new do |config|
   # JRuby and JRuby-Rack are pre-loaded in this list.  Be sure to include your
   # own versions if you directly set the value
   #config.java_libs += FileList["warbler_jars/*.jar"]
-  # Stolen from .jbundler/classpath.rb - how will we do this in the long term?  NOT LIKE THIS.
-  config.java_libs << '/Users/noah/.m2/repository/com/netflix/astyanax/astyanax/1.0.3/astyanax-1.0.3.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/apache/cassandra/cassandra-all/1.0.8/cassandra-all-1.0.8.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/xerial/snappy/snappy-java/1.0.4.1/snappy-java-1.0.4.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/com/ning/compress-lzf/0.8.4/compress-lzf-0.8.4.jar'
-  config.java_libs << '/Users/noah/.m2/repository/commons-cli/commons-cli/1.1/commons-cli-1.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/commons-codec/commons-codec/1.2/commons-codec-1.2.jar'
-  config.java_libs << '/Users/noah/.m2/repository/commons-lang/commons-lang/2.4/commons-lang-2.4.jar'
-  config.java_libs << '/Users/noah/.m2/repository/com/googlecode/concurrentlinkedhashmap/concurrentlinkedhashmap-lru/1.2/concurrentlinkedhashmap-lru-1.2.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/antlr/antlr/3.2/antlr-3.2.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/antlr/antlr-runtime/3.2/antlr-runtime-3.2.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/antlr/stringtemplate/3.2/stringtemplate-3.2.jar'
-  config.java_libs << '/Users/noah/.m2/repository/antlr/antlr/2.7.7/antlr-2.7.7.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/apache/cassandra/deps/avro/1.4.0-cassandra-1/avro-1.4.0-cassandra-1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/com/thoughtworks/paranamer/paranamer/2.2/paranamer-2.2.jar'
-  config.java_libs << '/Users/noah/.m2/repository/com/thoughtworks/paranamer/paranamer-ant/2.2/paranamer-ant-2.2.jar'
-  config.java_libs << '/Users/noah/.m2/repository/com/thoughtworks/paranamer/paranamer-generator/2.2/paranamer-generator-2.2.jar'
-  config.java_libs << '/Users/noah/.m2/repository/com/thoughtworks/qdox/qdox/1.10.1/qdox-1.10.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/asm/asm/3.2/asm-3.2.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/apache/ant/ant/1.7.1/ant-1.7.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/apache/ant/ant-launcher/1.7.1/ant-launcher-1.7.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/apache/velocity/velocity/1.6.4/velocity-1.6.4.jar'
-  config.java_libs << '/Users/noah/.m2/repository/commons-collections/commons-collections/3.2.1/commons-collections-3.2.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/oro/oro/2.0.8/oro-2.0.8.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/jboss/netty/netty/3.2.1.Final/netty-3.2.1.Final.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/mortbay/jetty/jetty/6.1.22/jetty-6.1.22.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/mortbay/jetty/jetty-util/6.1.22/jetty-util-6.1.22.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/mortbay/jetty/servlet-api/2.5-20081211/servlet-api-2.5-20081211.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/codehaus/jackson/jackson-core-asl/1.4.0/jackson-core-asl-1.4.0.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/codehaus/jackson/jackson-mapper-asl/1.4.0/jackson-mapper-asl-1.4.0.jar'
-  config.java_libs << '/Users/noah/.m2/repository/jline/jline/0.9.94/jline-0.9.94.jar'
-  config.java_libs << '/Users/noah/.m2/repository/com/googlecode/json-simple/json-simple/1.1/json-simple-1.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/yaml/snakeyaml/1.6/snakeyaml-1.6.jar'
-  config.java_libs << '/Users/noah/.m2/repository/log4j/log4j/1.2.16/log4j-1.2.16.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/slf4j/slf4j-log4j12/1.6.1/slf4j-log4j12-1.6.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/apache/thrift/libthrift/0.6.1/libthrift-0.6.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/junit/junit/4.4/junit-4.4.jar'
-  config.java_libs << '/Users/noah/.m2/repository/javax/servlet/servlet-api/2.5/servlet-api-2.5.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/apache/httpcomponents/httpclient/4.0.1/httpclient-4.0.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/apache/httpcomponents/httpcore/4.0.1/httpcore-4.0.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/commons-logging/commons-logging/1.1.1/commons-logging-1.1.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/apache/cassandra/cassandra-thrift/1.0.8/cassandra-thrift-1.0.8.jar'
-  config.java_libs << '/Users/noah/.m2/repository/com/github/stephenc/jamm/0.2.5/jamm-0.2.5.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/codehaus/jettison/jettison/1.3.1/jettison-1.3.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/stax/stax-api/1.0.1/stax-api-1.0.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/joda-time/joda-time/2.0/joda-time-2.0.jar'
-  config.java_libs << '/Users/noah/.m2/repository/com/github/stephenc/high-scale-lib/high-scale-lib/1.1.1/high-scale-lib-1.1.1.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/apache/servicemix/bundles/org.apache.servicemix.bundles.commons-csv/1.0-r706900_3/org.apache.servicemix.bundles.commons-csv-1.0-r706900_3.jar'
-  config.java_libs << '/Users/noah/.m2/repository/com/google/guava/guava/11.0.2/guava-11.0.2.jar'
-  config.java_libs << '/Users/noah/.m2/repository/com/google/code/findbugs/jsr305/1.3.9/jsr305-1.3.9.jar'
-  config.java_libs << '/Users/noah/.m2/repository/com/github/stephenc/eaio-uuid/uuid/3.2.0/uuid-3.2.0.jar'
-  config.java_libs << '/Users/noah/.m2/repository/org/slf4j/slf4j-api/1.6.4/slf4j-api-1.6.4.jar'
+  config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
 
   # Loose Java classes and miscellaneous files to be included.
   # config.java_classes = FileList["target/classes/**.*"]
@@ -104,28 +55,6 @@ Warbler::Config.new do |config|
   # unless the vendor/rails directory is present.
   # config.gems += ["activerecord-jdbcmysql-adapter", "jruby-openssl"]
   # config.gems << "tzinfo"
-
-  config.gems += [
-    "sinatra",
-    "httparty",
-    "yajl-ruby",
-    "ffi-rzmq",
-    "trollop",
-    "uuid",
-    "termite",
-    "bluepill",
-    "rainbow",
-    "jruby-msgpack",
-    "pony",
-    "pry",
-    "ohai",
-    "sys-uname",
-  ]
-
-  config.gems["multi_json"] = "~>1.3.2"
-  config.gems["hastur"] = "~>1.2.8"
-  config.gems["hastur-rack"] = "~>0.0.10"
-  config.gems["jruby-astyanax"] = "~>0.0.4"
 
   # Uncomment this if you don't want to package rails gem.
   config.gems -= ["rails"]
