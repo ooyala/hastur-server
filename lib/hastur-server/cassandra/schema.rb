@@ -100,9 +100,7 @@ module Hastur
       raise "Cannot deserialize JSON string!" unless hash
       uuid = hash[:uuid] || hash[:from] || options[:uuid]
       raise "No UUID given!" unless uuid
-      ttl = options[:ttl] || hash[:ttl]
-      ttl = hash[:ttl] if ttl == true     # Fall back to next TTL if "true"
-      ttl = nil if ttl == true            # Or if nobody specified an actual TTL, bail
+      ttl = (options[:ttl].to_i || hash[:ttl].to_i) rescue nil
 
       hash["labels"] ||= {}
 
