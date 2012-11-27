@@ -11,7 +11,7 @@ opts = Trollop::options do
   opt :agent,    "Agent UUID, if any",                    :type => String
   opt :server,   "Cassandra server",                      :type => String,   :default => "127.0.0.1:9160"
   opt :keyspace, "Cassandra keyspace",                    :type => String,   :default => "hastur"
-  opt :route,    "Hastur message type",                   :type => String,   :default => "stat"
+  opt :route,    "Hastur message type",                   :type => String,   :default => "counter"
   opt :date,     "Date to query for",                     :type => String
 end
 
