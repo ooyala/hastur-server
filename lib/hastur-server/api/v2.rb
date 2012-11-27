@@ -78,7 +78,7 @@ module Hastur
         # default to pretty printing for non-XHR requests
         params[:pretty] = true unless request.xhr?
 
-        params[:uuid].downcase!
+        params[:uuid].downcase! if params[:uuid]
       end
 
       #

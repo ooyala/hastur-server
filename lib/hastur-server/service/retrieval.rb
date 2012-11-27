@@ -77,6 +77,8 @@ module Hastur
 
         # default to pretty printing for non-XHR requests
         params[:pretty] = true unless request.xhr?
+
+        params[:uuid].downcase! if params[:uuid]
       end
 
       #
@@ -158,7 +160,7 @@ module Hastur
       end
 
       #
-      # @!method /api/data/node
+      # @!method /api/node
       #
       # Retrieves a list of currently registered Hastur-enabled nodes
       #
@@ -174,7 +176,7 @@ module Hastur
       end
 
       #
-      # @!method /api/node/:uuid/:kind
+      # @!method /api/node/:uuid
       #
       # Retrieve a set of resources for the given UUID. Parameters may be
       # comma-separated values when specifying multiple of a given item.
