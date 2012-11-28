@@ -32,9 +32,14 @@ module Hastur
       def insert(cf, row_key, cols, options = {})
         ast_cf = cf_for_name(cf)
         batch = @insert_batch || @java_keyspace.prepare_mutation_batch
-        row = batch.with_row(ast_cf, row_key)
+        row = batch.with_row(ast_cf, row_key.to_java.bytes)
 
-        cols.each { |name, val| row.put_column(name, val, options[:ttl]) }
+        cols.each do |name, val|
+          unless val.kind_of?(String)
+            raise "Value must be a string by the time it gets to Astyanax"
+          end
+          row.java_send(:putColumn, [java.lang.Object, Java::byte[], java.lang.Integer], name.to_java.bytes, val.to_java.bytes, nil)
+        end
 
         batch.execute unless @insert_batch
       end
@@ -87,12 +92,12 @@ module Hastur
       def cf_for_name(name)
         name = name.to_s
         return @cfs[name] if @cfs[name]
-        @cfs[name] = ::Astyanax.get_column_family(name, :text, :text)
+        @cfs[name] = ::Astyanax.get_column_family(name, :bytes, :bytes)
       end
 
       def ast_options(options)
         merged_options = {
-          :consistency => ::Hastur::Cassandra::CONSISTENCY_TWO,
+          :consistency => ::Hastur::Cassandra::CONSISTENCY_ONE,
           :count => 10_000,
         }.merge(options)
         merged_options[:consistency] = consistency_for(merged_options[:consistency])
