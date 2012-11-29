@@ -473,8 +473,8 @@ module Hastur
 
           params[:pretty] = true
           serialize out, params
-        rescue Exception => e
-          hastur_error! "Cassandra is not available.", 500, e.backtrace
+        #rescue Exception => e
+        #  hastur_error! "Cassandra is not available.", 500, e.backtrace
         end
       end
 

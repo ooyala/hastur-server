@@ -345,10 +345,13 @@ module Hastur
           name_series.each do |name, series|
             output[uuid][name] = {}
             series.each do |ts, value|
+              if RUBY_PLATFORM == "java" && value.kind_of?(Java::byte[])
+                value = String.from_java_bytes(value)
+              end
               # MultiJson gets really upset if you ask it to decode a ruby Hash that ends up
               # being stringified - TODO(al,2012-06-21) figure out why hashes are appearing in this data
               unless value.kind_of? String
-                logger.debug "BUG: Got a ruby hash where a JSON string was expected: #{value.inspect}"
+                logger.debug "BUG: Got a ruby #{value.class} where a JSON string was expected: #{value.inspect}"
                 next
               end
 
