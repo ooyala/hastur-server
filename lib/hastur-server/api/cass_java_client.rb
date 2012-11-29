@@ -38,7 +38,7 @@ module Hastur
           unless val.kind_of?(String)
             raise "Value must be a string by the time it gets to Astyanax"
           end
-          row.java_send(:putColumn, [java.lang.Object, Java::byte[], java.lang.Integer], name.to_java.bytes, val.to_java.bytes, nil)
+          row.java_send(:putColumn, [java.lang.Object, Java::byte[], java.lang.Integer], name.to_java.bytes, val.to_java.bytes, options[:ttl])
         end
 
         batch.execute unless @insert_batch
