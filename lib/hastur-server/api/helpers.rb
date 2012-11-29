@@ -1,6 +1,4 @@
-require "grape"
 require "logger"
-require "cassandra/1.0" if RUBY_PLATFORM != "java"
 require "cgi"
 require "hastur/api"
 require "hastur-server/api/constants"
@@ -345,7 +343,7 @@ module Hastur
           name_series.each do |name, series|
             output[uuid][name] = {}
             series.each do |ts, value|
-              if RUBY_PLATFORM == "java" && value.kind_of?(Java::byte[])
+              if value.kind_of?(Java::byte[])
                 value = String.from_java_bytes(value)
               end
               # MultiJson gets really upset if you ask it to decode a ruby Hash that ends up
@@ -569,7 +567,7 @@ module Hastur
       # @return [Cassandra] cassandra client object
       #
       def cass_client
-        @cass_client ||= (RUBY_PLATFORM == "java") ? cass_java_client : cass_ruby_client
+        @cass_client ||= cass_java_client
       end
 
       private
@@ -579,27 +577,7 @@ module Hastur
         ::Hastur::API::CassandraJavaClient.new @cassandra_uris
       end
 
-      def cass_ruby_client
-        @cass_client = ::Cassandra.new("hastur", @cassandra_uris, THRIFT_OPTIONS)
-
-        # for non-production and port-forwarded ssh, there will only be one URI and it
-        # should not auto-discover nodes
-        if @cassandra_uris.one?
-          @cass_client.disable_node_auto_discovery!
-        end
-
-        # cass_client.ring will fail if no successful queries have run
-        def @cass_client.status_check
-          @cass_client.get "gauge_archive", " "
-          @cass_client.ring  # this checks for connection
-        end
-
-        @cass_client
-      end
-
       public
-
-      ## The remaining methods have extra logic to support both Sinatra and Grape
 
       #
       # Get a logger handle from the framework.
@@ -607,11 +585,7 @@ module Hastur
       # @return [Logger]
       #
       def logger
-        if self.is_a? Grape::API
-          API.logger
-        else
-          @logger ||= Logger.new STDERR
-        end
+        @logger ||= Logger.new STDERR
       end
 
       #
@@ -649,7 +623,7 @@ module Hastur
 
       #
       # Calls through to the framework's error handlers with the provided information.
-      # Throws :error for Grape and calls halt() for Sinatra.
+      # Calls halt().
       #
       def hastur_error!(code=501, message="FAIL", bt=[])
         error = {
@@ -661,14 +635,8 @@ module Hastur
         # remove this after getting the loggers to do the right thing
         STDERR.puts MultiJson.dump(error, :pretty => true)
 
-        if self.is_a? Grape::API
-          throw :error, error
-        elsif self.is_a? Sinatra::Base
-          error[:url] = request.url
-          halt serialize(error, {})
-        else
-          abort "BUG: not a Grape::API or Sinatra::Base"
-        end
+        error[:url] = request.url
+        halt serialize(error, {})
       end
     end
   end

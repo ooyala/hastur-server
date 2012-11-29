@@ -17,6 +17,8 @@ your systems.  Hastur tracks registrations, statistics and metrics,
 notifications and errors, log entries and plugins.
 EOS
 
+  s.platform = "java"
+
   s.rubyforge_project = "hastur-server"
   s.required_ruby_version = ">= 1.9.3"
 
@@ -38,14 +40,10 @@ EOS
   s.add_development_dependency "test-unit", "~>2.4.3"
   s.add_development_dependency "rack-test"
   s.add_development_dependency "minitest", "~>3.2.0"
-
-  if RUBY_PLATFORM == "java"
-    s.add_development_dependency "jruby_astyanax-jars"
-    s.add_development_dependency "warbler"
-  end
+  s.add_development_dependency "jruby_astyanax-jars"
+  s.add_development_dependency "warbler"
 
   s.add_runtime_dependency "sinatra"
-  s.add_runtime_dependency "grape"   # TODO: remove
   s.add_runtime_dependency "httparty"
   s.add_runtime_dependency "multi_json", "~>1.3.2"
   s.add_runtime_dependency "ffi-rzmq"
@@ -60,15 +58,7 @@ EOS
   s.add_runtime_dependency "ohai"
   s.add_runtime_dependency "sys-uname"
   s.add_runtime_dependency "hastur-rack", "~>0.0.10"
-
-  if RUBY_PLATFORM == "java"
-    s.add_runtime_dependency "jruby-msgpack" if RUBY_PLATFORM == "java"
-    s.add_runtime_dependency("jruby-astyanax", "~>0.0.4") if RUBY_PLATFORM == "java"
-  else
-    s.add_runtime_dependency "yajl-ruby" unless RUBY_PLATFORM == "java"
-    s.add_runtime_dependency("cassandra", "~>0.15") unless RUBY_PLATFORM == "java"
-    s.add_runtime_dependency("thrift_client", "=0.8.1") unless RUBY_PLATFORM == "java" # 0.8.2 loses data!
-    s.add_runtime_dependency "msgpack" unless RUBY_PLATFORM == "java"
-    s.add_runtime_dependency "unicorn" unless RUBY_PLATFORM == "java"
-  end
+  s.add_runtime_dependency "jruby-msgpack"
+  s.add_runtime_dependency "jruby-astyanax", "~>0.0.4"
+  s.add_runtime_dependency "scala-library-jars"
 end

@@ -12,13 +12,8 @@ require "hastur-server/api/helpers"
 require "multi_json"
 require "termite"
 
-if RUBY_PLATFORM == "java"
-  require "json" # This is the JRuby-JSON gem
-
-  MultiJson.use :json_gem
-else
-  MultiJson.use :yajl
-end
+require "json" # This is the JRuby-JSON gem
+MultiJson.use :json_gem
 
 module Hastur
   module Service

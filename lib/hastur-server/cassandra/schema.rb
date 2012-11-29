@@ -292,10 +292,11 @@ module Hastur
     end
 
     def col_name(name, timestamp)
+      packed = [timestamp].pack("Q>")
       if name
-        colname = "#{name.force_encoding("UTF-8")}-#{[timestamp].pack("Q>")}"
+        colname = "#{name.force_encoding("UTF-8")}-#{packed}"
       else
-        colname = [timestamp].pack("Q>")
+        colname = packed
       end
     end
 
@@ -304,11 +305,30 @@ module Hastur
     end
 
     def col_name_to_name_and_timestamp(col_name)
-      time_packed = col_name[-8..-1]
-      timestamp = time_packed.unpack("Q>")[0].to_i
+      name = nil
+      timestamp = nil
 
-      # Skip col_name[-9], which is the dash between name and packed timestamp
-      name = col_name[0..-10]
+      #if col_name.is_a?(String)
+        timestamp = col_name[-8..-1].unpack("Q>")[0].to_i
+
+        # Skip col_name[-9], which is the dash between name and packed timestamp
+        name = col_name[0..-10]
+      #elsif RUBY_PLATFORM == "java" && col_name.is_a?(Java::byte[])
+      #  begin
+      #    time_bytes = col_name[-8..-1]
+      #    timestamp = time_bytes.to_a.inject { |ctr, b| (ctr << 8) + b }
+
+      #    # A Ruby String here will use the "MacRoman" encoding on JRuby.  It's a weird bug.
+      #    # So I hope that works okay for you...  But that's why we pass the timestamp
+      #    # through as Java bytes.  The "MacRoman" encoding does *not* work okay for
+      #    # Hastur timestamps.
+      #    name = String.from_java_bytes(col_name[0..-10])
+      #  rescue
+      #    timestamp = 0
+      #  end
+      #else
+      #  raise "Unrecognized type #{name.class} for column name!"
+      #end
 
       [ name, timestamp ]
     end
@@ -450,6 +470,7 @@ module Hastur
 
       if options[:count_columns]
         #TODO(noah): Fix this
+        raise "Unimplemented!"
       end
 
       # Delete empty rows in result
