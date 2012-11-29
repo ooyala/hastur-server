@@ -89,6 +89,7 @@ Warbler::Task.new("retrieval_war", Warbler::Config.new do |config|
   config.dirs = %w(lib vendor tools)
   config.excludes = FileList["**/*~"]
   config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
+  config.java_libs += ["lib/hastur-server/scala/scala_code.jar"]
   config.bundler = false  # This doesn't seem to turn off the gemspec
   config.gem_dependencies = false
   config.webserver = 'jetty'
@@ -98,6 +99,7 @@ Warbler::Task.new("retrieval_war", Warbler::Config.new do |config|
 end)
 # Workaround for Warbler bug (https://github.com/jruby/warbler/issues/86)
 task :retrieval_war => :delete_retrieval_war
+task :retrieval_war => :scala_jar
 
 Warbler::Task.new("core_jar", Warbler::Config.new do |config|
   config.jar_name = "core"
@@ -109,6 +111,25 @@ Warbler::Task.new("core_jar", Warbler::Config.new do |config|
   config.bundler = false  # This doesn't seem to turn off the gemspec
   config.gem_dependencies = false
 end)
+
+# Eventually this will get really slow and I'll have to do it in a more
+# reasonable way.
+task :scala_jar do
+  Dir.chdir File.join(File.dirname(__FILE__), "lib", "hastur-server", "scala")
+
+  Dir["*.class"].each { |f| File.unlink f }
+  system "scalac *.scala"
+  unless $?.success?
+    raise "Couldn't compile scala files!"
+  end
+
+  system "jar -cf scala_code.jar *.class"
+  unless $?.success?
+    raise "Couldn't archive scala files to jar!"
+  end
+
+  Dir.chdir File.dirname(__FILE__)
+end
 
 #
 # undesirable but useful hacks follow ...
