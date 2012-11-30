@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+require 'uuid'
+
+UUID_FILE = "/etc/uuid" # Default location of the system's UUID
+HOME_UUID_FILE = "#{ENV['HOME']}/.hastur/uuid" # Alternate UUID location
+
+if File.readable?(UUID_FILE) and File.size(UUID_FILE) == 37
+  puts "You already have a UUID in #{UUID_FILE}.  Skipping."
+  exit 0
+elsif File.readable?(HOME_UUID_FILE) and File.size(HOME_UUID_FILE) == 37
+  puts "You already have a UUID in #{HOME_UUID_FILE}.  Skipping."
+  exit 0
+end
+
+uuid = UUID.new.generate
+if File.writable?(UUID_FILE) or File.writable?(File.dirname(UUID_FILE))
+  File.open(UUID_FILE, "w") { |file| file.puts uuid }
+elsif File.writable?(HOME_UUID_FILE) or File.writable?(File.dirname(HOME_UUID_FILE))
+  File.open(HOME_UUID_FILE, "w") { |file| file.puts uuid }
+else
+  raise "Can't write to #{UUID_FILE} or #{HOME_UUID_FILE}!"
+end
