@@ -474,7 +474,7 @@ module Hastur
       end
 
       get "/v2/scala" do
-        require "scala_code"  # Use scala_code.jar
+        require "native_code"  # Use native_code.jar
         import "ScalaMain"
 
         sc_obj = ScalaMain.new

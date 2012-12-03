@@ -14,5 +14,5 @@ nodule-cassandra*
 *.war
 .jbundler/*
 1
-lib/hastur-server/scala/*.class
-lib/hastur-server/scala/*.jar
+lib/hastur-server/native/*.class
+lib/hastur-server/native/*.jar
