@@ -97,7 +97,7 @@ class CassandraSchemaTest < Scope::TestCase
   setup do
     @cass_client = mock("Cassandra client")
     @cass_client.stubs(:batch).yields(@cass_client)
-    Hastur::Util.stubs(:timestamp).with(nil).returns(NOWISH_TIMESTAMP)
+    Hastur::Util.stubs(:timestamp).with(nil).returns(NOWISH_TIMESTAMP.to_i)
   end
 
   context "Cassandra message schema" do
