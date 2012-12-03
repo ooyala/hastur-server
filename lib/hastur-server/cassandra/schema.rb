@@ -361,6 +361,8 @@ module Hastur
     # TODO(al) this method is too big and must be broken up
     #
     def raw_get_all(cass_client, agent_uuids, msg_schemas, start_ts, end_ts, options = {})
+      now_ts = Hastur::Util.timestamp(nil)
+
       if (options[:name] && options[:name_prefix]) ||
           (options[:name] || options[:name_prefix]) && (options[:start] || options[:finish])
         raise "Error: you can have at most one of :name, :name_prefix or :start/:finish in raw_get_all!"
@@ -442,10 +444,20 @@ module Hastur
 
       values = {}
       options_by_type.each do |type, cass_options|
+        row_count = row_keys_by_type[type].count
+
         # Now, actually do the query
         begin
           if options[:count_columns]
             values[type] = cass_client.multi_count_columns(cf_by_type[type], row_keys_by_type[type], cass_options)
+          # if there are a lot of rows to access, fall back to getting one row at a time to reduce pressure on
+          # cassandra at the cost of more roundtrips
+          elsif row_count > 25
+            values[type] = {}
+            0.upto(row_count-1) do |i|
+              puts "Getting row: #{row_keys_by_type[type][i]} #{i}/#{row_count} #{cf_by_type[type]}"
+              values[type].merge! cass_client.multi_get(cf_by_type[type], [row_keys_by_type[type][i]], cass_options)
+            end
           else
             values[type] = cass_client.multi_get(cf_by_type[type], row_keys_by_type[type], cass_options)
           end
@@ -457,7 +469,6 @@ module Hastur
       end
 
       # Mark rows as accessed
-      now_ts = Hastur::Util.timestamp(nil)
       cass_client.batch do |client|
         msg_schemas.each do |schema|
           row_keys = metadata_row_keys_by_type[schema[:type]]
@@ -477,15 +488,19 @@ module Hastur
       values.each { |_, hash| hash.delete_if { |_, value| value.nil? || value.empty? } }
 
       # Final output format:  { :uuid => { :type => { :name => { :timestamp => value } } } }
+      col_count = 0
+      row_count = 0
       final_values = {}
       values.each do |type, v|
         v.each do |row_key, col_hash|
+          row_count += 1
           uuid = uuid_from_row_key(row_key)
           final_values[uuid] ||= {}
           final_values[uuid][type.to_s] ||= {}
           hash = final_values[uuid][type.to_s]
 
           col_hash.each do |col_key, value|
+            col_count += 1
             name, timestamp = col_name_to_name_and_timestamp(col_key)
 
             if timestamp <= end_ts && timestamp >= start_ts
@@ -502,6 +517,10 @@ module Hastur
           end
         end
       end
+
+      Hastur.gauge "hastur.cassandra.schema.raw_get_all.rows", row_count, now_ts
+      Hastur.gauge "hastur.cassandra.schema.raw_get_all.columns", col_count, now_ts
+      Hastur.gauge "hastur.cassandra.schema.raw_get_all.time", usec_epoch - now_ts, now_ts
 
       final_values
     end

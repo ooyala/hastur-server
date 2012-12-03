@@ -1,4 +1,3 @@
-require 'ffi-rzmq'
 require 'multi_json'
 require 'hastur-server/exception'
 require 'hastur-server/util'

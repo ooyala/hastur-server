@@ -8,6 +8,10 @@
 
 cd "$(dirname $0)/.."
 
+export RUBY_GC_MALLOC_LIMIT=1000000000
+export RUBY_FREE_MIN=500000
+export RUBY_HEAP_MIN_SLOTS=40000
+
 die () {
   echo "$*"
   exit 1
@@ -65,7 +69,7 @@ cat > "${DIR}/${USER}-unicorn.conf" <<EOF
 worker_processes 15
 working_directory "$DIR"
 listen $PORT, :tcp_nodelay => true
-timeout 60
+timeout 300
 stderr_path "$HOME/unicorn-hastur-error.log"
 stdout_path "$HOME/unicorn-hastur-access.log"
 EOF
