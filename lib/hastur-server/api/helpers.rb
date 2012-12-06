@@ -36,7 +36,8 @@ module Hastur
         if params[:start]
           start_ts = Hastur.timestamp(params[:start].to_i)
         elsif params[:ago]
-          start_ts = now - usec_from_interval(params[:ago])
+          ago_usecs = usec_from_interval(params[:ago])
+          start_ts = now - ago_usecs
         else
           start_ts = end_ts - usec_from_interval(default_delta)
         end
@@ -106,7 +107,7 @@ module Hastur
 
         if params[:rollup_period] or params[:kind] == "rollup"
           unless ROLLUP_PERIODS.include?(params[:rollup_period])
-            raise "Invalid or missing rollup period: #{params[:rollup_period].inspect}"
+            raise "Invalid or missing rollup period: #{params[:rollup_period].inspect}.  Should be one of: #{ROLLUP_PERIODS.join(",")}"
           end
           cass_options[:rollup_period] = params[:rollup_period]
         end

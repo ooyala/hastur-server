@@ -266,8 +266,15 @@ module Hastur
       when :month, "month", :one_month, "one_month", :year, "year", :one_year, "one_year"
         raise "cannot convert #{interval.inspect} to microseconds because there is no sensible conversion"
       else
-        raise "unrecognized or unsupported interval: #{interval.inspect}"
+        raise "unrecognized or unsupported interval: #{interval.inspect} -- " +
+          "not one of #{time_intervals.join}"
       end
+    end
+
+    def time_intervals
+      [ "second", "one_second", "minute", "one_minute", "five_minutes", "hour", "one_hour",
+        "day", "one_day", "two_days", "week", "one_week", "month", "one_month", "year",
+        "one_year" ]
     end
   end
 end

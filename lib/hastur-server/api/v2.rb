@@ -74,6 +74,16 @@ module Hastur
         params[:pretty] = true unless request.xhr?
 
         params[:uuid].downcase! if params[:uuid]
+
+        if params[:rollup_period] && !ROLLUP_PERIODS.include?(params[:rollup_period].to_s)
+          hastur_error! "Given 'rollup_period' param '#{params[:rollup_period]}' " +
+            "is not one of #{ROLLUP_PERIODS.join(", ")}.", 404
+        end
+
+        if params[:ago] && params[:ago] !~ /^\d+$/ && !Hastur::TimeUtil.time_intervals.include?(params[:ago])
+          hastur_error! "Given 'ago' param '#{params[:ago]}' " +
+            "is not one of #{Hastur::TimeUtil.time_intervals.join(", ")}.", 404
+        end
       end
 
       #
