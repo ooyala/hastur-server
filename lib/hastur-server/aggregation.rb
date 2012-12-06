@@ -13,11 +13,12 @@ module Hastur
     extend self
 
     # common strings that appear in v1 functions, before switching to symbol style
+    # deprecated 2012-08-08
     ALLOWED_BARE_STRINGS = %w[ uuid name add cnt avg shift first default ]
 
     # series = { uuid => { name => { timestamp => value, ... } } }
     def evaluate(string, series, control)
-      exp = tokenize(string)
+      exp = tokenize(string, control)
 
       until exp.none?
         args = []
@@ -39,9 +40,10 @@ module Hastur
     # Tokenize an aggregation expression.
     #
     # @param [String] string aggregation expression in a string
+    # @param [Hash] control Parameters for the request
     # @return [Array<String,Symbol,Fixnum,Float,Boolean,nil>] tokens
     #
-    def tokenize(string)
+    def tokenize(string, control)
       parts = string.split(/\s*[\(\)]\s*/).map do |token|
         token.split(/\s*,\s*/).map do |exp|
           # avoid :to_sym on random input, symbols are never gc'ed
@@ -61,7 +63,7 @@ module Hastur
           elsif /\A:(?<str>[-\.\w]+)\Z/ =~ exp
             str
           # compatibility with pre-symbol keywords, deprecated 2012-08-08
-          elsif ALLOWED_BARE_STRINGS.include? exp
+          elsif ALLOWED_BARE_STRINGS.include? exp && !control[:no_barewords]
             exp
           else
             raise InvalidAggSyntaxError.new "syntax error in expression: #{exp.inspect}"
