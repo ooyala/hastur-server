@@ -246,7 +246,7 @@ module Hastur
         expr = CGI::unescape(fun)
 
         # pass values needed for hitting Cassandra in
-        control = { :cass_client => cass_client }
+        control = { :cass_client => cass_client, :exclude_uuids => ["profiler"] }
         control[:start_ts], control[:end_ts] = get_start_end :one_day
 
         Hastur::Aggregation.evaluate(expr, series, control)

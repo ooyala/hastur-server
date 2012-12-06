@@ -54,7 +54,7 @@ module Hastur
       series.each do |uuid, name_series|
         new_series[uuid] = {}
         name_series.each do |name, subseries|
-          if skip_name?(control, name)
+          if skip_uuid?(control, uuid) || skip_name?(control, name)
             new_series[uuid][name] = subseries
           else
             new_series[uuid][name] = yield name, subseries
@@ -76,8 +76,8 @@ module Hastur
     #   /api/name/linux.proc.stat/value?fun=derivative(incl(processes,compound(processes,procs_running,procs_blocked)))
     #
     def incl(series, control, *names)
-      control[:include] ||= []
-      control[:include].concat names
+      control[:include_names] ||= []
+      control[:include_names].concat names
       return series, control
     end
 
@@ -90,8 +90,8 @@ module Hastur
     #   /api/name/linux.proc.stat/value?fun=derivative(excl(processes,compound(processes,procs_running,procs_blocked)))
     #
     def excl(series, control, *names)
-      control[:exclude] ||= []
-      control[:exclude].concat names
+      control[:exclude_names] ||= []
+      control[:exclude_names].concat names
       return series, control
     end
 
@@ -99,8 +99,10 @@ module Hastur
     # Clear any selections from include()/exclude() for downstream functions.
     #
     def all(series, control, ignore=nil)
-      control.delete :include
-      control.delete :exclude
+      control.delete :include_names
+      control.delete :exclude_names
+      control.delete :include_uuids
+      control.delete :exclude_uuids
       return series, control
     end
 
@@ -127,9 +129,21 @@ module Hastur
     # left unmodified.
     #
     def skip_name?(control, name)
-      if control.has_key?(:exclude) and control[:exclude].include? name
+      if control.has_key?(:exclude_names) and control[:exclude_names].include? name
         true
-      elsif control.has_key?(:include) and not control[:include].include? name
+      elsif control.has_key?(:include_names) and not control[:include_names].include? name
+        true
+      end
+    end
+
+    #
+    # Test if a given uuid should be skipped according to include/exclude rules. Skipped data is
+    # left unmodified.
+    #
+    def skip_uuid?(control, uuid)
+      if control.has_key?(:exclude_uuids) and control[:exclude_uuids].include? uuid
+        true
+      elsif control.has_key?(:include_uuids) and not control[:include_uuids].include? uuid
         true
       end
     end
