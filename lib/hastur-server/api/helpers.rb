@@ -96,6 +96,7 @@ module Hastur
       def build_name_option_list(want_names)
         cass_options = {}
         cass_options[:reversed] = true if param_is_true(params[:reversed])
+        cass_options[:profiler] = true if param_is_true(params[:profiler])
         cass_options[:count] = params[:limit].to_i if params[:limit]
         cass_options[:consistency] = param_consistency if params[:consistency]
 
@@ -149,6 +150,7 @@ module Hastur
       # "consistency" - Cassandra consistency to read at
       # "raw" - don't merge messages into the return data, return it as escaped json inside the json
       # "labels" - filter on labels using label=<label>:<value>,... format, url encoded
+      # "profiler" - return profiling data with query results
       #
       def query_hastur(params)
         kind = params[:kind]
@@ -166,7 +168,7 @@ module Hastur
         end
 
         unless types.any? { |t| TYPES[:all].include?(t) }
-          hastur_error! "Invalid type(s): '#{types}'", 404
+          hastur_error! "Invalid type(s): '#{types}', not included in #{TYPES[:all].join(", ")}", 404
         end
 
         if labels.any?
@@ -223,7 +225,9 @@ module Hastur
         end
 
         if params[:fun]
-          output = apply_functions(params[:fun], output)
+          Hastur.time "hastur.rest.aggregation_time" do
+            output = apply_functions(params[:fun], output)
+          end
         end
 
         output
@@ -340,6 +344,8 @@ module Hastur
       def deserialize_json_messages(data)
         output = {}
         data.each do |uuid, name_series|
+          next if special_name?(uuid)
+
           output[uuid] = {}
           name_series.each do |name, series|
             output[uuid][name] = {}
@@ -386,6 +392,8 @@ module Hastur
         # consistent with other filtering passes
         output = {}
         data.each do |uuid, name_series|
+          next if special_name?(uuid)
+
           output[uuid] = {}
           name_series.each do |name, series|
             output[uuid][name] = {}
@@ -432,6 +440,8 @@ module Hastur
       def convert_messages_to_values(data)
         output = {}
         data.each do |uuid, name_series|
+          next if special_name?(uuid)
+
           output[uuid] = {}
           name_series.each do |name, series|
             output[uuid][name] = {}
@@ -462,6 +472,16 @@ module Hastur
         type_id = parts.pop.to_i
         name = parts.join '-'
         { :name => name, :type_id => type_id, :uuid => uuid }
+      end
+
+      #
+      # Check if a given string is a special top-level entry rather than a real UUID.
+      #
+      # @param [String] name to check
+      # @return [Boolean] true if special rather than normal
+      #
+      def special_name?(name)
+        name.to_s == "profiler"
       end
 
       #
@@ -511,6 +531,8 @@ module Hastur
       def filter_out_unwanted_names(output, names)
         names.each do |match|
           output.keys.each do |uuid|
+            next if special_name?(uuid)
+
             output[uuid].keys.each do |name|
               unless name_matches?(name, match)
                 output[uuid].delete name
