@@ -117,18 +117,25 @@ end)
 task :native_jar do
   Dir.chdir File.join(File.dirname(__FILE__), "lib", "hastur-server", "native")
 
-  Dir["*.class"].each { |f| File.unlink f }
-  system "scalac *.scala"
-  unless $?.success?
-    raise "Couldn't compile scala files!"
+  Dir["**/*.class"].each { |f| File.unlink f }
+
+  # TODO(noah): support java/scala files not in top directory
+
+  unless Dir["*.scala"].empty?
+    system "scalac *.scala"
+    unless $?.success?
+      raise "Couldn't compile scala files!"
+    end
   end
 
-  system "javac *.java"
-  unless $?.success?
-    raise "Couldn't compile java files!"
+  unless Dir["*.java"].empty?
+    system "javac *.java"
+    unless $?.success?
+      raise "Couldn't compile java files!"
+    end
   end
 
-  system "jar -cf native_code.jar *.class"
+  system "jar -cf native_code.jar `find . -name '*.class\'`"
   unless $?.success?
     raise "Couldn't archive java/scala class files to jar!"
   end
