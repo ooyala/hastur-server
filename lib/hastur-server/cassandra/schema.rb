@@ -170,6 +170,7 @@ module Hastur
     # @option options [String] :start Initial column name for a Cassandra slice - use at own risk!
     # @option options [String] :finish Final column name for a Cassandra slice - use at own risk!
     # @option options [Boolean] :reversed Return in reverse order
+    # @option options [Boolean] :profiler Return profiling data with query
     #
     def get(cass_client, agent_uuid, type, start_timestamp, end_timestamp, options = {})
       if end_timestamp - start_timestamp > 32 * ONE_DAY
@@ -189,6 +190,8 @@ module Hastur
 
     #
     # Get one or more rows from the lookup_by_key CF and return a flattened hash.
+    #
+    # For more options, see #get().
     #
     # @param cass_client The cassandra client object
     # @param [String,Symbol] prefix the row key prefix to fetch, e.g. "name", "cnames"
@@ -215,11 +218,7 @@ module Hastur
     # If a :type option is given, pull the values from that type's storage area.  Otherwise,
     # pull raw JSON information from the all-stats archive area.
     #
-    # Options:
-    #   :name
-    #   :value_only - return only the value, not the full JSON
-    #   :consistency - Cassandra read consistency
-    #   :count - maximum number of entries to return, default 10000
+    # For options, see #get()
     #
     def get_all_stats(cass_client, agent_uuid, start_timestamp, end_timestamp, options = {})
       if end_timestamp - start_timestamp > 72 * ONE_HOUR
@@ -497,9 +496,31 @@ module Hastur
         end
       end
 
+      rows_queried = row_keys_by_type.inject(0) { |total, row_keys| total + row_keys.size }
+      query_time = usec_epoch - now_ts
+
       Hastur.gauge "hastur.cassandra.schema.raw_get_all.rows", row_count, now_ts
+      Hastur.gauge "hastur.cassandra.schema.raw_get_all.rows_queried", rows_queried, now_ts
       Hastur.gauge "hastur.cassandra.schema.raw_get_all.columns", col_count, now_ts
-      Hastur.gauge "hastur.cassandra.schema.raw_get_all.time", usec_epoch - now_ts, now_ts
+      Hastur.gauge "hastur.cassandra.schema.raw_get_all.time", query_time, now_ts
+
+      if options[:profiler]
+        final_values["profiler"] = {}
+        final_values["profiler"]["gauge"] = {
+          "hastur.cassandra.schema.raw_get_all.rows" => {
+            now_ts => row_count,
+          },
+          "hastur.cassandra.schema.raw_get_all.rows_queried" => {
+            now_ts => rows_queried,
+          },
+          "hastur.cassandra.schema.raw_get_all.columns" => {
+            now_ts => col_count,
+          },
+          "hastur.cassandra.schema.raw_get_all.time" => {
+            now_ts => query_time,
+          },
+        }
+      end
 
       final_values
     end
