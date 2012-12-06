@@ -84,6 +84,10 @@ module Hastur
           hastur_error! "Given 'ago' param '#{params[:ago]}' " +
             "is not one of #{Hastur::TimeUtil.time_intervals.join(", ")}.", 404
         end
+
+        if params[:kind] && !FORMATS.include?(kind)
+          hastur_error! "Given 'kind' param '#{params[:kind]}' is not one of #{FORMATS.join(", ")}.", 404
+        end
       end
 
       #
