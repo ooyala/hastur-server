@@ -22,7 +22,7 @@ module Hastur
                             reg_agent reg_process reg_pluginv1
                             info_agent info_process info_ohai]
       }.freeze
-      FORMATS = %w[message value count rollup].freeze
+      FORMATS = %w[message value count rollup csv].freeze
 
       # TODO(al) use the schema to build these lists
       TYPES_WITH_VALUES = ["metric", TYPES[:metric], "heartbeat", TYPES[:heartbeat]].flatten.freeze
