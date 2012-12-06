@@ -259,7 +259,7 @@ module Hastur
         series["test_uuid"]["test_stat"][nowish_ts + 1000 * i] = i
       end
 
-      series
+      return series, control
     end
   end
 end
