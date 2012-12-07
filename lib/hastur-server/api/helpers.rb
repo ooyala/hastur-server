@@ -33,7 +33,7 @@ module Hastur
           end_ts = now
         end
 
-        if params[:start]
+        if params[:start] && params[:start].to_i != 0
           start_ts = Hastur.timestamp(params[:start].to_i)
         elsif params[:ago]
           ago_usecs = usec_from_interval(params[:ago])
