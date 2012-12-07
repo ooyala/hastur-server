@@ -86,12 +86,12 @@ Warbler::Task.new("retrieval_war", Warbler::Config.new do |config|
   config.features = ["executable"]
 
   # See config/warble.rb for explanation of config variables
-  config.dirs = %w(lib vendor tools)
+  config.dirs = %w(lib tools)
   config.excludes = FileList["**/*~"]
   config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
   config.java_libs += ["lib/hastur-server/native/native_code.jar"]
   config.bundler = false  # This doesn't seem to turn off the gemspec
-  config.gem_dependencies = false
+  config.gem_dependencies = true
   config.webserver = 'jetty'
   config.webxml.booter = :rack
   config.webxml.jruby.compat.version = "1.9"
