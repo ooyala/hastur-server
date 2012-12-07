@@ -95,7 +95,7 @@ module Hastur
           new_subseries[bin_ts] = compute_rollups(
             new_subseries[bin_ts][:timestamps],
             new_subseries[bin_ts][:values],
-            bin_usecs, bin_ts, (bin_ts + bin_usecs)
+            bin_usecs, bin_ts, (bin_ts + bin_usecs - 1)
           )
         end
 
@@ -169,6 +169,16 @@ module Hastur
     #
     # also used in cassandra/rollup.rb
     #
+    # Timestamps and values must both be supplied, but don't currently need to be
+    # in any kind of corresponding order to each other.
+    #
+    # @param [Array] timestamps An array of timestamps.
+    # @param [Array] values An array of values.
+    # @param [Numeric] interval The interval, which is just included directly in the rollup.
+    # @param [Fixnum or nil] first_ts The first timestamp covered, or nil to use timestamps.min.
+    # @param [Fixnum or nil] last_ts The last timestamp covered, or nil to use timestamps.max.
+    # @return [Hash] A rollup of varyingly-relevant quantities.
+    #
     def compute_rollups(timestamps, values, interval=nil, first_ts=nil, last_ts=nil)
       # both lists need to be in order, but the time/value relationship is not important
       timestamps.sort!
@@ -201,20 +211,13 @@ module Hastur
         rollup[:error] = :no_samples
       end
 
-      # null out remaining fields if there aren't enough samples to compute useful values
-      unless timestamps.count >= 2 and values.count >= 2
-        [:p1, :p5, :p10, :p25, :p50, :p75, :p90, :p95, :p99, :period, :jitter].each do |p|
-          rollup[p] = nil
-        end
-        rollup[:error] = :not_enough_samples
-        return rollup
-      end
-
       # http://en.wikipedia.org/wiki/Percentiles
       # median is just p50
       [1, 5, 10, 25, 50, 75, 90, 95, 99].each do |percentile|
         rank = (rollup[:count] * (percentile / 100.0) + 0.5).round
-        rollup["p#{percentile}".to_sym] = values[rank]
+
+        # Rank is 1-based, Ruby arrays are 0-based -- subtract one.
+        rollup["p#{percentile}".to_sym] = values[rank - 1]
       end
 
       # period standard deviation (quality)
@@ -230,6 +233,11 @@ module Hastur
         stddev, variance, average = stddev(intervals)
         rollup[:period] = average
         rollup[:jitter] = stddev
+      else
+        # null out remaining fields if there aren't enough samples to compute useful values
+        rollup[:period] = nil
+        rollup[:jitter] = nil
+        rollup[:error] = :not_enough_samples
       end
 
       rollup
