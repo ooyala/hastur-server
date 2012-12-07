@@ -99,6 +99,7 @@ module Hastur
         cass_options[:profiler] = true if param_is_true(params[:profiler])
         cass_options[:count] = params[:limit].to_i if params[:limit]
         cass_options[:consistency] = param_consistency if params[:consistency]
+        cass_options[:request_ts] = env[:hastur_timestamp]
 
         case params[:kind]
         when "value"  ; cass_options[:value_only] = true
@@ -225,8 +226,15 @@ module Hastur
         end
 
         if params[:fun]
-          Hastur.time "hastur.rest.aggregation_time" do
-            output = apply_functions(params[:fun], output)
+          t0 = Time.now
+          output = apply_functions(params[:fun], output)
+          t = ((Time.now - t0) * 1_000_000).to_i
+
+          Hastur.gauge "hastur.rest.aggregation_time", t
+          if output["profiler"]
+            output["profiler"]["hastur.rest.aggregation_time"] = {
+              env[:hastur_timestamp] => t
+            }
           end
         end
 

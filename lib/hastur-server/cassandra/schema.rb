@@ -87,9 +87,10 @@ module Hastur
     # @param [String] json_string to be parsed & data used for the insert
     # @param [Hash] schema The schema hash for this message type
     # @param [Hash{Symbol=>Fixnum,String}] options
-    # @option options [Fixnum] :ttl, in seconds, passed to the cassandra client
-    # @option options [Fixnum] :consistency, passed to the cassandra client
+    # @option options [Fixnum] :ttl TTL in seconds, passed to the cassandra client
+    # @option options [Fixnum] :consistency Consistency, passed to the cassandra client
     # @option options [String] :uuid 36-byte agent UUID
+    # @option options [Fixnum] :request_ts Timestamp for columns, defaults to now
     #
     def insert(cass_client, json_string, schema, options = {})
       unless schema.is_a?(Hash)
@@ -115,7 +116,7 @@ module Hastur
 
       insert_options = { :consistency => options[:consistency] || DEFAULT_WRITE_CONSISTENCY }
       insert_options[:ttl] = options[:ttl] if options[:ttl]
-      now_ts = ::Hastur::Util.timestamp.to_s
+      now_ts = (options[:request_ts] || ::Hastur::Util.timestamp).to_s
 
       cass_client.batch do |client|
         client.insert(schema[:archive_cf], key, { colname => json_string }, insert_options)
@@ -171,6 +172,7 @@ module Hastur
     # @option options [String] :finish Final column name for a Cassandra slice - use at own risk!
     # @option options [Boolean] :reversed Return in reverse order
     # @option options [Boolean] :profiler Return profiling data with query
+    # @option options [Fixnum] :request_ts Timestamp for request access time and statistics, defaults to now
     #
     def get(cass_client, agent_uuid, type, start_timestamp, end_timestamp, options = {})
       if end_timestamp - start_timestamp > 32 * ONE_DAY
@@ -339,7 +341,7 @@ module Hastur
     # TODO(al) this method is too big and must be broken up
     #
     def raw_get_all(cass_client, agent_uuids, msg_schemas, start_ts, end_ts, options = {})
-      now_ts = Hastur::Util.timestamp(nil)
+      now_ts = options[:request_ts] || Hastur::Util.timestamp(nil)
 
       if (options[:name] && options[:name_prefix]) ||
           (options[:name] || options[:name_prefix]) && (options[:start] || options[:finish])
