@@ -3,7 +3,7 @@ require "hastur-server/aggregation/base"
 module Hastur
   module Aggregation
     extend self
-    @functions.merge!({ "rollup" => :rollup, "bin" => :bin })
+    @functions.merge!({ "rollup" => :rollup, "bin" => :bin, "segment" => :segment })
 
     #
     # Generate a rollup for each series. Given a true option, the rollup is appended to the series
@@ -104,6 +104,65 @@ module Hastur
     end
 
     #
+    # Put the values into timestamp-aligned segments and roll the segments up.
+    # Defaults to five-second segments.
+    #
+    # @param [Fixnum] segment_align_usec what timestamp divisor to use, in microseconds
+    #
+    # @example
+    #   /api/name/foo.bar/value?fun=segment(5000000)
+    #   /api/name/foo.bar/value?fun=compound(:stddev,segment())
+    #
+    def segment(series, control, segment_align_usec=5_000_000)
+      each_subseries_in series, control do |name, subseries|
+        new_subseries = {}
+
+        # rely on request timestamps provided in control - especially with counters,
+        # there will be variable numbers of samples available so ranges will be inconsistent
+        min_ts = control[:start_ts]
+        max_ts = control[:end_ts]
+        min_ts_seg = min_ts / segment_align_usec
+        max_ts_seg = max_ts / segment_align_usec
+
+        # compute the number of segments
+        range = max_ts - min_ts
+        seg_count = max_ts_seg - min_ts_seg + 1
+
+        # initialize the segments - all segments must exist in output
+        0.upto(seg_count-1).map do |seg|
+          key = min_ts + seg * segment_align_usec
+          new_subseries[key] = { :timestamps => [], :values => [] }
+        end
+
+        # move the individual entries into segments ready for rollups
+        seg_ts = min_ts
+        subseries.keys.sort.each do |ts|
+          # advance to the next bin if necessary
+          until ts.between?(seg_ts, seg_ts + segment_align_usec - 1) do
+            seg_ts = seg_ts + segment_align_usec
+          end
+
+          # compute_rollups requires two arrays, timestamps & values
+          new_subseries[seg_ts][:timestamps] << ts
+          new_subseries[seg_ts][:values] << subseries[ts]
+        end
+
+        # now use the rollup function to generate all of the useful aggregations
+        new_subseries.keys.each do |seg_ts|
+          if new_subseries[seg_ts][:values].size > 0
+            new_subseries[seg_ts] = compute_rollups(
+              new_subseries[seg_ts][:timestamps],
+              new_subseries[seg_ts][:values],
+              segment_align_usec, seg_ts, (seg_ts + segment_align_usec - 1)
+            )
+          end
+        end
+
+        new_subseries
+      end
+    end
+
+    #
     # Given a set of timestamps & values, compute some useful rollups. Not
     # all of the computed values will be useful for all types of data, but they
     # all run fast enough that we always compute and let the user sort out what's useful.
@@ -117,7 +176,7 @@ module Hastur
 
       first_ts ||= timestamps.first
       last_ts  ||= timestamps.last
-      elapsed  = ((last_ts || 0) - (first_ts || 0))
+      elapsed  = (first_ts && last_ts) ? last_ts - first_ts + 1 : 0
 
       rollup = {
         :min        => values[0],
