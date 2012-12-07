@@ -10,6 +10,7 @@ module Hastur
       "scale"      => :scale,
       "min"        => :min,
       "max"        => :max,
+      "rerange"    => :rerange,
       "sum"        => :sum,
       "first"      => :first,
       "last"       => :last,
@@ -240,6 +241,33 @@ module Hastur
       each_subseries_in itgl, control do |name, subseries|
         { :sum => subseries.values.last }
       end
+    end
+
+    #
+    # Reset the range (start_ts, end_ts) of the series.
+    # It's possible that this shouldn't be needed, but it's
+    # a good way of handling certain bugs.
+    #
+    # @param [Hash] series
+    # @param [Hash] control Control data for the series.
+    # @return [Hash] series
+    #
+    def rerange(series, control)
+      min_ts = nil
+      max_ts = nil
+
+      new_series, control = each_subseries_in(series, control) do |name, subseries|
+        # Do the careful dance of "is it nil?"
+        min_ts = (subseries.keys + [min_ts]).compact.min
+        max_ts = (subseries.keys + [max_ts]).compact.max
+
+        subseries
+      end
+
+      control[:start_ts] = min_ts || 0
+      control[:end_ts] = max_ts || 0
+
+      return new_series, control
     end
 
     #
