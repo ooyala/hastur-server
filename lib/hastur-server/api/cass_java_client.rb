@@ -1,4 +1,4 @@
-require "jruby-astyanax"
+require "hastur-server/api/jruby-astyanax"
 
 module Hastur
   module API
@@ -53,7 +53,7 @@ module Hastur
       def get(cf, row_key, options = {})
         ast_cf = cf_for_name(cf)
 
-        @keyspace.get(cf, row_key, ast_options(options))
+        @keyspace.get(cf, row_key.to_java_bytes, ast_options(options))
       end
 
       # Options:
@@ -65,7 +65,7 @@ module Hastur
       def multi_get(cf, rows, options = {})
         ast_cf = cf_for_name(cf)
 
-        @keyspace.multiget(cf, rows, ast_options(options))
+        @keyspace.multiget(cf, rows.map(&:to_java_bytes), ast_options(options))
       end
 
       # Options:
@@ -77,7 +77,7 @@ module Hastur
       def multi_count_columns(cf, rows, options = {})
         ast_cf = cf_for_name(cf)
 
-        @keyspace.multi_count_columns(cf, rows, ast_options(options))
+        @keyspace.multi_count_columns(cf, rows.map(&:to_java_bytes), ast_options(options))
       end
 
       # Raise exception if can't connect
@@ -92,7 +92,7 @@ module Hastur
       def cf_for_name(name)
         name = name.to_s
         return @cfs[name] if @cfs[name]
-        @cfs[name] = ::Astyanax.get_column_family(name, :bytes, :bytes)
+        @cfs[name] = ::Astyanax.get_column_family(name)
       end
 
       def ast_options(options)

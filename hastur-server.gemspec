@@ -59,6 +59,5 @@ EOS
   s.add_runtime_dependency "sys-uname"
   s.add_runtime_dependency "hastur-rack", "~>0.0.10"
   s.add_runtime_dependency "jruby-msgpack"
-  s.add_runtime_dependency "jruby-astyanax", "~>0.0.4"
   s.add_runtime_dependency "scala-library-jars"
 end
