@@ -421,8 +421,10 @@ module Hastur
       end
 
       values = {}
+      queried_row_count = 0
       options_by_type.each do |type, cass_options|
         row_count = row_keys_by_type[type].count
+        queried_row_count += row_count
 
         # Now, actually do the query
         begin
@@ -496,11 +498,10 @@ module Hastur
         end
       end
 
-      rows_queried = row_keys_by_type.inject(0) { |total, row_keys| total + row_keys.size }
       query_time = usec_epoch - now_ts
 
       Hastur.gauge "hastur.cassandra.schema.raw_get_all.rows", row_count, now_ts
-      Hastur.gauge "hastur.cassandra.schema.raw_get_all.rows_queried", rows_queried, now_ts
+      Hastur.gauge "hastur.cassandra.schema.raw_get_all.rows_queried", queried_row_count, now_ts
       Hastur.gauge "hastur.cassandra.schema.raw_get_all.columns", col_count, now_ts
       Hastur.gauge "hastur.cassandra.schema.raw_get_all.time", query_time, now_ts
 
@@ -511,7 +512,7 @@ module Hastur
             now_ts => row_count,
           },
           "hastur.cassandra.schema.raw_get_all.rows_queried" => {
-            now_ts => rows_queried,
+            now_ts => queried_row_count,
           },
           "hastur.cassandra.schema.raw_get_all.columns" => {
             now_ts => col_count,
