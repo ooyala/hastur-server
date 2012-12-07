@@ -85,7 +85,7 @@ module Hastur
             "is not one of #{Hastur::TimeUtil.time_intervals.join(", ")}.", 404
         end
 
-        if params[:kind] && !FORMATS.include?(kind)
+        if params[:kind] && !FORMATS.include?(params[:kind])
           hastur_error! "Given 'kind' param '#{params[:kind]}' is not one of #{FORMATS.join(", ")}.", 404
         end
       end
@@ -117,7 +117,6 @@ module Hastur
           :app      => "#{root_uri}/v2/lookup/app",
           :node     => "#{root_uri}/v2/lookup/node",
           :name     => "#{root_uri}/v2/lookup/name",
-          :uuid     => "#{root_uri}/v2/lookup/uuid",
           :hostname => "#{root_uri}/v2/lookup/hostname",
         }, params)
       end
