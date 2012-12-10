@@ -123,6 +123,7 @@ module Hastur
         max_ts = control[:end_ts]
         min_ts_seg = min_ts / segment_align_usec
         max_ts_seg = max_ts / segment_align_usec
+        min_ts_seg_start = min_ts_seg * segment_align_usec
 
         # compute the number of segments
         range = max_ts - min_ts
@@ -130,12 +131,12 @@ module Hastur
 
         # initialize the segments - all segments must exist in output
         0.upto(seg_count-1).map do |seg|
-          key = min_ts + seg * segment_align_usec
+          key = min_ts_seg_start + seg * segment_align_usec
           new_subseries[key] = { :timestamps => [], :values => [] }
         end
 
         # move the individual entries into segments ready for rollups
-        seg_ts = min_ts
+        seg_ts = min_ts_seg_start
         subseries.keys.sort.each do |ts|
           # advance to the next bin if necessary
           until ts.between?(seg_ts, seg_ts + segment_align_usec - 1) do
@@ -149,13 +150,11 @@ module Hastur
 
         # now use the rollup function to generate all of the useful aggregations
         new_subseries.keys.each do |seg_ts|
-          if new_subseries[seg_ts][:values].size > 0
-            new_subseries[seg_ts] = compute_rollups(
-              new_subseries[seg_ts][:timestamps],
-              new_subseries[seg_ts][:values],
-              segment_align_usec, seg_ts, (seg_ts + segment_align_usec - 1)
-            )
-          end
+          new_subseries[seg_ts] = compute_rollups(
+            new_subseries[seg_ts][:timestamps],
+            new_subseries[seg_ts][:values],
+            segment_align_usec, seg_ts, (seg_ts + segment_align_usec - 1)
+          )
         end
 
         new_subseries
