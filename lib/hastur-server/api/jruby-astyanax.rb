@@ -133,7 +133,10 @@ module Astyanax
     #
     def multiget(column_family, rowkeys, options)
       query, range = get_query_and_range(column_family, options)
-      query.get_key_slice(*rowkeys).with_column_range(range.build).execute.result.map do |row|
+      query = query.get_key_slice(rowkeys.to_java).with_column_range(range.build)
+
+      result = query.execute.result
+      result.map do |row|
         { String.from_java_bytes(row.key) => Hash[row.columns.map { |c| [ String.from_java_bytes(c.name), String.from_java_bytes(c.byte_array_value) ] }] }
       end.inject({}, &:merge)
     end
