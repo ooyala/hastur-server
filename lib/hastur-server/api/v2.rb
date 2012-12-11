@@ -63,9 +63,17 @@ module Hastur
         end
       end
 
+      KNOWN_PARAMS = [ :name, :uuid, :type, :kind, :rollup_period, :ago, :cb, :pretty, :app, :hostname, :fun,
+                       :start, :end, :consistency, :reversed, :profiler, :limit, :label, :format ].map(&:to_s)
+
       before do
         response['Access-Control-Allow-Origin'] = "*"
         Hastur.mark 'hastur.rest.uri', request.url
+
+        unknown = params.keys - KNOWN_PARAMS
+        unless unknown.empty?
+          hastur_error! "Unknown parameters: #{unknown.join(',')}", 404
+        end
 
         # grab a timestamp at the beginning of each request to use in repeated calls to get_start_end
         env[:hastur_timestamp] = Hastur.timestamp
