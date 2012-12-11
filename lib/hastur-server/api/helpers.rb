@@ -135,6 +135,23 @@ module Hastur
         end
       end
 
+      def output_operation(output, op_name, t)
+        Hastur.gauge op_name, t, env[:hastur_timestamp]
+        if output["profiler"]
+          output["profiler"][op_name] = {
+            env[:hastur_timestamp] => t
+          }
+        end
+      end
+
+      def timed_output_operation(output, op_name)
+        t0 = Time.now
+        yield
+        t = ((Time.now - t0) * 1_000_000).to_i
+
+        output_operation(output, op_name, t)
+      end
+
       #
       # Actually query Hastur. The query is based on the Sinatra
       # params. Where appropriate, values can be comma-separated
@@ -201,17 +218,25 @@ module Hastur
         end
 
         if FORMATS.include? kind
+          t0 = Time.now
           output = sort_series_keys(flatten_rows(values))
+          output_operation(output, "hastur.rest.sort_keys", ((Time.now - t0).to_f * 1_000_000).to_i)
 
           if params[:kind] == "message"
-            output = deserialize_json_messages(output)
+            timed_output_operation(output, "hastur.rest.deserialize_time") do
+              output = deserialize_json_messages(output)
+            end
           end
 
           if labels.any?
-            output = filter_by_label(output, labels)
+            timed_output_operation(output, "hastur.rest.label_filter_time") do
+              output = filter_by_label(output, labels)
+            end
 
             if kind == "value" and params[:kind] == "message"
-              output = convert_messages_to_values(output)
+              timed_output_operation(output, "hastur.rest.message_conversion_time") do
+                output = convert_messages_to_values(output)
+              end
             end
           end
         else
@@ -222,19 +247,14 @@ module Hastur
         # so a second pass is required to reduce the data down to only what was requested
         # for infix wildcards.
         if names.select {|n| n.include?('*') }.any?
-          filter_out_unwanted_names output, names
+          timed_output_operation(output, "hastur.rest.filter_names_time") do
+            filter_out_unwanted_names output, names
+          end
         end
 
         if params[:fun]
-          t0 = Time.now
-          output = apply_functions(params[:fun], output)
-          t = ((Time.now - t0) * 1_000_000).to_i
-
-          Hastur.gauge "hastur.rest.aggregation_time", t
-          if output["profiler"]
-            output["profiler"]["hastur.rest.aggregation_time"] = {
-              env[:hastur_timestamp] => t
-            }
+          timed_output_operation(output, "hastur.rest.aggregation_time") do
+            output = apply_functions(params[:fun], output)
           end
         end
 
@@ -331,6 +351,11 @@ module Hastur
       def sort_series_keys(values)
         output = {}
         values.each do |uuid, name_series|
+          if special_name?(uuid)
+            output[uuid] = values[uuid]
+            next
+          end
+
           output[uuid] = {}
           name_series.each do |name, series|
             output[uuid][name] = {}
@@ -352,7 +377,10 @@ module Hastur
       def deserialize_json_messages(data)
         output = {}
         data.each do |uuid, name_series|
-          next if special_name?(uuid)
+          if special_name?(uuid)
+            output[uuid] = data[uuid]
+            next
+          end
 
           output[uuid] = {}
           name_series.each do |name, series|
@@ -400,7 +428,10 @@ module Hastur
         # consistent with other filtering passes
         output = {}
         data.each do |uuid, name_series|
-          next if special_name?(uuid)
+          if special_name?(uuid)
+            output[uuid] = data[uuid]
+            next
+          end
 
           output[uuid] = {}
           name_series.each do |name, series|
@@ -448,7 +479,10 @@ module Hastur
       def convert_messages_to_values(data)
         output = {}
         data.each do |uuid, name_series|
-          next if special_name?(uuid)
+          if special_name?(uuid)
+            output[uuid] = data[uuid]
+            next
+          end
 
           output[uuid] = {}
           name_series.each do |name, series|
@@ -628,10 +662,12 @@ module Hastur
       # @return [String] Serialized content
       #
       def serialize(content, params)
+        t0 = Time.now
+
         # when the cb parameter is specified, return a JSONP response
         if params[:format] == "csv"
           response['Content-Type'] = "text/csv"
-          CSV.generate do |csv|
+          out = CSV.generate do |csv|
             csv << %w[node name timestamp value]
             content.each do |uuid, name_series|
               name_series.each do |name, ts_val|
@@ -644,12 +680,17 @@ module Hastur
         elsif params[:format] == "jsonp" or params[:cb]
           hastur_error!("cb callback parameter is required for jsonp!", 501) unless params[:cb]
           response['Content-Type'] = "text/javascript"
-          "#{params[:cb]}(#{MultiJson.dump(content)});\n"
+          out = "#{params[:cb]}(#{MultiJson.dump(content)});\n"
         # otherwise, just make it regular JSON
         else
           response['Content-Type'] = "application/json"
-          MultiJson.dump(content, :pretty => params[:pretty]) + "\n"
+          out = MultiJson.dump(content, :pretty => params[:pretty]) + "\n"
         end
+
+        t = Time.now - t0
+        STDERR.puts "Time to serialize: #{t.to_f} seconds"
+
+        out
       end
 
       #
