@@ -177,8 +177,8 @@ module Hastur
         names = params[:name] ? params[:name].split(',') : []
         labels = params[:label] ? CGI::unescape(params[:label]).split(',') : []
 
-        unless FORMATS.include? kind
-          hastur_error! "Illegal output option: #{kind.inspect}", 404
+        unless KINDS.include? kind
+          hastur_error! "Illegal 'kind' output option: #{kind.inspect}", 404
         end
 
         if types.empty?
@@ -217,7 +217,7 @@ module Hastur
           end
         end
 
-        if FORMATS.include? kind
+        if KINDS.include? kind
           t0 = Time.now
           output = sort_series_keys(flatten_rows(values))
           output_operation(output, "hastur.rest.sort_keys", ((Time.now - t0).to_f * 1_000_000).to_i)
