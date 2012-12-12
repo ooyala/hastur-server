@@ -74,6 +74,18 @@ module Hastur
       #   :start
       #   :finish
       #   :reversed
+      def raw_multi_get(cf, rows, options = {})
+        ast_cf = cf_for_name(cf)
+
+        @keyspace.raw_multiget(cf, rows.map(&:to_java_bytes), ast_options(options))
+      end
+
+      # Options:
+      #   :count
+      #   :consistency
+      #   :start
+      #   :finish
+      #   :reversed
       def multi_count_columns(cf, rows, options = {})
         ast_cf = cf_for_name(cf)
 

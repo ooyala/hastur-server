@@ -141,6 +141,22 @@ module Astyanax
       end.inject({}, &:merge)
     end
 
+    # Reads from multiple keys at once, but doesn't make a Ruby-friendly final output structure.
+    # This is very fast but can be awkward to use in Ruby.
+    #
+    # @param [String|ColumnFamily] columnfamily to read from, either a string or a ColumnFamily instance
+    # @param [List[?]] row keys, default type is String but should match :rowkey_type
+    # @param [Hash] options  -- see options for get
+    #
+    # @returns [Rows] An Astyanax Rows<byte[],byte[]> object
+    #
+    def raw_multiget(column_family, rowkeys, options)
+      query, range = get_query_and_range(column_family, options)
+      query = query.get_key_slice(rowkeys.to_java).with_column_range(range.build)
+
+      query.execute.result
+    end
+
     # Reads from multiple keys at once
     #
     # @param [String|ColumnFamily] columnfamily to read from, either a string or a ColumnFamily instance
