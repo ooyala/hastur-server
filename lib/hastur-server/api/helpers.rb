@@ -664,7 +664,6 @@ module Hastur
       def serialize(content, params)
         t0 = Time.now
 
-        # when the cb parameter is specified, return a JSONP response
         if params[:format] == "csv"
           response['Content-Type'] = "text/csv"
           out = CSV.generate do |csv|
@@ -677,6 +676,7 @@ module Hastur
               end
             end
           end
+        # when the cb parameter is specified, return a JSONP response
         elsif params[:format] == "jsonp" or params[:cb]
           hastur_error!("cb callback parameter is required for jsonp!", 501) unless params[:cb]
           response['Content-Type'] = "text/javascript"
