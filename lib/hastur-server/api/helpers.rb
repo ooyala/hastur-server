@@ -258,6 +258,58 @@ module Hastur
       end
 
       #
+      # Dump data from Hastur. The query is based on the Sinatra
+      # params.  Where appropriate, values can be comma-separated
+      # lists.  But little or no post-operation or formatting is
+      # done on the results.
+      #
+      # Params can include the following:
+      #
+      # "kind" - what kind of data to return - message, value, count or rollup
+      # "uuid" - uuid or list of uuids
+      # "type" - type or list of types
+      # "name" - message name or list of message names - can append *, but NO EMBEDDED WILDCARDS!
+      # "reversed" - return results in reverse order - only matters with "limit"
+      # "limit" - max number of results to return
+      # "consistency" - Cassandra consistency to read at
+      # "labels" - filter on labels using label=<label>:<value>,... format, url encoded
+      # "profiler" - return profiling data with query results
+      #
+      def dump_from_hastur(params)
+        types = type_list_from_string(params[:type])
+        uuids = uuid_or_hostname_to_uuids params[:uuid].split(',')
+        names = params[:name] ? params[:name].split(',') : []
+        labels = params[:label] ? CGI::unescape(params[:label]).split(',') : []
+
+        if types.empty?
+          return {}
+        end
+
+        unless types.all? { |t| TYPES[:all].include?(t) }
+          hastur_error! "Invalid type(s): '#{types}', not all included in #{TYPES[:all].join(", ")}", 404
+        end
+
+        # Some message types are day bucketed and are only expected once a day, like registrations,
+        # heartbeats, and ohai information. These should default to getting one day of data.
+        if types & DEFAULT_DAY_BUCKET == types
+          default_span = :one_day
+        else
+          default_span = :five_minutes
+        end
+
+        start_ts, end_ts = get_start_end default_span
+        name_option_list = build_name_option_list names
+
+        # query cassandra
+        values = Hastur.time "hastur.rest.db.query_time" do
+          name_option_list.map do |options|
+            Hastur::Cassandra.dump(cass_client, uuids, types, start_ts, end_ts, options)
+          end
+        end
+
+      end
+
+      #
       # Apply Hastur aggregation functions. Sets up control information
       # used by the aggregations in some cases and runs the evaluation,
       # returning the transformed result.

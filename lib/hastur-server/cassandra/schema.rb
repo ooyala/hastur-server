@@ -190,6 +190,51 @@ module Hastur
       raw_get_all(cass_client, agent_uuid, schemas.compact, start_timestamp, end_timestamp, options)
     end
 
+    # This is a fast, no-frills Hastur message dumper.
+    #
+    # You can specify :name or :name_prefix but not both at once.
+    # Either one is incompatible with directly specifying Cassandra
+    # :start/:finish options.
+    #
+    # @param cass_client The cassandra client object
+    # @param [Array<String>] agent_uuids The UUID(s) to query
+    # @param [Array<String>] type The message type(s) to query
+    # @param [Fixnum] start_timestamp The earliest time value to query
+    # @param [Fixnum] end_timestamp The latest time value to query
+    # @param [Hash] options Options
+    # @option options [String] :name The message name
+    # @option options [String] :name_prefix The message name prefix
+    # @option options [Boolean] :value_only Return only message values, not full JSON
+    # @option options [Fixnum] :count Maximum number to return, defaults to 10_000
+    # @option options [Fixnum] :consistency Read consistency, defaults to 1
+    # @option options [String] :start Initial column name for a Cassandra slice - use at own risk!
+    # @option options [String] :finish Final column name for a Cassandra slice - use at own risk!
+    # @option options [Boolean] :reversed Return in reverse order
+    # @option options [Boolean] :profiler Return profiling data with query
+    # @option options [Fixnum] :request_ts Timestamp for request access time and stats, defaults to now
+    #
+    def dump(cass_client, agent_uuid, type, start_timestamp, end_timestamp, options = {})
+      # If it's a list of strings/symbols, convert to schema objects
+      unless type[0].is_a?(Hash)
+        schemas = type.map { |type| schema_by_type(type) }
+      end
+
+      opts = options.merge(:raw_astyanax => true)
+      v = raw_query_cassandra(cass_client, agent_uuid, schemas.compact, start_timestamp, end_timestamp, opts)
+
+      # Convert from raw astyanax to a big honking array of messages
+      out = []
+      v.each do |type, results|
+        results.each do |result|
+          result.each do |row|
+            out << row.columns.map { |c| String.from_java_bytes(c.byte_array_value) }
+          end
+        end
+      end
+
+      out
+    end
+
     #
     # Get one or more rows from the lookup_by_key CF and return a flattened hash.
     #
@@ -340,12 +385,14 @@ module Hastur
     # but types must be converted to schemas already.
     # TODO(al) this method is too big and must be broken up
     #
-    def raw_get_all(cass_client, agent_uuids, msg_schemas, start_ts, end_ts, options = {})
+    def raw_query_cassandra(cass_client, agent_uuids, msg_schemas, start_ts, end_ts, options)
       now_ts = options[:request_ts] || Hastur::Util.timestamp(nil)
+      stats = {}
 
       if (options[:name] && options[:name_prefix]) ||
           (options[:name] || options[:name_prefix]) && (options[:start] || options[:finish])
-        raise "Error: you can have at most one of :name, :name_prefix or :start/:finish in raw_get_all!"
+        raise "Error: you can have at most one of :name, :name_prefix or :start/:finish " +
+          "when querying Cassandra!"
       end
 
       # Make sure start_timestamp and end_timestamp are in the right order.
@@ -423,10 +470,10 @@ module Hastur
       end
 
       values = {}
-      queried_row_count = 0
+      stats[:queried_row_count] = 0
       options_by_type.each do |type, cass_options|
         row_count = row_keys_by_type[type].count
-        queried_row_count += row_count
+        stats[:queried_row_count] += row_count
 
         # Now, actually do the query
         begin
@@ -436,14 +483,22 @@ module Hastur
           # if there are a lot of rows to access, fall back to getting one row at a time to reduce pressure on
           # cassandra at the cost of more roundtrips
           else
-            values[type] = {}
+            values[type] = options[:raw_astyanax] ? [] : {}
             i = 0
             slice_size = 20
+
             row_keys_by_type[type].each_slice(slice_size) do |slice|
               puts "Getting rows: #{slice.inspect} #{i}/#{row_count} #{cf_by_type[type]}"
-              values[type].merge! cass_client.multi_get(cf_by_type[type], slice, cass_options)
+
+              if options[:raw_astyanax]
+                values[type].push cass_client.raw_multi_get(cf_by_type[type], slice, cass_options)
+              else
+                values[type].merge! cass_client.multi_get(cf_by_type[type], slice, cass_options)
+              end
+
               i += slice_size
             end
+
           end
         end
       end
@@ -459,6 +514,20 @@ module Hastur
         end
       end
 
+      [values, stats]
+    end
+
+    #
+    # A raw low-level getter.  See .get() for options and params,
+    # but types must be converted to schemas already.
+    #
+    # After querying via Astyanax, this method reformats to reasonable
+    # Rubyish output.
+    #
+    def raw_get_all(cass_client, agent_uuids, msg_schemas, start_ts, end_ts, options = {})
+      now_ts = options[:request_ts] || Hastur::Util.timestamp(nil)
+      values, stats = raw_query_cassandra(cass_client, agent_uuids, msg_schemas, start_ts, end_ts, options)
+
       if options[:count_columns]
         #TODO(noah): Fix this
         raise "Unimplemented!"
@@ -468,19 +537,19 @@ module Hastur
       values.each { |_, hash| hash.delete_if { |_, value| value.nil? || value.empty? } }
 
       # Final output format:  { :uuid => { :type => { :name => { :timestamp => value } } } }
-      col_count = 0
-      row_count = 0
+      stats[:col_count] = 0
+      stats[:row_count] = 0
       final_values = {}
       values.each do |type, v|
         v.each do |row_key, col_hash|
-          row_count += 1
+          stats[:row_count] += 1
           uuid = uuid_from_row_key(row_key)
           final_values[uuid] ||= {}
           final_values[uuid][type.to_s] ||= {}
           hash = final_values[uuid][type.to_s]
 
           col_hash.each do |col_key, value|
-            col_count += 1
+            stats[:col_count] += 1
             name, timestamp = col_name_to_name_and_timestamp(col_key)
 
             if timestamp <= end_ts && timestamp >= start_ts
@@ -492,38 +561,28 @@ module Hastur
               else
                 hash[name][timestamp] = value
               end
-
             end
           end
         end
       end
 
-      query_time = usec_epoch - now_ts
+      stats[:query_time] = usec_epoch - now_ts
 
-      Hastur.gauge "hastur.cassandra.schema.raw_get_all.rows", row_count, now_ts
-      Hastur.gauge "hastur.cassandra.schema.raw_get_all.rows_queried", queried_row_count, now_ts
-      Hastur.gauge "hastur.cassandra.schema.raw_get_all.columns", col_count, now_ts
-      Hastur.gauge "hastur.cassandra.schema.raw_get_all.time", query_time, now_ts
-
-      if options[:profiler]
-        final_values["profiler"] = {}
-        final_values["profiler"]["gauge"] = {
-          "hastur.cassandra.schema.raw_get_all.rows" => {
-            now_ts => row_count,
-          },
-          "hastur.cassandra.schema.raw_get_all.rows_queried" => {
-            now_ts => queried_row_count,
-          },
-          "hastur.cassandra.schema.raw_get_all.columns" => {
-            now_ts => col_count,
-          },
-          "hastur.cassandra.schema.raw_get_all.time" => {
-            now_ts => query_time,
-          },
-        }
-      end
+      apply_profiler_data(stats, options[:profiler] ? final_values : nil, now_ts)
 
       final_values
+    end
+
+    def apply_profiler_data(stats, output, now_ts)
+      stats.each do |key, val|
+        stat_name = "hastur.cassandra.schema.query.#{key}"
+        Hastur.gauge stat_name, val, now_ts
+        if output
+          output["profiler"] ||= {}
+          output["profiler"]["gauge"] ||= {}
+          output["profiler"]["gauge"][stat_name] = { now_ts => val }
+        end
+      end
     end
   end
 end

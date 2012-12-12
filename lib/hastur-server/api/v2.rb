@@ -423,6 +423,7 @@ module Hastur
       # Retrieve metrics by any queryable property.
       #
       # @param kind One of "message", "value", "count" or "rollup" for output data type, default is "value"
+      # @param format One of "csv", "json", "jsonp" for output format.  Default is "json".
       # @param start Starting timestamp, default 5 minutes ago
       # @param end Ending timestamp, default now
       # @param ago How many microseconds back to query - an alternative to start/end
@@ -474,6 +475,54 @@ module Hastur
         params[:type] = query_types.join(',')
 
         serialize query_hastur(params), params
+      end
+
+      #
+      # @!method /v2/raw_dump
+      #
+      # Retrieve metrics in raw, simple form, not organized, ordered or formatted.
+      # This query method requires UUIDs and does not use query indices.
+      # Thus, app and label queries aren't permitted and name queries won't
+      # automatically optimize based on what UUIDs have sent a given stat name
+      # recently.
+      #
+      # Also, if the Hastur internal indices are wrong, this will still query
+      # correctly, if stupidly.
+      #
+      # This route should be the very fastest way to dump a huge amount of
+      # simply-structured data from Hastur.
+      #
+      # It can dump JSON messages separated by commas or values separated by
+      # newlines, but not counts, rollups, etc.
+      #
+      # @param kind One of "message", "value", default is "value"
+      # @param start Starting timestamp, default 5 minutes ago
+      # @param end Ending timestamp, default now
+      # @param ago How many microseconds back to query - an alternative to start/end
+      # @param uuid Host UUID(s) to query for - required
+      # @param type Message type(s) to query for
+      # @param name Message name(s) to query for - supports wildcards
+      # @param limit Maximum number of values to return
+      # @param reversed Return earliest first instead of latest first
+      # @param consistency Cassandra consistency to read at
+      #
+      # @example
+      #   http://hastur/v2/raw_dump?name=my.app.404&ago=one_day&uuid=47e88150-0102-0130-e57d-64ce8f3a9dc2
+      #
+      get "/v2/raw_dump" do
+        params[:kind] ||= "value"
+
+        unless ["value", "message"].include?(params[:kind])
+          hastur_error! "Raw_dump may only return message or value, not '#{params[:kind]}'", 404
+        end
+
+        unless params[:uuid]
+          hastur_error! "Raw_dump requires UUIDs since it uses no indices.", 404
+        end
+
+        result = dump_from_hastur(params)
+
+        result.join(params[:kind] == "value" ? "\n" : ",")
       end
 
       #
