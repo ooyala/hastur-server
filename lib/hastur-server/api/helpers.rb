@@ -226,30 +226,26 @@ module Hastur
           end
         end
 
-        if KINDS.include? kind
-          t0 = Time.now
-          output = sort_series_keys(flatten_rows(values))
-          output_operation(output, "hastur.rest.sort_keys", ((Time.now - t0).to_f * 1_000_000).to_i)
+        t0 = Time.now
+        output = sort_series_keys(flatten_rows(values))
+        output_operation(output, "hastur.rest.sort_keys", ((Time.now - t0).to_f * 1_000_000).to_i)
 
-          if params[:kind] == "message"
-            timed_output_operation(output, "hastur.rest.deserialize_time") do
-              output = deserialize_json_messages(output)
-            end
+        if params[:kind] == "message"
+          timed_output_operation(output, "hastur.rest.deserialize_time") do
+            output = deserialize_json_messages(output)
+          end
+        end
+
+        if labels.any?
+          timed_output_operation(output, "hastur.rest.label_filter_time") do
+            output = filter_by_label(output, labels)
           end
 
-          if labels.any?
-            timed_output_operation(output, "hastur.rest.label_filter_time") do
-              output = filter_by_label(output, labels)
-            end
-
-            if kind == "value" and params[:kind] == "message"
-              timed_output_operation(output, "hastur.rest.message_conversion_time") do
-                output = convert_messages_to_values(output)
-              end
+          if kind == "value" and params[:kind] == "message"
+            timed_output_operation(output, "hastur.rest.message_conversion_time") do
+              output = convert_messages_to_values(output)
             end
           end
-        else
-          hastur_error! "Unsupported data type: #{kind.inspect}!", 404
         end
 
         if params[:fun]
