@@ -431,22 +431,20 @@ module Hastur
         # Now, actually do the query
         begin
           if options[:count_columns]
-            values[type] = cass_client.multi_count_columns(cf_by_type[type], row_keys_by_type[type], cass_options)
+            #TODO(noah): Fix this
+            raise "Unimplemented!"
           # if there are a lot of rows to access, fall back to getting one row at a time to reduce pressure on
           # cassandra at the cost of more roundtrips
-          elsif row_count > 25
-            values[type] = {}
-            0.upto(row_count-1) do |i|
-              puts "Getting row: #{row_keys_by_type[type][i]} #{i}/#{row_count} #{cf_by_type[type]}"
-              values[type].merge! cass_client.multi_get(cf_by_type[type], [row_keys_by_type[type][i]], cass_options)
-            end
           else
-            values[type] = cass_client.multi_get(cf_by_type[type], row_keys_by_type[type], cass_options)
+            values[type] = {}
+            i = 0
+            slice_size = 20
+            row_keys_by_type[type].each_slice(slice_size) do |slice|
+              puts "Getting rows: #{slice.inspect} #{i}/#{row_count} #{cf_by_type[type]}"
+              values[type].merge! cass_client.multi_get(cf_by_type[type], slice, cass_options)
+              i += slice_size
+            end
           end
-        # the Cassandra gem tends to return this useless and misleading exception,
-        # so catch it and raise something with some useful info in it
-        #rescue ThriftClient::NoServersAvailable
-        #  raise "query failed: type: #{type} column_family: #{cf_by_type[type]}, row_keys: #{row_keys_by_type[type]}, cass_options: #{cass_options}, options: #{options}, reason: #{$!.message}"
         end
       end
 
