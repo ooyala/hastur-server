@@ -185,8 +185,8 @@ module Hastur
           return {}
         end
 
-        unless types.any? { |t| TYPES[:all].include?(t) }
-          hastur_error! "Invalid type(s): '#{types}', not included in #{TYPES[:all].join(", ")}", 404
+        unless types.all? { |t| TYPES[:all].include?(t) }
+          hastur_error! "Invalid type(s): '#{types}', not all included in #{TYPES[:all].join(", ")}", 404
         end
 
         if labels.any?
@@ -195,7 +195,7 @@ module Hastur
           if kind == "value"
             params[:kind] = "message"
           elsif kind != "message"
-            hastur_error! "filtering on labels is only valid for /value and /message data formats", 404
+            hastur_error! "filtering on labels is only valid for /value and /message data queries", 404
           end
         end
 
