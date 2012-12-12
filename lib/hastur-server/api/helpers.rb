@@ -217,6 +217,15 @@ module Hastur
           end
         end
 
+        # Some queries go directly to a Cassandra range scan, which only matches prefixes
+        # so a second pass is required to reduce the data down to only what was requested
+        # for infix wildcards.  This should be done before expensive ops like label filters.
+        if names.select {|n| n.include?('*') }.any?
+          timed_output_operation(output, "hastur.rest.filter_names_time") do
+            filter_out_unwanted_names output, names
+          end
+        end
+
         if KINDS.include? kind
           t0 = Time.now
           output = sort_series_keys(flatten_rows(values))
@@ -241,15 +250,6 @@ module Hastur
           end
         else
           hastur_error! "Unsupported data type: #{kind.inspect}!", 404
-        end
-
-        # Some queries go directly to a Cassandra range scan, which only matches prefixes
-        # so a second pass is required to reduce the data down to only what was requested
-        # for infix wildcards.
-        if names.select {|n| n.include?('*') }.any?
-          timed_output_operation(output, "hastur.rest.filter_names_time") do
-            filter_out_unwanted_names output, names
-          end
         end
 
         if params[:fun]
