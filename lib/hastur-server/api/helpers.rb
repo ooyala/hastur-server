@@ -157,18 +157,21 @@ module Hastur
       # params. Where appropriate, values can be comma-separated
       # lists.
       #
-      # Params can include the following:
+      # The params are query params, and so are supplied as strings.
+      # "Boolean" in this case means the parameter may have a value
+      # of "true", "false" or a few other things meaningfully.
       #
-      # "kind" - what kind of data to return - message, value, count or rollup
-      # "uuid" - uuid or list of uuids
-      # "type" - type or list of types
-      # "name" - message name or list of message names (can append * for match-all)
-      # "reversed" - return results in reverse order - only matters with "limit"
-      # "limit" - max number of results to return
-      # "consistency" - Cassandra consistency to read at
-      # "raw" - don't merge messages into the return data, return it as escaped json inside the json
-      # "labels" - filter on labels using label=<label>:<value>,... format, url encoded
-      # "profiler" - return profiling data with query results
+      # @param [Hash] params Options for how to query Hastur
+      # @option params [String] kind What kind of data to return - message, value, count or rollup
+      # @option params [String] uuid What UUID or comma-separated UUIDs to query
+      # @option params [String] type What type or comma-separates types to query
+      # @option params [String] name Message name or comma-separated names to query
+      # @option params [String] limit Maximum number of messages per row to query
+      # @option params [Boolean] reversed Limit messages in reversed (time-ascending) order
+      # @option params [String] consistency Cassandra consistency to read at
+      # @option params [Boolean] raw Return messages as escaped JSON in the output JSON
+      # @option params [String] labels Filter on labels using label=<label>:<value>,... format, url encoded
+      # @option params [Boolean] profiler Return profiling data with query results
       #
       def query_hastur(params)
         kind = params[:kind]
@@ -265,15 +268,14 @@ module Hastur
       #
       # Params can include the following:
       #
-      # "kind" - what kind of data to return - message, value, count or rollup
-      # "uuid" - uuid or list of uuids
-      # "type" - type or list of types
-      # "name" - message name or list of message names - can append *, but NO EMBEDDED WILDCARDS!
-      # "reversed" - return results in reverse order - only matters with "limit"
-      # "limit" - max number of results to return
-      # "consistency" - Cassandra consistency to read at
-      # "labels" - filter on labels using label=<label>:<value>,... format, url encoded
-      # "profiler" - return profiling data with query results
+      # @param [Hash] params Options for how to query Hastur
+      # @option params [String] kind What kind of data to return - message, value, count or rollup
+      # @option params [String] uuid What UUID or comma-separated UUIDs to query.  Required.
+      # @option params [String] type What type or comma-separates types to query.  Required.
+      # @option params [String] name Message name or comma-separated names to query.  NO EMBEDDED WILDCARDS!
+      # @option params [String] limit Maximum number of messages per row to query
+      # @option params [Boolean] reversed Limit messages in reversed (time-ascending) order
+      # @option params [String] consistency Cassandra consistency to read at
       #
       def dump_from_hastur(params)
         types = type_list_from_string(params[:type])
