@@ -283,9 +283,7 @@ module Hastur
         names = params[:name] ? params[:name].split(',') : []
         labels = params[:label] ? CGI::unescape(params[:label]).split(',') : []
 
-        if types.empty?
-          return {}
-        end
+        return {} if types.empty?
 
         unless types.all? { |t| TYPES[:all].include?(t) }
           hastur_error! "Invalid type(s): '#{types}', not all included in #{TYPES[:all].join(", ")}", 404
