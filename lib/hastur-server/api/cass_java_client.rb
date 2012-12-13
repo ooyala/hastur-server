@@ -6,7 +6,7 @@ module Hastur
     class CassandraJavaClient
       def initialize(uris)
         @ast_client = ::Astyanax::Client.new uris, 9160
-        @keyspace = @ast_client.connect("hastur", :discovery => false)
+        @keyspace = @ast_client.connect("hastur", :discovery => false, :connect_timeout_ms => 10_000)
         @java_keyspace = @keyspace.java_keyspace
         @cfs = {}
         @batch = nil
