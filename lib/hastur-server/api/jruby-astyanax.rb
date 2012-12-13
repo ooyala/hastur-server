@@ -154,7 +154,12 @@ module Astyanax
       query, range = get_query_and_range(column_family, options)
       query = query.get_key_slice(rowkeys.to_java).with_column_range(range.build)
 
-      query.execute.result
+      query.execute.result.map do |row|
+        row_key = String.from_java_bytes(row.key)
+        row.columns.map do |c|
+          [ row_key, String.from_java_bytes(c.name), String.from_java_bytes(c.byte_array_value) ]
+        end
+      end.inject([], :concat)
     end
 
     # Reads from multiple keys at once

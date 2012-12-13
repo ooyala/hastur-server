@@ -520,6 +520,10 @@ module Hastur
           hastur_error! "Raw_dump requires UUIDs since it uses no indices.", 404
         end
 
+        unless params[:type]
+          hastur_error! "You must give raw_dump at least one type.", 404
+        end
+
         result = dump_from_hastur(params)
 
         result.join(params[:kind] == "value" ? "\n" : ",")

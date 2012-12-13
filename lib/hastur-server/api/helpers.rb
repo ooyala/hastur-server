@@ -303,10 +303,12 @@ module Hastur
         # query cassandra
         values = Hastur.time "hastur.rest.db.query_time" do
           name_option_list.map do |options|
-            Hastur::Cassandra.dump(cass_client, uuids, types, start_ts, end_ts, options)
-          end
+            dump = Hastur::Cassandra.dump(cass_client, uuids, types, start_ts, end_ts, options)
+            dump.map { |item| item[2] }
+          end.flatten
         end
 
+        values
       end
 
       #

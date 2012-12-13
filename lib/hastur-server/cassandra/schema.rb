@@ -214,23 +214,21 @@ module Hastur
     # @option options [Fixnum] :request_ts Timestamp for request access time and stats, defaults to now
     #
     def dump(cass_client, agent_uuid, type, start_timestamp, end_timestamp, options = {})
+      now_ts = options[:request_ts] || Hastur::Util.timestamp(nil)
+
       # If it's a list of strings/symbols, convert to schema objects
       unless type[0].is_a?(Hash)
         schemas = type.map { |type| schema_by_type(type) }
       end
 
       opts = options.merge(:raw_astyanax => true)
-      v = raw_query_cassandra(cass_client, agent_uuid, schemas.compact, start_timestamp, end_timestamp, opts)
-
-      # Convert from raw astyanax to a big honking array of messages
-      out = []
-      v.each do |type, results|
-        results.each do |result|
-          result.each do |row|
-            out << row.columns.map { |c| String.from_java_bytes(c.byte_array_value) }
-          end
-        end
+      v,s = raw_query_cassandra(cass_client, agent_uuid, schemas.compact, start_timestamp, end_timestamp, opts)
+      out = v.values.inject([], &:concat)
+      if options[:value_only]
+        out = out.map { |r, c, v| [ r, c, MessagePack.unpack(v)] }
       end
+
+      apply_profiler_data(s, nil, now_ts)
 
       out
     end
@@ -499,6 +497,7 @@ module Hastur
               i += slice_size
             end
 
+            values[type] = values[type].inject([], &:concat) if options[:raw_astyanax]
           end
         end
       end
@@ -556,6 +555,7 @@ module Hastur
               hash[name] ||= {}
 
               # This happens even if name is nil
+              # TODO(noah): What happens if you ask for messages with rollups?
               if options[:value_only] or options[:rollup_period] or options[:rollup_only]
                 hash[name][timestamp] = MessagePack.unpack(value) rescue value
               else
