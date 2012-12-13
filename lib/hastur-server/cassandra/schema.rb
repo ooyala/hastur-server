@@ -33,6 +33,8 @@ module Hastur
     DEFAULT_WRITE_CONSISTENCY = CONSISTENCY_TWO
     DEFAULT_READ_CONSISTENCY = CONSISTENCY_TWO
 
+    DEFAULT_QUERY_SIZE = 20
+
     # A Hastur Schema is a mapping of strings to symbols to values.
     # The top level strings are the type names, the symbols are
     # attributes of those types (:type, :archive_cf, :granularity,
@@ -485,7 +487,7 @@ module Hastur
           else
             values[type] = options[:raw_astyanax] ? [] : {}
             i = 0
-            slice_size = options[:cass_query_size] || 20
+            slice_size = options[:cass_query_size] || DEFAULT_QUERY_SIZE
 
             row_keys_by_type[type].each_slice(slice_size) do |slice|
               puts "Getting rows: #{slice.inspect} #{i}/#{row_count} #{cf_by_type[type]}"
