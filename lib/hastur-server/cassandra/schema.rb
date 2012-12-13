@@ -167,6 +167,7 @@ module Hastur
     # @option options [String] :name_prefix The message name prefix
     # @option options [Boolean] :value_only Return only message values, not full JSON
     # @option options [Fixnum] :count Maximum number to return, defaults to 10_000
+    # @option options [Fixnum] :cass_query_size Maximum number of rows to multi_get from C* at once
     # @option options [Fixnum] :consistency Read consistency, defaults to 1
     # @option options [String] :start Initial column name for a Cassandra slice - use at own risk!
     # @option options [String] :finish Final column name for a Cassandra slice - use at own risk!
@@ -206,6 +207,7 @@ module Hastur
     # @option options [String] :name_prefix The message name prefix
     # @option options [Boolean] :value_only Return only message values, not full JSON
     # @option options [Fixnum] :count Maximum number to return, defaults to 10_000
+    # @option options [Fixnum] :cass_query_size Maximum number of rows to multi_get from C* at once
     # @option options [Fixnum] :consistency Read consistency, defaults to 1
     # @option options [String] :start Initial column name for a Cassandra slice - use at own risk!
     # @option options [String] :finish Final column name for a Cassandra slice - use at own risk!
@@ -483,7 +485,7 @@ module Hastur
           else
             values[type] = options[:raw_astyanax] ? [] : {}
             i = 0
-            slice_size = 20
+            slice_size = options[:cass_query_size] || 20
 
             row_keys_by_type[type].each_slice(slice_size) do |slice|
               puts "Getting rows: #{slice.inspect} #{i}/#{row_count} #{cf_by_type[type]}"
