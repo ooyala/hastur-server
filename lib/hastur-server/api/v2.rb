@@ -64,7 +64,8 @@ module Hastur
       end
 
       KNOWN_PARAMS = [ :name, :uuid, :type, :kind, :rollup_period, :ago, :cb, :pretty, :app, :hostname, :fun,
-                       :start, :end, :consistency, :reversed, :profiler, :limit, :label, :format ].map(&:to_s)
+                       :start, :end, :consistency, :reversed, :profiler, :limit, :label, :format,
+                       :details ].map(&:to_s)
 
       before do
         response['Access-Control-Allow-Origin'] = "*"
@@ -445,6 +446,7 @@ module Hastur
 
         # Got the UUID already?  Use the happy path with no
         # extra lookups.  This query will be maximally speedy.
+        # TODO: filter properly anyway.
         if params[:uuid]
           return serialize query_hastur(params), params
         end
@@ -475,6 +477,18 @@ module Hastur
         params[:type] = query_types.join(',')
 
         serialize query_hastur(params), params
+      end
+
+      #
+      # @!method /v2/insert_message
+      #
+      # Insert a single Hastur-parseable JSON message.  This route
+      # assumes that the message contains things like type and UUID
+      # which can be extracted and used.
+      #
+      post "/v2/insert_message" do
+        Hastur::Cassandra.insert(cass_client, params[:details], nil)
+        "Ok\n"
       end
 
       #
@@ -527,6 +541,40 @@ module Hastur
         result = dump_from_hastur(params)
 
         result.join(params[:kind] == "value" ? "\n" : ",")
+      end
+
+      #
+      # This is a proof-of-concept route before integrating this
+      # functionality into the main query routines.
+      #
+      # TODO(noah): remove when integrated.
+      #
+      get "/v2/uuids_by_label" do
+        start_ts, end_ts = get_start_end :one_day
+
+        unless params[:label]
+          hastur_error! "Must supply label(s) to uuids_by_label", 404
+        end
+
+        labels = CGI::unescape(params[:label]).split(',')
+
+        must = {}
+        must_not = {}
+        labels.each do |lv|
+          label, value = lv.split ':', 2
+          if label.start_with? '!'
+            must_not[label[1..-1]] = value || ""
+          else
+            must[label] = value || ""
+          end
+        end
+
+        STDERR.puts "Must: #{must.inspect}"
+        STDERR.puts "Must Not: #{must_not.inspect}"
+
+        data = Hastur::Cassandra.lookup_label_uuids(cass_client, must.keys + must_not.keys, start_ts, end_ts)
+
+        data.inspect
       end
 
       #
