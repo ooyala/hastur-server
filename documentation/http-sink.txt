@@ -1,0 +1,9 @@
+The v2 retrieval service adds the ability to post messages through
+HTTP.
+
+The initial API is to post to /v2/insert_message.  The "details" param
+should equal a JSON message in standard Hastur format, including UUID,
+type, labels and so on.
+
+To get messages of this type, query them from Hastur or use the client
+and override deliver_with.
