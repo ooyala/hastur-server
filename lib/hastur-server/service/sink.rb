@@ -243,12 +243,6 @@ module Hastur
         log_message_failure e, message
       rescue Hastur::ZMQError => e
         log_message_failure e, message, "Error reading from ZeroMQ socket:"
-      # restarting cassandra connections at this point seems to make things even more unstable, so
-      # just re-raise and let the supervisor sort things out
-      rescue CassandraThrift::Cassandra::Client::TransportException => e
-        failed = Time.now
-        log_message_failure e, message, "Cassandra write failed after #{failed.to_f - start.to_f} seconds:"
-        raise e
       rescue Exception => e
         log_message_failure e, message, "Exception while forwarding message:"
         raise e
