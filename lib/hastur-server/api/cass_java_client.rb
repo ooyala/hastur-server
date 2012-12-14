@@ -32,13 +32,18 @@ module Hastur
       def insert(cf, row_key, cols, options = {})
         ast_cf = cf_for_name(cf)
         batch = @insert_batch || @java_keyspace.prepare_mutation_batch
-        row = batch.with_row(ast_cf, row_key.to_java.bytes)
+        row = batch.with_row(ast_cf, row_key.to_java_bytes)
 
         cols.each do |name, val|
-          unless val.kind_of?(String)
-            raise "Value must be a string by the time it gets to Astyanax"
+          if val.kind_of?(String)
+            # May be Java bytes already since they come from MessagePack
+            val = val.to_java_bytes
+          elsif val.kind_of?(Java::byte[])
+            # Use unmodified
+          elsif !val.kind_of?(String)
+            raise "Value must be a string, not #{val.inspect}, by the time it gets to Astyanax"
           end
-          row.java_send(:putColumn, [java.lang.Object, Java::byte[], java.lang.Integer], name.to_java.bytes, val.to_java.bytes, options[:ttl])
+          row.java_send(:putColumn, [java.lang.Object, Java::byte[], java.lang.Integer], name.to_java_bytes, val, options[:ttl])
         end
 
         batch.execute unless @insert_batch
