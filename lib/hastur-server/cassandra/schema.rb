@@ -87,38 +87,43 @@ module Hastur
     #
     # @param [Cassandra] cass_client client object, should be connected and in the right keyspace
     # @param [String] json_string to be parsed & data used for the insert
-    # @param [Hash] schema The schema hash for this message type
+    # @param [Hash] schema The schema hash for this message type, or name of type
     # @param [Hash{Symbol=>Fixnum,String}] options
     # @option options [Fixnum] :ttl TTL in seconds, passed to the cassandra client
     # @option options [Fixnum] :consistency Consistency, passed to the cassandra client
-    # @option options [String] :uuid 36-byte agent UUID
+    # @option options [String] :uuid 36-byte agent UUID if not present in JSON data
     # @option options [Fixnum] :request_ts Timestamp for columns, defaults to now
     #
     def insert(cass_client, json_string, schema, options = {})
-      unless schema.is_a?(Hash)
+      hash = MultiJson.load(json_string)
+      raise "Cannot deserialize JSON string!" unless hash
+      uuid = hash["uuid"] || hash["from"] || options[:uuid]
+      raise "No UUID given!" unless uuid
+      ttl = options[:ttl] ? options[:ttl].to_i : (hash["ttl"] ? hash["ttl"].to_i : nil)
+
+      if schema.nil?
+        schema = schema_by_type(hash["type"].to_sym)
+      elsif !schema.is_a?(Hash)
+        if hash["type"] && hash["type"].to_s != schema.to_s
+          raise "Types don't match! #{hash["type"].inspect} / #{schema.inspect}"
+        end
         schema = schema_by_type(schema)
       end
 
-      hash = MultiJson.load(json_string)
-      raise "Cannot deserialize JSON string!" unless hash
-      uuid = hash[:uuid] || hash[:from] || options[:uuid]
-      raise "No UUID given!" unless uuid
-      ttl = (options[:ttl].to_i || hash[:ttl].to_i) rescue nil
+      name = schema[:name] ? hash["name"] : nil
+      type = schema[:type] || hash["type"]
 
       hash["labels"] ||= {}
 
-      name = schema[:name] ? hash["name"] : nil
-      value = hash["value"]
-      timestamp_usec = hash["timestamp"]
-      app_name = hash["labels"]["app"] || ""
-
-      colname = col_name(name, timestamp_usec)
-      key = ::Hastur::Cassandra.row_key(uuid, timestamp_usec, schema[:granularity] || ONE_DAY)
-      one_day_ts = time_segment_for_timestamp(timestamp_usec, ONE_DAY)
+      colname = col_name(name, hash["timestamp"])
+      key = ::Hastur::Cassandra.row_key(uuid, hash["timestamp"], schema[:granularity] || ONE_DAY)
+      one_day_ts = time_segment_for_timestamp(hash["timestamp"], ONE_DAY)
 
       insert_options = { :consistency => options[:consistency] || DEFAULT_WRITE_CONSISTENCY }
       insert_options[:ttl] = options[:ttl] if options[:ttl]
       now_ts = (options[:request_ts] || ::Hastur::Util.timestamp).to_s
+
+      indexes = indexes_for_message(hash, schema, options)
 
       cass_client.batch do |client|
         client.insert(schema[:archive_cf], key, { colname => json_string }, insert_options)
@@ -127,21 +132,77 @@ module Hastur
                       { "last_write" => now_ts, "last_access" => now_ts }, insert_options)
 
         cf = schema[:values_cf]
-        client.insert(cf, key, { colname => value.to_msgpack }, insert_options) if cf
+        client.insert(cf, key, { colname => hash["value"].to_msgpack }, insert_options) if cf
 
-        # Insert into "saw UUID in this time period" row
-        client.insert(:lookup_by_key, "uuid-#{one_day_ts}", { uuid => "" }, insert_options)
-
-        # Insert into "saw message name in this time period" row
-        if schema[:name]
-          type_id = Hastur::Message.symbol_to_type_id(schema[:type])
-          colkey = [name, type_id, uuid].join('-')
-          client.insert(:lookup_by_key, "name-#{one_day_ts}", { colkey => "" }, insert_options)
+        ttl = nil
+        indexes.each do |idx_cf, row_hash|
+          ttl = row_hash[:ttl]  # Use TTL if set
+          row_hash.each do |idx_row_key, col_hash|
+            next if idx_row_key == :ttl
+            col_hash.each do |idx_col_key, idx_col_val|
+              client.insert(idx_cf, idx_row_key, { idx_col_key => idx_col_val }, insert_options.merge(:ttl => ttl))
+            end
+          end
         end
 
-        # Insert into "saw this UUID for this app name" row
-        client.insert(:lookup_by_key, "app_name-#{one_day_ts}", { "#{app_name}-#{uuid}" => "" }, insert_options)
       end
+    end
+
+    #
+    # Calculated all indices to be inserted for a given message.
+    # This includes things like the UUID and app name lookup,
+    # but doesn't include the base value/archive items or
+    # the last written and accessed metadata.
+    #
+    # Also, yes, the correct word is "indices".  But how many
+    # people grep for that?
+    #
+    def indexes_for_message(hash, schema, options)
+      uuid = hash["uuid"] || hash["from"] || options["uuid"]
+      raise "No UUID given!" unless uuid
+      ttl = (options[:ttl].to_i || hash["ttl"].to_i) rescue nil
+
+      app_name = hash["labels"]["app"] || ""
+      one_day_ts = time_segment_for_timestamp(hash["timestamp"], ONE_DAY)
+      one_hour_ts = time_segment_for_timestamp(hash["timestamp"], ONE_HOUR)
+      name = nil
+      type_id = Hastur::Message.symbol_to_type_id(schema[:type])
+
+      # Stat-name => [type, UUID] index
+      name_indexes = {}
+      if schema[:name]
+        name = hash["name"]
+        colkey = [name, type_id, uuid].join('-')
+        name_indexes = { "lookup_by_key" => { "name-#{one_day_ts}" => { colkey => "" } } }
+      end
+
+      # Initialize label indexes with a 3-day TTL.  Cass TTLs are in seconds.
+      label_indexes = {
+        "lookup_by_label" => { :ttl => 86400 * 3 },
+        :"#{schema[:type]}_label_index" => { :ttl => 86400 * 3 }
+      }
+      hash["labels"].each do |lname, lvalue|
+        label_indexes["lookup_by_label"]["uuid-#{one_hour_ts}"] ||= {}
+        label_indexes["lookup_by_label"]["statname-#{uuid}-#{one_hour_ts}"] ||= {}
+
+        label_indexes["lookup_by_label"]["uuid-#{one_hour_ts}"]["#{lname}\0#{lvalue}\0#{uuid}"] = ""
+        colname = "#{lname}\0#{lvalue}\0#{type_id}\0#{name}"
+        label_indexes["lookup_by_label"]["statname-#{uuid}-#{one_hour_ts}"][colname] = ""
+
+        label_indexes[:"#{schema[:type]}_label_index"]["#{uuid}-#{one_hour_ts}"] ||= {}
+        packed_ts = [hash["timestamp"].to_i].pack("Q>")
+        colname = "#{lname}\0#{lvalue}\0#{name}\0#{packed_ts}"
+        label_indexes[:"#{schema[:type]}_label_index"]["#{uuid}-#{one_hour_ts}"][colname] = ""
+      end
+
+      return {
+        "lookup_by_key" => {
+          # UUID index
+          "uuid-#{one_day_ts}" => { uuid => "" },
+          # App-name => UUID index
+          "app_name-#{one_day_ts}" => { "#{app_name}-#{uuid}" => "" },
+        }
+      }.merge(name_indexes).merge(label_indexes)
     end
 
     #
@@ -259,6 +320,49 @@ module Hastur
           data[key] = value
         end
       end
+      data
+    end
+
+    #
+    # Get one or more rows from the lookup_by_label CF and return a hash
+    #
+    # For more options, see #get().
+    #
+    # @param cass_client The cassandra client object
+    # @param [Hash] labels the labels to look up, given as a hash of names to value prefixes.
+    # @param [Fixnum] start_timestamp The earliest time value to query
+    # @param [Fixnum] end_timestamp The latest time value to query
+    # @return Hash A hash of the form { "labelname" => { "labelvalue" => [ uuid, uuid, uuid... ] } }
+    #
+    # @example
+    #   names = Hastur::Cassandra.lookup_by_key(client, "name", Time.now - 86401, Time.now)
+    #
+    def lookup_label_uuids(cass_client, labels, start_timestamp, end_timestamp, options={})
+      data = {}
+      options = { :count => 10_000 }.merge(options)
+
+      labels.each do |lname, lvalue|
+        data[lname] ||= {}
+
+        usec_aligned_chunks(start_timestamp, end_timestamp, :hour).each do |ts|
+          # Col name schema: lname\0lvalue\0uuid
+
+          prefix = "#{lname}\0#{lvalue}"
+          raise "We currently fail hard if the last byte of the label value prefix is 255!" if prefix[-1].ord == 255
+
+          # We use a reversed comparator - swap start and finish
+          options[:finish] = prefix
+          options[:start] = prefix[0..-2] + prefix[-1].succ
+
+          cass_client.get('lookup_by_label', "uuid-#{ts}", options).each do |col_key,_|
+            data_lname, data_lvalue, uuid = col_key.split("\0")
+
+            data[lname][data_lvalue] ||= []
+            data[lname][data_lvalue].push uuid
+          end
+        end
+      end
+
       data
     end
 
@@ -473,6 +577,7 @@ module Hastur
 
       values = {}
       stats[:queried_row_count] = 0
+      slice_size = options[:cass_query_size] || DEFAULT_QUERY_SIZE
       options_by_type.each do |type, cass_options|
         row_count = row_keys_by_type[type].count
         stats[:queried_row_count] += row_count
@@ -487,10 +592,9 @@ module Hastur
           else
             values[type] = options[:raw_astyanax] ? [] : {}
             i = 0
-            slice_size = options[:cass_query_size] || DEFAULT_QUERY_SIZE
 
             row_keys_by_type[type].each_slice(slice_size) do |slice|
-              puts "Getting rows: #{slice.inspect} #{i}/#{row_count} #{cf_by_type[type]}"
+              puts "Getting rows: #{i}/#{row_count} #{cf_by_type[type]} slice: #{slice_size}"
 
               if options[:raw_astyanax]
                 values[type].push cass_client.raw_multi_get(cf_by_type[type], slice, cass_options)
