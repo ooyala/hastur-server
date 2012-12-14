@@ -4,6 +4,7 @@
 # A (hopefully) good example of JRuby-Java integration
 
 require "java"
+require "jruby_astyanax-jars"
 
 java_import com.netflix.astyanax.impl.AstyanaxConfigurationImpl
 java_import com.netflix.astyanax.connectionpool.impl.ConnectionPoolConfigurationImpl
