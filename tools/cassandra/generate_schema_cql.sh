@@ -22,10 +22,14 @@ create column family $table
 "
 }
 
+if [ -z "$REPLICATION_FACTOR" ]; then
+  REPLICATION_FACTOR=3
+fi
+
 echo "
 create keyspace hastur
   with placement_strategy = 'SimpleStrategy'
-  and strategy_options = {replication_factor : 3}
+  and strategy_options = {replication_factor : $REPLICATION_FACTOR}
   and durable_writes = true;
 
 use hastur;
