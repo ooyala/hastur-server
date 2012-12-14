@@ -636,3 +636,228 @@ create column family lookup_by_key
   and bloom_filter_fp_chance = 0.5
   and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
 
+
+create column family lookup_by_label
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family gauge_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family counter_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family mark_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family compound_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family log_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family error_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family event_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family hb_agent_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family hb_process_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family reg_agent_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family reg_process_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family info_process_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family info_agent_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+
+
+create column family info_ohai_label_index
+  with column_type = 'Standard'
+  and comparator = 'BytesType(reversed=true)'
+  and default_validation_class = 'BytesType'
+  and key_validation_class = 'BytesType'
+  and caching = 'KEYS_ONLY'
+  and read_repair_chance = 0.1
+  and gc_grace = 5184000
+  and replicate_on_write = true
+  and compaction_strategy = 'org.apache.cassandra.db.compaction.LeveledCompactionStrategy'
+  and compaction_strategy_options={'sstable_size_in_mb': 256}
+  and bloom_filter_fp_chance = 0.5
+  and compression_options = {'sstable_compression': 'org.apache.cassandra.io.compress.SnappyCompressor'};
+

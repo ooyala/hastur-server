@@ -61,8 +61,12 @@ do
   print_schema $table
 done
 
-for table in registration_day lookup_by_key
+for table in registration_day lookup_by_key lookup_by_label
 do
   print_schema $table
 done
 
+for table in gauge_label_index counter_label_index mark_label_index compound_label_index log_label_index error_label_index event_label_index hb_agent_label_index hb_process_label_index reg_agent_label_index reg_process_label_index info_process_label_index info_agent_label_index info_ohai_label_index
+do
+  print_schema $table
+done
