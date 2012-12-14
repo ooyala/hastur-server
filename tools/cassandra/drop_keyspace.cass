@@ -1,3 +1,1 @@
-# To run: "cat drop_keyspace.cass | grep -v \# | cassandra-cli -h localhost"
-
-DROP KEYSPACE Hastur;
+DROP KEYSPACE hastur;
