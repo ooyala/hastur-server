@@ -88,6 +88,7 @@ Warbler::Task.new("retrieval_war", Warbler::Config.new do |config|
   # See config/warble.rb for explanation of config variables
   config.dirs = %w(lib tools)
   config.excludes = FileList["**/*~"]
+  # TODO(noah): Can we remove this and just use the Astyanax jars gem directly?
   config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
   config.java_libs += ["lib/hastur-server/native/native_code.jar"]
   config.bundler = false  # This doesn't seem to turn off the gemspec
@@ -107,6 +108,7 @@ Warbler::Task.new("core_jar", Warbler::Config.new do |config|
   # See config/warble.rb for explanation of config variables
   config.dirs = %w(lib vendor tools)
   config.excludes = FileList["**/*~"]
+  # TODO(noah): Can we remove this and just use the Astyanax jars gem directly?
   config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
   config.bundler = false  # This doesn't seem to turn off the gemspec
   config.gem_dependencies = false
