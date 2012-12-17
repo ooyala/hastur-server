@@ -15,6 +15,8 @@ export IS_JENKINS="true"
 
 source $HOME/.rvm/scripts/rvm
 
+export JRUBY_OPTS="-Xcext.enabled=true"
+
 cd $REPO_ROOT/hastur-server
 rvm list | grep jruby-1.7.0 || rvm install jruby-1.7.0
 rvm --create use jruby-1.7.0@hastur-server
