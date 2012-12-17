@@ -106,7 +106,7 @@ class CassandraSchemaTest < Scope::TestCase
       row_key = "#{FAKE_UUID}-#{ROW_TS}"
       colname = "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
       @cass_client.expects(:insert).with(:gauge_archive, row_key, { colname => json }, DEFOPTS)
-      @cass_client.expects(:insert).with(:gauge_value, row_key, { colname => anything }, DEFOPTS)
+      @cass_client.expects(:insert).with(:gauge_value, row_key, anything, DEFOPTS)
       @cass_client.expects(:insert).with(:gauge_metadata, row_key,
                                          { "last_write" => NOWISH_TIMESTAMP,
                                            "last_access" => NOWISH_TIMESTAMP }, DEFOPTS)
@@ -114,6 +114,9 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with('lookup_by_key', "name-#{ROW_DAY_TS}",
                                          { "this.is.a.gauge-11-#{FAKE_UUID}" => "" }, DEFOPTS)
       @cass_client.expects(:insert).with('lookup_by_key', "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
+      @cass_client.expects(:insert).with('lookup_by_label', "uuid-#{ROW_HOUR_TS}", anything, anything).times(3);
+      @cass_client.expects(:insert).with('lookup_by_label', "statname-#{FAKE_UUID}-#{ROW_HOUR_TS}", anything, anything).times(3);
+      @cass_client.expects(:insert).with('gauge_label_index', "#{FAKE_UUID}-#{ROW_HOUR_TS}", anything, anything).times(3);
       Hastur::Cassandra.insert(@cass_client, json, "gauge", :consistency => ONE)
     end
 
