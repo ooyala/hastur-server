@@ -5,7 +5,7 @@ require "hastur-server/cassandra/schema"
 GAUGE_JSON = <<JSON
 {
   "type": "gauge",
-  "uuid": "91c61ff0-8740-012f-e54a-64ce8f3a9dc2",
+  "uuid": "fafafafa-fafa-fafa-fafa-fafafafafafa",
   "name": "this.is.a.gauge",
   "value": 37.1,
   "timestamp": 1329858724285438,
@@ -20,7 +20,7 @@ JSON
 COUNTER_JSON = <<JSON
 {
   "type": "counter",
-  "uuid": "91c61ff0-8740-012f-e54a-64ce8f3a9dc2",
+  "uuid": "fafafafa-fafa-fafa-fafa-fafafafafafa",
   "name": "totally.a.counter",
   "value": 5,
   "timestamp": 1329858724285438,
@@ -36,7 +36,7 @@ JSON
 MARK_JSON = <<JSON
 {
   "type": "mark",
-  "uuid": "91c61ff0-8740-012f-e54a-64ce8f3a9dc2",
+  "uuid": "fafafafa-fafa-fafa-fafa-fafafafafafa",
   "name": "marky.mark",
   "value": "start",
   "timestamp": 1329858724285438,
@@ -49,7 +49,7 @@ JSON
 EVENT_JSON = <<JSON
 {
   "type": "event",
-  "uuid": "91c61ff0-8740-012f-e54a-64ce8f3a9dc2",
+  "uuid": "fafafafa-fafa-fafa-fafa-fafafafafafa",
   "name": "fake.event.name",
   "timestamp": 1329858724285438,
   "body": "stack trace placeholder",
@@ -67,7 +67,7 @@ JSON
 REG_PROCESS_JSON = <<JSON
 {
   "type": "reg_process",
-  "uuid": "91c61ff0-8740-012f-e54a-64ce8f3a9dc2",
+  "uuid": "fafafafa-fafa-fafa-fafa-fafafafafafa",
   "data": { "a": "b", "c": "d" },
   "timestamp": 1329858724285438,
   "labels": {
@@ -106,15 +106,15 @@ class CassandraSchemaTest < Scope::TestCase
       row_key = "#{FAKE_UUID}-#{ROW_TS}"
       colname = "this.is.a.gauge-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
       @cass_client.expects(:insert).with(:gauge_archive, row_key, { colname => json }, DEFOPTS)
-      @cass_client.expects(:insert).with(:gauge_value, row_key, { colname => (37.1).to_msgpack }, DEFOPTS)
+      @cass_client.expects(:insert).with(:gauge_value, row_key, { colname => anything }, DEFOPTS)
       @cass_client.expects(:insert).with(:gauge_metadata, row_key,
                                          { "last_write" => NOWISH_TIMESTAMP,
                                            "last_access" => NOWISH_TIMESTAMP }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "name-#{ROW_DAY_TS}",
+      @cass_client.expects(:insert).with('lookup_by_key', "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, DEFOPTS)
+      @cass_client.expects(:insert).with('lookup_by_key', "name-#{ROW_DAY_TS}",
                                          { "this.is.a.gauge-11-#{FAKE_UUID}" => "" }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
-      Hastur::Cassandra.insert(@cass_client, json, "gauge", :uuid => FAKE_UUID, :consistency => ONE)
+      @cass_client.expects(:insert).with('lookup_by_key', "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
+      Hastur::Cassandra.insert(@cass_client, json, "gauge", :consistency => ONE)
     end
 
     should "insert a counter into counter_archive and counter_value" do
@@ -122,15 +122,18 @@ class CassandraSchemaTest < Scope::TestCase
       row_key = "#{FAKE_UUID}-#{ROW_TS}"
       colname = "totally.a.counter-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
       @cass_client.expects(:insert).with(:counter_archive, row_key, { colname => json }, DEFOPTS)
-      @cass_client.expects(:insert).with(:counter_value, row_key, { colname => (5).to_msgpack }, DEFOPTS)
+      @cass_client.expects(:insert).with(:counter_value, row_key, anything, DEFOPTS)
       @cass_client.expects(:insert).with(:counter_metadata, row_key,
                                          { "last_write" => NOWISH_TIMESTAMP,
                                            "last_access" => NOWISH_TIMESTAMP }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "name-#{ROW_DAY_TS}",
+      @cass_client.expects(:insert).with('lookup_by_key', "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, DEFOPTS)
+      @cass_client.expects(:insert).with('lookup_by_key', "name-#{ROW_DAY_TS}",
                                          { "totally.a.counter-12-#{FAKE_UUID}" => "" }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
-      Hastur::Cassandra.insert(@cass_client, json, "counter", :uuid => FAKE_UUID, :consistency => ONE)
+      @cass_client.expects(:insert).with('lookup_by_key', "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
+      @cass_client.expects(:insert).with('lookup_by_label', "uuid-#{ROW_HOUR_TS}", anything, anything).times(4);
+      @cass_client.expects(:insert).with('lookup_by_label', "statname-#{FAKE_UUID}-#{ROW_HOUR_TS}", anything, anything).times(4);
+      @cass_client.expects(:insert).with('counter_label_index', "#{FAKE_UUID}-#{ROW_HOUR_TS}", anything, anything).times(4);
+      Hastur::Cassandra.insert(@cass_client, json, "counter", :consistency => ONE)
     end
 
     should "insert a mark into mark_archive and mark_value" do
@@ -138,15 +141,18 @@ class CassandraSchemaTest < Scope::TestCase
       row_key = "#{FAKE_UUID}-#{ROW_HOUR_TS}"
       colname = "marky.mark-\x00\x04\xB9\x7F\xDC\xDC\xCB\xFE"
       @cass_client.expects(:insert).with(:mark_archive, row_key, { colname => json }, DEFOPTS)
-      @cass_client.expects(:insert).with(:mark_value, row_key, { colname => ("start").to_msgpack }, DEFOPTS)
+      @cass_client.expects(:insert).with(:mark_value, row_key, anything, DEFOPTS)
       @cass_client.expects(:insert).with(:mark_metadata, row_key,
                                          { "last_write" => NOWISH_TIMESTAMP,
                                            "last_access" => NOWISH_TIMESTAMP }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "name-#{ROW_DAY_TS}",
+      @cass_client.expects(:insert).with('lookup_by_key', "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, DEFOPTS)
+      @cass_client.expects(:insert).with('lookup_by_key', "name-#{ROW_DAY_TS}",
                                          { "marky.mark-10-#{FAKE_UUID}" => "" }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
-      Hastur::Cassandra.insert(@cass_client, json, "mark", :uuid => FAKE_UUID, :consistency => ONE)
+      @cass_client.expects(:insert).with('lookup_by_key', "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
+      @cass_client.expects(:insert).with('lookup_by_label', "uuid-#{ROW_HOUR_TS}", anything, anything);
+      @cass_client.expects(:insert).with('lookup_by_label', "statname-#{FAKE_UUID}-#{ROW_HOUR_TS}", anything, anything);
+      @cass_client.expects(:insert).with('mark_label_index', "#{FAKE_UUID}-#{ROW_HOUR_TS}", anything, anything);
+      Hastur::Cassandra.insert(@cass_client, json, "mark", :consistency => ONE)
     end
 
     should "insert an event into event_archive" do
@@ -157,11 +163,14 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with(:event_metadata, row_key,
                                          { "last_write" => NOWISH_TIMESTAMP,
                                            "last_access" => NOWISH_TIMESTAMP }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "name-#{ROW_DAY_TS}",
+      @cass_client.expects(:insert).with('lookup_by_key', "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, DEFOPTS)
+      @cass_client.expects(:insert).with('lookup_by_key', "name-#{ROW_DAY_TS}",
                                          { "fake.event.name-1-#{FAKE_UUID}" => "" }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
-      Hastur::Cassandra.insert(@cass_client, json, "event", :uuid => FAKE_UUID, :consistency => ONE)
+      @cass_client.expects(:insert).with('lookup_by_key', "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
+      @cass_client.expects(:insert).with('lookup_by_label', "uuid-#{ROW_HOUR_TS}", anything, anything);
+      @cass_client.expects(:insert).with('lookup_by_label', "statname-#{FAKE_UUID}-#{ROW_HOUR_TS}", anything, anything);
+      @cass_client.expects(:insert).with('event_label_index', "#{FAKE_UUID}-#{ROW_HOUR_TS}", anything, anything);
+      Hastur::Cassandra.insert(@cass_client, json, "event", :consistency => ONE)
     end
 
     should "insert a reg_process into reg_process_archive" do
@@ -172,9 +181,12 @@ class CassandraSchemaTest < Scope::TestCase
       @cass_client.expects(:insert).with(:reg_process_metadata, row_key,
                                          { "last_write" => NOWISH_TIMESTAMP,
                                            "last_access" => NOWISH_TIMESTAMP }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, DEFOPTS)
-      @cass_client.expects(:insert).with(:lookup_by_key, "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
-      Hastur::Cassandra.insert(@cass_client, json, "reg_process", :uuid => FAKE_UUID, :consistency => ONE)
+      @cass_client.expects(:insert).with('lookup_by_key', "uuid-#{ROW_DAY_TS}", { FAKE_UUID => "" }, DEFOPTS)
+      @cass_client.expects(:insert).with('lookup_by_key', "app_name-#{ROW_DAY_TS}", { "myapp-#{FAKE_UUID}" => ""}, DEFOPTS)
+      @cass_client.expects(:insert).with('lookup_by_label', "uuid-#{ROW_HOUR_TS}", anything, anything);
+      @cass_client.expects(:insert).with('lookup_by_label', "statname-#{FAKE_UUID}-#{ROW_HOUR_TS}", anything, anything);
+      @cass_client.expects(:insert).with('reg_process_label_index', "#{FAKE_UUID}-#{ROW_HOUR_TS}", anything, anything);
+      Hastur::Cassandra.insert(@cass_client, json, "reg_process", :consistency => ONE)
     end
 
     should "query a gauge from gauge_value" do

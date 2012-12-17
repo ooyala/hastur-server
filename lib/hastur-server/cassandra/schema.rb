@@ -139,8 +139,12 @@ module Hastur
           ttl = row_hash[:ttl]  # Use TTL if set
           row_hash.each do |idx_row_key, col_hash|
             next if idx_row_key == :ttl
+
+            cass_options = insert_options
+            cass_options = cass_options.merge(:ttl => ttl) if ttl
+
             col_hash.each do |idx_col_key, idx_col_val|
-              client.insert(idx_cf, idx_row_key, { idx_col_key => idx_col_val }, insert_options.merge(:ttl => ttl))
+              client.insert(idx_cf, idx_row_key, { idx_col_key => idx_col_val }, cass_options)
             end
           end
         end
@@ -169,7 +173,7 @@ module Hastur
       type_id = Hastur::Message.symbol_to_type_id(schema[:type])
 
       # Stat-name => [type, UUID] index
-      name_indexes = {}
+      name_indexes = { "lookup_by_key" => {} }
       if schema[:name]
         name = hash["name"]
         colkey = [name, type_id, uuid].join('-')
@@ -179,7 +183,7 @@ module Hastur
       # Initialize label indexes with a 3-day TTL.  Cass TTLs are in seconds.
       label_indexes = {
         "lookup_by_label" => { :ttl => 86400 * 3 },
-        :"#{schema[:type]}_label_index" => { :ttl => 86400 * 3 }
+        "#{schema[:type]}_label_index" => { :ttl => 86400 * 3 }
       }
       hash["labels"].each do |lname, lvalue|
         label_indexes["lookup_by_label"]["uuid-#{one_hour_ts}"] ||= {}
@@ -189,10 +193,10 @@ module Hastur
         colname = "#{lname}\0#{lvalue}\0#{type_id}\0#{name}"
         label_indexes["lookup_by_label"]["statname-#{uuid}-#{one_hour_ts}"][colname] = ""
 
-        label_indexes[:"#{schema[:type]}_label_index"]["#{uuid}-#{one_hour_ts}"] ||= {}
+        label_indexes["#{schema[:type]}_label_index"]["#{uuid}-#{one_hour_ts}"] ||= {}
         packed_ts = [hash["timestamp"].to_i].pack("Q>")
         colname = "#{lname}\0#{lvalue}\0#{name}\0#{packed_ts}"
-        label_indexes[:"#{schema[:type]}_label_index"]["#{uuid}-#{one_hour_ts}"][colname] = ""
+        label_indexes["#{schema[:type]}_label_index"]["#{uuid}-#{one_hour_ts}"][colname] = ""
       end
 
       return {
@@ -201,8 +205,8 @@ module Hastur
           "uuid-#{one_day_ts}" => { uuid => "" },
           # App-name => UUID index
           "app_name-#{one_day_ts}" => { "#{app_name}-#{uuid}" => "" },
-        }
-      }.merge(name_indexes).merge(label_indexes)
+        }.merge(name_indexes["lookup_by_key"])
+      }.merge(label_indexes)
     end
 
     #
