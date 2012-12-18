@@ -328,7 +328,7 @@ module Hastur
     end
 
     #
-    # Get one or more rows from the lookup_by_label CF and return a hash
+    # Look up UUIDs from the lookup_by_label CF and return a hash
     #
     # For more options, see #get().
     #
@@ -348,21 +348,75 @@ module Hastur
       labels.each do |lname, lvalue|
         data[lname] ||= {}
 
+        # TODO(noah): handle "*" in label value correctly
+        prefix = "#{lname}\0#{lvalue}"
+        raise "We currently fail hard if the last byte of the label value prefix is 255!" if prefix[-1].ord == 255
+
+        # We use a reversed comparator - swap start and finish
+        options[:finish] = prefix
+        options[:start] = prefix[0..-2] + prefix[-1].succ
+
         usec_aligned_chunks(start_timestamp, end_timestamp, :hour).each do |ts|
           # Col name schema: lname\0lvalue\0uuid
-
-          prefix = "#{lname}\0#{lvalue}"
-          raise "We currently fail hard if the last byte of the label value prefix is 255!" if prefix[-1].ord == 255
-
-          # We use a reversed comparator - swap start and finish
-          options[:finish] = prefix
-          options[:start] = prefix[0..-2] + prefix[-1].succ
 
           cass_client.get('lookup_by_label', "uuid-#{ts}", options).each do |col_key,_|
             data_lname, data_lvalue, uuid = col_key.split("\0")
 
             data[lname][data_lvalue] ||= []
             data[lname][data_lvalue].push uuid
+          end
+        end
+      end
+
+      data
+    end
+
+    #
+    # Look up stat names and types from UUIDS and the lookup_by_label CF and return a hash
+    #
+    # For more options, see #get().
+    #
+    # @param cass_client The cassandra client object
+    # @param [Array] uuids A list of UUIDs
+    # @param [Hash] labels the labels to look up, given as a hash of names to value prefixes.
+    # @param [Fixnum] start_timestamp The earliest time value to query
+    # @param [Fixnum] end_timestamp The latest time value to query
+    # @return Hash A hash of the form { "labelname" => { "labelvalue" => [ uuid, uuid, uuid... ] } }
+    #
+    # @example
+    #   names = Hastur::Cassandra.lookup_by_key(client, "name", Time.now - 86401, Time.now)
+    #
+    def lookup_label_stat_names(cass_client, uuids, labels, start_timestamp, end_timestamp, options={})
+      data = {}
+      options = { :count => 10_000 }.merge(options)
+
+      labels.each do |lname, lvalue|
+        data[lname] ||= {}
+
+        # TODO(noah): handle "*" in label value correctly
+        prefix = "#{lname}\0#{lvalue}"
+        raise "We currently fail hard if the last byte of the label value prefix " +
+          "is 255!" if prefix[-1].ord == 255
+
+        # We use a reversed comparator - swap start and finish
+        options[:finish] = prefix
+        options[:start] = prefix[0..-2] + prefix[-1].succ
+
+        usec_aligned_chunks(start_timestamp, end_timestamp, :hour).each do |ts|
+          cass_client.multi_get('lookup_by_label', uuids.map { |u| "statname-#{u}-#{ts}"},
+                                options).each do |row_key,col_hash|
+            uuid = row_key[9..44]  # 36 characters, following "statname-"
+
+            col_hash.each do |col_key, _|
+              data_lname, data_lvalue, type_id, stat_name = col_key.split("\0")
+              if stat_name.nil?
+                STDERR.puts "Nil stat name, row: #{row_key.inspect} / column: #{col_key.inspect}"
+              end
+              data[lname][data_lvalue] ||= {}
+              data[lname][data_lvalue][type_id] ||= {}
+              data[lname][data_lvalue][type_id][uuid] ||= []
+              data[lname][data_lvalue][type_id][uuid] << stat_name
+            end
           end
         end
       end

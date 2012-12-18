@@ -570,9 +570,47 @@ module Hastur
         end
 
         STDERR.puts "Must: #{must.inspect}"
-        STDERR.puts "Must Not: #{must_not.inspect}"
 
-        data = Hastur::Cassandra.lookup_label_uuids(cass_client, must.keys + must_not.keys, start_ts, end_ts)
+        data = Hastur::Cassandra.lookup_label_uuids(cass_client, must.keys, start_ts, end_ts)
+
+        data.inspect
+      end
+
+      #
+      # This is a proof-of-concept route before integrating this
+      # functionality into the main query routines.
+      #
+      # TODO(noah): remove when integrated.
+      #
+      get "/v2/stat_names_by_label" do
+        start_ts, end_ts = get_start_end :one_day
+
+        unless params[:label]
+          hastur_error! "Must supply label(s) to stat_names_by_label", 404
+        end
+
+        unless params[:uuid]
+          hastur_error! "Must supply UUID(s) to stat_names_by_label", 404
+        end
+
+        uuids = params[:uuid].split(",").map(&:strip).map(&:downcase)
+
+        labels = CGI::unescape(params[:label]).split(',')
+
+        must = {}
+        must_not = {}
+        labels.each do |lv|
+          label, value = lv.split ':', 2
+          if label.start_with? '!'
+            must_not[label[1..-1]] = value || ""
+          else
+            must[label] = value || ""
+          end
+        end
+
+        STDERR.puts "Must: #{must.inspect}"
+
+        data = Hastur::Cassandra.lookup_label_stat_names(cass_client, uuids, must.keys, start_ts, end_ts)
 
         data.inspect
       end
