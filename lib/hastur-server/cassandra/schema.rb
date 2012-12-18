@@ -180,10 +180,10 @@ module Hastur
         name_indexes = { "lookup_by_key" => { "name-#{one_day_ts}" => { colkey => "" } } }
       end
 
-      # Initialize label indexes with a 3-day TTL.  Cass TTLs are in seconds.
+      # Initialize label indexes with a 7-day TTL.  Cass TTLs are in seconds.
       label_indexes = {
-        "lookup_by_label" => { :ttl => 86400 * 3 },
-        "#{schema[:type]}_label_index" => { :ttl => 86400 * 3 }
+        "lookup_by_label" => { :ttl => 86400 * 7 },
+        "#{schema[:type]}_label_index" => { :ttl => 86400 * 7 }
       }
       hash["labels"].each do |lname, lvalue|
         label_indexes["lookup_by_label"]["uuid-#{one_hour_ts}"] ||= {}
@@ -338,9 +338,6 @@ module Hastur
     # @param [Fixnum] end_timestamp The latest time value to query
     # @return Hash A hash of the form { "labelname" => { "labelvalue" => [ uuid, uuid, uuid... ] } }
     #
-    # @example
-    #   names = Hastur::Cassandra.lookup_by_key(client, "name", Time.now - 86401, Time.now)
-    #
     def lookup_label_uuids(cass_client, labels, start_timestamp, end_timestamp, options={})
       data = {}
       options = { :count => 10_000 }.merge(options)
@@ -383,9 +380,6 @@ module Hastur
     # @param [Fixnum] start_timestamp The earliest time value to query
     # @param [Fixnum] end_timestamp The latest time value to query
     # @return Hash A hash of the form { "labelname" => { "labelvalue" => [ uuid, uuid, uuid... ] } }
-    #
-    # @example
-    #   names = Hastur::Cassandra.lookup_by_key(client, "name", Time.now - 86401, Time.now)
     #
     def lookup_label_stat_names(cass_client, uuids, labels, start_timestamp, end_timestamp, options={})
       data = {}
