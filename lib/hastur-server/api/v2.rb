@@ -421,7 +421,9 @@ module Hastur
       #
       # @!method /v2/query
       #
-      # Retrieve metrics by any queryable property.
+      # Retrieve metrics by any queryable property.  Must specify one or
+      # more of uuid, label, name or type.  All queries implicitly also
+      # specify a time range, which defaults to five minutes.
       #
       # @param kind One of "message", "value", "count" or "rollup" for output data type, default is "value"
       # @param format One of "csv", "json", "jsonp" for output format.  Default is "json".
@@ -549,7 +551,7 @@ module Hastur
       #
       # TODO(noah): remove when integrated.
       #
-      get "/v2/uuids_by_label" do
+      get "/v2/lookup/uuids_by_label" do
         start_ts, end_ts = get_start_end :one_day
 
         unless params[:label]
@@ -571,7 +573,7 @@ module Hastur
 
         STDERR.puts "Must: #{must.inspect}"
 
-        data = Hastur::Cassandra.lookup_label_uuids(cass_client, must.keys, start_ts, end_ts)
+        data = Hastur::Cassandra.lookup_label_uuids(cass_client, must, start_ts, end_ts)
 
         data.inspect
       end
@@ -582,7 +584,7 @@ module Hastur
       #
       # TODO(noah): remove when integrated.
       #
-      get "/v2/stat_names_by_label" do
+      get "/v2/lookup/stat_names_by_label" do
         start_ts, end_ts = get_start_end :one_day
 
         unless params[:label]
@@ -610,7 +612,7 @@ module Hastur
 
         STDERR.puts "Must: #{must.inspect}"
 
-        data = Hastur::Cassandra.lookup_label_stat_names(cass_client, uuids, must.keys, start_ts, end_ts)
+        data = Hastur::Cassandra.lookup_label_stat_names(cass_client, uuids, must, start_ts, end_ts)
 
         data.inspect
       end
