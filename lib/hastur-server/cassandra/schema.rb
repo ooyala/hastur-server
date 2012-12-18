@@ -348,9 +348,10 @@ module Hastur
       labels.each do |lname, lvalue|
         data[lname] ||= {}
 
-        # TODO(noah): handle "*" in label value correctly
-        prefix = "#{lname}\0#{lvalue}"
-        raise "We currently fail hard if the last byte of the label value prefix is 255!" if prefix[-1].ord == 255
+        prefix = "#{lname}\0#{lvalue.split("*",2)[0]}"
+        raise "We currently fail hard if the last byte of the label value prefix " +
+          "is 255!" if prefix[-1].ord == 255
+        prefix += "\0" unless lvalue["*"]
 
         # We use a reversed comparator - swap start and finish
         options[:finish] = prefix
@@ -393,10 +394,10 @@ module Hastur
       labels.each do |lname, lvalue|
         data[lname] ||= {}
 
-        # TODO(noah): handle "*" in label value correctly
-        prefix = "#{lname}\0#{lvalue}"
+        prefix = "#{lname}\0#{lvalue.split("*",2)[0]}"
         raise "We currently fail hard if the last byte of the label value prefix " +
           "is 255!" if prefix[-1].ord == 255
+        prefix += "\0" unless lvalue["*"]
 
         # We use a reversed comparator - swap start and finish
         options[:finish] = prefix
@@ -412,10 +413,13 @@ module Hastur
               if stat_name.nil?
                 STDERR.puts "Nil stat name, row: #{row_key.inspect} / column: #{col_key.inspect}"
               end
+
+              type_str = Hastur::Message.type_id_to_symbol(type_id).to_s
+
               data[lname][data_lvalue] ||= {}
-              data[lname][data_lvalue][type_id] ||= {}
-              data[lname][data_lvalue][type_id][uuid] ||= []
-              data[lname][data_lvalue][type_id][uuid] << stat_name
+              data[lname][data_lvalue][type_str] ||= {}
+              data[lname][data_lvalue][type_str][uuid] ||= []
+              data[lname][data_lvalue][type_str][uuid] |= stat_name   # Single-bar for union
             end
           end
         end
