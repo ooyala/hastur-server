@@ -363,7 +363,7 @@ module Hastur
             data_lname, data_lvalue, uuid = col_key.split("\0")
 
             data[lname][data_lvalue] ||= []
-            data[lname][data_lvalue].push uuid
+            data[lname][data_lvalue] |= [ uuid ]  # Single-bar for "union"
           end
         end
       end
