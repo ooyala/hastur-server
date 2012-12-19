@@ -1,8 +1,5 @@
 require 'multi_json'
-require 'yajl'
 require 'hastur-server/exception'
-
-MultiJson.use :yajl
 
 module Hastur
   module Input
