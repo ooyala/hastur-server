@@ -740,7 +740,7 @@ module Hastur
         t = Time.now - t0
         STDERR.puts "Time to serialize: #{t.to_f} seconds"
 
-        out
+        out + "\n"
       end
 
       #
@@ -759,6 +759,17 @@ module Hastur
 
         error[:url] = request.url
         halt serialize(error, {})
+      end
+
+      #
+      # Do an intersection between sets of param values (UUIDs, types, etc) and/or
+      # :all, meaning "all possible values."
+      #
+      def intersect_params(*lists)
+        lists = lists.select { |l| l != :all }
+
+        return :all if lists.empty?
+        lists.inject([], &:"&")
       end
     end
   end
