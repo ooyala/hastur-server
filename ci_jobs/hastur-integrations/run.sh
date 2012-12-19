@@ -22,11 +22,14 @@ rvm list | grep jruby-1.7.0 || rvm install jruby-1.7.0
 rvm --create use jruby-1.7.0@hastur-server
 gem uninstall bundler -v 1.1.1
 gem install --no-rdoc --no-ri bundler
+rm Gemfile.lock  # Workaround for uncommon Bundler bug - https://github.com/carlhuda/bundler/issues/2043
 bundle update   # Update to latest versions since this is a gem
 #bundle install
 rm hastur-server-*.gem
 gem build hastur-server.gemspec
 gem install hastur-server-*.gem
+
+rake native_jar
 
 gem env
 echo "------------ Bundler-ized environment -----"
