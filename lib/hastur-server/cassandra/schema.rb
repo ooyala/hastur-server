@@ -33,6 +33,8 @@ module Hastur
     DEFAULT_WRITE_CONSISTENCY = CONSISTENCY_TWO
     DEFAULT_READ_CONSISTENCY = CONSISTENCY_TWO
 
+    SECONDS_PER_DAY = 86400
+
     DEFAULT_QUERY_SIZE = 20
 
     # A Hastur Schema is a mapping of strings to symbols to values.
@@ -89,7 +91,7 @@ module Hastur
     # @param [String] json_string to be parsed & data used for the insert
     # @param [Hash] schema The schema hash for this message type, or name of type
     # @param [Hash{Symbol=>Fixnum,String}] options
-    # @option options [Fixnum] :ttl TTL in seconds, passed to the cassandra client
+    # @option options [Fixnum] :ttl_seconds TTL in seconds, passed to the cassandra client
     # @option options [Fixnum] :consistency Consistency, passed to the cassandra client
     # @option options [String] :uuid 36-byte agent UUID if not present in JSON data
     # @option options [Fixnum] :request_ts Timestamp for columns, defaults to now
@@ -99,7 +101,7 @@ module Hastur
       raise "Cannot deserialize JSON string!" unless hash
       uuid = hash["uuid"] || hash["from"] || options[:uuid]
       raise "No UUID given!" unless uuid
-      ttl = options[:ttl] ? options[:ttl].to_i : (hash["ttl"] ? hash["ttl"].to_i : nil)
+      ttl = options[:ttl_seconds] ? options[:ttl_seconds].to_i : (hash["ttl"] ? hash["ttl"].to_i : nil)
 
       if schema.nil?
         schema = schema_by_type(hash["type"].to_sym)
@@ -120,7 +122,7 @@ module Hastur
       one_day_ts = time_segment_for_timestamp(hash["timestamp"], ONE_DAY)
 
       insert_options = { :consistency => options[:consistency] || DEFAULT_WRITE_CONSISTENCY }
-      insert_options[:ttl] = options[:ttl] if options[:ttl]
+      insert_options[:ttl_seconds] = options[:ttl_seconds] if options[:ttl_seconds]
       now_ts = (options[:request_ts] || ::Hastur::Util.timestamp).to_s
 
       indexes = indexes_for_message(hash, schema, options)
@@ -136,12 +138,12 @@ module Hastur
 
         ttl = nil
         indexes.each do |idx_cf, row_hash|
-          ttl = row_hash[:ttl]  # Use TTL if set
+          ttl = row_hash[:ttl_seconds]  # Use TTL if set
           row_hash.each do |idx_row_key, col_hash|
-            next if idx_row_key == :ttl
+            next if idx_row_key == :ttl_seconds
 
             cass_options = insert_options
-            cass_options = cass_options.merge(:ttl => ttl) if ttl
+            cass_options = cass_options.merge(:ttl_seconds => ttl) if ttl
 
             col_hash.each do |idx_col_key, idx_col_val|
               client.insert(idx_cf, idx_row_key, { idx_col_key => idx_col_val }, cass_options)
@@ -164,7 +166,7 @@ module Hastur
     def indexes_for_message(hash, schema, options)
       uuid = hash["uuid"] || hash["from"] || options["uuid"]
       raise "No UUID given!" unless uuid
-      ttl = (options[:ttl].to_i || hash["ttl"].to_i) rescue nil
+      ttl = (options[:ttl_seconds].to_i || hash["ttl"].to_i) rescue nil
 
       app_name = hash["labels"]["app"] || ""
       one_day_ts = time_segment_for_timestamp(hash["timestamp"], ONE_DAY)
@@ -182,8 +184,8 @@ module Hastur
 
       # Initialize label indexes with a 7-day TTL.  Cass TTLs are in seconds.
       label_indexes = {
-        "lookup_by_label" => { :ttl => 86400 * 7 },
-        "#{schema[:type]}_label_index" => { :ttl => 86400 * 7 }
+        "lookup_by_label" => { :ttl_seconds => SECONDS_PER_DAY * 7 },
+        "#{schema[:type]}_label_index" => { :ttl_seconds => SECONDS_PER_DAY * 7 }
       }
       hash["labels"].each do |lname, lvalue|
         label_indexes["lookup_by_label"]["uuid-#{one_hour_ts}"] ||= {}

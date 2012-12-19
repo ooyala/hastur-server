@@ -27,7 +27,7 @@ module Hastur
       end
 
       # Options:
-      #   :ttl
+      #   :ttl_seconds
       #   :consistency
       def insert(cf, row_key, cols, options = {})
         ast_cf = cf_for_name(cf)
@@ -43,7 +43,7 @@ module Hastur
           elsif !val.kind_of?(String)
             raise "Value must be a string, not #{val.inspect}, by the time it gets to Astyanax"
           end
-          row.java_send(:putColumn, [java.lang.Object, Java::byte[], java.lang.Integer], name.to_java_bytes, val, options[:ttl])
+          row.java_send(:putColumn, [java.lang.Object, Java::byte[], java.lang.Integer], name.to_java_bytes, val, options[:ttl_seconds])
         end
 
         batch.execute unless @insert_batch
