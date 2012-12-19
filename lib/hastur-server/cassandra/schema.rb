@@ -350,7 +350,7 @@ module Hastur
         prefix = "#{lname}\0#{lvalue.split("*",2)[0]}"
         raise "We currently fail hard if the last byte of the label value prefix " +
           "is 255!" if prefix[-1].ord == 255
-        prefix += "\0" unless lvalue["*"]
+        prefix += "\0" if lvalue && !lvalue["*"]
 
         # We use a reversed comparator - swap start and finish
         options[:finish] = prefix
@@ -381,11 +381,13 @@ module Hastur
     # @param [Hash] labels the labels to look up, given as a hash of names to value prefixes.
     # @param [Fixnum] start_timestamp The earliest time value to query
     # @param [Fixnum] end_timestamp The latest time value to query
-    # @return Hash A hash of the form { "labelname" => { "labelvalue" => [ uuid, uuid, uuid... ] } }
+    # @return Hash A hash of output: lname => lvalue => type => uuid => Array(stat_names)
     #
     def lookup_label_stat_names(cass_client, uuids, labels, start_timestamp, end_timestamp, options={})
       data = {}
       options = { :count => 10_000 }.merge(options)
+
+      time_buckets = usec_aligned_chunks(start_timestamp, end_timestamp, :hour)
 
       labels.each do |lname, lvalue|
         data[lname] ||= {}
@@ -393,30 +395,27 @@ module Hastur
         prefix = "#{lname}\0#{lvalue.split("*",2)[0]}"
         raise "We currently fail hard if the last byte of the label value prefix " +
           "is 255!" if prefix[-1].ord == 255
-        prefix += "\0" unless lvalue["*"]
+        prefix += "\0" if lvalue && !lvalue["*"]
 
         # We use a reversed comparator - swap start and finish
         options[:finish] = prefix
         options[:start] = prefix[0..-2] + prefix[-1].succ
 
-        usec_aligned_chunks(start_timestamp, end_timestamp, :hour).each do |ts|
-          cass_client.multi_get('lookup_by_label', uuids.map { |u| "statname-#{u}-#{ts}"},
-                                options).each do |row_key,col_hash|
-            uuid = row_key[9..44]  # 36 characters, following "statname-"
+        query_rows = time_buckets.flat_map { |ts| uuids.map { |u| "statname-#{u}-#{ts}"} }
 
-            col_hash.each do |col_key, _|
-              data_lname, data_lvalue, type_id, stat_name = col_key.split("\0")
-              if stat_name.nil?
-                STDERR.puts "Nil stat name, row: #{row_key.inspect} / column: #{col_key.inspect}"
-              end
+        cass_client.multi_get('lookup_by_label', query_rows, options).each do |row_key,col_hash|
+          uuid = row_key[9..44]  # 36 characters, following "statname-"
 
-              type_str = Hastur::Message.type_id_to_symbol(type_id).to_s
+          col_hash.each do |col_key, _|
+            data_lname, data_lvalue, type_id, stat_name = col_key.split("\0")
+            data[lname][data_lvalue] ||= {}
+            label_output = data[lname][data_lvalue]
 
-              data[lname][data_lvalue] ||= {}
-              data[lname][data_lvalue][type_str] ||= {}
-              data[lname][data_lvalue][type_str][uuid] ||= []
-              data[lname][data_lvalue][type_str][uuid] |= stat_name   # Single-bar for union
-            end
+            type_str = Hastur::Message.type_id_to_symbol(type_id.to_i).to_s
+
+            label_output[type_str] ||= {}
+            label_output[type_str][uuid] ||= []
+            label_output[type_str][uuid] |= [stat_name]   # Single-bar for union
           end
         end
       end
