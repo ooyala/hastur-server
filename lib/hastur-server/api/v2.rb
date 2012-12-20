@@ -571,11 +571,9 @@ module Hastur
           end
         end
 
-        STDERR.puts "Must: #{must.inspect}"
-
         data = Hastur::Cassandra.lookup_label_uuids(cass_client, must, start_ts, end_ts)
 
-        data.inspect
+        serialize data, params
       end
 
       #
@@ -596,23 +594,36 @@ module Hastur
         end
 
         uuids = params[:uuid].split(",").map(&:strip).map(&:downcase)
-
-        labels = CGI::unescape(params[:label]).split(',')
-
-        must = {}
-        must_not = {}
-        labels.each do |lv|
-          label, value = lv.split ':', 2
-          if label.start_with? '!'
-            must_not[label[1..-1]] = value || ""
-          else
-            must[label] = value || ""
-          end
-        end
-
-        STDERR.puts "Must: #{must.inspect}"
+        must, must_not = parse_labels params[:label]
 
         data = Hastur::Cassandra.lookup_label_stat_names(cass_client, uuids, must, start_ts, end_ts)
+
+        serialize data, params
+      end
+
+      #
+      # This is a proof-of-concept route before integrating this
+      # functionality into the main query routines.
+      #
+      # TODO(noah): remove when integrated.
+      #
+      get "/v2/lookup/timestamps_by_label" do
+        start_ts, end_ts = get_start_end :one_day
+
+        unless params[:label]
+          hastur_error! "Must supply label(s) to timestamps_by_label", 404
+        end
+
+        unless params[:uuid]
+          hastur_error! "Must supply UUID(s) to timestamps_by_label", 404
+        end
+
+        uuids = params[:uuid].split(",").map(&:strip).map(&:downcase)
+        must, must_not = parse_labels params[:label]
+
+        # Do the two-level index lookup to get row keys and column keys
+        data = Hastur::Cassandra.lookup_label_stat_names(cass_client, uuids, must.merge(must_not), start_ts, end_ts)
+        data = Hastur::Cassandra.lookup_label_timestamps(cass_client, data, must_not.keys, start_ts, end_ts)
 
         data.inspect
       end

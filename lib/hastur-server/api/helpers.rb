@@ -771,6 +771,23 @@ module Hastur
         return :all if lists.empty?
         lists.inject([], &:"&")
       end
+
+      def parse_labels(label_param)
+        labels = CGI::unescape(label_param).split(',')
+
+        must = {}
+        must_not = {}
+        labels.each do |lv|
+          label, value = lv.split ':', 2
+          if label.start_with? '!'
+            must_not[label[1..-1]] = value || ""
+          else
+            must[label] = value || ""
+          end
+        end
+
+        [ must, must_not ]
+      end
     end
   end
 end
