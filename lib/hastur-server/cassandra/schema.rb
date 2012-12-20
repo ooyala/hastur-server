@@ -128,14 +128,6 @@ module Hastur
       indexes = indexes_for_message(hash, schema, options)
 
       cass_client.batch do |client|
-        client.insert(schema[:archive_cf], key, { colname => json_string }, insert_options)
-
-        client.insert(schema[:metadata_cf], key,
-                      { "last_write" => now_ts, "last_access" => now_ts }, insert_options)
-
-        cf = schema[:values_cf]
-        client.insert(cf, key, { colname => hash["value"].to_msgpack }, insert_options) if cf
-
         ttl = nil
         indexes.each do |idx_cf, row_hash|
           ttl = row_hash[:ttl_seconds]  # Use TTL if set
@@ -151,6 +143,13 @@ module Hastur
           end
         end
 
+        client.insert(schema[:archive_cf], key, { colname => json_string }, insert_options)
+
+        client.insert(schema[:metadata_cf], key,
+                      { "last_write" => now_ts, "last_access" => now_ts }, insert_options)
+
+        cf = schema[:values_cf]
+        client.insert(cf, key, { colname => hash["value"].to_msgpack }, insert_options) if cf
       end
     end
 
