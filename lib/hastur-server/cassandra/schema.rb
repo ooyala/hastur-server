@@ -164,7 +164,7 @@ module Hastur
     # people grep for that?
     #
     def indexes_for_message(hash, schema, options)
-      uuid = hash["uuid"] || hash["from"] || options["uuid"]
+      uuid = hash["uuid"] || hash["from"] || options[:uuid]
       raise "No UUID given!" unless uuid
       ttl = (options[:ttl_seconds].to_i || hash["ttl"].to_i) rescue nil
 
@@ -347,14 +347,10 @@ module Hastur
       labels.each do |lname, lvalue|
         data[lname] ||= {}
 
-        prefix = "#{lname}\0#{lvalue.split("*",2)[0]}"
-        raise "We currently fail hard if the last byte of the label value prefix " +
-          "is 255!" if prefix[-1].ord == 255
-        prefix += "\0" if lvalue && !lvalue["*"]
-
         # We use a reversed comparator - swap start and finish
-        options[:finish] = prefix
-        options[:start] = prefix[0..-2] + prefix[-1].succ
+        prefix_start, prefix_end = prefixes_from_values([lname, lvalue])
+        options[:finish] = prefix_start
+        options[:start] = prefix_end
 
         usec_aligned_chunks(start_timestamp, end_timestamp, :hour).each do |ts|
           # Col name schema: lname\0lvalue\0uuid
@@ -374,6 +370,9 @@ module Hastur
     #
     # Look up stat names and types from UUIDS and the lookup_by_label CF and return a hash
     #
+    # Note that stat names can be nil and that's perfectly valid, especially for message
+    # types without names.
+    #
     # For more options, see #get().
     #
     # @param cass_client The cassandra client object
@@ -392,18 +391,14 @@ module Hastur
       labels.each do |lname, lvalue|
         data[lname] ||= {}
 
-        prefix = "#{lname}\0#{lvalue.split("*",2)[0]}"
-        raise "We currently fail hard if the last byte of the label value prefix " +
-          "is 255!" if prefix[-1].ord == 255
-        prefix += "\0" if lvalue && !lvalue["*"]
-
         # We use a reversed comparator - swap start and finish
-        options[:finish] = prefix
-        options[:start] = prefix[0..-2] + prefix[-1].succ
+        prefix_start, prefix_end = prefixes_from_values([lname, lvalue])
+        options[:finish] = prefix_start
+        options[:start] = prefix_end
 
         query_rows = time_buckets.flat_map { |ts| uuids.map { |u| "statname-#{u}-#{ts}"} }
 
-        cass_client.multi_get('lookup_by_label', query_rows, options).each do |row_key,col_hash|
+        cass_client.multi_get('lookup_by_label', query_rows, options).each do |row_key, col_hash|
           uuid = row_key[9..44]  # 36 characters, following "statname-"
 
           col_hash.each do |col_key, _|
@@ -539,6 +534,33 @@ module Hastur
       end
 
       segments
+    end
+
+    #
+    # Calculated a start/end pair of Cassandra column prefixes
+    # from an array of values, a wildcard character and a separator.
+    #
+    # These are used for start/finish values to pass to a Cassandra
+    # get or multiget operation.
+    #
+    # A final value of nil will end with the penultimate value
+    # (think label name and label value).
+    #
+    # @param [Array] values The values to concatenate, in order
+    # @param [String] separator The separator for concatenating values
+    # @param [String] wildcard The wildcard character for final prefix values
+    #
+    def prefixes_from_values(values, separator = "\0", wildcard = "*")
+      last_value = values[-1]
+      non_final = values.size > 1 ? (values[0..-2].join(separator) + separator) : ""
+      prefix = "#{non_final}#{last_value.split(wildcard,2)[0]}"
+
+      raise "We currently fail hard if the last byte of the label value prefix " +
+        "is 255!" if prefix[-1].ord == 255
+      prefix += "\0" if last_value && !last_value["*"]
+      prefix_end = prefix[0..-2] + prefix[-1].succ
+
+      [prefix, prefix_end]
     end
 
     protected
