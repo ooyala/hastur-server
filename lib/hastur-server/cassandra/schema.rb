@@ -379,7 +379,7 @@ module Hastur
     # @param [Hash] labels the labels to look up, given as a hash of names to value prefixes.
     # @param [Fixnum] start_timestamp The earliest time value to query
     # @param [Fixnum] end_timestamp The latest time value to query
-    # @return Hash A hash of output: lname => lvalue => type => uuid => Array(stat_names)
+    # @return Hash A hash of output: lname => lvalue => type => msg_name => Array(uuids)
     #
     def lookup_label_stat_names(cass_client, uuids, labels, start_timestamp, end_timestamp, options={})
       data = {}
@@ -408,13 +408,95 @@ module Hastur
             type_str = Hastur::Message.type_id_to_symbol(type_id.to_i).to_s
 
             label_output[type_str] ||= {}
-            label_output[type_str][uuid] ||= []
-            label_output[type_str][uuid] |= [stat_name]   # Single-bar for union
+            label_output[type_str][stat_name] ||= []
+            label_output[type_str][stat_name] |= [uuid]   # Single-bar for union
           end
         end
       end
 
       data
+    end
+
+    #
+    # Look up timestamps for messages matching a label, using a hash formatted like output
+    # from lookup_label_stat_names.  Return a hash formatted for trivial Cassandra
+    # multiget of the results.
+    #
+    # The lookup_data is of the form: lname => lvalue => type => msg_name => Array(uuids)
+    #
+    # This method also removes all messages matching labels in remove_labels.
+    #
+    # @param cass_client The cassandra client object
+    # @param [Array] uuids A list of UUIDs
+    # @param [Hash] lookup_data Output data from lookup_label_stat_names
+    # @param [Array] remove_labels The list of labels to remove data for
+    # @param [Fixnum] start_timestamp The earliest time value to query
+    # @param [Fixnum] end_timestamp The latest time value to query
+    # @return Hash A hash of output: type -> row_key -> Array(col_keys)
+    #
+    def lookup_label_timestamps(cass_client, lookup_data, remove_labels, start_ts, end_ts, options = {})
+      output = {}
+
+      time_buckets = usec_aligned_chunks(start_ts, end_ts, :hour)
+
+      # Reorder the lookup_data keys so that all non-removed labels are before all removed labels.
+      # Otherwise we can "remove" an absent key and then have it added later.
+      lookup_data_keys = lookup_data.keys
+      lookup_data_keys = (lookup_data_keys - remove_labels) + (lookup_data_keys & remove_labels)
+
+      lookup_data_keys.each do |lname|
+        removing = remove_labels.include? lname
+
+        lookup_data[lname].each do |lvalue, type_data|
+          type_data.each do |type, name_hash|
+            schema = schema_by_type(type)
+            lookup_cf = "#{type}_label_index"
+            schema[:granularity]
+
+            output[type] = {}
+
+            name_hash.each do |msg_name, uuids|
+              query_rows = time_buckets.flat_map { |ts| uuids.map { |uuid| "#{uuid}-#{ts}" } }
+
+              # We use a reversed comparator - swap start and end
+              prefix_start, prefix_end = prefixes_from_values([lname, lvalue, msg_name || ""])
+              cass_options = options.merge(:start => prefix_end, :finish => prefix_start)
+
+              cass_client.multi_get(lookup_cf, query_rows, cass_options).each do |row_key, col_hash|
+                uuid = row_key[0..35]  # 36 characters
+                row_ts = row_key[37..-1].to_i
+                out_ts = time_segment_for_timestamp(row_ts, schema[:granularity])
+                output_row_key = "#{uuid}-#{out_ts}"
+                output[type][output_row_key] ||= []
+
+                col_hash.each do |col_key, _|
+                  lname, lvalue, name, packed_ts = col_key.split("\0", 4)
+                  unpacked_ts = packed_ts.unpack("Q>")[0]
+
+                  next unless unpacked_ts <= end_ts && unpacked_ts >= start_ts
+
+                  col_key = col_name(name, unpacked_ts)
+                  if removing
+                    output[type].delete output_row_key
+                  else
+                    output[type][output_row_key].push col_key
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+
+      output.keys.each do |type|
+        output[type].keys.each do |row_key|
+          output[type].delete(row_key) if output[type][row_key].empty?
+        end
+
+        output.delete(type) if output[type].empty?
+      end
+
+      output
     end
 
     #
