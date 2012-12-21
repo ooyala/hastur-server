@@ -60,11 +60,6 @@ do
   print_schema $table
 done
 
-for table in gauge_metadata counter_metadata mark_metadata compound_metadata log_metadata error_metadata event_metadata hb_agent_metadata hb_process_metadata reg_agent_metadata reg_process_metadata info_process_metadata info_agent_metadata info_ohai_metadata
-do
-  print_schema $table
-done
-
 for table in registration_day lookup_by_key lookup_by_label
 do
   print_schema $table
