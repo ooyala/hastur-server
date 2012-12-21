@@ -446,37 +446,54 @@ module Hastur
       get "/v2/query" do
         params[:kind] ||= "value"
 
-        # Got the UUID already?  Use the happy path with no
-        # extra lookups.  This query will be maximally speedy.
-        # TODO: filter properly anyway.
-        if params[:uuid]
-          return serialize query_hastur(params), params
+        unless params[:uuid] || params[:label] || params[:name] || params[:type]
+          hastur_error! "Please supply at least one of uuid, label, name or type to /v2/query", 404
+        end
+
+        if (params[:label] && !params[:label].empty?) ||
+            (params[:app] && !params[:app].empty?)
+          return serialize query_hastur_by_labels(params), params
         end
 
         # Calculate query times with start, end, ago
-        name_start_ts, name_end_ts = get_start_end :one_day
+        start_ts, end_ts = get_start_end :one_day
 
-        query_uuids = []
-        query_types = []
+        # These are lists of sets to intersect to get the final sets.
+        # Each entry on this list potentially cuts down the final
+        # query set.
+        query_uuids = [:all]
+        query_types = [:all]
 
-        query_types.push(params[:type].split(",").map(&:strip)) if params[:type]
-
-        # Look up UUIDs and message types for the given message name, if present
-        if params[:name]
-          uuids = {}
-          types = {}
-          lookup_name(params[:name].split(','), name_start_ts, name_end_ts).each do |item|
-            uuids[item[:uuid]] = nil
-            types[Hastur::Message.type_id_to_symbol(item[:type_id])] = nil
-          end
-
-          # Allow query params to cut down the uuids and types arrays
-          query_uuids.push uuids.keys
-          query_types.push types.keys
+        if params[:type]
+          type_set = params[:type].split(",").map(&:strip)
+          query_types.push(type_set)
         end
 
-        params[:uuid] = query_uuids.join(',')
-        params[:type] = query_types.join(',')
+        if params[:uuid]
+          uuid_set = params[:uuid].split(",").map(&:strip).map(&:downcase)
+          query_uuids.push(uuid_set)
+        end
+
+        # Look up UUIDs and message types for the given message name, if given.
+        # Don't look up UUIDs for message names from labels -- those won't
+        # help since we already have their UUID span.
+        if params[:name]
+          names = params[:name].split(',').map(&:strip)
+
+          uuids = []
+          types = []
+          lookup_name(names, start_ts, end_ts).each do |item|
+            uuids.push item[:uuid]
+            types.push Hastur::Message.type_id_to_symbol(item[:type_id])
+          end
+
+          # Cut down to uuids and types that match these names
+          query_uuids.push uuids
+          query_types.push types
+        end
+
+        params[:uuid] = intersect_params(query_uuids).join(',')
+        params[:type] = intersect_params(query_types).join(',')
 
         serialize query_hastur(params), params
       end
