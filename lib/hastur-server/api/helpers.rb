@@ -765,13 +765,19 @@ module Hastur
       # Do an intersection between sets of param values (UUIDs, types, etc) and/or
       # :all, meaning "all possible values."
       #
-      def intersect_params(*lists)
-        lists = lists.select { |l| l != :all }
+      def intersect_params(lists)
+        return [] if lists.empty?
 
+        lists = lists.select { |l| l != :all }
         return :all if lists.empty?
-        lists.inject([], &:"&")
+
+        lists.inject(:"&")
       end
 
+      #
+      # Parse a Hastur-retrieval-format label param into
+      # a set of "must" and "must not" label values.
+      #
       def parse_labels(label_param)
         labels = CGI::unescape(label_param).split(',')
 
