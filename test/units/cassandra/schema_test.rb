@@ -296,13 +296,11 @@ class CassandraSchemaTest < Scope::TestCase
 
         assert_equal({
                        "#{FAKE_UUID}" => {
-                         "mark" => {
                            "this.is.a.mark" => {
                              1329858724285438 => "",
                              1329858724285439 => "",
                              1329858724285440 => "",
                            }
-                         }
                        }
                      }, out)
       end
@@ -336,7 +334,6 @@ class CassandraSchemaTest < Scope::TestCase
         # get_all_stats filters rows by date
         assert_equal({
                        "#{FAKE_UUID}" => {
-                         "mark" => {
                            "this.is.a.mark" => {
                              1329858724285438 => "",
                              1329858724285439 => "",
@@ -346,7 +343,6 @@ class CassandraSchemaTest < Scope::TestCase
                              1329858724285438 => "",
                              1329858724285440 => "",
                            }
-                         }
                        }
                      }, out)
       end
