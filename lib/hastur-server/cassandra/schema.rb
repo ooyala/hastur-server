@@ -812,7 +812,7 @@ module Hastur
       # Delete empty rows in result
       values.each { |_, hash| hash.delete_if { |_, value| value.nil? || value.empty? } }
 
-      # Final output format:  { :uuid => { :type => { :name => { :timestamp => value } } } }
+      # Final output format:  { :uuid => { :name => { :timestamp => value } } }
       stats[:col_count] = 0
       stats[:row_count] = 0
       final_values = {}
@@ -821,8 +821,7 @@ module Hastur
           stats[:row_count] += 1
           uuid = uuid_from_row_key(row_key)
           final_values[uuid] ||= {}
-          final_values[uuid][type.to_s] ||= {}
-          hash = final_values[uuid][type.to_s]
+          hash = final_values[uuid]
 
           col_hash.each do |col_key, value|
             stats[:col_count] += 1
@@ -857,35 +856,37 @@ module Hastur
     # TODO: convert all cass queries to use this and remove convert_raw_to_hastur_series.
     #
     def convert_list_to_hastur_series(values, stats, start_ts, end_ts, options = {})
-      # Final output format:  { :uuid => { :type => { :name => { :timestamp => value } } } }
+      # Final output format:  { :uuid => { :name => { :timestamp => value } } }
       stats[:row_count] = 0
       stats[:col_count] = 0
       final_values = {}
       last_row_key = nil
-      values.each do |row_key, col_key, value|
+      uuid = nil
+      hash = nil
+
+      values.each do |item|
+        row_key, col_key, value = *item
+        STDERR.puts "Converting from #{row_key.inspect} / #{col_key.inspect} / #{value.inspect}"
         if(row_key != last_row_key)
           last_row_key = row_key
           stats[:row_count] += 1
           uuid = uuid_from_row_key(row_key)
           final_values[uuid] ||= {}
-          final_values[uuid][type.to_s] ||= {}
-          hash = final_values[uuid][type.to_s]
+          hash = final_values[uuid]
         end
 
-        col_hash.each do |col_key, value|
-          stats[:col_count] += 1
-          name, timestamp = col_name_to_name_and_timestamp(col_key)
+        stats[:col_count] += 1
+        name, timestamp = col_name_to_name_and_timestamp(col_key)
 
-          if timestamp <= end_ts && timestamp >= start_ts
-            hash[name] ||= {}
+        if timestamp <= end_ts && timestamp >= start_ts
+          hash[name] ||= {}
 
-            # This happens even if name is nil
-            # TODO(noah): What happens if you ask for messages with rollups?
-            if options[:value_only] or options[:rollup_period] or options[:rollup_only]
-              hash[name][timestamp] = MessagePack.unpack(value) rescue value
-            else
-              hash[name][timestamp] = value
-            end
+          # This happens even if name is nil
+          # TODO(noah): What happens if you ask for messages with rollups?
+          if options[:value_only] or options[:rollup_period] or options[:rollup_only]
+            hash[name][timestamp] = MessagePack.unpack(value) rescue value
+          else
+            hash[name][timestamp] = value
           end
         end
       end

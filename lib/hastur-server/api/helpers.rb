@@ -230,7 +230,7 @@ module Hastur
         end
 
         t0 = Time.now
-        output = sort_series_keys(flatten_rows(values))
+        output = sort_series_keys(values)
         output_operation(output, "hastur.rest.sort_keys", ((Time.now - t0).to_f * 1_000_000).to_i)
 
         if params[:kind] == "message"
@@ -449,36 +449,6 @@ module Hastur
             uuid_lookup[maybe_uuid]
           end
         end.compact
-      end
-
-      #
-      # We sometimes fetch multiple rows of data from Cassandra and the data returned
-      # by Hastur::Cassandra.get isn't an exact match for the JSON format, so merge the rows
-      # and drop the type information.
-      #
-      # Hastur::Cassandra.get returns the following format:
-      #   { :uuid => { :type => { :name => { :timestamp => value/object } } } }
-      # This REST API returns:
-      #   { :uuid => { :name => { :timestamp => value/object } } }
-      #
-      # @param [Hash] values Hastur::Cassandra.get formatted hash
-      # @return [Hash] Hastur V1 output hash
-      #
-      def flatten_rows(values)
-        output = {}
-        values.each do |values_for_name_opts|
-          values_for_name_opts.each do |uuid, node_data|
-            # hash1: {"gauge"=>{"hastur.agent.utime"=>{1338517798448399=>"{\"type\"
-            output[uuid] ||= {}
-            node_data.each do |type, ts_values|
-              # ts_values maps { :name => { :timestamp => value/object } }
-              # This will return a structure without the types.
-              output[uuid].merge!(ts_values)
-            end
-          end
-        end
-
-        output
       end
 
       #
