@@ -179,7 +179,7 @@ module Astyanax
       row_hash.each do |row_key, col_keys|
         query = @keyspace.prepareQuery(column_family)
         query.setConsistencyLevel(cass_options[:consistency]) if cass_options[:consistency]
-        col_slice = row_hash[row_key].map(:to_java_bytes)
+        col_slice = row_hash[row_key].map(&:to_java_bytes)
 
         query = query.get_key(row_key.to_java_bytes).with_column_slice(col_slice)
         futures[row_key] = query.executeAsync
