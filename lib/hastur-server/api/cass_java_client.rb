@@ -88,7 +88,7 @@ module Hastur
       def raw_row_col_get(cf, row_hash, options = {})
         ast_cf = cf_for_name(cf)
 
-        @keyspace.raw_row_col_get(ast_cf, row_hash, options)
+        @keyspace.raw_row_col_get(ast_cf, row_hash, ast_options(options))
       end
 
       # Options:
