@@ -253,7 +253,9 @@ module Hastur
         schemas = type.map { |type| schema_by_type(type) }
       end
 
-      raw_get_all(cass_client, agent_uuid, schemas.compact, start_timestamp, end_timestamp, options)
+      values, stats = raw_query_cassandra(cass_client, agent_uuid, schemas.compact,
+                                          start_ts, end_ts, options)
+      convert_raw_to_hastur_series(values, stats, start_ts, end_ts, options)
     end
 
     # This is a fast, no-frills Hastur message dumper.
@@ -780,29 +782,28 @@ module Hastur
     #
     # Return a raw astyanax array of [row / col_key / col_value] objects.
     #
-    # @param [schema or Array] schemas A schema object or list of schema objects
-    # @param [String or Symbol] cf_key The key to use for each schema
+    # @param cass_client Cassandra client object
+    # @param [schema or Array] type The Hastur message type
+    # @param [String or Symbol] kind The desired query result, usually "message" or "value"
     # @param [Hash] data_hash A mapping of row keys to column keys
     # @param [Hash] options Cassandra options
     #
-    def query_cassandra_by_type_rows_cols(cass_client, type, data_hash, options)
+    def query_cassandra_by_type_rows_cols(cass_client, type, kind, data_hash, options)
+      cf_key = nil
+      cf_key = :archive_cf if kind == "message"
+      cf_key = :values_cf if kind == "value"
+      raise "Unsupported label query of type #{kind.inspect}!" unless cf_key
+
       schema = schema_by_type type
-      cass_client.raw_row_col_get(schema, data_hash, options)
+      cass_client.raw_row_col_get(schema[cf_key], data_hash, options)
     end
 
     protected
 
     #
-    # A raw low-level getter.  See .get() for options and params,
-    # but types must be converted to schemas already.
+    # Converts raw data from raw_query_cassandra to Hastur output format.
     #
-    # After querying via Astyanax, this method reformats to reasonable
-    # Rubyish output.
-    #
-    def raw_get_all(cass_client, agent_uuids, msg_schemas, start_ts, end_ts, options = {})
-      now_ts = options[:request_ts] || Hastur::Util.timestamp(nil)
-      values, stats = raw_query_cassandra(cass_client, agent_uuids, msg_schemas, start_ts, end_ts, options)
-
+    def convert_raw_to_hastur_series(values, stats, start_ts, end_ts, options = {})
       if options[:count_columns]
         #TODO(noah): Fix this
         raise "Unimplemented!"
@@ -842,6 +843,54 @@ module Hastur
         end
       end
 
+      now_ts = options[:request_ts] || Hastur::Util.timestamp(nil)
+      stats[:query_time] = usec_epoch - now_ts
+
+      apply_profiler_data(stats, options[:profiler] ? final_values : nil, now_ts)
+
+      final_values
+    end
+
+    #
+    # Converts data from [row_key, col_key, value] format to Hastur output format.
+    #
+    # TODO: convert all cass queries to use this and remove convert_raw_to_hastur_series.
+    #
+    def convert_list_to_hastur_series(values, stats, start_ts, end_ts, options = {})
+      # Final output format:  { :uuid => { :type => { :name => { :timestamp => value } } } }
+      stats[:row_count] = 0
+      stats[:col_count] = 0
+      final_values = {}
+      last_row_key = nil
+      values.each do |row_key, col_key, value|
+        if(row_key != last_row_key)
+          last_row_key = row_key
+          stats[:row_count] += 1
+          uuid = uuid_from_row_key(row_key)
+          final_values[uuid] ||= {}
+          final_values[uuid][type.to_s] ||= {}
+          hash = final_values[uuid][type.to_s]
+        end
+
+        col_hash.each do |col_key, value|
+          stats[:col_count] += 1
+          name, timestamp = col_name_to_name_and_timestamp(col_key)
+
+          if timestamp <= end_ts && timestamp >= start_ts
+            hash[name] ||= {}
+
+            # This happens even if name is nil
+            # TODO(noah): What happens if you ask for messages with rollups?
+            if options[:value_only] or options[:rollup_period] or options[:rollup_only]
+              hash[name][timestamp] = MessagePack.unpack(value) rescue value
+            else
+              hash[name][timestamp] = value
+            end
+          end
+        end
+      end
+
+      now_ts = options[:request_ts] || Hastur::Util.timestamp(nil)
       stats[:query_time] = usec_epoch - now_ts
 
       apply_profiler_data(stats, options[:profiler] ? final_values : nil, now_ts)
