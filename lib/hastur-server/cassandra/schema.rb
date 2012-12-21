@@ -773,6 +773,8 @@ module Hastur
       [values, stats]
     end
 
+    public
+
     #
     # Query a given type -- get from a hash of row keys to lists of column keys.
     #
@@ -783,10 +785,12 @@ module Hastur
     # @param [Hash] data_hash A mapping of row keys to column keys
     # @param [Hash] options Cassandra options
     #
-    def query_cassandra_by_type_rows_cols(type, data_hash, options)
+    def query_cassandra_by_type_rows_cols(cass_client, type, data_hash, options)
       schema = schema_by_type type
       cass_client.raw_row_col_get(schema, data_hash, options)
     end
+
+    protected
 
     #
     # A raw low-level getter.  See .get() for options and params,
