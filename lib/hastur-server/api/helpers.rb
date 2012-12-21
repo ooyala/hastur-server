@@ -260,6 +260,101 @@ module Hastur
         output
       end
 
+      def query_hastur_by_labels(params)
+        # Calculate query times with start, end, ago
+        start_ts, end_ts = get_start_end :one_day
+
+        # These are lists of sets to intersect to get the final sets.
+        # Each entry on this list potentially cuts down the final
+        # query set.
+        query_uuids = [:all]
+        query_types = [:all]
+        query_names = [:all]
+
+        must, must_not = parse_labels(params[:label])
+
+        if params[:app]
+          must["app"] = params["app"].strip
+        end
+
+        if must.empty? && !must_not.empty?
+          hastur_error! "Unimplemented!  You have to specify at least one " +
+            "required label to also specify a prevented label.", 404
+        end
+
+        if params[:type]
+          type_set = params[:type].split(",").map(&:strip)
+          query_types.push(type_set)
+        end
+
+        if params[:uuid]
+          uuid_set = params[:uuid].split(",").map(&:strip).map(&:downcase)
+          query_uuids.push(uuid_set)
+        end
+
+        data = Hastur::Cassandra.lookup_label_uuids(cass_client, must, start_ts, end_ts)
+
+        data.each do |lname, sub_hash|
+          sub_hash.each do |lvalue, uuids|
+            # Remove non-matching label values with same prefix
+            unless lvalue == must[lname] || name_matches?(lvalue, must[lname])
+              sub_hash.delete(lvalue)
+            end
+          end
+
+          # Having removed inapplicable entries, get the UUIDs for applicable ones.
+          query_uuids.push sub_hash.values.inject([], &:concat)
+        end
+
+        # Look up UUIDs and message types for the given message name, if given.
+        # Don't look up UUIDs for message names from labels -- those won't
+        # help since we already have their UUID span.
+        if params[:name]
+          names = params[:name].split(',').map(&:strip)
+
+          query_names.push names
+
+          uuids = []
+          types = []
+          lookup_name(names, start_ts, end_ts).each do |item|
+            uuids.push item[:uuid]
+            types.push Hastur::Message.type_id_to_symbol(item[:type_id])
+          end
+
+          # Cut down to uuids and types that match these names
+          query_uuids.push uuids
+          query_types.push types
+        end
+
+        # A UUID label-index lookup should always return an explicit list.
+        uuids = intersect_params(query_uuids)
+        raise "Internal error!" if uuids == :all
+        types = intersect_params(query_types)
+        msg_names = intersect_params(query_names)
+
+        # With the UUIDs known, look up stat names and types, and then timestamps.
+        data = Hastur::Cassandra.lookup_label_stat_names(cass_client, uuids, must.merge(must_not),
+                                                         start_ts, end_ts)
+        data = clean_nonmatching_lookup(data, must, uuids, types, msg_names)
+        data = Hastur::Cassandra.lookup_label_timestamps(cass_client, data, must_not.keys,
+                                                         start_ts, end_ts)
+
+        flat_result = query_row_col_from_cassandra(data, start_ts, end_ts)
+      end
+
+      def query_row_col_from_cassandra(data, start_ts, end_ts)
+        options = build_name_option_list([])[0]
+
+        output = data.flat_map do |type, data_by_type|
+          Hastur::Cassandra.query_cassandra_by_type_rows_cols(cass_client, type, params[:kind],
+                                                              data_by_type, options)
+        end
+
+        output = Hastur::Cassandra.convert_list_to_hastur_series(output, {}, start_ts, end_ts, options)
+
+        output
+      end
+
       #
       # Dump data from Hastur. The query is based on the Sinatra
       # params.  Where appropriate, values can be comma-separated
