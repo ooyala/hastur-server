@@ -2,6 +2,29 @@ require "bundler/gem_tasks"
 require "rake/testtask"
 require "warbler"
 
+if ARGV.include?("core_jar") && ARGV.include?("retrieval_war")
+  raise "Sorry!  Can't include both core_jar and retrieval_war in one command due to Warbler limits!"
+end
+
+if ARGV.include?("core_jar")
+  # This code to monkeypatch Warbler is straight from
+  # https://github.com/nicksieger/warbler-demos/blob/master/littleapp/config/warble.rb
+  # Nick Sieger is the author of Warbler.  Also?  Ew.
+  #
+  # We can't unconditionally monkeypatch because the Jar only works *with* it
+  # and the war only works *without* it.  So you can't build both in one
+  # command!  And we can't put it in a Rake target because Warbler has to
+  # already be monkeypatched when we define the Warbler task below.
+  #
+  class ::Warbler::Traits::Rack
+    # Override Rack autodetect
+    def self.detect?
+      false
+    end
+  end
+end
+
+
 # used in build/tasks/package.rake and below
 PROJECT_TOP = Rake.application.find_rakefile_location[1]
 PROJECT_DIR = File.basename(PROJECT_TOP)
@@ -80,40 +103,50 @@ task :delete_retrieval_war do
   File.unlink "retrieval_v2.war" if File.exist?("retrieval_v2.war")
 end
 
-Warbler::Task.new("retrieval_war", Warbler::Config.new do |config|
-  require "jruby_astyanax-jars"
+task :delete_core_jar do
+  File.unlink "core.jar" if File.exist?("core.jar")
+end
 
-  config.jar_name = "retrieval_v2"
-  config.features = ["executable"]
+# Can't even configure properly when monkeypatched, because the
+# config allows jar stuff but not war stuff.
+if ARGV.include?("retrieval_war")
+  Warbler::Task.new("retrieval_war", Warbler::Config.new do |config|
+    require "jruby_astyanax-jars"
 
-  # See config/warble.rb for explanation of config variables
-  config.dirs = %w(lib tools)
-  config.excludes = FileList["**/*~"]
-  # TODO(noah): Can we remove this and just use the Astyanax jars gem directly?
-  config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
-  config.java_libs += ["lib/hastur-server/native/native_code.jar"]
-  config.bundler = false  # This doesn't seem to turn off the gemspec
-  config.gem_dependencies = true
-  config.webserver = 'jetty'
-  config.webxml.booter = :rack
-  config.webxml.jruby.compat.version = "1.9"
-  config.webxml.rackup = File.read("config_v2.ru")
-end)
+    config.jar_name = "retrieval_v2"
+    config.features = ["executable"]
+
+    # See config/warble.rb for explanation of config variables
+    config.dirs = %w(lib tools)
+    config.excludes = FileList["**/*~"]
+    # TODO(noah): Can we remove this and just use the Astyanax jars gem directly?
+    config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
+    config.java_libs += ["lib/hastur-server/native/native_code.jar"]
+    config.bundler = false  # This doesn't seem to turn off the gemspec
+    config.gem_dependencies = true
+    config.webserver = 'jetty'
+    config.webxml.booter = :rack
+    config.webxml.jruby.compat.version = "1.9"
+    config.webxml.rackup = File.read("config_v2.ru")
+  end)
+end
 # Workaround for Warbler bug (https://github.com/jruby/warbler/issues/86)
 task :retrieval_war => :delete_retrieval_war
 task :retrieval_war => :native_jar
 
 Warbler::Task.new("core_jar", Warbler::Config.new do |config|
+  config.traits = [ "jar" ]
   config.jar_name = "core"
 
   # See config/warble.rb for explanation of config variables
   config.dirs = %w(lib vendor tools)
   config.excludes = FileList["**/*~"]
   # TODO(noah): Can we remove this and just use the Astyanax jars gem directly?
-  config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
+  #config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
   config.bundler = false  # This doesn't seem to turn off the gemspec
   config.gem_dependencies = false
 end)
+task :core_jar => :delete_core_jar
 
 # Eventually this will get really slow and I'll have to do it in a more
 # reasonable way.
