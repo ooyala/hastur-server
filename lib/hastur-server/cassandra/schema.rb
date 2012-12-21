@@ -795,10 +795,9 @@ module Hastur
       raise "Unsupported label query of type #{kind.inspect}!" unless cf_key
 
       schema = schema_by_type type
+      return [] if cf_key == :values_cf && !schema[cf_key]  # Some types have no values_cf
       cass_client.raw_row_col_get(schema[cf_key], data_hash, options)
     end
-
-    protected
 
     #
     # Converts raw data from raw_query_cassandra to Hastur output format.
