@@ -113,6 +113,7 @@ module Hastur
       private
 
       def cf_for_name(name)
+        raise "Column family cannot be empty!" if name.nil? || name.empty?
         name = name.to_s
         return @cfs[name] if @cfs[name]
         @cfs[name] = ::Astyanax.get_column_family(name)
