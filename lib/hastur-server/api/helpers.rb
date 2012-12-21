@@ -786,7 +786,7 @@ module Hastur
         labels.each do |lv|
           label, value = lv.split ':', 2
           if label.start_with? '!'
-            must_not[label[1..-1]] = value || ""
+            must_not[label[1..-1]] = "*"
           else
             must[label] = value || ""
           end
