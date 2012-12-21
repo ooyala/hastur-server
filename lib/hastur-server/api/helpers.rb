@@ -794,6 +794,52 @@ module Hastur
 
         [ must, must_not ]
       end
+
+      #
+      # This is used to clean data from lookup_label_stat_names of
+      # entries not matching a restricted set of uuids, types or
+      # message names.
+      #
+      def clean_nonmatching_lookup(data, must, uuids, types, msg_names)
+        # Clean out non-matching label values
+        data.each do |lname, lvalue_hash|
+          lvalue_hash.keys.each do |lvalue|
+            unless lvalue == must[lname] || name_matches?(lvalue, must[lname])
+              lvalue_hash.delete(lvalue)
+            end
+          end
+        end
+
+        # Clean out non-matching types
+        unless types == :all
+          data.each do |lname, lvalue_hash|
+            lvalue_hash.each do |lvalue, type_hash|
+              type_hash.keys.each do |type|
+                unless types.include? type
+                  type_hash.delete(type)
+                end
+              end
+            end
+          end
+        end
+
+        # Clean out non-matching msg names
+        unless msg_names == :all
+          data.each do |lname, lvalue_hash|
+            lvalue_hash.each do |lvalue, type_hash|
+              type_hash.each do |type, msg_name_hash|
+                msg_name_hash.keys.each do |msg_name|
+                  unless msg_names.include?(msg_name)
+                    msg_name_hash.delete msg_name
+                  end
+                end
+              end
+            end
+          end
+        end
+
+        data
+      end
     end
   end
 end
