@@ -240,8 +240,8 @@ module Hastur
     # @option options [Boolean] :profiler Return profiling data with query
     # @option options [Fixnum] :request_ts Timestamp for request access time and statistics, defaults to now
     #
-    def get(cass_client, agent_uuid, type, start_timestamp, end_timestamp, options = {})
-      if end_timestamp - start_timestamp > 32 * ONE_DAY
+    def get(cass_client, agent_uuid, type, start_ts, end_ts, options = {})
+      if end_ts - start_ts > 32 * ONE_DAY
         raise "Querying more than a month at a time is unsupported."
       end
 
