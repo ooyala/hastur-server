@@ -163,6 +163,35 @@ module Astyanax
       end.inject([], :concat)
     end
 
+    # Reads from multiple keys at once, but doesn't make a Ruby-friendly final output structure.
+    # This is very fast but can be awkward to use in Ruby.
+    #
+    # @param [String|ColumnFamily] columnfamily to read from, either a string or a ColumnFamily instance
+    # @param [List[?]] row keys, default type is String but should match :rowkey_type
+    # @param [Hash] options  -- see options for get, but no :start or :finish
+    #
+    # @returns [Rows] An Astyanax Rows<byte[],byte[]> object
+    #
+    def raw_row_col_get(column_family, row_hash, options)
+      cass_options = DEFAULT_OPTIONS.merge(options)
+      futures = {}
+
+      row_hash.each do |row_key, col_keys|
+        query = @keyspace.prepareQuery(column_family)
+        query.setConsistencyLevel(cass_options[:consistency]) if cass_options[:consistency]
+        col_slice = row_hash[row_key].map(:to_java_bytes)
+
+        query = query.get_key(row_key.to_java_bytes).with_column_slice(col_slice)
+        futures[row_key] = query.executeAsync
+      end
+
+      futures.keys.flat_map do |row_key|
+        futures[row_key].get.result.map do |col|
+          [row_key, String.from_java_bytes(col.name), String.from_java_bytes(col.byte_array_value)]
+        end
+      end
+    end
+
     # Reads from multiple keys at once
     #
     # @param [String|ColumnFamily] columnfamily to read from, either a string or a ColumnFamily instance

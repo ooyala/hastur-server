@@ -85,6 +85,12 @@ module Hastur
         @keyspace.raw_multiget(cf, rows.map(&:to_java_bytes), ast_options(options))
       end
 
+      def raw_row_col_get(cf, row_hash, options = {})
+        ast_cf = cf_for_name(cf)
+
+        @keyspace.raw_row_col_get(cf, row_hash, options)
+      end
+
       # Options:
       #   :count
       #   :consistency

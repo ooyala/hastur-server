@@ -145,9 +145,6 @@ module Hastur
 
         client.insert(schema[:archive_cf], key, { colname => json_string }, insert_options)
 
-        client.insert(schema[:metadata_cf], key,
-                      { "last_write" => now_ts, "last_access" => now_ts }, insert_options)
-
         cf = schema[:values_cf]
         client.insert(cf, key, { colname => hash["value"].to_msgpack }, insert_options) if cf
       end
@@ -649,7 +646,10 @@ module Hastur
     #
     # Basic raw low-level getter.  See .get() for options and params,
     # but types must be converted to schemas already.
-    # TODO(al) this method is too big and must be broken up
+    #
+    # TODO(noah) Rename this method to reflect its functionality better
+    # when contrasted against all these lower-level query methods.  Also,
+    # break it up more.
     #
     def raw_query_cassandra(cass_client, agent_uuids, msg_schemas, start_ts, end_ts, options)
       now_ts = options[:request_ts] || Hastur::Util.timestamp(nil)
@@ -770,18 +770,22 @@ module Hastur
         end
       end
 
-      # Mark rows as accessed
-      cass_client.batch do |client|
-        msg_schemas.each do |schema|
-          row_keys = metadata_row_keys_by_type[schema[:type]]
-
-          row_keys.each do |row_key|
-            client.insert(schema[:metadata_cf], row_key, { "last_access" => now_ts.to_s }, {})
-          end
-        end
-      end
-
       [values, stats]
+    end
+
+    #
+    # Query a given type -- get from a hash of row keys to lists of column keys.
+    #
+    # Return a raw astyanax array of [row / col_key / col_value] objects.
+    #
+    # @param [schema or Array] schemas A schema object or list of schema objects
+    # @param [String or Symbol] cf_key The key to use for each schema
+    # @param [Hash] data_hash A mapping of row keys to column keys
+    # @param [Hash] options Cassandra options
+    #
+    def query_cassandra_by_type_rows_cols(type, data_hash, options)
+      schema = schema_by_type type
+      cass_client.raw_row_col_get(schema, data_hash, options)
     end
 
     #
