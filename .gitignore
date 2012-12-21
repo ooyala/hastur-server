@@ -16,3 +16,4 @@ nodule-cassandra*
 1
 lib/hastur-server/native/*.class
 lib/hastur-server/native/*.jar
+core.jar
