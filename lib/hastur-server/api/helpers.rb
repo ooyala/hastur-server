@@ -220,6 +220,10 @@ module Hastur
           end
         end
 
+        t0 = Time.now
+        output = sort_series_keys(values.inject({}, &:merge))
+        output_operation(output, "hastur.rest.sort_keys", ((Time.now - t0).to_f * 1_000_000).to_i)
+
         # Some queries go directly to a Cassandra range scan, which only matches prefixes
         # so a second pass is required to reduce the data down to only what was requested
         # for infix wildcards.  This should be done before expensive ops like label filters.
@@ -228,10 +232,6 @@ module Hastur
             filter_out_unwanted_names output, names
           end
         end
-
-        t0 = Time.now
-        output = sort_series_keys(values)
-        output_operation(output, "hastur.rest.sort_keys", ((Time.now - t0).to_f * 1_000_000).to_i)
 
         if params[:kind] == "message"
           timed_output_operation(output, "hastur.rest.deserialize_time") do
