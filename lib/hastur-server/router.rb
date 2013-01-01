@@ -1,5 +1,4 @@
 require 'ffi-rzmq'
-require 'yajl'
 require 'multi_json'
 require 'uuid'
 require 'socket'
