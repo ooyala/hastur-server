@@ -1,16 +1,19 @@
 #!/usr/bin/env ruby
 
 require "ffi-rzmq"
-require "yajl"
 require "multi_json"
 require "termite"
 require 'trollop'
+
+if RUBY_PLATFORM == "java"
+  require "json" # This is the JRuby-JSON gem
+  MultiJson.use :json_gem
+end
 
 require "hastur-server/message"
 require "hastur-server/service/sink"
 
 Ecology.read("hastur-core.ecology")
-MultiJson.use :yajl
 
 opts = Trollop::options do
   banner <<-EOS
