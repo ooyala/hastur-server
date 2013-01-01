@@ -13,7 +13,7 @@ $LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..", "lib")
 
 # Require native code
 begin
-  require "hastur-server/native/native_code"
+  require "hastur-server/native/native_code" if RUBY_PLATFORM == "java"
 rescue
   raise "Please build native code using 'rake native_jar'!"
 end
