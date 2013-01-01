@@ -176,13 +176,7 @@ module Hastur
       def query_hastur(params)
         kind = params[:kind]
         types = type_list_from_string(params[:type])
-        uuids = uuid_or_hostname_to_uuids params[:uuid].split(',')
-        names = params[:name] ? params[:name].split(',') : []
         labels = params[:label] ? CGI::unescape(params[:label]).split(',') : []
-
-        unless KINDS.include? kind
-          hastur_error! "Illegal 'kind' output option: #{kind.inspect}", 404
-        end
 
         if types.empty?
           return {}
@@ -192,14 +186,8 @@ module Hastur
           hastur_error! "Invalid type(s): '#{types}', not all included in #{TYPES[:all].join(", ")}", 404
         end
 
-        if labels.any?
-          # flip kind to message when splitting on label, then convert back to
-          # value format after the query
-          if kind == "value"
-            params[:kind] = "message"
-          elsif kind != "message"
-            hastur_error! "filtering on labels is only valid for /value and /message data queries", 404
-          end
+        if params[:label] && ![ "value", "message" ].include?(kind)
+          hastur_error! "filtering on labels is only valid for /value and /message data queries", 404
         end
 
         # Some message types are day bucketed and are only expected once a day, like registrations,
@@ -211,12 +199,19 @@ module Hastur
         end
 
         start_ts, end_ts = get_start_end default_span
-        name_option_list = build_name_option_list names
+        names = params[:name] ? params[:name].split(',') : []
 
         # query cassandra
         values = Hastur.time "hastur.rest.db.query_time" do
-          name_option_list.map do |options|
-            Hastur::Cassandra.get(cass_client, uuids, types, start_ts, end_ts, options)
+          if labels.any?
+            query_hastur_by_labels(params)
+          else
+            name_option_list = build_name_option_list names
+            uuids = uuid_or_hostname_to_uuids params[:uuid].split(',')
+
+            name_option_list.map do |options|
+              Hastur::Cassandra.get(cass_client, uuids, types, start_ts, end_ts, options)
+            end
           end
         end
 
@@ -234,20 +229,10 @@ module Hastur
         end
 
         if params[:kind] == "message"
+          # For messages, must deserialize and reserialize in order to use
+          # retrieval functions
           timed_output_operation(output, "hastur.rest.deserialize_time") do
             output = deserialize_json_messages(output)
-          end
-        end
-
-        if labels.any?
-          timed_output_operation(output, "hastur.rest.label_filter_time") do
-            output = filter_by_label(output, labels)
-          end
-
-          if kind == "value" and params[:kind] == "message"
-            timed_output_operation(output, "hastur.rest.message_conversion_time") do
-              output = convert_messages_to_values(output)
-            end
           end
         end
 
@@ -264,12 +249,10 @@ module Hastur
         # Calculate query times with start, end, ago
         start_ts, end_ts = get_start_end :one_day
 
-        # These are lists of sets to intersect to get the final sets.
-        # Each entry on this list potentially cuts down the final
-        # query set.
-        query_uuids = [:all]
-        query_types = [:all]
-        query_names = [:all]
+        # Other parameters to query
+        query_uuids = :all
+        query_types = :all
+        query_names = :all
 
         must, must_not = parse_labels(params[:label])
 
@@ -283,13 +266,15 @@ module Hastur
         end
 
         if params[:type]
-          type_set = params[:type].split(",").map(&:strip)
-          query_types.push(type_set)
+          query_types = params[:type].split(",").map(&:strip)
         end
 
         if params[:uuid]
-          uuid_set = params[:uuid].split(",").map(&:strip).map(&:downcase)
-          query_uuids.push(uuid_set)
+          query_uuids = params[:uuid].split(",").map(&:strip).map(&:downcase)
+        end
+
+        if params[:name]
+          query_names = params[:uuid].split(",").map(&:strip).map(&:downcase)
         end
 
         data = Hastur::Cassandra.lookup_label_uuids(cass_client, must, start_ts, end_ts)
@@ -303,43 +288,22 @@ module Hastur
           end
 
           # Having removed inapplicable entries, get the UUIDs for applicable ones.
-          query_uuids.push sub_hash.values.inject([], &:concat)
-        end
-
-        # Look up UUIDs and message types for the given message name, if given.
-        # Don't look up UUIDs for message names from labels -- those won't
-        # help since we already have their UUID span.
-        if params[:name]
-          names = params[:name].split(',').map(&:strip)
-
-          query_names.push names
-
-          uuids = []
-          types = []
-          lookup_name(names, start_ts, end_ts).each do |item|
-            uuids.push item[:uuid]
-            types.push Hastur::Message.type_id_to_symbol(item[:type_id])
-          end
-
-          # Cut down to uuids and types that match these names
-          query_uuids.push uuids
-          query_types.push types
+          # Intersect them into the final set.
+          uuids = sub_hash.values.inject([], &:concat)
+          query_uuids = (query_uuids == :all) ? uuids : (uuids & query_uuids)
         end
 
         # A UUID label-index lookup should always return an explicit list.
-        uuids = intersect_params(query_uuids)
-        raise "Internal error!" if uuids == :all
-        types = intersect_params(query_types)
-        msg_names = intersect_params(query_names)
+        raise "Internal error!" if query_uuids == :all
 
         # With the UUIDs known, look up stat names and types, and then timestamps.
-        data = Hastur::Cassandra.lookup_label_stat_names(cass_client, uuids, must.merge(must_not),
+        data = Hastur::Cassandra.lookup_label_stat_names(cass_client, query_uuids, must.merge(must_not),
                                                          start_ts, end_ts)
-        data = clean_nonmatching_lookup(data, must, uuids, types, msg_names)
+        data = clean_nonmatching_lookup(data, must, query_uuids, query_types, query_names)
         data = Hastur::Cassandra.lookup_label_timestamps(cass_client, data, must_not.keys,
                                                          start_ts, end_ts)
 
-        flat_result = query_row_col_from_cassandra(data, start_ts, end_ts)
+        result = query_row_col_from_cassandra(data, start_ts, end_ts)
       end
 
       def query_row_col_from_cassandra(data, start_ts, end_ts)
@@ -516,94 +480,6 @@ module Hastur
               rescue Exception => e
                 hastur_error! "JSON parsing failed for stored message: #{value.inspect} #{e.inspect}", 501
               end
-            end
-          end
-        end
-        output
-      end
-
-      #
-      # Iterate over all messages and filter on labels.
-      #
-      def filter_by_label(data, labels)
-        # finish parsing the query string into two lookup hashes
-        must = {}
-        must_not = {}
-        labels.each do |lv|
-          label, value = lv.split ':', 2
-          if label.start_with? '!'
-            must_not[label.slice(1, label.length)] = value
-          else
-            must[label] = value
-          end
-        end
-
-        # iterate over every item in the series and apply the filter in a very brutal manner
-        # this could be a little more terse with in-place modification, but it copies to be
-        # consistent with other filtering passes
-        output = {}
-        data.each do |uuid, name_series|
-          if special_name?(uuid)
-            output[uuid] = data[uuid]
-            next
-          end
-
-          output[uuid] = {}
-          name_series.each do |name, series|
-            output[uuid][name] = {}
-            series.each do |ts, value|
-              labels = value["labels"]
-
-              if must.none?
-                output[uuid][name][ts] = value
-              else
-                must.each do |l,v|
-                  if v.nil?
-                    if labels.has_key?(l)
-                      output[uuid][name][ts] = value
-                    else
-                      output[uuid][name].delete(ts)
-                    end
-                  elsif not labels.has_key?(l) or labels[l].to_s != v
-                    output[uuid][name].delete ts
-                  else
-                    output[uuid][name][ts] = value
-                  end
-                end
-              end
-
-              unless must_not.none?
-                must_not.each do |l,v|
-                  if v.nil? and labels.has_key? l
-                    output[uuid][name].delete ts
-                  elsif labels[l] and labels[l].to_s == v
-                    output[uuid][name].delete ts
-                  end
-                end
-              end
-            end
-          end
-        end
-        output
-      end
-
-      #
-      # When the user requests /value but filters on label, we fetch the messages
-      # then need to convert back to value format, dumping most of the message.
-      #
-      def convert_messages_to_values(data)
-        output = {}
-        data.each do |uuid, name_series|
-          if special_name?(uuid)
-            output[uuid] = data[uuid]
-            next
-          end
-
-          output[uuid] = {}
-          name_series.each do |name, series|
-            output[uuid][name] = {}
-            series.each do |ts, value|
-              output[uuid][name][ts] = value["value"]
             end
           end
         end
@@ -890,6 +766,8 @@ module Hastur
 
         # Clean out non-matching msg names
         unless msg_names == :all
+          # TODO: test this.
+          # Previously it was unused.
           data.each do |lname, lvalue_hash|
             lvalue_hash.each do |lvalue, type_hash|
               type_hash.each do |type, msg_name_hash|

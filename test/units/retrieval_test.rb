@@ -57,4 +57,18 @@ class RetrievalServerTest < Scope::TestCase
       assert_equal 37, hash[A1UUID]["bobs.gauge"][NOWISH_TIMESTAMP.to_s]
     end
   end
+
+  # Label queries test a very different chunk of logic with much more
+  # complexity.
+  context "label query" do
+    should "do simple lookup for fully-specified query" do
+      Hastur::Cassandra.expects(:lookup_label_uuids).returns({})
+      Hastur::Cassandra.expects(:lookup_label_stat_names).returns({})
+      Hastur::Cassandra.expects(:lookup_label_timestamps).returns({})
+
+      result = get "/v2/query?type=gauge&ago=1&uuid=#{A1UUID}&name=bobs.gauge&kind=value&label=foo:bar"
+      hash = MultiJson.load(result.body)
+      assert hash.empty?, "Output hash should be empty"
+    end
+  end
 end

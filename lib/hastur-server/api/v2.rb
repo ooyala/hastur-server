@@ -450,11 +450,6 @@ module Hastur
           hastur_error! "Please supply at least one of uuid, label, name or type to /v2/query", 404
         end
 
-        if (params[:label] && !params[:label].empty?) ||
-            (params[:app] && !params[:app].empty?)
-          return serialize query_hastur_by_labels(params), params
-        end
-
         # Calculate query times with start, end, ago
         start_ts, end_ts = get_start_end :one_day
 
@@ -463,6 +458,10 @@ module Hastur
         # query set.
         query_uuids = [:all]
         query_types = [:all]
+
+        if params[:kind] == "value"
+          query_types.push TYPES_WITH_VALUES
+        end
 
         if params[:type]
           type_set = params[:type].split(",").map(&:strip)
@@ -476,8 +475,9 @@ module Hastur
 
         # Look up UUIDs and message types for the given message name, if given.
         # Don't look up UUIDs for message names from labels -- those won't
-        # help since we already have their UUID span.
-        if params[:name]
+        # help since we already have their UUID span.  And don't look up if
+        # we already have UUIDs specified.
+        if params[:name] && !params[:uuid]
           names = params[:name].split(',').map(&:strip)
 
           uuids = []
@@ -492,8 +492,12 @@ module Hastur
           query_types.push types
         end
 
-        params[:uuid] = intersect_params(query_uuids).join(',')
-        params[:type] = intersect_params(query_types).join(',')
+        uuids = intersect_params(query_uuids).join(',')
+        params[:uuid] = uuids unless uuids == :all
+        types = intersect_params(query_types).join(',')
+        params[:type] = types unless types == :all
+
+        return {} if uuids.empty? || types.empty?
 
         serialize query_hastur(params), params
       end
