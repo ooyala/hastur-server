@@ -22,8 +22,8 @@ hastur-core.rb - hastur router & sink combined
   Options:
 EOS
   opt :uuid,      "Router UUID",                    :type => :string
-  opt :router,    "Router (agent) URI    (ROUTER)", :default => "tcp://*:8126"
-  opt :return,    "Direct routing URI      (PULL)", :default => "tcp://*:8127"
+  opt :router,    "Router (agent) URI    (ROUTER)", :default => "tcp://0.0.0.0:8126"
+  opt :return,    "Direct routing URI      (PULL)", :default => "tcp://0.0.0.0:8127"
   opt :pidfile,   "Location of pidfile",            :type => :string
   opt :debug,     "Enable debug logging",           :default => false
   opt :cassandra, "Cassandra server list", :default => ["127.0.0.1:9160"], :type => :strings, :multi => true
