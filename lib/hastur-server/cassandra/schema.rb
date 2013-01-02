@@ -787,6 +787,7 @@ module Hastur
     # @param [String or Symbol] kind The desired query result, usually "message" or "value"
     # @param [Hash] data_hash A mapping of row keys to column keys
     # @param [Hash] options Cassandra options
+    # @return [Array] Array of arrays.  Each inner array is [ row, col_key, col_value ]
     #
     def query_cassandra_by_type_rows_cols(cass_client, type, kind, data_hash, options)
       cf_key = nil
@@ -852,6 +853,8 @@ module Hastur
     #
     # Converts data from [row_key, col_key, value] format to Hastur output format.
     #
+    # Hastur output format is { uuid => { name => { timestamp => value } } }
+    #
     # TODO: convert all cass queries to use this and remove convert_raw_to_hastur_series.
     #
     def convert_list_to_hastur_series(values, stats, start_ts, end_ts, options = {})
@@ -881,7 +884,7 @@ module Hastur
           hash[name] ||= {}
 
           # This happens even if name is nil
-          # TODO(noah): What happens if you ask for messages with rollups?
+          # TODO(noah): What happens if you ask for messages *plus* rollups?
           if options[:value_only] or options[:rollup_period] or options[:rollup_only]
             hash[name][timestamp] = MessagePack.unpack(value) rescue value
           else
