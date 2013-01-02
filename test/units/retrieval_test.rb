@@ -74,13 +74,16 @@ class RetrievalServerTest < Scope::TestCase
                                                                { "foo" => "bar", "baz" => "*" },
                                                                NOWISH_TIMESTAMP - 1,
                                                                NOWISH_TIMESTAMP).returns({
-        "foo" => { "bar" => { "gauge" => { "bobs.gauge" => [A1UUID,A2UUID] } } }, # With wrong UUID
-        "foo" => { "barble" => { "gauge" => { "bobs.gauge" => [A1UUID] } } },  # Wrong label value
-        "foo" => { "bar" => { "gauge" => { "sams.gauge" => [A1UUID] } } },  # Wrong stat name
-        "foo" => { "bar" => { "counter" => { "bobs.gauge" => [A1UUID] } } },  # Wrong type
+        "foo" => { "bar" => { "gauge" => { "bobs.gauge" => [A1UUID,A2UUID], # With wrong UUID
+                                           "sams.gauge" => [A1UUID] },  # Wrong stat name
+                              "counter" => { "bobs.gauge" => [A1UUID] } },  # Wrong type
+                   "barble" => { "gauge" => { "bobs.gauge" => [A1UUID] } } },  # Wrong label value
         "baz" => { "zob" => { "gauge" => { "bobs.gauge" => [A1UUID] } } },  # "Must not"
       })
-      Hastur::Cassandra.expects(:lookup_label_timestamps).returns({})
+      Hastur::Cassandra.expects(:lookup_label_timestamps).with(@cass_client, {
+        "foo" => { "bar" => { "gauge" => { "bobs.gauge" => [A1UUID] } } },
+        "baz" => { "zob" => { "gauge" => { "bobs.gauge" => [A1UUID] } } },  # "Must not"
+      }, ["baz"], NOWISH_TIMESTAMP - 1, NOWISH_TIMESTAMP).returns({})
 
       result = get "/v2/query?type=gauge&ago=1&uuid=#{A1UUID}&name=bobs.gauge&kind=value&label=foo:bar,!baz"
       hash = MultiJson.load(result.body)

@@ -274,7 +274,7 @@ module Hastur
         end
 
         if params[:name]
-          query_names = params[:uuid].split(",").map(&:strip).map(&:downcase)
+          query_names = params[:name].split(",").map(&:strip).map(&:downcase)
         end
 
         data = Hastur::Cassandra.lookup_label_uuids(cass_client, must, start_ts, end_ts)
@@ -526,14 +526,14 @@ module Hastur
       # @return [Boolean] true if matches
       #
       def name_matches?(name, match)
+        return true if name == match
+        return true if match == "*"
         return nil if match.nil?
 
         if match.include? '*'
           parts = match.split '*'
           first = parts.shift
 
-          # if it's a leading *, this works because start_with?("") always returns true
-          # and has a length of 0 so the position stays at 0, which is correct
           if name.start_with?(first)
             # check for suffix match right away, accounting for a final * which split doesn't return
             if not match.end_with? '*' and not name.end_with?(parts.pop)
@@ -552,8 +552,6 @@ module Hastur
               end
             end
           end
-        elsif name == match
-          true
         end
       end
 
@@ -768,13 +766,13 @@ module Hastur
 
         # Clean out non-matching msg names
         unless msg_names == :all
-          # TODO: test this.
-          # Previously it was unused.
           data.each do |lname, lvalue_hash|
             lvalue_hash.each do |lvalue, type_hash|
               type_hash.each do |type, msg_name_hash|
                 msg_name_hash.keys.each do |msg_name|
-                  unless msg_names.include?(msg_name)
+                  if msg_names.include?(msg_name)
+                    msg_name_hash[msg_name] &= uuids  # Filter non-matching UUIDs
+                  else
                     msg_name_hash.delete msg_name
                   end
                 end
