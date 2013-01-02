@@ -178,6 +178,8 @@ module Hastur
         types = type_list_from_string(params[:type])
         labels = params[:label] ? CGI::unescape(params[:label]).split(',') : []
 
+        # TODO(noah): accept a profile hash as input and add to it as we go along.
+
         if types.empty?
           return {}
         end

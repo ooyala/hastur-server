@@ -71,6 +71,8 @@ class RetrievalServerTest < Scope::TestCase
     # those, instead.  If you think the tests for them will be simpler, you're not thinking
     # about setup.
 
+    # TODO(noah): Extract data structures from this to top of file
+
     should "do lookup for fully-specified query" do
       Hastur::Cassandra.expects(:lookup_label_uuids).with(@cass_client, { "foo" => "bar" },
                                                           NOW_TS - 1, NOW_TS).returns({
