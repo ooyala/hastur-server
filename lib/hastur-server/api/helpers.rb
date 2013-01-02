@@ -299,7 +299,7 @@ module Hastur
         # With the UUIDs known, look up stat names and types, and then timestamps.
         data = Hastur::Cassandra.lookup_label_stat_names(cass_client, query_uuids, must.merge(must_not),
                                                          start_ts, end_ts)
-        data = clean_nonmatching_lookup(data, must, query_uuids, query_types, query_names)
+        data = clean_nonmatching_lookup(data, must.merge(must_not), query_uuids, query_types, query_names)
         data = Hastur::Cassandra.lookup_label_timestamps(cass_client, data, must_not.keys,
                                                          start_ts, end_ts)
 
@@ -522,10 +522,12 @@ module Hastur
       # match string. Does not use RE evaluation and is safe to use with query parameters.
       #
       # @param [String] name
-      # @param [String] match either exact or wildcard match
+      # @param [String] match either exact or wildcard match, or nil for no match
       # @return [Boolean] true if matches
       #
       def name_matches?(name, match)
+        return nil if match.nil?
+
         if match.include? '*'
           parts = match.split '*'
           first = parts.shift
