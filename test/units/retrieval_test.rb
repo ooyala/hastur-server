@@ -9,6 +9,7 @@ require "hastur-server/api/cass_java_client"
 
 # Timestamp in seconds
 NOWISH_TIMESTAMP = 1330000400000000
+PACKED_NOWISH = [ NOWISH_TIMESTAMP ].pack("Q>")
 
 # Timestamps in microseconds, rounded down to various sizes.
 ROW_5MIN_TS = 1329858600000000
@@ -61,7 +62,16 @@ class RetrievalServerTest < Scope::TestCase
   # Label queries test a very different chunk of logic with much more
   # complexity.
   context "label query" do
-    should "do simple lookup for fully-specified query" do
+
+    # This is basically a description of all the interfaces for the three-level index we use
+    # for label indices.  It's complicated, yes.  On the other hand, if you find a simple
+    # way to do lookup on arbitrary combinations of labels using Cassandra time series,
+    # let me know and I'll replace this with it.  DataStax Enterprise or Solandra might
+    # kinda-sorta count as "simple" if you squint hard, so we may eventually use one of
+    # those, instead.  If you think the tests for them will be simpler, you're not thinking
+    # about setup.
+
+    should "do lookup for fully-specified query" do
       Hastur::Cassandra.expects(:lookup_label_uuids).with(@cass_client, { "foo" => "bar" },
                                                           NOWISH_TIMESTAMP - 1, NOWISH_TIMESTAMP).returns({
         "foo" => { "bar" => [ A1UUID ],
@@ -83,11 +93,25 @@ class RetrievalServerTest < Scope::TestCase
       Hastur::Cassandra.expects(:lookup_label_timestamps).with(@cass_client, {
         "foo" => { "bar" => { "gauge" => { "bobs.gauge" => [A1UUID] } } },
         "baz" => { "zob" => { "gauge" => { "bobs.gauge" => [A1UUID] } } },  # "Must not"
-      }, ["baz"], NOWISH_TIMESTAMP - 1, NOWISH_TIMESTAMP).returns({})
+      }, ["baz"], NOWISH_TIMESTAMP - 1, NOWISH_TIMESTAMP).returns({
+        "gauge" => {
+          "#{A1UUID}-#{ROW_HOUR_TS}" => [ "bobs.gauge-#{PACKED_NOWISH}" ],
+        }
+      })
+
+      Hastur::Cassandra.expects(:query_cassandra_by_type_rows_cols).with(@cass_client, "gauge", "value",
+                                    { "#{A1UUID}-#{ROW_HOUR_TS}" => [ "bobs.gauge-#{PACKED_NOWISH}" ] },
+                                    { :request_ts => NOWISH_TIMESTAMP, :value_only => true }).returns(
+                                      [ ["#{A1UUID}-#{ROW_HOUR_TS}", "bobs.gauge-#{PACKED_NOWISH}", 37] ])
+
+      final_output = { A1UUID => { "bobs.gauge" => { NOWISH_TIMESTAMP => 37 } } }
+      Hastur::Cassandra.expects(:convert_list_to_hastur_series).with(
+        [ ["#{A1UUID}-#{ROW_HOUR_TS}", "bobs.gauge-#{PACKED_NOWISH}", 37] ], {},
+        NOWISH_TIMESTAMP - 1, NOWISH_TIMESTAMP,
+        { :request_ts => NOWISH_TIMESTAMP, :value_only => true }).returns(final_output)
 
       result = get "/v2/query?type=gauge&ago=1&uuid=#{A1UUID}&name=bobs.gauge&kind=value&label=foo:bar,!baz"
-      hash = MultiJson.load(result.body)
-      assert hash.empty?, "Output hash should be empty"
+      assert_equal MultiJson.dump(final_output, :pretty => true), result.body.strip
     end
   end
 end
