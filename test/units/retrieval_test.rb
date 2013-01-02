@@ -62,11 +62,27 @@ class RetrievalServerTest < Scope::TestCase
   # complexity.
   context "label query" do
     should "do simple lookup for fully-specified query" do
-      Hastur::Cassandra.expects(:lookup_label_uuids).returns({})
-      Hastur::Cassandra.expects(:lookup_label_stat_names).returns({})
+      Hastur::Cassandra.expects(:lookup_label_uuids).with(@cass_client, { "foo" => "bar" },
+                                                          NOWISH_TIMESTAMP - 1, NOWISH_TIMESTAMP).returns({
+        "foo" => { "bar" => [ A1UUID ],
+                   "barble" => [ A2UUID ] },   # "Bad" value to filter out
+      })
+
+      # Note: the wrong UUID supplied below is to test, but should never happen in production.  It
+      # would mean that the label UUID index and label stat name index disagreed with each other.
+      Hastur::Cassandra.expects(:lookup_label_stat_names).with(@cass_client, [A1UUID],
+                                                               { "foo" => "bar", "baz" => "*" },
+                                                               NOWISH_TIMESTAMP - 1,
+                                                               NOWISH_TIMESTAMP).returns({
+        "foo" => { "bar" => { "gauge" => { "bobs.gauge" => [A1UUID,A2UUID] } } }, # With wrong UUID
+        "foo" => { "barble" => { "gauge" => { "bobs.gauge" => [A1UUID] } } },  # Wrong label value
+        "foo" => { "bar" => { "gauge" => { "sams.gauge" => [A1UUID] } } },  # Wrong stat name
+        "foo" => { "bar" => { "counter" => { "bobs.gauge" => [A1UUID] } } },  # Wrong type
+        "baz" => { "zob" => { "gauge" => { "bobs.gauge" => [A1UUID] } } },  # "Must not"
+      })
       Hastur::Cassandra.expects(:lookup_label_timestamps).returns({})
 
-      result = get "/v2/query?type=gauge&ago=1&uuid=#{A1UUID}&name=bobs.gauge&kind=value&label=foo:bar"
+      result = get "/v2/query?type=gauge&ago=1&uuid=#{A1UUID}&name=bobs.gauge&kind=value&label=foo:bar,!baz"
       hash = MultiJson.load(result.body)
       assert hash.empty?, "Output hash should be empty"
     end
