@@ -211,12 +211,12 @@ module Hastur
 
             name_option_list.map do |options|
               Hastur::Cassandra.get(cass_client, uuids, types, start_ts, end_ts, options)
-            end
+            end.inject({}, &:merge)
           end
         end
 
         t0 = Time.now
-        output = sort_series_keys(values.inject({}, &:merge))
+        output = sort_series_keys(values)
         output_operation(output, "hastur.rest.sort_keys", ((Time.now - t0).to_f * 1_000_000).to_i)
 
         # Some queries go directly to a Cassandra range scan, which only matches prefixes
