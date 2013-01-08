@@ -99,11 +99,8 @@ end
 # Warbler tasks to package for JRuby deploy
 #
 
-task :delete_retrieval_war do
+task :delete_jars do
   File.unlink "retrieval_v2.war" if File.exist?("retrieval_v2.war")
-end
-
-task :delete_core_jar do
   File.unlink "core.jar" if File.exist?("core.jar")
 end
 
@@ -119,8 +116,6 @@ if ARGV.include?("retrieval_war")
     # See config/warble.rb for explanation of config variables
     config.dirs = %w(lib tools)
     config.excludes = FileList["**/*~"]
-    # TODO(noah): Can we remove this and just use the Astyanax jars gem directly?
-    config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
     config.java_libs += ["lib/hastur-server/native/native_code.jar"]
     config.bundler = false  # This doesn't seem to turn off the gemspec
     config.gem_dependencies = true
@@ -131,7 +126,7 @@ if ARGV.include?("retrieval_war")
   end)
 end
 # Workaround for Warbler bug (https://github.com/jruby/warbler/issues/86)
-task :retrieval_war => :delete_retrieval_war
+task :retrieval_war => :delete_jars
 task :retrieval_war => :native_jar
 
 Warbler::Task.new("core_jar", Warbler::Config.new do |config|
@@ -141,12 +136,10 @@ Warbler::Task.new("core_jar", Warbler::Config.new do |config|
   # See config/warble.rb for explanation of config variables
   config.dirs = %w(lib vendor tools)
   config.excludes = FileList["**/*~"]
-  # TODO(noah): Can we remove this and just use the Astyanax jars gem directly?
-  #config.java_libs += FileList[File.join JRUBY_ASTYANAX_JARS_HOME, "*.jar"]
   config.bundler = false  # This doesn't seem to turn off the gemspec
   config.gem_dependencies = false
 end)
-task :core_jar => :delete_core_jar
+task :core_jar => :delete_jars
 
 # Eventually this will get really slow and I'll have to do it in a more
 # reasonable way.
