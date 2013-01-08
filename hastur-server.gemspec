@@ -40,7 +40,6 @@ EOS
   s.add_development_dependency "test-unit", "~>2.4.3"
   s.add_development_dependency "rack-test"
   s.add_development_dependency "minitest", "~>3.2.0"
-  s.add_development_dependency "jruby_astyanax-jars"
   s.add_development_dependency "warbler"
 
   s.add_runtime_dependency "sinatra"
@@ -59,5 +58,5 @@ EOS
   s.add_runtime_dependency "sys-uname"
   s.add_runtime_dependency "hastur-rack", "~>0.0.10"
   s.add_runtime_dependency "jruby-msgpack"
-  s.add_runtime_dependency "scala-library-jars"
+  s.add_runtime_dependency "jruby_astyanax-jars"
 end
