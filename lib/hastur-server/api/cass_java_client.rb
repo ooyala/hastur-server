@@ -5,7 +5,8 @@ module Hastur
     # This uses JRuby-Astyanax to implement something that looks like the Cassandra gem client
     class CassandraJavaClient
       def initialize(uris)
-        @ast_client = ::Astyanax::Client.new uris, 9160
+        @ast_client = ::Astyanax::Client.new uris, ENV["HASTUR_CASS_PORT"].to_i || 9160,
+          ENV["HASTUR_CASS_CLUSTER"] || "aCluster", ENV["HASTUR_CASS_USER"], ENV["HASTUR_CASS_PASSWD"]
         @keyspace = @ast_client.connect("hastur", :discovery => false, :connect_timeout_ms => 10_000)
         @java_keyspace = @keyspace.java_keyspace
         @cfs = {}
