@@ -128,17 +128,12 @@ module Hastur
       indexes = indexes_for_message(hash, schema, options)
 
       cass_client.batch do |client|
-        ttl = nil
         indexes.each do |idx_cf, row_hash|
-          ttl = row_hash[:ttl_seconds]  # Use TTL if set
           row_hash.each do |idx_row_key, col_hash|
             next if idx_row_key == :ttl_seconds
 
-            cass_options = insert_options
-            cass_options = cass_options.merge(:ttl_seconds => ttl) if ttl
-
             col_hash.each do |idx_col_key, idx_col_val|
-              client.insert(idx_cf, idx_row_key, { idx_col_key => idx_col_val }, cass_options)
+              client.insert(idx_cf, idx_row_key, { idx_col_key => idx_col_val }, insert_options)
             end
           end
         end
@@ -162,7 +157,6 @@ module Hastur
     def indexes_for_message(hash, schema, options)
       uuid = hash["uuid"] || hash["from"] || options[:uuid]
       raise "No UUID given!" unless uuid
-      ttl = (options[:ttl_seconds].to_i || hash["ttl"].to_i) rescue nil
 
       app_name = hash["labels"]["app"] || ""
       one_day_ts = time_segment_for_timestamp(hash["timestamp"], ONE_DAY)
@@ -178,10 +172,9 @@ module Hastur
         name_indexes = { "lookup_by_key" => { "name-#{one_day_ts}" => { colkey => "" } } }
       end
 
-      # Initialize label indexes with a 7-day TTL.  Cass TTLs are in seconds.
       label_indexes = {
-        "lookup_by_label" => { :ttl_seconds => SECONDS_PER_DAY * 7 },
-        "#{schema[:type]}_label_index" => { :ttl_seconds => SECONDS_PER_DAY * 7 }
+        "lookup_by_label" => { },
+        "#{schema[:type]}_label_index" => { }
       }
       hash["labels"].each do |lname, lvalue|
         label_indexes["lookup_by_label"]["uuid-#{one_hour_ts}"] ||= {}
