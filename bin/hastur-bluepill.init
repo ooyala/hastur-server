@@ -2,7 +2,7 @@
 #
 # Instructions:
 # Symlink this script to /etc/init.d/hastur-$APP.init where $APP matches
-# the bluepill name, for example if I have bluepill-hastur-agent.pill,
+# the bluepill script name, for example if I have bluepill-hastur-agent.pill,
 # ln -nfs /opt/hastur/bin/hastur-bluepill.init /etc/init.d/hastur-agent.init
 # Or, for hastur-core.rb using bluepill-hastur-core.pill:
 # ln -nfs /opt/hastur/bin/hastur-bluepill.init /etc/init.d/hastur-core.init
@@ -31,6 +31,10 @@ PILL_APP=$(echo $APP |sed 's/-/_/g')
 if [ ! -d /var/run/hastur ] ; then
   mkdir -p /var/run/hastur
   chown role-hastur /var/run/hastur
+fi
+
+if [ ! -e /etc/uuid ] ; then
+  uuidgen -t > /etc/uuid
 fi
 
 case "$APP" in
