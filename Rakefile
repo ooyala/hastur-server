@@ -100,8 +100,8 @@ end
 #
 
 task :delete_jars do
-  File.unlink "retrieval_v2.war" if File.exist?("retrieval_v2.war")
-  File.unlink "core.jar" if File.exist?("core.jar")
+  File.unlink "build/jars/retrieval_v2.war" if File.exist?("build/jars/retrieval_v2.war")
+  File.unlink "build/jars/core.jar" if File.exist?("build/jars/core.jar")
 end
 
 # Can't even configure properly when monkeypatched, because the
@@ -110,7 +110,7 @@ if ARGV.include?("retrieval_war")
   Warbler::Task.new("retrieval_war", Warbler::Config.new do |config|
     require "jruby_astyanax-jars"
 
-    config.jar_name = "retrieval_v2"
+    config.jar_name = "build/jars/retrieval_v2"
     config.features = ["executable"]
 
     # See config/warble.rb for explanation of config variables
@@ -131,7 +131,7 @@ task :retrieval_war => :native_jar
 
 Warbler::Task.new("core_jar", Warbler::Config.new do |config|
   config.traits = [ "jar" ]
-  config.jar_name = "core"
+  config.jar_name = "build/jars/core"
 
   # See config/warble.rb for explanation of config variables
   config.dirs = %w(lib vendor tools)
