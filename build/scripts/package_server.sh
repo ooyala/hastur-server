@@ -29,5 +29,4 @@ cp build/scripts/remove*.sh build/server/
 
 tar jcvf server_package.tar.bz build/server
 
-echo "TODO: don't echo, do"
-echo "rm -rf build/server"
+rm -rf build/server
