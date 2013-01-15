@@ -3,7 +3,7 @@ require "rake/testtask"
 require "warbler"
 
 if ARGV.include?("core_jar") && ARGV.include?("retrieval_war")
-  raise "Sorry!  Can't include both core_jar and retrieval_war in one command due to Warbler limits!"
+  raise "Sorry!  Can't build both core_jar and retrieval_war in one command due to Warbler limits!"
 end
 
 if ARGV.include?("core_jar")
