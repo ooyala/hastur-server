@@ -36,6 +36,7 @@ module Hastur
       #     :cassandra  => [ '127.0.0.1:9160' ],
       #   )
       #
+      # TODO(noah): remove uuid parameter, which isn't used for the sink
 
       def initialize(uuid, opts={})
         [:router_uri, :keyspace, :cassandra].each do |p|
