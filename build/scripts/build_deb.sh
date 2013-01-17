@@ -68,7 +68,7 @@ HASTUR_VERSION=$($HASTUR_RUBY_CMD -rhastur-server/version -e "puts Hastur::SERVE
 # build a package with the effing package manager
 $HASTUR_FPM_CMD --provides hastur-server \
   -a native \
-  -m team-tna@ooyala.com \
+  -m appsplat-team@ooyala.com \
   -t deb \
   -n hastur-server \
   -v $HASTUR_VERSION \
