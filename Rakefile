@@ -137,7 +137,7 @@ Warbler::Task.new("core_jar", Warbler::Config.new do |config|
   config.dirs = %w(lib vendor tools)
   config.excludes = FileList["**/*~"]
   config.bundler = false  # This doesn't seem to turn off the gemspec
-  config.gem_dependencies = false
+  config.gem_dependencies = true
 end)
 task :core_jar => :delete_jars
 
