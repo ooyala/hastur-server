@@ -12,4 +12,4 @@ export RESOURCE_OPTS="-Xmx1g"
 pkill -9 -f core.jar
 
 export JAVA_CMD="java -jar core.jar $RESOURCE_OPTS $JAVA_OPTS --router tcp://0.0.0.0:8126"
-sudo -u role-hastur -g role-hastur $JAVA_CMD &
+sudo su role-hastur -s /bin/bash -c "$JAVA_CMD" &
