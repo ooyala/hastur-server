@@ -13,6 +13,17 @@ require "hastur-server/api/helpers"
 require "multi_json"
 require "termite"
 
+#
+# Do you need a v1 retrieval API?  Then you should rewind the git
+# repo back to when it existed, worked, and ran on MRI Ruby rather
+# than JRuby.  This is no longer tested, and in several ways is
+# guaranteed to not work, or just have various differences.
+#
+# Since it exists at all for API compatibility reasons, various
+# differences is not a good thing.
+#
+raise "This no longer works in current JRuby Hastur!"
+
 # TODO(noah): Add parameter validation - alert on bad params?
 
 # TODO(noah): Override for JRuby
