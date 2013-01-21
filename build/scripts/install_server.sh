@@ -3,11 +3,18 @@
 # Run as root, or with "sudo ./install_server.sh"
 
 # Install or upgrade Hastur agent
-curl http://apt.us-east-1.ooyala.com/hastur.sh |sudo bash -s
+curl http://apt.us-east-1.ooyala.com/hastur.sh |sudo bash -s || echo "Agent install/upgrade failed, skipping"
 
 if ! [ -f /etc/uuid ]
   then uuidgen > /etc/uuid
 fi
+
+if ! [ -f /usr/lib64/libzmq.so.1.0.1 ]
+  then cp libzmq.so.1.0.1 /usr/lib64/libzmq.so.1.0.1
+  ln -s /usr/lib64/libzmq.so.1.0.1 /usr/lib64/libzmq.so.1
+  ln -s /usr/lib64/libzmq.so.1.0.1 /usr/lib64/libzmq.so
+fi
+
 
 mkdir -p /opt/hastur-server
 cp ./*.?ar /opt/hastur-server/

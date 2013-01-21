@@ -4,9 +4,14 @@
 # Run it from root of hastur-server project by calling bin/package_server.sh.
 
 rm -rf build/server
+rm build/jars/*
+rm -rf server_package.tar*
 mkdir build/server || echo "Directory already exists!"
 
 cp build/scripts/install_server.sh build/server/
+
+# Linux 64-bit ZeroMQ
+cp build/binaries/libzmq* build/server/
 
 # Build jars, copy into build/server/
 rm -f jars/*.?ar
@@ -27,6 +32,6 @@ cp bin/start_retrieval.sh build/server/
 # Manually-runnable removal scripts for old versions
 cp build/scripts/remove*.sh build/server/
 
-tar jcvf server_package.tar.bz build/server
+tar jcvf server_package.tar.bz2 build/server
 
 rm -rf build/server
