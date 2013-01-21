@@ -104,6 +104,12 @@ task :delete_jars do
   File.unlink "build/jars/core.jar" if File.exist?("build/jars/core.jar")
 end
 
+# Not clear that excludes actually do anything here :-(
+ALL_EXCLUDES = FileList["**/*~"] + ["server_package.tar.bz2"] +
+  ["build/server/core.jar", "build/server/retrieval_v2.war"] +
+  ["build/jars/core.jar", "build/jars/retrieval_v2.war"] +
+  %w(build vendor test .git).map { |dir| FileList["#{dir}/**/*"] }
+
 # Can't even configure properly when monkeypatched, because the
 # config allows jar stuff but not war stuff.
 if ARGV.include?("retrieval_war")
@@ -115,10 +121,11 @@ if ARGV.include?("retrieval_war")
 
     # See config/warble.rb for explanation of config variables
     config.dirs = %w(lib tools)
-    config.excludes = FileList["**/*~"]
+    config.excludes = ALL_EXCLUDES
     config.java_libs += ["lib/hastur-server/native/native_code.jar"]
     config.bundler = false  # This doesn't seem to turn off the gemspec
     config.gem_dependencies = true
+    config.webinf_files += FileList["jetty-web.xml"]
     config.webserver = 'jetty'
     config.webxml.booter = :rack
     config.webxml.jruby.compat.version = "1.9"
@@ -135,7 +142,7 @@ Warbler::Task.new("core_jar", Warbler::Config.new do |config|
 
   # See config/warble.rb for explanation of config variables
   config.dirs = %w(lib vendor tools)
-  config.excludes = FileList["**/*~"]
+  config.excludes = ALL_EXCLUDES
   config.bundler = false  # This doesn't seem to turn off the gemspec
   config.gem_dependencies = true
 end)
