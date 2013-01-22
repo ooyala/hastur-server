@@ -18,4 +18,4 @@ lib/hastur-server/native/*.class
 lib/hastur-server/native/*.jar
 core.jar
 build/server
-server_package.tar.bz
+server_package.tar.bz2
