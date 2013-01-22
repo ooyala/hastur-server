@@ -125,7 +125,6 @@ if ARGV.include?("retrieval_war")
     config.java_libs += ["lib/hastur-server/native/native_code.jar"]
     config.bundler = false  # This doesn't seem to turn off the gemspec
     config.gem_dependencies = true
-    config.webinf_files += FileList["jetty-web.xml"]
     config.webserver = 'jetty'
     config.webxml.booter = :rack
     config.webxml.jruby.compat.version = "1.9"
