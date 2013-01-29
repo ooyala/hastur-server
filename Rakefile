@@ -1,6 +1,7 @@
 require "bundler/gem_tasks"
 require "rake/testtask"
 require "warbler"
+require "fileutils"
 
 if ARGV.include?("core_jar") && ARGV.include?("retrieval_war")
   raise "Sorry!  Can't build both core_jar and retrieval_war in one command due to Warbler limits!"
@@ -100,8 +101,10 @@ end
 #
 
 task :delete_jars do
-  File.unlink "build/jars/retrieval_v2.war" if File.exist?("build/jars/retrieval_v2.war")
-  File.unlink "build/jars/core.jar" if File.exist?("build/jars/core.jar")
+  FileUtils.rm_rf "build/jars/retrieval_v2.war"
+  FileUtils.rm_rf "build/jars/core.jar"
+  # Don't include the gigantic package file in the wars/jars
+  FileUtils.rm_rf "server_package.tar.bz2"
 end
 
 # Not clear that excludes actually do anything here :-(
