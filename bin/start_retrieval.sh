@@ -1,7 +1,10 @@
 #!/bin/bash
 
-export JAVA_OPTS="-XX:+UseParNewGC -XX:+UseAdaptiveSizePolicy -XX:MaxGCPauseMillis=100 -XX:GCTimeRatio=19"
+export GC_OPTS="-XX:+UseParNewGC -XX:+UseAdaptiveSizePolicy -XX:MaxGCPauseMillis=100 -XX:GCTimeRatio=19"
 export RESOURCE_OPTS="-Xmx5g"
+export JETTY_OPTS="-Djetty.port=8077"
+
+export JAVA_OPTS="$GC_OPTS $RESOURCE_OPTS $JETTY_OPTS"
 
 # Configure Cassandra this way
 # export HASTUR_CASS_PORT=9161
@@ -11,5 +14,4 @@ export RESOURCE_OPTS="-Xmx5g"
 
 pkill -9 -f retrieval_v2.war
 
-export JAVA_CMD="java -jar retrieval_v2.war $RESOURCE_OPTS $JAVA_OPTS"
-sudo su role-hastur -s /bin/bash -c "$JAVA_CMD" &
+java $JAVA_OPTS -jar retrieval_v2.war &
