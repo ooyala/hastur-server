@@ -7,7 +7,7 @@ module Hastur
       def initialize(uris)
         @ast_client = ::Astyanax::Client.new uris, ENV["HASTUR_CASS_PORT"].to_i || 9160,
           ENV["HASTUR_CASS_CLUSTER"] || "aCluster", ENV["HASTUR_CASS_USER"], ENV["HASTUR_CASS_PASSWD"]
-        @keyspace = @ast_client.connect("hastur", :discovery => false, :connect_timeout_ms => 10_000)
+        @keyspace = @ast_client.connect("hastur", :discovery => true, :connect_timeout_ms => 10_000)
         @java_keyspace = @keyspace.java_keyspace
         @cfs = {}
         @batch = nil
