@@ -234,7 +234,6 @@ module Hastur
             ack = envelope.to_ack
             # reuse the sender's ZMQ headers for the return message
             ack.zmq_parts = message.clone_zmq_parts
-            puts ack.to_json
             ack.send(@router_socket, :final => true)
             @counters['messages.acked'] += 1
           end
