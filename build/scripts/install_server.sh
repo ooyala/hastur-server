@@ -2,6 +2,12 @@
 
 # Run as root, or with "sudo ./install_server.sh"
 
+MY_REGION=`which my-region`
+if ! [ -f $MY_REGION ] && ! [ -f /bin/my-region ]
+then echo "echo sv2" > /bin/my-region
+  chmod ugo+rx /bin/my-region
+fi
+
 # Install or upgrade Hastur agent
 curl http://apt.us-east-1.ooyala.com/hastur.sh |sudo bash -s || echo "Agent install/upgrade failed, skipping"
 
