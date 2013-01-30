@@ -45,7 +45,8 @@ module Hastur
           cass_servers = args.unshift
           @cassandra_uris = cass_servers.flatten
         else
-          @cassandra_uris = [ '127.0.0.1:9160' ]
+          default_port = ENV["HASTUR_CASS_PORT"] || "9160"
+          @cassandra_uris = [ "127.0.0.1:#{default_port}" ]
         end
 
         super(*args)
