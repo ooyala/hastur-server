@@ -31,7 +31,7 @@ bundle update
 # just in case we installed some executables...
 rbenv rehash
 
-rm hastur-server-*.gem
+rm -f hastur-server-*.gem
 gem build hastur-server.gemspec
 gem install hastur-server-*.gem
 
