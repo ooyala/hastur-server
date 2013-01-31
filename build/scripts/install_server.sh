@@ -4,7 +4,8 @@
 
 MY_REGION=`which my-region`
 if ! [ -f $MY_REGION ] && ! [ -f /bin/my-region ]
-then echo "echo sv2" > /bin/my-region
+then
+  echo "echo sv2" > /bin/my-region
   chmod ugo+rx /bin/my-region
 fi
 
