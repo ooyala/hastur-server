@@ -16,8 +16,9 @@ eval "$(rbenv init -)"
 # This is where each repo the test requires is checked out to.
 : ${OOYALA_REPO_ROOT:="$WORKSPACE"}
 
-# Setup a 1.9.2-p290 test environment
 rbenv shell jruby-1.7.0
+
+export JRUBY_OPTS="-Xcext.enabled=true"
 
 gem install --no-rdoc --no-ri bundler
 
