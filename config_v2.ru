@@ -10,8 +10,8 @@ cassandra_servers = []
 if ENV['CASSANDRA_URIS']
   cassandra_servers = MultiJson.load(ENV['CASSANDRA_URIS']).flatten
 else
-  default_port = ENV["HASTUR_CASS_PORT"] || "9160"
-  cassandra_servers = [ "127.0.0.1:#{default_port}" ]
+  cass_port = ENV["HASTUR_CASS_PORT"] || "9160"
+  cassandra_servers = [ "127.0.0.1:#{cass_port}" ]
 end
 
 use Hastur::Rack, "hastur.retrieval"
