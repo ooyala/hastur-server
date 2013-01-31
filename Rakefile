@@ -157,15 +157,6 @@ task :native_jar do
 
   Dir["**/*.class"].each { |f| File.unlink f }
 
-  # TODO(noah): support java/scala files not in top directory
-
-  unless Dir["*.scala"].empty?
-    system "scalac *.scala"
-    unless $?.success?
-      raise "Couldn't compile scala files!"
-    end
-  end
-
   unless Dir["*.java"].empty?
     system "javac *.java"
     unless $?.success?
