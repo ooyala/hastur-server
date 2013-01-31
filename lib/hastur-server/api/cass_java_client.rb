@@ -5,7 +5,6 @@ module Hastur
     # This uses JRuby-Astyanax to implement something that looks like the Cassandra gem client
     class CassandraJavaClient
       def initialize(uris)
-        STDERR.puts "CONNECTING TO URIS: #{uris.inspect}"
         default_port = ENV["HASTUR_CASS_PORT"] || 9160
         @ast_client = ::Astyanax::Client.new uris, default_port.to_i,
           ENV["HASTUR_CASS_CLUSTER"] || "aCluster", ENV["HASTUR_CASS_USER"], ENV["HASTUR_CASS_PASSWD"]
