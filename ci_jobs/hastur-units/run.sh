@@ -22,6 +22,4 @@ bundle update
 # just in case we installed some executables...
 rbenv rehash
 
-rake native_jar
-
 COVERAGE=true bundle exec rake --trace test:units:full

@@ -125,7 +125,6 @@ if ARGV.include?("retrieval_war")
     # See config/warble.rb for explanation of config variables
     config.dirs = %w(lib tools)
     config.excludes = ALL_EXCLUDES
-    config.java_libs += ["lib/hastur-server/native/native_code.jar"]
     config.bundler = false  # This doesn't seem to turn off the gemspec
     config.gem_dependencies = true
     config.webserver = 'jetty'
@@ -136,7 +135,6 @@ if ARGV.include?("retrieval_war")
 end
 # Workaround for Warbler bug (https://github.com/jruby/warbler/issues/86)
 task :retrieval_war => :delete_jars
-task :retrieval_war => :native_jar
 
 Warbler::Task.new("core_jar", Warbler::Config.new do |config|
   config.traits = [ "jar" ]
@@ -149,28 +147,6 @@ Warbler::Task.new("core_jar", Warbler::Config.new do |config|
   config.gem_dependencies = true
 end)
 task :core_jar => :delete_jars
-
-# Eventually this will get really slow and I'll have to do it in a more
-# reasonable way.
-task :native_jar do
-  Dir.chdir File.join(File.dirname(__FILE__), "lib", "hastur-server", "native")
-
-  Dir["**/*.class"].each { |f| File.unlink f }
-
-  unless Dir["*.java"].empty?
-    system "javac *.java"
-    unless $?.success?
-      raise "Couldn't compile java files!"
-    end
-  end
-
-  system "jar -cf native_code.jar `find . -name '*.class\'`"
-  unless $?.success?
-    raise "Couldn't archive java/scala class files to jar!"
-  end
-
-  Dir.chdir File.dirname(__FILE__)
-end
 
 #
 # undesirable but useful hacks follow ...

@@ -35,8 +35,6 @@ rm -f hastur-server-*.gem
 gem build hastur-server.gemspec
 gem install hastur-server-*.gem
 
-rake native_jar
-
 gem env
 echo "------------ Bundler-ized environment -----"
 bundle exec gem env

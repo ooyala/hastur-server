@@ -672,15 +672,6 @@ module Hastur
         end
       end
 
-      get "/v2/scala" do
-        require "native_code"  # Use native_code.jar
-        import "ScalaMain"
-
-        sc_obj = ScalaMain.new
-
-        "From scala: #{sc_obj.scala_string} / #{sc_obj.scala_computation(7)}\n"
-      end
-
       #
       # Implement the Sinatra forward method so bad requests don't try to pass through
       # to the superclass and return 404 right away.
