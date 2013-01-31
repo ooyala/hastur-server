@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set +e
+set -ex
 
 unset CASSANDRA_HOME
 
@@ -10,21 +10,26 @@ echo "---------------------------------------"
 env
 echo "---------------------------------------"
 
-: ${REPO_ROOT:="$WORKSPACE"}
-export IS_JENKINS="true"
+eval "$(rbenv init -)"
 
-source $HOME/.rvm/scripts/rvm
+# The current working directory is exactly WORKSPACE.
+# This is where each repo the test requires is checked out to.
+: ${OOYALA_REPO_ROOT:="$WORKSPACE"}
 
-export JRUBY_OPTS="-Xcext.enabled=true"
+# Setup a 1.9.2-p290 test environment
+rbenv shell jruby-1.7.0
 
-cd $REPO_ROOT/hastur-server
-rvm list | grep jruby-1.7.0 || rvm install jruby-1.7.0
-rvm --create use jruby-1.7.0@hastur-server
-gem uninstall bundler -v 1.1.1
 gem install --no-rdoc --no-ri bundler
-rm Gemfile.lock  # Workaround for uncommon Bundler bug - https://github.com/carlhuda/bundler/issues/2043
-bundle update   # Update to latest versions since this is a gem
-#bundle install
+
+# Move to the project repo
+cd $WORKSPACE/hastur-server
+
+# install the necessary gems and execute tests
+bundle update
+
+# just in case we installed some executables...
+rbenv rehash
+
 rm hastur-server-*.gem
 gem build hastur-server.gemspec
 gem install hastur-server-*.gem
@@ -43,4 +48,4 @@ echo "
 ===============================================================================
 "
 
-COVERAGE=true bundle exec rake test:integrations --trace
+COVERAGE=true bundle exec rake --trace test:integrations

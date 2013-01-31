@@ -1,6 +1,4 @@
 #!/bin/bash
-
-#!/bin/bash
 set -ex
 
 eval "$(rbenv init -)"
@@ -15,7 +13,7 @@ rbenv shell jruby-1.7.0
 gem install --no-rdoc --no-ri bundler
 
 # Move to the project repo
-cd $WORKSPACE/hastur
+cd $WORKSPACE/hastur-server
 
 # install the necessary gems and execute tests
 bundle update
