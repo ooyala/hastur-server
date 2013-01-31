@@ -4,7 +4,7 @@ export GC_OPTS="-XX:+UseParNewGC -XX:+UseAdaptiveSizePolicy -XX:MaxGCPauseMillis
 export RESOURCE_OPTS="-Xmx1g"
 export JAVA_OPTS="$GC_OPTS $RESOURCE_OPTS"
 
-# Configure Cassandra this way
+# Configure Hastur's Cassandra settings
 # export HASTUR_CASS_PORT=9161
 # export HASTUR_CASS_CLUSTER=aCluster
 # export HASTUR_CASS_USER=hastur
