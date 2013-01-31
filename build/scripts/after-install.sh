@@ -15,6 +15,6 @@ if [ -n "$initscript" ] ; then
   /etc/init.d/hastur-agent.init quit
   /etc/init.d/hastur-agent.init start
 else
-  echo "Could not find hastur-bluepill.init. Please notify appsplat-team@ooyala.com."
+  echo "Could not find hastur-bluepill.init. Please notify appsplat-oncall@ooyala.com."
   exit 1
 fi
