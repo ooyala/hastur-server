@@ -878,7 +878,7 @@ module Hastur
 
           # This happens even if name is nil
           # TODO(noah): What happens if you ask for messages *plus* rollups?
-          if options[:value_only] or options[:rollup_period] or options[:rollup_only]
+          if options[:value_only] || options[:rollup_period] || options[:rollup_only]
             hash[name][timestamp] = MessagePack.unpack(value) rescue value
           else
             hash[name][timestamp] = value
