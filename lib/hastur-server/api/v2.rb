@@ -493,10 +493,14 @@ module Hastur
           query_types.push types
         end
 
-        uuids = intersect_params(query_uuids).join(',')
-        params[:uuid] = uuids unless uuids == :all
-        types = intersect_params(query_types).join(',')
-        params[:type] = types unless types == :all
+        unless uuids == :all
+          uuids = intersect_params(query_uuids).join(',')
+          params[:uuid] = uuids
+        end
+        unless types == :all
+          types = intersect_params(query_types).join(',')
+          params[:type] = types unless types == :all
+        end
 
         return {} if uuids.empty? || types.empty?
 
