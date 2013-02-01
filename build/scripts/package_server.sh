@@ -6,7 +6,7 @@
 rm -rf build/server
 rm build/jars/*
 rm -rf server_package.tar*
-mkdir build/server || echo "Directory already exists!"
+mkdir build/server
 
 cp build/scripts/install_server.sh build/server/
 
