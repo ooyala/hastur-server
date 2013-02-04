@@ -14,4 +14,4 @@ export JAVA_OPTS="$GC_OPTS $RESOURCE_OPTS $JETTY_OPTS"
 
 pkill -9 -f retrieval_v2.war
 
-java $JAVA_OPTS -jar retrieval_v2.war &
+exec java $JAVA_OPTS -jar retrieval_v2.war

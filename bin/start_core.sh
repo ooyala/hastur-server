@@ -12,4 +12,4 @@ export JAVA_OPTS="$GC_OPTS $RESOURCE_OPTS"
 
 pkill -9 -f core.jar
 
-java -jar core.jar $JAVA_OPTS --router tcp://0.0.0.0:8126 &
+exec java -jar core.jar $JAVA_OPTS --router tcp://0.0.0.0:8126
