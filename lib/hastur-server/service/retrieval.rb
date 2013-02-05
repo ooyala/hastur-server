@@ -19,8 +19,10 @@ require "termite"
 # than JRuby.  This is no longer tested, and in several ways is
 # guaranteed to not work, or just have various differences.
 #
-# Since it exists at all for API compatibility reasons, various
-# differences is not a good thing.
+# Since the V1 API is only here for API compatibility reasons,
+# "various differences" is not a good thing.  If you need an
+# up-to-date retrieval service, you're looking for api/v2.rb, not for
+# this file.
 #
 raise "This no longer works in current JRuby Hastur!"
 
