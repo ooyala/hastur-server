@@ -16,9 +16,9 @@ cp build/binaries/libzmq* build/server/
 # Build jars, copy into build/server/
 rm -f jars/*.?ar
 mkdir -p build/server
-rake core_jar || exit -1
+bundle exec rake core_jar || exit -1
 mv build/jars/core.jar build/server/
-rake retrieval_war || exit -1
+bundle exec rake retrieval_war || exit -1
 mv build/jars/retrieval_v2.war build/server/
 
 # Hastur Core scripts
