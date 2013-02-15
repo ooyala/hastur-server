@@ -117,13 +117,12 @@ ALL_EXCLUDES = FileList["**/*~"] + ["server_package.tar.bz2"] +
 # config allows jar stuff but not war stuff.
 if ARGV.include?("retrieval_war")
   Warbler::Task.new("retrieval_war", Warbler::Config.new do |config|
-    require "jruby_astyanax-jars"
-
     config.jar_name = "build/jars/retrieval_v2"
     config.features = ["executable"]
 
     # See config/warble.rb for explanation of config variables
     config.dirs = %w(lib tools)
+    config.java_libs += FileList["build/include_jars/*.jar"]
     config.excludes = ALL_EXCLUDES
     config.bundler = false  # This doesn't seem to turn off the gemspec
     config.gem_dependencies = true
@@ -142,6 +141,7 @@ Warbler::Task.new("core_jar", Warbler::Config.new do |config|
 
   # See config/warble.rb for explanation of config variables
   config.dirs = %w(lib vendor tools)
+  config.java_libs += FileList["build/include_jars/*.jar"]
   config.excludes = ALL_EXCLUDES
   config.bundler = false  # This doesn't seem to turn off the gemspec
   config.gem_dependencies = true

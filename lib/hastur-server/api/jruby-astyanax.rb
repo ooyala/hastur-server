@@ -5,15 +5,6 @@
 
 require "java"
 
-#require "jruby_astyanax-jars"
-# JRuby_astyanax has a CLASSPATH line that gives a NullPointerException in jruby_astyanax-jars.rb.
-# So we can't just require it.  We want the jars, though.  For now, we find them and require
-# them.  TODO: fork that gem?
-ast_include_file = `gem which jruby_astyanax-jars.rb`.chomp
-raise "Can't find jruby_astyanax gem!" if ast_include_file.empty?
-ast_jars_dir = File.dirname(ast_include_file)
-Dir[File.join(ast_jars_dir, "*.jar")].each { |f| require f }
-
 java_import com.netflix.astyanax.impl.AstyanaxConfigurationImpl
 java_import com.netflix.astyanax.connectionpool.impl.ConnectionPoolConfigurationImpl
 java_import com.netflix.astyanax.AstyanaxContext
