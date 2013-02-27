@@ -305,6 +305,15 @@ module Hastur
         data = Hastur::Cassandra.lookup_label_timestamps(cass_client, data, must_not.keys,
                                                          start_ts, end_ts)
 
+        # This is the very final row-key/column-key query to Cassandra.  When you add a "count"
+        # type that can be returned, you'll stop really doing this query and just count the
+        # column keys.
+        #
+        # Also, this is why getting a big chunk of data distributed randomly throughout your
+        # total dataset is really, really slow.  This is not an operation Cassandra does
+        # quickly.  If you want that, you'll need to get *all* data and filter out the wanted
+        # columns for yourself -- which will also be slow, naturally.
+        #
         result = query_row_col_from_cassandra(data, start_ts, end_ts)
       end
 
@@ -406,6 +415,7 @@ module Hastur
         # node registration is daily, bucket the lookup on day boundary if unspecified
         day_start_ts, day_end_ts = get_start_end :one_day
 
+        # You know, this could be sped up a *lot* by caching.  Just sayin'.
         uuid_lookup = Hastur::Cassandra.lookup_by_key(cass_client, "host-uuid", day_start_ts, day_end_ts)
 
         nodes.flatten.map do |maybe_uuid|
@@ -472,6 +482,9 @@ module Hastur
               end
               # MultiJson gets really upset if you ask it to decode a ruby Hash that ends up
               # being stringified - TODO(al,2012-06-21) figure out why hashes are appearing in this data
+
+              # Hashes are appearing in this data when you request *both* a rollup and normal data
+              # together.  The right answer is probably not to do that (i.e. change the API).
               unless value.kind_of? String
                 logger.debug "BUG: Got a ruby #{value.class} where a JSON string was expected: #{value.inspect}"
                 next
