@@ -8,6 +8,10 @@ require "minitest/autorun"
 require "scope"
 require "mocha"
 
+# Require mandatory jars
+require "java"
+Dir["build/include_jars/*.jar"].each { |f| require f }
+
 # For testing Hastur components, use the local version *first*.
 $LOAD_PATH.unshift File.join(File.dirname(__FILE__), "..", "lib")
 
