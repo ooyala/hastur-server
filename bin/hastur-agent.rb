@@ -12,6 +12,10 @@ require "hastur/api"
 require "hastur-server/util"
 require "hastur-server/service/agent"
 
+# If this switches to JRuby, you'll need to manually require
+# all the jars in build/include_jars.  You can see code for
+# this in the test_helper.
+
 MultiJson.use :yajl
 NOTIFICATION_INTERVAL = 5   # Hardcode for now
 
